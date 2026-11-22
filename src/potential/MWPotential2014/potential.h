@@ -553,7 +553,8 @@ static INLINE void potential_init_backend(
   potential->H = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:H", H_default);
   potential->Mdisk = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:Mdisk_kpc", Mdisk_Msun_default);
+      parameter_file, "MWPotential2014Potential:Mdisk_Msun",
+      Mdisk_Msun_default);
   potential->Rdisk = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:Rdisk_kpc", Rdisk_kpc_default);
   potential->Zdisk = parser_get_opt_param_double(
@@ -587,7 +588,7 @@ static INLINE void potential_init_backend(
   /* Read all the dynamical friction coefficients */
   for (int i = 0; i < potential_MW2014_num_coefficients; i++) {
     char param_name[128];
-    sprintf(param_name, "MWPotential2014Potential:df_polyfit_coeffs%2d", i);
+    sprintf(param_name, "MWPotential2014Potential:df_polyfit_coeffs%02d", i);
     potential->df_polyfit_coeffs[i] = parser_get_opt_param_double(
         parameter_file, param_name, df_polyfit_coeffs_default[i]);
   }

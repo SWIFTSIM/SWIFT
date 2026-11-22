@@ -212,9 +212,10 @@ int cell_mlocktree(struct cell *c) {
  * @brief Lock a cell for access to its array of #spart and hold its parents.
  *
  * @param c The #cell.
+ * @param split_task Is the locking task split?
  * @return 0 on success, 1 on failure
  */
-int cell_slocktree(struct cell *c) {
+int cell_slocktree(struct cell *c, const int split_task) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -233,14 +234,55 @@ int cell_slocktree(struct cell *c) {
     return 1;
   }
 
+  /* Same for the split task hold */
+  if (!split_task && c->stars.split_task_hold) {
+    /* Unlock this cell. */
+    if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Are we only interested in part of the cell? */
+  if (split_task) {
+
+    /* Flag this cell as being used by one more split task. */
+    atomic_inc(&c->stars.split_task_hold);
+
+  } else {
+
+    /* We need the whole cell, check if we are working on part of it. */
+    if (c->stars.split_task_hold) {
+
+      /* Unlock this cell. */
+      if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
+
+      /* Admit defeat. */
+      TIMER_TOC(timer_locktree);
+      return 1;
+    }
+  }
+
   /* Climb up the tree and lock/hold/unlock. */
   struct cell *finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
+
+    /* First check if we have a split task "locking" the cell.
+     * (This only affects pair tasks, since we cannot be running a self on
+     * a different level in the tree). */
+    if (!split_task && finger->stars.split_task_hold) break;
+
     /* Lock this cell. */
     if (lock_trylock(&finger->stars.lock) != 0) break;
 
-    /* Increment the hold. */
-    atomic_inc(&finger->stars.hold);
+    if (split_task) {
+      /* Increment the split task hold */
+      atomic_inc(&finger->stars.split_task_hold);
+    } else {
+      /* Increment the hold. */
+      atomic_inc(&finger->stars.hold);
+    }
 
     /* Unlock the cell. */
     if (lock_unlock(&finger->stars.lock) != 0) error("Failed to unlock cell.");
@@ -248,6 +290,11 @@ int cell_slocktree(struct cell *c) {
 
   /* If we reached the top of the tree, we're done. */
   if (finger == NULL) {
+    if (split_task) {
+      /* Unlock the cell if we are only using part of it. */
+      if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
+    }
+
     TIMER_TOC(timer_locktree);
     return 0;
   }
@@ -256,8 +303,19 @@ int cell_slocktree(struct cell *c) {
   else {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
-         finger2 = finger2->parent)
-      atomic_dec(&finger2->stars.hold);
+         finger2 = finger2->parent) {
+
+      if (split_task) {
+        atomic_dec(&finger2->stars.split_task_hold);
+      } else {
+        atomic_dec(&finger2->stars.hold);
+      }
+    }
+
+    if (split_task) {
+      /* remove the split task hold */
+      atomic_dec(&c->stars.split_task_hold);
+    }
 
     /* Unlock this cell. */
     if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
@@ -447,16 +505,27 @@ void cell_munlocktree(struct cell *c) {
  * @brief Unlock a cell's parents for access to #spart array.
  *
  * @param c The #cell.
+ * @param split_task Is the unlocking task split?
  */
-void cell_sunlocktree(struct cell *c) {
+void cell_sunlocktree(struct cell *c, const int split_task) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
-  if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
+  if (split_task) {
+    atomic_dec(&c->stars.split_task_hold);
+  } else {
+    if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
+  }
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    atomic_dec(&finger->stars.hold);
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (split_task) {
+      atomic_dec(&finger->stars.split_task_hold);
+    } else {
+      atomic_dec(&finger->stars.hold);
+    }
+  }
 
   TIMER_TOC(timer_locktree);
 }

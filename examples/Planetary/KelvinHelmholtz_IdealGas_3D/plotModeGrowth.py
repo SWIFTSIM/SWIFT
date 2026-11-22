@@ -22,7 +22,6 @@ Generate plot Mode growth of the 3D Kelvin--Helmholtz instability.
 This is based on the quantity calculated in Eqns. 10--13 of McNally et al. 2012
 """
 
-import sys
 import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -96,9 +95,7 @@ def calculate_mode_growth(snap, vy_init_amp, wavelength):
 if __name__ == "__main__":
 
     # Simulation paramerters for nomralisation of mode growth
-    vy_init_amp = (
-        0.01
-    )  # Initial amplitude of y velocity perturbation in units of the boxsize per second
+    vy_init_amp = 0.01  # Initial amplitude of y velocity perturbation in units of the boxsize per second
     wavelength = 0.5  # wavelength of initial perturbation in units of the boxsize
 
     # Use Gridspec to set up figure

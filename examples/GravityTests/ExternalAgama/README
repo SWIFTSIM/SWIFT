@@ -1,0 +1,57 @@
+# Context
+
+This example demonstrates the use of an external potential provided by the AGAMA library (https://agama.software/).
+A Plummer sphere is generated and used to construct a potential through a multipole expansion with AGAMA.
+The resulting potential is stored in the `potential.txt` file and then used within SWIFT to evolve the
+Plummer sphere while disabling its self-gravity.
+The conservation of the density profile and total energy is used as a proxy for validating the evolution.
+
+
+# How to run this example
+
+In a terminal at the root of the "swiftsim" directory, type:
+
+`./autogen.sh`
+
+Then, configure swift to take into account external potentials. Type:
+
+`./configure --with-agama=path_to_agama_directory --with-ext-potential=agama`
+
+where `path_to_agama_directory` is the AGAMA root directory that must contain `agama.so` and `agama.a`.
+See the next section to check how to compile this library.
+
+Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
+
+`make`
+
+Finally, to run this example, open a terminal in the present directory and type:
+
+`./run.sh`
+
+
+Note that the AGAMA potential file `potential.txt` can be created by running:
+
+`python3 makePlummerPotential.py`
+
+
+# Python requirements
+
+Besides the packages of `examples/requirements.txt`, `makePlummerPotential.py`
+needs the python packages of AGAMA (see below) and pNbody
+(https://lastro.epfl.ch/projects/pNbody/).
+
+
+# How to compile AGAMA
+
+1. clone AGAMA from the official repository
+2. use pip to compile and install it
+3. check that the folder where pip installed AGAMA contains : `agama.a`, `agama.so` and `agama/interface_c.h`
+```
+git clone https://github.com/GalacticDynamics-Oxford/Agama.git 
+cd Agama
+pip install --no-build-isolation .
+```
+
+
+
+

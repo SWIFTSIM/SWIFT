@@ -59,6 +59,11 @@ can be found by typing ``./swift -h``:
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback
                                       --black-holes --fof.
+    --flamingo                        Run with all the options needed for the 
+                                      FLAMINGO model. This is equivalent to 
+                                      --hydro --limiter --sync --self-gravity 
+                                      --stars --star-formation --cooling 
+                                      --feedback --black-holes --fof.
     --gear                            Run with all the options needed for the
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
@@ -79,6 +84,7 @@ can be found by typing ``./swift -h``:
                                       integration. Checks the validity of
                                       parameters and IC files as well as memory
                                       limits.
+    --no-io                           Skip writing snapshots and restart files.
     -e, --fpe                         Enable floating-point exceptions (debugging
                                       mode).
     -f, --cpu-frequency=<str>         Overwrite the CPU frequency (Hz) to be

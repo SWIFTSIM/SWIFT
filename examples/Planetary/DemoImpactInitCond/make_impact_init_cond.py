@@ -23,7 +23,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10 ** 5
+N = 10**5
 N_label = "n%d" % (10 * np.log10(N))
 
 # Earth units
@@ -33,6 +33,7 @@ R_E = 6.3710e6  # m
 # Set profile inputs
 M_t = 0.887 * M_E
 M_i = 0.133 * M_E
+
 
 # Load the settled particle planets
 def load_snapshot_data(filename):

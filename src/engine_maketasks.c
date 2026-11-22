@@ -475,12 +475,13 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #endif
 
       /* Density ghost before first send */
-      scheduler_addunlock(s, ci->hydro.super->stars.density_ghost, t_density);
+      scheduler_addunlock(s, ci->hydro.super->stars.ghost_out, t_density);
 
       /* Drift before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
 
-      if (with_star_formation && ci->hydro.count > 0) {
+      /* t_sf_counts covers the whole subtree, so gate on its existence. */
+      if (t_sf_counts != NULL) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
         scheduler_addunlock(s, t_sf_counts, t_prep2);
@@ -492,7 +493,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &ci->mpi.send, t_prep2);
 #endif
-    if (with_star_formation && ci->hydro.count > 0) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -1050,7 +1051,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
+    /* t_sf_counts covers the whole subtree, so gate on its existence. */
+    if (t_sf_counts != NULL) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
@@ -1066,7 +1068,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &c->mpi.recv, t_prep2);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1652,16 +1654,55 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
 
     /* Add the ghost task and its dependencies */
     struct scheduler *s = &e->sched;
-    c->hydro.ghost =
-        scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
-    scheduler_addunlock(s, ghost_in, c->hydro.ghost);
-    scheduler_addunlock(s, c->hydro.ghost, ghost_out);
+    for (int i = 0; i < HYDRO_GHOST_NTASK; i++) {
+
+      c->hydro.ghost[i] = scheduler_addtask(
+          s, task_type_ghost, task_subtype_none, /*flags=*/i, 0, c, NULL);
+      scheduler_addunlock(s, ghost_in, c->hydro.ghost[i]);
+      scheduler_addunlock(s, c->hydro.ghost[i], ghost_out);
+    }
 
   } else {
     /* Keep recursing */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_add_ghosts(e, c->progeny[k], ghost_in, ghost_out);
+  }
+}
+
+/**
+ * @brief Recursively add non-implicit star ghost tasks to a cell hierarchy.
+ */
+void engine_add_star_ghosts(struct engine *e, struct cell *c,
+                            struct task *ghost_in, struct task *ghost_out) {
+
+  const int with_star_formation_sink =
+      (e->policy & engine_policy_sinks) && (e->policy & engine_policy_stars);
+
+  /* Abort unless there are hydro/star particles, or sinks that may spawn stars
+   * later. */
+  if (c->stars.count_total + c->hydro.count_total == 0 &&
+      !(with_star_formation_sink && c->sinks.count > 0))
+    return;
+
+  /* If we have reached the leaf OR have to few particles to play with*/
+  if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {
+
+    /* Add the ghost task and its dependencies */
+    struct scheduler *s = &e->sched;
+    for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+
+      c->stars.density_ghost[i] = scheduler_addtask(
+          s, task_type_stars_ghost, task_subtype_none, /*flags=*/i, 0, c, NULL);
+      scheduler_addunlock(s, ghost_in, c->stars.density_ghost[i]);
+      scheduler_addunlock(s, c->stars.density_ghost[i], ghost_out);
+    }
+
+  } else {
+    /* Keep recursing */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_add_star_ghosts(e, c->progeny[k], ghost_in, ghost_out);
   }
 }
 
@@ -1679,10 +1720,12 @@ void engine_add_cooling(struct engine *e, struct cell *c,
 
     /* Add the cooling task and its dependencies */
     struct scheduler *s = &e->sched;
-    c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
-                                         task_subtype_none, 0, 0, c, NULL);
-    scheduler_addunlock(s, cooling_in, c->hydro.cooling);
-    scheduler_addunlock(s, c->hydro.cooling, cooling_out);
+    for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
+      c->hydro.cooling[i] = scheduler_addtask(s, task_type_cooling,
+                                              task_subtype_none, i, 0, c, NULL);
+      scheduler_addunlock(s, cooling_in, c->hydro.cooling[i]);
+      scheduler_addunlock(s, c->hydro.cooling[i], cooling_out);
+    }
 
   } else {
     /* Keep recursing */
@@ -1884,8 +1927,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_stars_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        c->stars.density_ghost = scheduler_addtask(
-            s, task_type_stars_ghost, task_subtype_none, 0, 0, c, NULL);
+        /* Generate the ghost tasks. */
+        c->stars.ghost_in =
+            scheduler_addtask(s, task_type_stars_ghost_in, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+        c->stars.ghost_out = scheduler_addtask(s, task_type_stars_ghost_out,
+                                               task_subtype_none, 0,
+                                               /* implicit = */ 1, c, NULL);
+        engine_add_star_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
 
 #ifdef EXTRA_STAR_LOOPS
         c->stars.prep1_ghost =
@@ -2029,7 +2078,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
         /* Make sure we don't start swallowing gas particles before the stars
            have converged on their smoothing lengths. */
-        scheduler_addunlock(s, c->stars.density_ghost,
+        scheduler_addunlock(s, c->stars.ghost_out,
                             c->black_holes.swallow_ghost_1);
       }
     }
@@ -2066,6 +2115,70 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Compute the search range for gravity pair task loops.
+ *
+ * Gravity task creation and mesh checks run during engine unskip both search a
+ * number of cell shells around each cell. The latter of these is done per cell
+ * in the cell tree and thus can be computed many times.
+ *
+ * This search is bounded by the transition from long range to short range
+ * gravity. This can either be the multipole acceptance criterion (given by
+ * gravity_M2L_min_accept_distance) or the mesh cut-off radius.
+ *
+ * The search range is computed in units of cell widths and stored in the space
+ * structure for later use.
+ *
+ * @param e The #engine.
+ */
+static void engine_gravity_get_P2P_search_delta(struct engine *e) {
+
+  struct space *s = e->s;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+
+  /* Compute the maximal distance where a direct interaction may be needed. */
+  float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * s->width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, s->periodic);
+
+  /* Beyond the mesh cut-off the truncated forces are zero. */
+  if (s->periodic) {
+    distance = min(distance, (float)e->mesh->r_cut_max);
+  }
+
+  /* Convert the distance to a number of cells. We add 1 to ensure that we
+   * always search at least one cell beyond the cut-off, and use a minimum of 2
+   * to ensure that we always search at least one cell in each direction. */
+  const int delta = max((int)(sqrt(3) * distance / s->width[0]) + 1, 2);
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Clamp periodic searches so that each cell is visited exactly once. */
+  if (s->periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else if (delta > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Store the search range in the space structure for later use. */
+  s->grav_P2P_search_delta_m = delta_m;
+  s->grav_P2P_search_delta_p = delta_p;
+
+  if (e->verbose) {
+    message("P2P search range: distance=%.2e delta_m=%d delta_p=%d", distance,
+            delta_m, delta_p);
+  }
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions.
  *
@@ -2081,40 +2194,18 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
 
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the deltas are non-zero */
+  if (delta_m <= 0 || delta_p <= 0) {
+    error("Invalid P2P search range: delta_m=%d delta_p=%d", delta_m, delta_p);
   }
+#endif
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2180,12 +2271,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
-
           /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
+          if (cell_can_use_mesh(e, ci, cj)) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -2198,48 +2285,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
-            /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[cj->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == cj) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[ci->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == ci) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cid);
-            }
+            engine_check_proxy_exists(e, ci, cj, nodeID);
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
           }
@@ -2615,7 +2661,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
   struct task *t_force = NULL;
   struct task *t_limiter = NULL;
-  struct task *t_star_density = NULL;
+  struct task *t_star_self_density[STARS_SELF_NTASK] = {NULL};
+  struct task *t_star_pair_density = NULL;
   struct task *t_star_feedback = NULL;
   struct task *t_bh_density = NULL;
   struct task *t_bh_swallow = NULL;
@@ -2676,9 +2723,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* The stellar feedback tasks */
       if (with_feedback) {
-        t_star_density =
-            scheduler_addtask(sched, task_type_self, task_subtype_stars_density,
-                              flags, 0, ci, NULL);
+
+        for (int i = 0; i < STARS_SELF_NTASK; i++) {
+          t_star_self_density[i] =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_stars_density, i, 0, ci, NULL);
+        }
+
         t_star_feedback =
             scheduler_addtask(sched, task_type_self,
                               task_subtype_stars_feedback, flags, 0, ci, NULL);
@@ -2744,7 +2795,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
+        for (int i = 0; i < STARS_SELF_NTASK; i++) {
+          engine_addlink(e, &ci->stars.density, t_star_self_density[i]);
+        }
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
 #ifdef EXTRA_STAR_LOOPS
         engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
@@ -2796,24 +2849,29 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_star_density);
+        for (int iself = 0; iself < STARS_SELF_NTASK; iself++) {
 
-        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                            t_star_density);
-        scheduler_addunlock(sched, t_star_density,
-                            ci->hydro.super->stars.density_ghost);
+          if (with_cooling) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_star_self_density[iself]);
+          }
+
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, t_star_self_density[iself],
+                              ci->hydro.super->stars.ghost_in);
+        }
+
 #ifdef EXTRA_STAR_LOOPS
-        scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+        scheduler_addunlock(sched, ci->hydro.super->stars.ghost_out,
                             t_star_prep1);
         scheduler_addunlock(sched, t_star_prep1,
                             ci->hydro.super->stars.prep1_ghost);
@@ -2828,7 +2886,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
                             t_star_feedback);
 #else
-        scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+        scheduler_addunlock(sched, ci->hydro.super->stars.ghost_out,
                             t_star_feedback);
 #endif
         scheduler_addunlock(sched, t_star_feedback,
@@ -2870,6 +2928,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         if (with_cooling)
           scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                              t_bh_density);
+
+        /* BH smoothing-length convergence and swallow marking must see the
+         * gas field after sinks have removed their share, not before. Sink
+         * gas removal is committed by sink_ghost2 (no need to wait for the
+         * later sink-sink merger step too). */
+        if (with_sink)
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
                               t_bh_density);
 
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
@@ -2974,7 +3040,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* The stellar feedback tasks */
       if (with_feedback) {
-        t_star_density =
+        t_star_pair_density =
             scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
                               flags, 0, ci, cj);
         t_star_feedback =
@@ -3059,8 +3125,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
-        engine_addlink(e, &cj->stars.density, t_star_density);
+        engine_addlink(e, &ci->stars.density, t_star_pair_density);
+        engine_addlink(e, &cj->stars.density, t_star_pair_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
         engine_addlink(e, &cj->stars.feedback, t_star_feedback);
 #ifdef EXTRA_STAR_LOOPS
@@ -3139,10 +3205,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
+                            t_star_pair_density);
         if (ci->hydro.super != cj->hydro.super) {
           scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_star_density);
+                              t_star_pair_density);
         }
       }
 
@@ -3161,20 +3227,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_cooling)
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                                t_star_density);
+                                t_star_pair_density);
 
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_density);
+                              t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                              t_star_density);
+                              t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_star_density);
+                              t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                              t_star_density);
-          scheduler_addunlock(sched, t_star_density,
-                              ci->hydro.super->stars.density_ghost);
+                              t_star_pair_density);
+          scheduler_addunlock(sched, t_star_pair_density,
+                              ci->hydro.super->stars.ghost_in);
 #ifdef EXTRA_STAR_LOOPS
-          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+          scheduler_addunlock(sched, ci->hydro.super->stars.ghost_out,
                               t_star_prep1);
           scheduler_addunlock(sched, t_star_prep1,
                               ci->hydro.super->stars.prep1_ghost);
@@ -3189,7 +3255,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
                               t_star_feedback);
 #else
-          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+          scheduler_addunlock(sched, ci->hydro.super->stars.ghost_out,
                               t_star_feedback);
 #endif
           scheduler_addunlock(sched, t_star_feedback,
@@ -3231,6 +3297,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_cooling)
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_bh_density);
+
+          /* BH smoothing-length convergence and swallow marking must see
+           * the gas field after sinks have removed their share, not before.
+           * Sink gas removal is committed by sink_ghost2 (no need to wait
+           * for the later sink-sink merger step too). */
+          if (with_sink)
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
                                 t_bh_density);
 
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
@@ -3320,20 +3394,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_star_density);
+                                  t_star_pair_density);
 
             scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                                t_star_density);
+                                t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
-                                t_star_density);
+                                t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_star_density);
+                                t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
-                                t_star_density);
-            scheduler_addunlock(sched, t_star_density,
-                                cj->hydro.super->stars.density_ghost);
+                                t_star_pair_density);
+            scheduler_addunlock(sched, t_star_pair_density,
+                                cj->hydro.super->stars.ghost_in);
 #ifdef EXTRA_STAR_LOOPS
-            scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+            scheduler_addunlock(sched, cj->hydro.super->stars.ghost_out,
                                 t_star_prep1);
             scheduler_addunlock(sched, t_star_prep1,
                                 cj->hydro.super->stars.prep1_ghost);
@@ -3348,7 +3422,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
                                 t_star_feedback);
 #else
-            scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+            scheduler_addunlock(sched, cj->hydro.super->stars.ghost_out,
                                 t_star_feedback);
 #endif
             scheduler_addunlock(sched, t_star_feedback,
@@ -3390,6 +3464,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
+
+            /* BH smoothing-length convergence and swallow marking must see
+             * the gas field after sinks have removed their share, not
+             * before. Sink gas removal is committed by sink_ghost2 (no need
+             * to wait for the later sink-sink merger step too). */
+            if (with_sink)
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
                                   t_bh_density);
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
@@ -3968,8 +4050,10 @@ void engine_make_fof_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
-  if (e->restarting) {
-    /* Re-set the scheduler. */
+  /* Only re-set the scheduler if there are no tasks at all (e.g. after a
+   * restart). Otherwise we would wipe the communication tasks constructed by
+   * the last rebuild that FOF needs over MPI. */
+  if (sched->tasks == NULL) {
     scheduler_reset(sched, engine_estimate_nr_tasks(e));
   }
 
@@ -4040,6 +4124,13 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
+
+  /* When running with self gravity we need to compute the P2P search delta.
+   * This will be used to determine the search radius for the P2P until the next
+   * rebuild. */
+  if (e->policy & engine_policy_self_gravity) {
+    engine_gravity_get_P2P_search_delta(e);
+  }
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {

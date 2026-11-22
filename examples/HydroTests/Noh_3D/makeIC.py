@@ -18,7 +18,9 @@
 ##############################################################################
 
 import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Generates a swift IC file for the 3D Noh problem in a periodic box
 
@@ -30,20 +32,20 @@ P0 = 1.0e-6  # Background pressure
 fileName = "noh.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = sw.load("glassCube_64.hdf5")
 
 vol = 8.0
 
-pos = glass["/PartType0/Coordinates"][:, :] * vol ** (1.0 / 3.0)
-h = glass["/PartType0/SmoothingLength"][:] * vol ** (1.0 / 3.0)
-numPart = size(h)
+pos = glass.gas.coordinates.value * vol ** (1.0 / 3.0)
+h = glass.gas.smoothing_lengths.value * vol ** (1.0 / 3.0)
+numPart = np.size(h)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
 
-m = zeros(numPart)
-u = zeros(numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 m[:] = rho0 * vol / numPart
 u[:] = P0 / (rho0 * (gamma - 1))
 
@@ -54,42 +56,43 @@ v[:, 0] = -(pos[:, 0] - 1.0)
 v[:, 1] = -(pos[:, 1] - 1.0)
 v[:, 2] = -(pos[:, 2] - 1.0)
 
-norm_v = sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
+norm_v = np.sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
 v[:, 0] /= norm_v
 v[:, 1] /= norm_v
 v[:, 2] /= norm_v
 
+
+# Densities (each particle has the rho0 value as density, since each mass
+# is rho0 * vol / numpart. The vol / numpart can be seen as the particle value,
+# i.e. the whole volume is split into numpart)
+densities = np.ones(numPart, dtype=np.float32)
+
+# Material IDs
+mat_ids = np.zeros(numPart)
+
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [vol ** (1.0 / 3.0), vol ** (1.0 / 3.0), vol ** (1.0 / 3.0)],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [vol ** (1.0 / 3.0), vol ** (1.0 / 3.0), vol ** (1.0 / 3.0)]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.write(fileName)
 
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-
-
-file.close()
+# Add the extra fields not handled by the Writer
+with h5py.File(fileName, "r+") as f:
+    f["PartType0"].create_dataset("MaterialIDs", data=mat_ids, dtype="L")
+    f["PartType0"].create_dataset("Density", data=densities, dtype="f")

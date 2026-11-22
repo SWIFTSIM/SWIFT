@@ -36,4 +36,9 @@ struct tracers_xpart_data {};
  */
 struct tracers_bpart_data {};
 
+/**
+ * @brief Properties of the tracers stored in the sink particle data.
+ */
+struct tracers_sink_data {};
+
 #endif /* SWIFT_TRACERS_STRUCT_NONE_H */

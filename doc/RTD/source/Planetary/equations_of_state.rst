@@ -26,8 +26,9 @@ So far, we have implemented several Tillotson, ANEOS, SESAME,
 and Hubbard \& MacFarlane (1980) materials, with more on the way.
 Custom Tillotson parameters or custom materials in SESAME-style tables
 can also be provided.
-The material's ID is set by a base type ID (multiplied by 100)
-plus an individual value:
+The material's ID is set by a somewhat arbitrary base type ID
+(multiplied by 100) plus an individual value, matching our code for making
+planetary initial conditions, `WoMa  <https://github.com/srbonilla/WoMa>`_:
 
 + Ideal gas: ``0``
     + Default (Set :math:`\gamma` using ``--with-adiabatic-index``, default 5/3): ``0``
@@ -80,13 +81,13 @@ The Tillotson sound speed was derived using
 as described in
 `Kegerreis et al. (2019)  <https://doi.org/10.1093/mnras/stz1606>`_.
 Note that there is a typo in the sign of
-:math:`du = T dS - P dV = T dS + (P / \rho^2) d\rho` in the printed appendix,
+:math:`du = T dS - P dV = T dS + (P / \rho^2) d\rho` in the appendix,
 but the correct version was used in the actual derivation.
 
 The ideal gas uses the same equations detailed in :ref:`equation_of_state`.
 
 The data files for the tabulated EoS can be downloaded using
-the ``examples/EoSTables/get_eos_tables.sh`` script.
+the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
 
 The format of the data files for SESAME, ANEOS, and similar-EoS tables
 is similar to the SESAME 301 (etc) style. The file contents are:

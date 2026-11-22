@@ -30,7 +30,7 @@
 #elif defined(FEEDBACK_EAGLE_KINETIC)
 #include "./feedback/EAGLE_kinetic/feedback_iact.h"
 #elif defined(FEEDBACK_GEAR)
-#include "./feedback/GEAR/feedback_iact.h"
+#include "./feedback/GEAR_thermal/feedback_iact.h"
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback_iact.h"
 #else

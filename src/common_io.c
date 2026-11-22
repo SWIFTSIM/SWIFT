@@ -41,6 +41,7 @@
 #include "extra_io.h"
 #include "feedback.h"
 #include "fof_io.h"
+#include "forcing_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
 #include "mhd_io.h"
@@ -513,6 +514,27 @@ void io_write_attribute_s(hid_t grp, const char *name, const char *str) {
 }
 
 /**
+ * @brief Verifies whether a given particle field name is listed
+ * as a 'NamedColumn' in the meta-data.
+ *
+ * @param h_file the (opened) HDF5 file.
+ * @param name The particle field name.
+ */
+int io_field_is_named_column(hid_t h_file, const char *name) {
+
+  char full_name[256] = {0};
+  sprintf(full_name, "/SubgridScheme/NamedColumns/%s", name);
+
+  const htri_t exists = H5Lexists(h_file, full_name, H5P_DEFAULT);
+
+  if (exists < 0) {
+    warning("H5Lexists() reported a failure when looking for a NamedColumn");
+  }
+
+  return (exists > 0);
+}
+
+/**
  * @brief Writes the meta-data of the run to an open hdf5 snapshot file.
  *
  * @param h_file The opened hdf5 file.
@@ -640,6 +662,14 @@ void io_write_meta_data(hid_t h_file, const struct engine *e,
     io_write_attribute(h_grp, "ActualRecordingTimesBlackHoles", DOUBLE,
                        e->snapshot_recording_triggers_bpart,
                        num_snapshot_triggers_bpart);
+  }
+  if (num_snapshot_triggers_sink) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesSinks", DOUBLE,
+                       e->snapshot_recording_triggers_desired_sink,
+                       num_snapshot_triggers_sink);
+    io_write_attribute(h_grp, "ActualRecordingTimesSinks", DOUBLE,
+                       e->snapshot_recording_triggers_sink,
+                       num_snapshot_triggers_sink);
   }
   H5Gclose(h_grp);
 
@@ -818,7 +848,7 @@ void io_write_engine_policy(hid_t h_file, const struct engine *e) {
   const hid_t h_grp = H5Gcreate1(h_file, "/Policy", 0);
   if (h_grp < 0) error("Error while creating policy group");
 
-  for (int i = 1; i < engine_maxpolicy; ++i)
+  for (int i = 0; i < engine_maxpolicy; ++i)
     if (e->policy & (1 << i))
       io_write_attribute_i(h_grp, engine_policy_names[i + 1], 1);
     else
@@ -885,6 +915,69 @@ size_t io_sizeof_type(enum IO_DATA_TYPE type) {
       error("Unknown type");
       return 0;
   }
+}
+
+/**
+ * @brief Fill a buffer with the default value of an optional field.
+ *
+ * Each of the @a dimension elements is written at the width of @a type, so the
+ * function writes exactly dimension * io_sizeof_type(type) bytes.
+ *
+ * @param dest The buffer to fill.
+ * @param type The #IO_DATA_TYPE of the field.
+ * @param dimension The number of elements per particle.
+ * @param value The default value.
+ */
+void io_fill_default_value(void *dest, enum IO_DATA_TYPE type, int dimension,
+                           double value) {
+
+#define IO_FILL_DEFAULT(ctype)                               \
+  {                                                          \
+    ctype *d = (ctype *)dest;                                \
+    for (int i = 0; i < dimension; ++i) d[i] = (ctype)value; \
+  }
+
+  switch (type) {
+    case INT:
+      IO_FILL_DEFAULT(int);
+      break;
+    case UINT8:
+      IO_FILL_DEFAULT(uint8_t);
+      break;
+    case UINT:
+      IO_FILL_DEFAULT(unsigned int);
+      break;
+    case UINT64:
+      IO_FILL_DEFAULT(uint64_t);
+      break;
+    case LONG:
+      IO_FILL_DEFAULT(long);
+      break;
+    case ULONG:
+      IO_FILL_DEFAULT(unsigned long);
+      break;
+    case LONGLONG:
+      IO_FILL_DEFAULT(long long);
+      break;
+    case ULONGLONG:
+      IO_FILL_DEFAULT(unsigned long long);
+      break;
+    case FLOAT:
+      IO_FILL_DEFAULT(float);
+      break;
+    case DOUBLE:
+      IO_FILL_DEFAULT(double);
+      break;
+    case CHAR:
+      IO_FILL_DEFAULT(char);
+      break;
+    case SIZE_T:
+      IO_FILL_DEFAULT(size_t);
+      break;
+    default:
+      error("Unknown type");
+  }
+#undef IO_FILL_DEFAULT
 }
 
 void io_prepare_dm_gparts_mapper(void *restrict data, int Ndm, void *dummy) {
@@ -1673,14 +1766,24 @@ void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
   }
 
   /* Are we using a sub-dir? */
+  int len_file, len_xmf;
   if (strlen(subdir) > 0) {
-    sprintf(filename, "%s/%s_%0*d.hdf5", subdir, basename, number_digits,
-            snap_number);
-    sprintf(xmf_filename, "%s/%s.xmf", default_subdir, default_basename);
+    len_file = snprintf(filename, FILENAME_BUFFER_SIZE, "%s/%s_%0*d.hdf5",
+                        subdir, basename, number_digits, snap_number);
+    len_xmf = snprintf(xmf_filename, FILENAME_BUFFER_SIZE, "%s/%s.xmf",
+                       default_subdir, default_basename);
   } else {
-    sprintf(filename, "%s_%0*d.hdf5", basename, number_digits, snap_number);
-    sprintf(xmf_filename, "%s.xmf", default_basename);
+    len_file = snprintf(filename, FILENAME_BUFFER_SIZE, "%s_%0*d.hdf5",
+                        basename, number_digits, snap_number);
+    len_xmf = snprintf(xmf_filename, FILENAME_BUFFER_SIZE, "%s.xmf",
+                       default_basename);
   }
+  if (len_file < 0 || len_file >= FILENAME_BUFFER_SIZE || len_xmf < 0 ||
+      len_xmf >= FILENAME_BUFFER_SIZE)
+    error(
+        "Snapshot file name too long (max %d characters). Shorten "
+        "Snapshots:subdir and/or Snapshots:basename.",
+        FILENAME_BUFFER_SIZE - 1);
 }
 /**
  * @brief Set all ParticleIDs for each gpart to 1.
@@ -1746,6 +1849,7 @@ void io_select_hydro_fields(const struct part *const parts,
   }
   *num_fields += extra_io_write_particles(parts, xparts, list + *num_fields,
                                           with_cosmology);
+  *num_fields += forcing_write_particles(parts, xparts, list + *num_fields);
 }
 
 /**
@@ -1813,6 +1917,11 @@ void io_select_sink_fields(const struct sink *const sinks,
 
   sink_write_particles(sinks, list, num_fields, with_cosmology);
   *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
+  *num_fields +=
+      tracers_write_sinkparticles(sinks, list + *num_fields, with_cosmology);
+  if (with_fof) {
+    *num_fields += fof_write_sinks(sinks, list + *num_fields);
+  }
 }
 
 /**

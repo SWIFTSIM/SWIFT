@@ -29,12 +29,14 @@ import gc
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -57,12 +59,10 @@ try:
 except IndexError:
     plot_all = True
 
-mpl.rcParams["text.usetex"] = True
-
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -88,7 +88,7 @@ def get_snapshot_list(snapshot_basename="output"):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -115,7 +115,7 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 def gas_temperature(u, mu, gamma):
     """
-    Compute the gas temperature given the specific internal 
+    Compute the gas temperature given the specific internal
     energy u and the mean molecular weight mu
     """
 
@@ -147,7 +147,6 @@ def plot_result(filename):
     data = swiftsimio.load(filename)
     meta = data.metadata
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [
         0.0 * meta.boxsize[0].v,
         0.9 * meta.boxsize[0].v,
@@ -156,9 +155,7 @@ def plot_result(filename):
     ]
     cutoff = int(0.05 * projection_kwargs["resolution"])
 
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
     gamma = meta.hydro_scheme["Adiabatic index"][0]
 
     data.gas.mXHI = data.gas.ion_mass_fractions.HI * data.gas.masses
@@ -172,18 +169,10 @@ def plot_result(filename):
         gas_temperature(data.gas.internal_energies, mu, gamma) * data.gas.masses
     )
 
-    mass_weighted_hydrogen_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHI", **projection_kwargs
-    )
-    mass_weighted_pressure_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mP", **projection_kwargs
-    )
-    mass_weighted_density_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mrho", **projection_kwargs
-    )
-    mass_weighted_temperature_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mT", **projection_kwargs
-    )
+    mass_weighted_hydrogen_map = project_gas(data, project="mXHI", **projection_kwargs)
+    mass_weighted_pressure_map = project_gas(data, project="mP", **projection_kwargs)
+    mass_weighted_density_map = project_gas(data, project="mrho", **projection_kwargs)
+    mass_weighted_temperature_map = project_gas(data, project="mT", **projection_kwargs)
 
     hydrogen_map = mass_weighted_hydrogen_map / mass_map
     hydrogen_map = hydrogen_map[cutoff:-cutoff, cutoff:-cutoff]
@@ -289,7 +278,7 @@ def plot_result(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2f}".format(meta.z)
     title += ", $t$ = {0:.2f}".format(meta.time.to("Myr"))

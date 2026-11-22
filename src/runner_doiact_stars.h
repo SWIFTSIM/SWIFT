@@ -74,6 +74,9 @@
 #define _DOPAIR1_BRANCH_STARS(f) PASTE(runner_dopair_branch_stars, f)
 #define DOPAIR1_BRANCH_STARS _DOPAIR1_BRANCH_STARS(FUNCTION)
 
+#define _DOPAIR1_PROGENY_STARS(f) PASTE(runner_dopair_progeny_stars, f)
+#define DOPAIR1_PROGENY_STARS _DOPAIR1_PROGENY_STARS(FUNCTION)
+
 #define _DOSUB_PAIR1_STARS(f) PASTE(runner_dosub_pair_stars, f)
 #define DOSUB_PAIR1_STARS _DOSUB_PAIR1_STARS(FUNCTION)
 
@@ -96,13 +99,20 @@
 #define IACT_STARS _IACT_STARS(FUNCTION)
 
 void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
+                          const int offset, const int ntasks,
                           const int limit_min_h, const int limit_max_h);
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int offset, const int ntasks,
                           const int limit_min_h, const int limit_max_h);
+void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                           const int offset, const int ntasks,
+                           const int limit_min_h, const int limit_max_h);
 
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci,
-                       int recurse_below_h_max, const int gettimer);
+void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, const int offset,
+                       const int ntasks, int recurse_below_h_max,
+                       const int gettimer);
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                       const int offset, const int ntasks,
                        int recurse_below_h_max, const int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,

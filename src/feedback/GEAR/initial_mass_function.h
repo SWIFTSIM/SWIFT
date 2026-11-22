@@ -55,6 +55,7 @@ void initial_mass_function_init(struct initial_mass_function *imf,
                                 struct swift_params *params,
                                 const char *filename);
 
+void initial_mass_function_zero_pointers(struct initial_mass_function *imf);
 void initial_mass_function_dump(const struct initial_mass_function *imf,
                                 FILE *stream, const struct stellar_model *sm);
 

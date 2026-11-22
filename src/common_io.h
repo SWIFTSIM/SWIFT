@@ -34,6 +34,12 @@
 #define HDF5_LOWEST_FILE_FORMAT_VERSION H5F_LIBVER_V18
 #define HDF5_HIGHEST_FILE_FORMAT_VERSION H5F_LIBVER_LATEST
 
+/**
+ * Define the chunk size for datasets. Value based on extensive tests in Gitlab
+ * issue 920 (https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/920).
+ */
+#define HDF5_LOG2_CHUNK_SIZE 13
+
 /* Avoid cyclic inclusion problems */
 struct cell;
 struct space;
@@ -103,6 +109,8 @@ void io_write_attribute_l(hid_t grp, const char *name, long data);
 void io_write_attribute_ll(hid_t grp, const char *name, long long data);
 void io_write_attribute_s(hid_t grp, const char *name, const char *str);
 
+int io_field_is_named_column(hid_t h_file, const char *name);
+
 void io_write_meta_data(hid_t h_file, const struct engine *e,
                         const struct unit_system *internal_units,
                         const struct unit_system *snapshot_units,
@@ -140,6 +148,8 @@ void io_copy_temp_buffer(void *temp, const struct engine *e,
 #endif /* HAVE_HDF5 */
 
 size_t io_sizeof_type(enum IO_DATA_TYPE type);
+void io_fill_default_value(void *dest, enum IO_DATA_TYPE type, int dimension,
+                           double value);
 int io_is_double_precision(enum IO_DATA_TYPE type);
 
 long long io_count_gas_to_write(const struct space *s, const int subsample,

@@ -39,3 +39,4 @@ In order to add a new scheme, you will need to:
    :caption: Table of Contents
 
    sink_adding_new_scheme
+   creating_particles

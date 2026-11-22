@@ -7,22 +7,12 @@ import numpy as np
 
 from swiftsimio import load
 
-from unyt import Gyr, erg, mh, kb, Myr
+from unyt import erg, mh, kb, Myr
 from scipy.interpolate import interp1d
 
-from makeIC import (
-    gamma,
-    initial_density,
-    initial_temperature,
-    inject_temperature,
-    mu,
-    particle_mass,
-)
+from makeIC import gamma, initial_temperature, inject_temperature, mu, particle_mass
 
-try:
-    plt.style.use("mnras_durham")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 time_to_plot = 25 * Myr
 diffusion_parameters = [0.1 * x for x in range(11)]
@@ -38,7 +28,7 @@ for diffusion in diffusion_parameters:
     # Snapshot for grabbing the units.
     snapshot = load(f"{directory_name}/feedback_0000.hdf5")
     units = snapshot.metadata.units
-    energy_units = units.mass * units.length ** 2 / (units.time ** 2)
+    energy_units = units.mass * units.length**2 / (units.time**2)
 
     data = np.loadtxt(f"{directory_name}/statistics.txt").T
 

@@ -43,6 +43,7 @@
 #define proxy_tag_bparts 5
 #define proxy_tag_sinks 6
 #define proxy_tag_cells 7
+#define proxy_tag_tags 8
 
 /**
  * @brief The different reasons a cell can be in a proxy

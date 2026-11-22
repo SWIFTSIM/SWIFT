@@ -115,22 +115,18 @@ EAGLEEntropyFloor:
 GEARPressureFloor:
   jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
 
-
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
   with_UV_background: 1                        # Enable or not the UV background
-  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  redshift: -1                                 # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
-  maximal_density_Hpcm3: -1                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
-
+  maximal_density_Hpcm3: -1                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 # GEAR chemistry model (Revaz and Jablonka 2018)
 GEARChemistry:
@@ -147,6 +143,9 @@ GEARStarFormation:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
-  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
-  discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
+  supernovae_Ia_energy_erg: 1e51                             # Energy released by a single supernova.
+  supernovae_efficiency: 0.1                                 # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  with_stellar_wind_feedback: 0                              # Deactivate the stellar wind feedback
+  yields_table:  POPII.hdf5                                  # Table containing the yields.
+  discrete_yields: 0                                         # Should we use discrete yields or the IMF integrated one?
+

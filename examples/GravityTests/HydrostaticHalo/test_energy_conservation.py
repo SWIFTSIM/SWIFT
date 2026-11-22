@@ -22,7 +22,7 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
 
 n_snaps = int(sys.argv[1])
@@ -54,7 +54,7 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 potential_energy_array = []
 internal_energy_array = []
@@ -81,7 +81,7 @@ for i in range(n_snaps):
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
     r = radius_over_virial_radius
-    total_potential_energy = np.sum(v_c ** 2 * np.log(r))
+    total_potential_energy = np.sum(v_c**2 * np.log(r))
     potential_energy_array = np.append(potential_energy_array, total_potential_energy)
 
     vels_dset = f["PartType0/Velocities"]
@@ -90,28 +90,30 @@ for i in range(n_snaps):
     total_kinetic_energy = 0.5 * np.sum(speed_squared)
     kinetic_energy_array = np.append(kinetic_energy_array, total_kinetic_energy)
 
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
     total_internal_energy = np.sum(u)
     internal_energy_array = np.append(internal_energy_array, total_internal_energy)
 
 # put energies in units of v_c^2 and rescale by number of particles
-pe = potential_energy_array / (N * v_c ** 2)
-ke = kinetic_energy_array / (N * v_c ** 2)
-ie = internal_energy_array / (N * v_c ** 2)
+pe = potential_energy_array / (N * v_c**2)
+ke = kinetic_energy_array / (N * v_c**2)
+ie = internal_energy_array / (N * v_c**2)
 te = pe + ke + ie
 
 dyn_time_cgs = r_vir_cgs / v_c_cgs
 time_array = time_array_cgs / dyn_time_cgs
 
-figure()
-plot(time_array, ke, label="Kinetic Energy")
-plot(time_array, pe, label="Potential Energy")
-plot(time_array, ie, label="Internal Energy")
-plot(time_array, te, label="Total Energy")
-legend(loc="lower right")
-xlabel(r"$t / t_{dyn}$")
-ylabel(r"$E / v_c^2$")
-title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" % (N, v_c))
-ylim((-2, 2))
-savefig("energy_conservation.png", format="png")
+plt.figure()
+plt.plot(time_array, ke, label="Kinetic Energy")
+plt.plot(time_array, pe, label="Potential Energy")
+plt.plot(time_array, ie, label="Internal Energy")
+plt.plot(time_array, te, label="Total Energy")
+plt.legend(loc="lower right")
+plt.xlabel(r"$t / t_{dyn}$")
+plt.ylabel(r"$E / v_c^2$")
+plt.title(
+    r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" % (N, v_c)
+)
+plt.ylim((-2, 2))
+plt.savefig("energy_conservation.png", format="png")

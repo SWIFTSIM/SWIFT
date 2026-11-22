@@ -3,8 +3,8 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 # Unit system we're working with
 unitsystem = cosmo_units
@@ -29,7 +29,7 @@ outputfilename = "uniform_3D.hdf5"
 def initial_condition(unitsystem):
     """
     The initial conditions of the uniform box
-    
+
     unitsystem: The unit system to use for IC
 
     returns:
@@ -49,12 +49,12 @@ def initial_condition(unitsystem):
     c_internal = (unyt.c * reduced_speed_of_light_fraction).to(unit_velocity)
 
     # Uniform energy
-    E = np.ones((n_p ** 3), dtype=np.float64) * unit_energy
+    E = np.ones((n_p**3), dtype=np.float64) * unit_energy
 
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     # we have that |F| = c * E
-    fluxes = np.zeros((3, n_p ** 3), dtype=np.float64)
+    fluxes = np.zeros((3, n_p**3), dtype=np.float64)
     fluxes[0] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
     fluxes[1] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
     fluxes[2] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
@@ -64,7 +64,7 @@ def initial_condition(unitsystem):
 
 if __name__ in ("__main__"):
     # Coordinate array
-    coords = np.zeros((n_p ** 3, 3), dtype=np.float64)
+    coords = np.zeros((n_p**3, 3), dtype=np.float64)
 
     # Calculate grid of evenly spaced coordinates
     coords_per_dim = np.linspace(0.5, n_p - 0.5, n_p)
@@ -77,20 +77,46 @@ if __name__ in ("__main__"):
     dx = boxsize / n_p
     coords *= dx
 
-    w = Writer(unitsystem, boxsize, dimension=3)
+    boxsize_cosmo = sw.cosmo_array(
+        [boxsize.value, boxsize.value, boxsize.value],
+        boxsize.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    w = sw.Writer(unit_system=unitsystem, boxsize=boxsize_cosmo, dimension=3)
 
-    w.gas.coordinates = coords
-    w.gas.velocities = np.zeros((n_p ** 3, 3)) * (unyt.cm / unyt.s)
+    w.gas.coordinates = sw.cosmo_array(
+        coords.value, coords.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.gas.velocities = sw.cosmo_array(
+        np.zeros((n_p**3, 3)),
+        unyt.cm / unyt.s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
 
     mpart = 1e20 * unyt.M_sun
     mpart = mpart.to(unitsystem["mass"])
-    w.gas.masses = np.ones(n_p ** 3, dtype=np.float64) * mpart
-    w.gas.internal_energy = (
-        np.ones(n_p ** 3, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.masses = sw.cosmo_array(
+        np.ones(n_p**3, dtype=np.float64) * mpart.value,
+        mpart.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    u = (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.internal_energy = sw.cosmo_array(
+        np.ones(n_p**3, dtype=np.float64) * u.value,
+        u.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
-    w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+    w.gas.generate_smoothing_lengths()
 
     # If IDs are not present, this automatically generates
     w.write(outputfilename)

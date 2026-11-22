@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -euo pipefail
+
 python3 @srcdir@/makeInput.py
 ./testReading
 

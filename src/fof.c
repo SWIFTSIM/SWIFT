@@ -25,6 +25,8 @@
 /* Some standard headers. */
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
+#include <stdint.h>
 #include <unistd.h>
 
 /* MPI headers. */
@@ -38,6 +40,7 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "common_io.h"
+#include "custom_mpi.h"
 #include "engine.h"
 #include "fof_catalogue_io.h"
 #include "hashmap.h"
@@ -49,7 +52,6 @@
 #include "tracers.h"
 
 #define fof_props_default_group_id 2147483647
-#define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
 
 /* Constants. */
@@ -139,20 +141,34 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   if (engine_rank == 0) safe_checkdir(dirp, /*create=*/1);
 
   /* Read the minimum group size. */
-  props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
+  const int min_group_size = parser_get_param_int(params, "FOF:min_group_size");
+  if (min_group_size < 2)
+    error("FOF:min_group_size must be at least 2 (got %d).", min_group_size);
+  props->min_group_size = min_group_size;
 
   /* Read whether we're doing FoF calls to seed black holes. */
+#ifdef BLACK_HOLES_NONE
+  props->seed_black_holes_enabled = 0;
+#else
   props->seed_black_holes_enabled =
       parser_get_param_int(params, "FOF:seed_black_holes_enabled");
+#endif
 
   /* Read the default group ID of particles in groups below the minimum group
    * size. */
-  props->group_id_default = parser_get_opt_param_int(
+  const int group_id_default = parser_get_opt_param_int(
       params, "FOF:group_id_default", fof_props_default_group_id);
+  if (group_id_default < 0)
+    error("FOF:group_id_default must not be negative (got %d).",
+          group_id_default);
+  props->group_id_default = group_id_default;
 
-  /* Read the starting group ID. */
-  props->group_id_offset = parser_get_opt_param_int(
-      params, "FOF:group_id_offset", fof_props_default_group_id_offset);
+  /* The group IDs always start at 1. The option to change this was removed but
+   * we still accept parameter files that set it to that value. */
+  if (parser_get_opt_param_int(params, "FOF:group_id_offset", 1) != 1)
+    error(
+        "FOF:group_id_offset has been removed. Group IDs always start at 1. "
+        "Please remove the parameter from the parameter file.");
 
   /* Read the linking length ratio to the mean inter-particle separation. */
   props->l_x_ratio =
@@ -162,11 +178,19 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   props->l_x_absolute =
       parser_get_opt_param_double(params, "FOF:absolute_linking_length", -1.);
 
-  if (props->l_x_ratio == -1. && props->l_x_absolute <= 0.)
-    error("The FOF linking length can't be negative!");
+  /* -1 means the parameter was not given. Any value given must be positive. */
+  if (props->l_x_absolute != -1. && props->l_x_absolute <= 0.)
+    error("FOF:absolute_linking_length must be positive (got %e).",
+          props->l_x_absolute);
 
-  if (props->l_x_ratio <= 0. && props->l_x_absolute == -1.)
-    error("The FOF linking length ratio can't be negative!");
+  if (props->l_x_ratio != -1. && props->l_x_ratio <= 0.)
+    error("FOF:linking_length_ratio must be positive (got %e).",
+          props->l_x_ratio);
+
+  if (props->l_x_ratio == -1. && props->l_x_absolute == -1.)
+    error(
+        "One of FOF:linking_length_ratio or FOF:absolute_linking_length must "
+        "be specified.");
 
   if (!stand_alone_fof && props->seed_black_holes_enabled) {
 
@@ -197,6 +221,16 @@ void fof_init(struct fof_props *props, struct swift_params *params,
       error("FOF can't use a type (%s) as both linking and attaching type!",
             part_type_names[i]);
 
+  /* The seeding only checks for existing black holes among the members of a
+   * group, so the black holes must be part of the groups. */
+  if (!stand_alone_fof && props->seed_black_holes_enabled &&
+      !props->fof_linking_types[swift_type_black_hole] &&
+      !props->fof_attach_types[swift_type_black_hole])
+    error(
+        "Seeding black holes with FOF requires the black holes to be a "
+        "linking or attaching type. Otherwise, black holes would be seeded "
+        "again in groups that already contain one.");
+
   /* Set the current FOF types */
   fof_set_current_types(props);
 
@@ -222,10 +256,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
     message(
-        "Performing FOF over MPI using union by size and union by rank "
+        "Performing FOF over MPI using union by size and union by index "
         "locally.");
 #else
-  message("Performing FOF using union by rank.");
+  if (engine_rank == 0) message("Performing FOF using union by index.");
 #endif
 }
 
@@ -272,25 +306,6 @@ void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
 
   for (int i = 0; i < num_elements; ++i) {
     group_index[i] = i + offset;
-  }
-}
-
-/**
- * @brief Mapper function to set the initial attach group indices.
- *
- * @param map_data The array of attach group indices.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to first group index.
- */
-void fof_set_initial_attach_index_mapper(void *map_data, int num_elements,
-                                         void *extra_data) {
-  size_t *attach_index = (size_t *)map_data;
-  size_t *attach_index_start = (size_t *)extra_data;
-
-  const ptrdiff_t offset = attach_index - attach_index_start;
-
-  for (int i = 0; i < num_elements; ++i) {
-    attach_index[i] = i + offset;
   }
 }
 
@@ -379,6 +394,13 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
                 MPI_COMM_WORLD);
 #endif
 
+  /* The linking length can only be derived from the dark matter. */
+  if (props->l_x_absolute == -1. && num_high_res_DM == 0)
+    error(
+        "No dark matter particles to compute the FOF linking length from the "
+        "mean inter-particle separation. Please specify "
+        "FOF:absolute_linking_length in the parameter file.");
+
   high_res_DM_mass /= (double)num_high_res_DM;
 
   /* Are we using the aboslute value or the one derived from the mean
@@ -429,30 +451,55 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
     }
   }
 
-#ifdef WITH_MPI
-  /* Check size of linking length against the top-level cell dimensions. */
-  if (props->l_x2 > s->width[0] * s->width[0])
+  /* Check size of linking length against the top-level cell dimensions. The
+   * FOF tasks are only constructed between neighbouring top-level cells (and
+   * the split tasks rely on the same assumption). */
+  const double min_width = min3(s->width[0], s->width[1], s->width[2]);
+  if (props->l_x2 > min_width * min_width)
     error(
         "Linking length greater than the width of a top-level cell. Need to "
         "check more than one layer of top-level cells for links.");
+
+  /* Are there any particles to attach? The attaching tasks and the
+   * associated communications are only needed if there are. For the types
+   * that only exist as gparts we have no separate count, so assume they are
+   * present. Note that the counts include the extra (not yet created)
+   * particles, which is conservative. */
+  props->with_attachables = 0;
+  for (int i = 0; i < swift_type_count; ++i) {
+    if (!props->fof_attach_types[i]) continue;
+    switch (i) {
+      case swift_type_gas:
+        if (s->nr_parts > 0) props->with_attachables = 1;
+        break;
+      case swift_type_sink:
+        if (s->nr_sinks > 0) props->with_attachables = 1;
+        break;
+      case swift_type_stars:
+        if (s->nr_sparts > 0) props->with_attachables = 1;
+        break;
+      case swift_type_black_hole:
+        if (s->nr_bparts > 0) props->with_attachables = 1;
+        break;
+      default:
+        props->with_attachables = 1;
+        break;
+    }
+  }
+
+#ifdef WITH_MPI
+  /* All ranks must agree as the attaching requires communications */
+  MPI_Allreduce(MPI_IN_PLACE, &props->with_attachables, 1, MPI_INT, MPI_LOR,
+                MPI_COMM_WORLD);
 #endif
+
+  if (s->e->nodeID == 0 && !props->with_attachables && verbose)
+    message("No particles to attach. Skipping the attaching phase.");
 
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
-
-  /* Allocate and initialise a group index array for attachables. */
-  if (swift_memalign("fof_attach_index", (void **)&props->attach_index, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error(
-        "Failed to allocate list of particle distances array for FOF search.");
-
-  /* Allocate and initialise a group index array for attachables. */
-  if (swift_memalign("fof_found_attach", (void **)&props->found_attachable_link,
-                     64, s->nr_gparts * sizeof(char)) != 0)
-    error(
-        "Failed to allocate list of particle distances array for FOF search.");
 
   /* Allocate and initialise the closest distance array. */
   if (swift_memalign("fof_distance", (void **)&props->distance_to_link, 64,
@@ -474,19 +521,6 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  /* Set initial attach index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_attach_index_mapper,
-                 props->attach_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->attach_index);
-
-  bzero(props->found_attachable_link, s->nr_gparts * sizeof(char));
-
-  if (verbose)
-    message("Setting initial attach index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -745,30 +779,23 @@ __attribute__((always_inline)) INLINE static size_t fof_find(
 }
 
 /**
- * @brief Atomically update the root of a group
+ * @brief Atomically attach a root to a new root.
  *
- * @param address The address of the value to update.
- * @param y The new value to write.
+ * The update only happens if the old root is still a root, i.e. if no other
+ * thread has attached it to another group since we found it.
+ *
+ * @param group_index Array of group root indices.
+ * @param root The current root to attach.
+ * @param new_root The root to attach it to.
  *
  * @return 1 If successful, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int atomic_update_root(
-    volatile size_t *address, const size_t y) {
+    size_t *group_index, const size_t root, const size_t new_root) {
 
-  size_t *size_t_ptr = (size_t *)address;
-
-  size_t old_val = *address;
-  size_t test_val = old_val;
-  size_t new_val = y;
-
-  /* atomic_cas returns old_val if *size_t_ptr has not changed since being
-   * read.*/
-  old_val = atomic_cas(size_t_ptr, test_val, new_val);
-
-  if (test_val == old_val)
-    return 1;
-  else
-    return 0;
+  /* atomic_cas returns root if group_index[root] was still root, i.e. if root
+   * was still the root of its group. */
+  return atomic_cas(&group_index[root], root, new_root) == root;
 }
 
 /**
@@ -786,7 +813,7 @@ __attribute__((always_inline)) INLINE static void fof_union(
 
   /* Loop until the root can be set to a new value. */
   do {
-    size_t root_i_new = fof_find(*root_i, group_index);
+    const size_t root_i_new = fof_find(*root_i, group_index);
     const size_t root_j_new = fof_find(root_j, group_index);
 
     /* Skip particles in the same group. */
@@ -796,110 +823,43 @@ __attribute__((always_inline)) INLINE static void fof_union(
      * pj's. Otherwise set pj's root to point to pi's.*/
     if (root_j_new < root_i_new) {
 
-      /* Updates the root and checks that its value has not been changed since
-       * being read. */
-      result = atomic_update_root(&group_index[root_i_new], root_j_new);
+      /* Updates the root if it is still a root. Otherwise another thread
+       * linked it in the meantime and we try again from the new roots. */
+      result = atomic_update_root(group_index, root_i_new, root_j_new);
 
       /* Update root_i on the fly. */
-      *root_i = root_j_new;
+      if (result) *root_i = root_j_new;
     } else {
 
-      /* Updates the root and checks that its value has not been changed since
-       * being read. */
-      result = atomic_update_root(&group_index[root_j_new], root_i_new);
+      /* Updates the root if it is still a root. Otherwise another thread
+       * linked it in the meantime and we try again from the new roots. */
+      result = atomic_update_root(group_index, root_j_new, root_i_new);
 
       /* Update root_i on the fly. */
-      *root_i = root_i_new;
+      if (result) *root_i = root_i_new;
     }
   } while (result != 1);
 }
 
 /**
- * @brief Compute th minimal distance between any two points in two cells.
+ * @brief Verify that the particles of a foreign cell were received before
+ * reading them in a FOF operation.
  *
- * @param ci The first #cell.
- * @param cj The second #cell.
- * @param dim The size of the simulation domain.
+ * The FOF data is only exchanged for the cells (and their progeny) that carry
+ * a gravity recv task. If FOF ever needs the particles of another foreign cell
+ * we would read garbage, so stop here instead.
+ *
+ * @param c The foreign #cell.
  */
-__attribute__((always_inline)) INLINE static double cell_min_dist(
-    const struct cell *restrict ci, const struct cell *restrict cj,
-    const double dim[3]) {
+__attribute__((always_inline)) INLINE static void fof_check_foreign_cell(
+    const struct cell *c) {
 
-  /* Get cell locations. */
-  const double cix_min = ci->loc[0];
-  const double ciy_min = ci->loc[1];
-  const double ciz_min = ci->loc[2];
-  const double cjx_min = cj->loc[0];
-  const double cjy_min = cj->loc[1];
-  const double cjz_min = cj->loc[2];
-
-  const double cix_max = ci->loc[0] + ci->width[0];
-  const double ciy_max = ci->loc[1] + ci->width[1];
-  const double ciz_max = ci->loc[2] + ci->width[2];
-  const double cjx_max = cj->loc[0] + cj->width[0];
-  const double cjy_max = cj->loc[1] + cj->width[1];
-  const double cjz_max = cj->loc[2] + cj->width[2];
-
-  double not_same_range[3];
-
-  /* If two cells are in the same range of coordinates along
-     any of the 3 axis, the distance along this axis is 0 */
-  if (ci->width[0] > cj->width[0]) {
-    if ((cix_min <= cjx_min) && (cjx_max <= cix_max))
-      not_same_range[0] = 0.;
-    else
-      not_same_range[0] = 1.;
-  } else {
-    if ((cjx_min <= cix_min) && (cix_max <= cjx_max))
-      not_same_range[0] = 0.;
-    else
-      not_same_range[0] = 1.;
-  }
-  if (ci->width[1] > cj->width[1]) {
-    if ((ciy_min <= cjy_min) && (cjy_max <= ciy_max))
-      not_same_range[1] = 0.;
-    else
-      not_same_range[1] = 1.;
-  } else {
-    if ((cjy_min <= ciy_min) && (ciy_max <= cjy_max))
-      not_same_range[1] = 0.;
-    else
-      not_same_range[1] = 1.;
-  }
-  if (ci->width[2] > cj->width[2]) {
-    if ((ciz_min <= cjz_min) && (cjz_max <= ciz_max))
-      not_same_range[2] = 0.;
-    else
-      not_same_range[2] = 1.;
-  } else {
-    if ((cjz_min <= ciz_min) && (ciz_max <= cjz_max))
-      not_same_range[2] = 0.;
-    else
-      not_same_range[2] = 1.;
-  }
-
-  /* Find the shortest distance between cells, remembering to account for
-   * periodic boundary conditions. */
-  double dx[3];
-  dx[0] = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
-               fabs(nearest(cix_min - cjx_max, dim[0])),
-               fabs(nearest(cix_max - cjx_min, dim[0])),
-               fabs(nearest(cix_max - cjx_max, dim[0])));
-
-  dx[1] = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
-               fabs(nearest(ciy_min - cjy_max, dim[1])),
-               fabs(nearest(ciy_max - cjy_min, dim[1])),
-               fabs(nearest(ciy_max - cjy_max, dim[1])));
-
-  dx[2] = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
-               fabs(nearest(ciz_min - cjz_max, dim[2])),
-               fabs(nearest(ciz_max - cjz_min, dim[2])),
-               fabs(nearest(ciz_max - cjz_max, dim[2])));
-
-  double r2 = 0.;
-  for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k] * not_same_range[k];
-
-  return r2;
+  if (c->grav.count > 0 && c->grav.parts_fof_foreign == NULL)
+    error(
+        "FOF needs the particles of a foreign cell (rank %d, depth %d, %d "
+        "gparts, loc=[%e %e %e], width=[%e %e %e]) that were not received.",
+        c->nodeID, c->depth, c->grav.count, c->loc[0], c->loc[1], c->loc[2],
+        c->width[0], c->width[1], c->width[2]);
 }
 
 #ifdef WITH_MPI
@@ -914,9 +874,14 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
 
   if (offset != NULL) {
 
-    /* If the element is a new entry set its value. */
+    /* If the element is a new entry set its value.
+     * The hashmap stores a long long: fine for anything below 2^63 groups. */
     if (created_new_element) {
-      (*offset).value_st = group_offset;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (group_offset > (size_t)LLONG_MAX)
+        error("Group offset %zu does not fit in the hashmap", group_offset);
+#endif
+      (*offset).value_st = (long long)group_offset;
     }
   } else
     error("Couldn't find key (%zu) or create new one.", group_id);
@@ -1013,11 +978,14 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-    /* Find the root of pi. */
-    size_t root_i = fof_find(offset[i], group_index);
-
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
+
+    /* Only linkable particles can link */
+    if (!is_link_i) continue;
+
+    /* Find the root of pi. */
+    size_t root_i = fof_find(offset[i], group_index);
 
     for (size_t j = i + 1; j < count; j++) {
 
@@ -1032,19 +1000,13 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
 
-      /* Both particles must be of the linking kind */
-      if (!(is_link_i && is_link_j)) continue;
+      /* Only consider linkable<->linkable pairs */
+      if (!is_link_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
-
-      /* Find the root of pj. */
-      const size_t root_j = fof_find(offset[j], group_index);
-
-      /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1060,6 +1022,12 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* Hit or miss? */
       if (r2 < l_x2) {
+
+        /* Find the root of pj (only for pairs in range). */
+        const size_t root_j = fof_find(offset[j], group_index);
+
+        /* Skip particles in the same group. */
+        if (root_i == root_j) continue;
 
         /* Merge the groups` */
         fof_union(&root_i, root_j, group_index);
@@ -1141,11 +1109,14 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
-    /* Find the root of pi. */
-    size_t root_i = fof_find(offset_i[i], group_index);
-
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
+
+    /* Only linkable particles can link */
+    if (!is_link_i) continue;
+
+    /* Find the root of pi. */
+    size_t root_i = fof_find(offset_i[i], group_index);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1160,19 +1131,13 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
 
-      /* At least one of the particles has to be of linking type */
-      if (!(is_link_i && is_link_j)) continue;
+      /* Only consider linkable<->linkable pairs */
+      if (!is_link_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
-
-      /* Find the root of pj. */
-      const size_t root_j = fof_find(offset_j[j], group_index);
-
-      /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1190,6 +1155,12 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
+        /* Find the root of pj (only for pairs in range). */
+        const size_t root_j = fof_find(offset_j[j], group_index);
+
+        /* Skip particles in the same group. */
+        if (root_i == root_j) continue;
+
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
       }
@@ -1205,27 +1176,41 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
  * Possibly reallocates the local_group_links if we run out of space.
  */
 static INLINE void add_foreign_link_to_list(
-    int *local_link_count, int *group_links_size, struct fof_mpi **group_links,
-    struct fof_mpi **local_group_links, const size_t root_i,
-    const size_t root_j, const size_t size_i, const size_t size_j) {
+    size_t *local_link_count, size_t *group_links_size,
+    struct fof_mpi **group_links, struct fof_mpi **local_group_links,
+    const size_t root_i, const size_t root_j, const size_t size_i,
+    const size_t size_j, const int verbose) {
 
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
 
-    const int new_size = 2 * (*group_links_size);
+    const size_t old_size = *group_links_size;
 
+    /* Grow geometrically but make sure we always make progress. */
+    const size_t new_size = (old_size > 0) ? 2 * old_size : 1;
+
+    /* The doubling must not wrap around and the buffer must remain
+     * addressable. */
+    if (new_size <= old_size || new_size > SIZE_MAX / sizeof(struct fof_mpi))
+      error("Overflow in the size of the list of foreign links (%zu elements)",
+            old_size);
+
+    struct fof_mpi *temp =
+        (struct fof_mpi *)swift_realloc("fof_local_group_links", *group_links,
+                                        new_size * sizeof(struct fof_mpi));
+    if (temp == NULL)
+      error("Failed to re-allocate the list of foreign links to %zu elements",
+            new_size);
+
+    *group_links = temp;
     *group_links_size = new_size;
-
-    (*group_links) = (struct fof_mpi *)realloc(
-        *group_links, new_size * sizeof(struct fof_mpi));
 
     /* Reset the local pointer */
     (*local_group_links) = *group_links;
 
-    message("Re-allocating local group links from %d to %d elements.",
-            *local_link_count, new_size);
-
-    if (new_size < 0) error("Overflow in size of list of foreign links");
+    if (verbose)
+      message("Re-allocating local group links from %zu to %zu elements.",
+              old_size, new_size);
   }
 
   /* Store the particle group properties for communication. */
@@ -1247,12 +1232,14 @@ void fof_search_pair_cells_foreign(
     const struct fof_props *props, const double dim[3], const double l_x2,
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *restrict ci,
-    const struct cell *restrict cj, int *restrict link_count,
-    struct fof_mpi **group_links, int *restrict group_links_size) {
+    const struct cell *restrict cj, size_t *restrict link_count,
+    struct fof_mpi **group_links, size_t *restrict group_links_size,
+    const int verbose) {
 
 #ifdef WITH_MPI
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
+  fof_check_foreign_cell(cj);
   const struct gpart *gparts_i = ci->grav.parts;
   const struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
@@ -1262,7 +1249,7 @@ void fof_search_pair_cells_foreign(
 
   /* Values local to this function to avoid dereferencing */
   struct fof_mpi *local_group_links = *group_links;
-  int local_link_count = *link_count;
+  size_t local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
   const size_t *const offset_i =
@@ -1320,12 +1307,15 @@ void fof_search_pair_cells_foreign(
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
+    /* Get the nature of the linking */
+    const int is_link_i = gpart_is_linkable(pi);
+
+    /* Only linkable particles can link */
+    if (!is_link_i) continue;
+
     /* Find the root of pi. */
     const size_t root_i =
         fof_find_global(offset_i[i] - node_offset, group_index, nr_gparts);
-
-    /* Get the nature of the linking */
-    const int is_link_i = gpart_is_linkable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1341,7 +1331,7 @@ void fof_search_pair_cells_foreign(
       const int is_link_j = gpart_foreign_is_linkable(pj);
 
       /* Only consider linkable<->linkable pairs */
-      if (!(is_link_i && is_link_j)) continue;
+      if (!is_link_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1364,19 +1354,25 @@ void fof_search_pair_cells_foreign(
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Check that the links have not already been added to the list. */
-        for (int l = 0; l < local_link_count; l++) {
-          if (local_group_links[l].group_i == root_i &&
-              local_group_links[l].group_j == pj->fof_data.group_id) {
-            continue;
+        /* Check that the links have not already been added to the list.
+         * Search backwards as the most recent links are the most likely
+         * duplicates. */
+        int found = 0;
+        for (size_t l = local_link_count; l > 0; l--) {
+          if (local_group_links[l - 1].group_i == root_i &&
+              local_group_links[l - 1].group_j == pj->fof_data.group_id) {
+            found = 1;
+            break;
           }
         }
 
         /* Add a possible link to the list */
-        add_foreign_link_to_list(
-            &local_link_count, group_links_size, group_links,
-            &local_group_links, root_i, pj->fof_data.group_id,
-            group_size[root_i - node_offset], pj->fof_data.group_size);
+        if (!found)
+          add_foreign_link_to_list(&local_link_count, group_links_size,
+                                   group_links, &local_group_links, root_i,
+                                   pj->fof_data.group_id,
+                                   group_size[root_i - node_offset],
+                                   pj->fof_data.group_size, verbose);
       }
     }
   }
@@ -1456,8 +1452,8 @@ void rec_fof_search_pair_foreign(
     const struct fof_props *props, const double dim[3], const double search_r2,
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *ci, const struct cell *cj,
-    int *restrict link_count, struct fof_mpi **group_links,
-    int *restrict group_links_size) {
+    size_t *restrict link_count, struct fof_mpi **group_links,
+    size_t *restrict group_links_size, const int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
@@ -1481,7 +1477,7 @@ void rec_fof_search_pair_foreign(
             rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                         space_gparts, nr_gparts, ci->progeny[k],
                                         cj->progeny[l], link_count, group_links,
-                                        group_links_size);
+                                        group_links_size, verbose);
       }
     }
   } else if (ci->split) {
@@ -1490,21 +1486,22 @@ void rec_fof_search_pair_foreign(
       if (ci->progeny[k] != NULL)
         rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                     space_gparts, nr_gparts, ci->progeny[k], cj,
-                                    link_count, group_links, group_links_size);
+                                    link_count, group_links, group_links_size,
+                                    verbose);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
-                                    space_gparts, nr_gparts, ci, cj->progeny[k],
-                                    link_count, group_links, group_links_size);
+        rec_fof_search_pair_foreign(
+            props, dim, search_r2, periodic, space_gparts, nr_gparts, ci,
+            cj->progeny[k], link_count, group_links, group_links_size, verbose);
     }
   } else {
     /* Perform FOF search between pairs of cells that are within the linking
      * length and not the same cell. */
     fof_search_pair_cells_foreign(props, dim, search_r2, periodic, space_gparts,
                                   nr_gparts, ci, cj, link_count, group_links,
-                                  group_links_size);
+                                  group_links_size, verbose);
   }
 }
 
@@ -1890,6 +1887,7 @@ void fof_attach_pair_cells_ci_local(const struct fof_props *props,
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
+  fof_check_foreign_cell(cj);
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
@@ -2041,6 +2039,7 @@ void fof_attach_pair_cells_cj_local(const struct fof_props *props,
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
+  fof_check_foreign_cell(ci);
   struct gpart_fof_foreign *gparts_i = ci->grav.parts_fof_foreign;
   struct gpart *gparts_j = cj->grav.parts;
 
@@ -2382,8 +2381,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   const double search_r2 = props->l_x2;
 
   /* Store links in an array local to this thread. */
-  int local_link_count = 0;
-  int local_group_links_size = props->group_links_size / e->nr_threads;
+  size_t local_link_count = 0;
+  size_t local_group_links_size = props->group_links_size / e->nr_threads;
 
   /* Init the local group links buffer. */
   struct fof_mpi *local_group_links = (struct fof_mpi *)swift_calloc(
@@ -2402,7 +2401,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
                                 nr_gparts, local_cell, foreign_cell,
                                 &local_link_count, &local_group_links,
-                                &local_group_links_size);
+                                &local_group_links_size, e->verbose);
   }
 
   /* Add links found by this thread to the global link list. */
@@ -2410,34 +2409,51 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   if (lock_lock(&s->lock) == 0) {
 
     /* Get pointers to global arrays. */
-    int *restrict group_links_size = &props->group_links_size;
-    int *restrict group_link_count = &props->group_link_count;
+    size_t *restrict group_links_size = &props->group_links_size;
+    size_t *restrict group_link_count = &props->group_link_count;
     struct fof_mpi **group_links = &props->group_links;
 
+    /* Total number of links we need to be able to store. */
+    const size_t needed = *group_link_count + local_link_count;
+    if (needed < *group_link_count)
+      error("Overflow in the number of foreign links (%zu + %zu)",
+            *group_link_count, local_link_count);
+
     /* If the global group_links array is not big enough re-allocate it. */
-    if (*group_link_count + local_link_count > *group_links_size) {
+    if (needed > *group_links_size) {
 
-      const int old_size = *group_links_size;
-      const int new_size =
-          max(*group_link_count + local_link_count, 2 * old_size);
+      const size_t old_size = *group_links_size;
+      const size_t new_size = max(needed, 2 * old_size);
 
-      (*group_links) = (struct fof_mpi *)realloc(
-          *group_links, new_size * sizeof(struct fof_mpi));
+      /* The growth must not wrap around and the buffer must remain
+       * addressable. */
+      if (new_size <= old_size || new_size > SIZE_MAX / sizeof(struct fof_mpi))
+        error(
+            "Overflow in the size of the list of foreign links (%zu elements)",
+            old_size);
 
+      struct fof_mpi *temp = (struct fof_mpi *)swift_realloc(
+          "fof_group_links", *group_links, new_size * sizeof(struct fof_mpi));
+      if (temp == NULL)
+        error("Failed to re-allocate the list of foreign links to %zu elements",
+              new_size);
+
+      (*group_links) = temp;
       *group_links_size = new_size;
 
-      message("Re-allocating global group links from %d to %d elements.",
-              old_size, new_size);
+      if (e->verbose)
+        message("Re-allocating global group links from %zu to %zu elements.",
+                old_size, new_size);
     }
 
     /* Copy the local links to the global list. */
-    for (int i = 0; i < local_link_count; i++) {
+    for (size_t i = 0; i < local_link_count; i++) {
 
       int found = 0;
 
       /* Check that the links have not already been added to the list by another
        * thread. */
-      for (int l = 0; l < *group_link_count; l++) {
+      for (size_t l = 0; l < *group_link_count; l++) {
         if ((*group_links)[l].group_i == local_group_links[i].group_i &&
             (*group_links)[l].group_j == local_group_links[i].group_j) {
           found = 1;
@@ -2507,13 +2523,13 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   double *centre_of_mass = props->group_centre_of_mass;
   float *radii = props->group_radii;
   char *has_black_hole = props->has_black_hole;
-  float *max_part_density = props->max_part_density;
   float *gas_mass = props->group_gas_mass;
   float *stellar_mass = props->group_stellar_mass;
   float *star_formation_rate = props->group_star_formation_rate;
+  long long *id_gas_particle_to_convert = props->id_gas_particle_to_convert;
 
   /* Temporary arrays to help with the CoMs */
-  float *max_positions, *min_positions;
+  double *max_positions = NULL, *min_positions = NULL;
   if (swift_memalign("fof_group_max_position", (void **)&max_positions, 32,
                      props->num_groups * 3 * sizeof(double)) != 0)
     error("Unable to allocate memory for the max positions");
@@ -2525,6 +2541,16 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < 3 * (size_t)props->num_groups; ++i) {
     min_positions[i] = DBL_MAX;
     max_positions[i] = -DBL_MAX;
+  }
+
+  float *max_part_density = NULL;
+  if (swift_memalign("fof_group_max_density", (void **)&max_part_density, 32,
+                     props->num_groups * sizeof(float)) != 0)
+    error("Unable to allocate memory for the max densities");
+
+  /* Initialise the max density */
+  for (size_t i = 0; i < (size_t)props->num_groups; ++i) {
+    max_part_density[i] = -FLT_MAX;
   }
 
   /* Collect information about the local particles and update the array of
@@ -2580,6 +2606,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].type == swift_type_gas) {
       const size_t gas_index = -gparts[i].id_or_neg_offset;
       const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (rho_com == 0.f) {
+        error("Found a particle with 0-density! id=%lld", parts[gas_index].id);
+      }
+#endif
       max_part_density[index] = fmaxf(rho_com, max_part_density[index]);
       star_formation_rate[index] +=
           star_formation_get_SFR(&parts[gas_index], &xparts[gas_index]);
@@ -2593,6 +2624,13 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   }
 
 #ifdef WITH_MPI
+  /* The MPI calls below take an int number of elements (up to 3 per group) */
+  if (3LL * props->num_groups > (long long)INT_MAX)
+    error(
+        "Too many FOF groups (%lld) for the MPI reductions of the group "
+        "properties.",
+        props->num_groups);
+
   /* Now all-reduce the local fragments so that everyone has a full catalog */
   MPI_Allreduce(MPI_IN_PLACE, final_group_size, props->num_groups,
                 MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -2602,8 +2640,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                 MPI_MIN, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, max_positions, 3 * props->num_groups, MPI_DOUBLE,
                 MPI_MAX, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_CHAR,
-                MPI_MAX, MPI_COMM_WORLD);
+  /* Note: 0/1 flags, so a byte-wise OR (MPI_CHAR is not a valid type for
+   * MPI_MAX). */
+  MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_BYTE,
+                MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, max_part_density, props->num_groups, MPI_FLOAT,
                 MPI_MAX, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, gas_mass, props->num_groups, MPI_FLOAT, MPI_SUM,
@@ -2667,7 +2707,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
         /* Is this the gas paricle which is the densest? */
         if (rho_com == max_part_density[index]) {
-          (*number_of_local_seeds)++;
+
+          /* If so, is this the minimum ID we have seen with this density? */
+          if (parts[gas_index].id < id_gas_particle_to_convert[index])
+            id_gas_particle_to_convert[index] = parts[gas_index].id;
         }
       }
     }
@@ -2677,10 +2720,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   /* Now all-reduce the CoMs so that everyone has a full catalog */
   MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, 3 * props->num_groups, MPI_DOUBLE,
                 MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(number_of_local_seeds, number_of_global_seeds, 1, MPI_INT,
-                MPI_SUM, MPI_COMM_WORLD);
-#else
-  *number_of_global_seeds = *number_of_local_seeds;
+  MPI_Allreduce(MPI_IN_PLACE, id_gas_particle_to_convert, props->num_groups,
+                MPI_LONG_LONG, MPI_MIN, MPI_COMM_WORLD);
 #endif
 
   /* Finalise the operations on the group catalog */
@@ -2710,7 +2751,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     props->final_group_index[i] = i + 1;
   }
 
-  // Calculate the maximum radius for each FOF
+  /* Calculate the maximum radius for each FOF & number of BHs to seed */
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Ignore particles not in groups */
@@ -2732,18 +2773,36 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     }
 
     /* Calculate the radius*/
-    float r = sqrtf((x[0] * x[0]) + (x[1] * x[1]) + (x[2] * x[2]));
-    radii[index] = fmax(radii[index], r);
+    const float r = sqrtf((x[0] * x[0]) + (x[1] * x[1]) + (x[2] * x[2]));
+    radii[index] = fmaxf(radii[index], r);
+
+    /* Should we seed a BH in this group? */
+    if (!has_black_hole[index] && group_mass[index] > seed_halo_mass) {
+
+      /* Is this a gas particle? */
+      if (gparts[i].type == swift_type_gas) {
+        const size_t gas_index = -gparts[i].id_or_neg_offset;
+
+        /* Increment the local BH counter */
+        if (parts[gas_index].id == id_gas_particle_to_convert[index])
+          (*number_of_local_seeds)++;
+      }
+    }
   }
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, radii, props->num_groups, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
+  MPI_Allreduce(number_of_local_seeds, number_of_global_seeds, 1, MPI_INT,
+                MPI_SUM, MPI_COMM_WORLD);
+#else
+  *number_of_global_seeds = *number_of_local_seeds;
 #endif
 
   /* Free temporary arrays */
-  swift_free("max_positions", max_positions);
-  swift_free("min_positions", min_positions);
+  swift_free("fof_group_max_positions", max_positions);
+  swift_free("fof_group_min_positions", min_positions);
+  swift_free("fof_group_max_density", max_part_density);
 }
 
 /**
@@ -2798,7 +2857,7 @@ void fof_seed_black_holes(const struct fof_props *props,
   /* Direct pointers to the arrays */
   double *group_mass = props->group_mass;
   char *has_black_hole = props->has_black_hole;
-  float *max_part_density = props->max_part_density;
+  long long *id_gas_particle_to_convert = props->id_gas_particle_to_convert;
 
   size_t k = s->nr_bparts;
 
@@ -2818,7 +2877,7 @@ void fof_seed_black_holes(const struct fof_props *props,
 
     /* Get the density of this particle */
     const size_t gas_index = -gparts[i].id_or_neg_offset;
-    const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+    const long long gas_part_id = parts[gas_index].id;
 
     /* Entry into the global list of group properties of this particle */
     const size_t index = gparts[i].fof_data.group_id - 1;
@@ -2828,7 +2887,7 @@ void fof_seed_black_holes(const struct fof_props *props,
 
       /* Does it match the max density for this group?
        * (i.e. is it the particle we identified as the one to convert?) */
-      if (rho_com == max_part_density[index]) {
+      if (gas_part_id == id_gas_particle_to_convert[index]) {
 
         /* Handle on the particle to convert */
         struct part *p = &parts[gas_index];
@@ -3059,33 +3118,42 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   props->group_links_size = fof_props_default_group_link_size;
 
   int num_cells_out = 0;
-  int num_cells_in = 0;
+  size_t cell_pair_size = 0;
 
   /* Find the maximum no. of cell pairs that can communicate. */
   for (int i = 0; i < e->nr_proxies; i++) {
 
+    int proxy_cells_out = 0;
     for (int j = 0; j < e->proxies[i].nr_cells_out; j++) {
 
       /* Only include gravity cells. */
       if (e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity)
-        num_cells_out++;
+        proxy_cells_out++;
     }
 
+    int proxy_cells_in = 0;
     for (int j = 0; j < e->proxies[i].nr_cells_in; j++) {
 
       /* Only include gravity cells. */
       if (e->proxies[i].cells_in_type[j] & proxy_cell_type_gravity)
-        num_cells_in++;
+        proxy_cells_in++;
     }
+
+    num_cells_out += proxy_cells_out;
+
+    /* Pairs are only made within a proxy and only on the lower rank */
+    if (engine_rank == min(engine_rank, e->proxies[i].nodeID))
+      cell_pair_size += (size_t)proxy_cells_out * (size_t)proxy_cells_in;
   }
+
+  if (cell_pair_size > INT_MAX)
+    error("Too many FOF cell pairs (%zu) for an int counter.", cell_pair_size);
 
   if (verbose)
     message(
         "Finding max no. of cells + offset IDs"
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  const int cell_pair_size = num_cells_in * num_cells_out;
 
   /* Allocate memory for all the possible cell links */
   if (swift_memalign("fof_group_links", (void **)&props->group_links,
@@ -3259,7 +3327,7 @@ void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s) {
 
   /* Is there anything to attach? */
-  if (!current_fof_attach_type) return;
+  if (!current_fof_attach_type || !props->with_attachables) return;
 
   const ticks tic_total = getticks();
 
@@ -3309,18 +3377,24 @@ void fof_link_foreign_fragments(struct fof_props *props,
         nr_gparts, sqrt(props->l_x2));
 
   /* Local copy of the variable set in the mapper */
-  const int group_link_count = props->group_link_count;
+  const size_t group_link_count = props->group_link_count;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
-  int global_group_link_count = 0;
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
-                MPI_SUM, MPI_COMM_WORLD);
+  size_t global_group_link_count = 0;
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1,
+                MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
-  if (global_group_link_count < 0)
-    error("Overflow of the size of the global list of foreign links");
+  /* The global list is allocated as a single block on every rank, as are the
+   * three 2x-as-long size_t arrays derived from it further down. The largest
+   * of those is the list itself, so checking it covers them all. */
+  if (global_group_link_count > SIZE_MAX / sizeof(struct fof_mpi))
+    error(
+        "Overflow of the size of the global list of foreign links (%zu "
+        "elements)",
+        global_group_link_count);
 
   struct fof_mpi *global_group_links = NULL;
-  int *displ = NULL, *group_link_counts = NULL;
+  size_t *displ = NULL, *group_link_counts = NULL;
 
   if (swift_memalign("fof_global_group_links", (void **)&global_group_links,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3328,33 +3402,39 @@ void fof_link_foreign_fragments(struct fof_props *props,
     error("Error while allocating memory for the global list of group links");
 
   if (posix_memalign((void **)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
+                     e->nr_nodes * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the number of group links on each "
         "MPI rank");
 
   if (posix_memalign((void **)&displ, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
+                     e->nr_nodes * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
   /* Gather the total number of links on each rank. */
-  MPI_Allgather(&group_link_count, 1, MPI_INT, group_link_counts, 1, MPI_INT,
-                MPI_COMM_WORLD);
+  MPI_Allgather(&group_link_count, 1, MPI_UNSIGNED_LONG, group_link_counts, 1,
+                MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
 
   /* Set the displacements into the global link list using the link counts from
    * each rank */
   displ[0] = 0;
   for (int i = 1; i < e->nr_nodes; i++) {
     displ[i] = displ[i - 1] + group_link_counts[i - 1];
-    if (displ[i] < 0) error("Number of group links overflowing!");
+
+    /* The running sum is monotonic unless it has wrapped around. */
+    if (displ[i] < displ[i - 1])
+      error(
+          "Overflow of the displacements into the global list of foreign "
+          "links at rank %d",
+          i);
   }
 
   /* Gather the global link list on all ranks. */
-  MPI_Allgatherv(props->group_links, group_link_count, fof_mpi_type,
-                 global_group_links, group_link_counts, displ, fof_mpi_type,
-                 MPI_COMM_WORLD);
+  swift_mpi_allgatherv_sizet(props->group_links, group_link_count, fof_mpi_type,
+                             global_group_links, group_link_counts, displ,
+                             fof_mpi_type, MPI_COMM_WORLD);
 
   /* Clean up memory. */
   free(group_link_counts);
@@ -3377,7 +3457,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * Each member of a link is stored separately --> Need 2x as many entries */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
-  const int global_group_list_size = 2 * global_group_link_count;
+  const size_t global_group_list_size = 2 * global_group_link_count;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3407,8 +3487,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
   hashmap_init(&map);
 
   /* Store each group ID and its properties. */
-  int group_count = 0;
-  for (int k = 0; k < global_group_link_count; k++) {
+  size_t group_count = 0;
+  for (size_t k = 0; k < global_group_link_count; k++) {
 
     const size_t group_i = global_group_links[k].group_i;
     const size_t group_j = global_group_links[k].group_j;
@@ -3434,7 +3514,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * can perform a union-find locally on each node.
    * The value of which is an offset into global_group_id, which is the actual
    * root. */
-  for (int i = 0; i < group_count; i++) global_group_index[i] = i;
+  for (size_t i = 0; i < group_count; i++) global_group_index[i] = i;
 
   /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
@@ -3450,7 +3530,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
          group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
-  for (int k = 0; k < global_group_link_count; k++) {
+  for (size_t k = 0; k < global_group_link_count; k++) {
 
     /* Use the hash table to find the group offsets in the index array. */
     const size_t find_i =
@@ -3498,7 +3578,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
   tic = getticks();
 
   /* Update each group locally with new root information. */
-  for (int i = 0; i < group_count; i++) {
+  for (size_t i = 0; i < group_count; i++) {
 
     const size_t group_id = global_group_id[i];
     const size_t offset = fof_find(global_group_index[i], global_group_index);
@@ -3616,7 +3696,6 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
 
   const size_t min_group_size = props->min_group_size;
-  const size_t group_id_offset = props->group_id_offset;
   const size_t group_id_default = props->group_id_default;
 
   size_t num_groups_local = 0;
@@ -3702,6 +3781,14 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   props->num_groups = num_groups;
   // message("num_groups_local=%zd", num_groups_local);
 
+  /* Group IDs run from 1 to num_groups. The default ID must not be one of
+   * them or the particles of that group would be treated as not in a group. */
+  if (group_id_default >= 1 && group_id_default <= (size_t)num_groups)
+    error(
+        "FOF:group_id_default (%zu) collides with the IDs of the %lld groups "
+        "found. Use 0 or a value larger than the number of groups.",
+        group_id_default, num_groups);
+
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
   long long nglocal = num_groups_local;
@@ -3732,13 +3819,13 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 
   /* Assign final group IDs to local root particles where the global root is
    * on this node and the group is large enough. Within a node IDs are
-   * assigned in descending order of particle number. */
+   * assigned in descending order of particle number, starting from 1. */
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
     gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
-        group_id_offset + i + props->num_groups_prev;
+        1 + i + props->num_groups_prev;
 #else
-    gparts[high_group_sizes[i].index].fof_data.group_id = group_id_offset + i;
+    gparts[high_group_sizes[i].index].fof_data.group_id = 1 + i;
 #endif
   }
 
@@ -3950,9 +4037,10 @@ void fof_compute_group_props(struct fof_props *props,
                      num_groups * sizeof(float)) != 0)
     error(
         "Failed to allocate list of group star formation rate for FOF search.");
-  if (swift_memalign("fof_max_part_density", (void **)&props->max_part_density,
-                     32, num_groups * sizeof(float)) != 0)
-    error("Failed to allocate list of max group densities for FOF search.");
+  if (swift_memalign("fof_id_gas_particle_to_convert",
+                     (void **)&props->id_gas_particle_to_convert, 32,
+                     num_groups * sizeof(long long)) != 0)
+    error("Failed to allocate list of particles ID to convert for FOF search.");
 
   bzero(props->group_mass, num_groups * sizeof(double));
   bzero(props->final_group_size, num_groups * sizeof(long long));
@@ -3963,7 +4051,11 @@ void fof_compute_group_props(struct fof_props *props,
   bzero(props->group_gas_mass, num_groups * sizeof(float));
   bzero(props->group_stellar_mass, num_groups * sizeof(float));
   bzero(props->group_star_formation_rate, num_groups * sizeof(float));
-  bzero(props->max_part_density, num_groups * sizeof(float));
+
+  /* Initialise the IDs to convert to max possible */
+  for (size_t i = 0; i < (size_t)num_groups; ++i) {
+    props->id_gas_particle_to_convert[i] = LLONG_MAX;
+  }
 
   const ticks tic_props = getticks();
 
@@ -4029,11 +4121,10 @@ void fof_free_arrays(struct fof_props *props) {
   swift_free("fof_group_gas_mass", props->group_gas_mass);
   swift_free("fof_group_stellar_mass", props->group_stellar_mass);
   swift_free("fof_group_star_formation_rate", props->group_star_formation_rate);
-  swift_free("fof_max_part_density", props->max_part_density);
+  swift_free("fof_id_gas_particle_to_convert",
+             props->id_gas_particle_to_convert);
   swift_free("fof_has_black_hole", props->has_black_hole);
   swift_free("fof_distance", props->distance_to_link);
-  swift_free("fof_attach_index", props->attach_index);
-  swift_free("fof_found_attach", props->found_attachable_link);
   swift_free("fof_group_size", props->group_size);
   props->group_mass = NULL;
   props->final_group_size = NULL;
@@ -4043,7 +4134,7 @@ void fof_free_arrays(struct fof_props *props) {
   props->group_gas_mass = NULL;
   props->group_stellar_mass = NULL;
   props->group_star_formation_rate = NULL;
-  props->max_part_density = NULL;
+  props->id_gas_particle_to_convert = NULL;
   props->has_black_hole = NULL;
   props->group_size = NULL;
 
@@ -4067,7 +4158,7 @@ void fof_struct_dump(const struct fof_props *props, FILE *stream) {
   temp.final_group_size = NULL;
   temp.group_centre_of_mass = NULL;
   temp.group_radii = NULL;
-  temp.max_part_density = NULL;
+  temp.id_gas_particle_to_convert = NULL;
   temp.group_links = NULL;
 
   restart_write_blocks((void *)&temp, sizeof(struct fof_props), 1, stream,

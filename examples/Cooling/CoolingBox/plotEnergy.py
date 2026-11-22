@@ -50,7 +50,7 @@ gamma = float(f["HydroScheme"].attrs["Adiabatic index"])
 
 
 def energyUnits(u):
-    """ Compute the temperature from the internal energy. """
+    """Compute the temperature from the internal energy."""
     u *= (unit_length / unit_time) ** 2
     return u * m_h_cgs / k_b_cgs
 

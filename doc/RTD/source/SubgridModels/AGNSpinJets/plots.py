@@ -14,17 +14,17 @@ from scipy.optimize import fsolve
 
 
 def Z1(x):
-    return 1 + (1 - x ** 2) ** 0.3333 * (
+    return 1 + (1 - x**2) ** 0.3333 * (
         (1 + np.absolute(x)) ** 0.3333 + (1 - np.absolute(x)) ** 0.3333
     )
 
 
 def Z2(x):
-    return np.sqrt(3 * x ** 2 + Z1(x) ** 2)
+    return np.sqrt(3 * x**2 + Z1(x) ** 2)
 
 
 def r_hor(x):
-    return 1 + np.sqrt(1 - x ** 2)
+    return 1 + np.sqrt(1 - x**2)
 
 
 def r_isco(x):
@@ -190,14 +190,14 @@ def L_adv(x, alpha):
 
 def jet_eff(f_Edd, a):
     horizon_ang_vel = abs(a) / (2.0 * (1.0 + np.sqrt(1 - a * a)))
-    phi = -20.2 * a ** 3 - 14.9 * a ** 2 + 34.0 * a + 52.6
+    phi = -20.2 * a**3 - 14.9 * a**2 + 34.0 * a + 52.6
     phi = phi * (f_Edd / 1.88) ** 1.29 / (1 + (f_Edd / 1.88) ** 1.29)
     return (
         0.05
         / (4.0 * np.pi)
-        * phi ** 2
-        * horizon_ang_vel ** 2
-        * (1.0 + 1.38 * horizon_ang_vel ** 2 - 9.2 * horizon_ang_vel ** 4)
+        * phi**2
+        * horizon_ang_vel**2
+        * (1.0 + 1.38 * horizon_ang_vel**2 - 9.2 * horizon_ang_vel**4)
     )
 
 
@@ -295,32 +295,32 @@ plt.savefig("modes.png", bbox_inches="tight")
 plt.close()
 
 a = np.arange(-1, 1, 0.0001)
-phi = -20.2 * a ** 3 - 14.9 * a ** 2 + 34.0 * a + 52.6
-horizon_ang_vel = a / (2 * (1 + np.sqrt(1 - a ** 2)))
+phi = -20.2 * a**3 - 14.9 * a**2 + 34.0 * a + 52.6
+horizon_ang_vel = a / (2 * (1 + np.sqrt(1 - a**2)))
 jet_factor = (
     0.05
     / (4.0 * np.pi)
     * 1
     / 0.3
-    * phi ** 2
-    * horizon_ang_vel ** 2
-    * (1.0 + 1.38 * horizon_ang_vel ** 2 - 9.2 * horizon_ang_vel ** 4)
+    * phi**2
+    * horizon_ang_vel**2
+    * (1.0 + 1.38 * horizon_ang_vel**2 - 9.2 * horizon_ang_vel**4)
 )
 Z_1 = np.array(
     [
-        1 + (1 - x ** 2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
+        1 + (1 - x**2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
         for x in a
     ]
 )
-Z_2 = np.array(np.sqrt(3 * a ** 2 + Z_1 ** 2))
+Z_2 = np.array(np.sqrt(3 * a**2 + Z_1**2))
 r_iso = 3 + Z_2 - np.sign(np.array(a)) * np.sqrt((3 - Z_1) * (3 + Z_1 + 2 * Z_2))
 eps_TD = 1 - np.sqrt(1 - 2 / (3 * r_iso))
 eps_ADAF1 = 0.144 * (6 / r_iso) * eps_TD * min(1, 0.028 / 0.0044)
 eps_ADAF2 = 0.144 * (6 / r_iso) * eps_TD * min(1, 0.001 / 0.0044)
 Jet_ADAF = jet_factor * 0.3
 Jet_SD = 0.22 * jet_factor
-Jet_TD1 = 10 ** -3 * 0.1 ** (-0.1) * 100 ** 0.2 * 10 ** (2 * 0.1) * jet_factor
-Jet_TD2 = 10 ** -3 * 0.1 ** (-0.1) * 10 ** (-1 * 0.1) * jet_factor
+Jet_TD1 = 10**-3 * 0.1 ** (-0.1) * 100**0.2 * 10 ** (2 * 0.1) * jet_factor
+Jet_TD2 = 10**-3 * 0.1 ** (-0.1) * 10 ** (-1 * 0.1) * jet_factor
 
 eps_SD1 = (
     1
@@ -354,7 +354,7 @@ mdot_bh_TD2 = (1 - Jet_TD2 / 4.447) * (1 - eps_TD - Jet_TD2)
 
 
 def omega(spin):
-    return spin / (2 * (1 + np.sqrt(1 - spin ** 2)))
+    return spin / (2 * (1 + np.sqrt(1 - spin**2)))
 
 
 fig = plt.figure(figsize=(13, 4))
@@ -652,23 +652,23 @@ plt.close()
 
 z1 = np.array(
     [
-        1 + (1 - x ** 2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
+        1 + (1 - x**2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
         for x in a
     ]
 )
-z2 = np.array(np.sqrt(3 * a ** 2 + z1 ** 2))
+z2 = np.array(np.sqrt(3 * a**2 + z1**2))
 r_iso = 3 + z2 - np.sign(np.array(a)) * np.sqrt((3 - z1) * (3 + z1 + 2 * z2))
 
-phi = -20.2 * a ** 3 - 14.9 * a ** 2 + 34.0 * a + 52.6
-horizon_ang_vel = a / (2 * (1 + np.sqrt(1 - a ** 2)))
+phi = -20.2 * a**3 - 14.9 * a**2 + 34.0 * a + 52.6
+horizon_ang_vel = a / (2 * (1 + np.sqrt(1 - a**2)))
 jet_factor = (
     0.05
     / (4.0 * np.pi)
     * 1
     / 0.3
-    * phi ** 2
-    * horizon_ang_vel ** 2
-    * (1.0 + 1.38 * horizon_ang_vel ** 2 - 9.2 * horizon_ang_vel ** 4)
+    * phi**2
+    * horizon_ang_vel**2
+    * (1.0 + 1.38 * horizon_ang_vel**2 - 9.2 * horizon_ang_vel**4)
 )
 
 da_TD_acc_only = 2 / 3 * 1 / np.sqrt(3) * (
@@ -677,17 +677,17 @@ da_TD_acc_only = 2 / 3 * 1 / np.sqrt(3) * (
 da_TD_Benson = (
     2 / 3 * 1 / np.sqrt(3) * (1 + 2 * np.sqrt(3 * r_iso - 2))
     - 2 * a * np.sqrt(1 - 2 / (3 * r_iso))
-    - (1.25 * 10 ** -3 * 0.1 ** (-0.1) * 100 ** 0.2 * 10 ** (2 * 0.1) * jet_factor)
+    - (1.25 * 10**-3 * 0.1 ** (-0.1) * 100**0.2 * 10 ** (2 * 0.1) * jet_factor)
     * 2
     / a
-    * (np.sqrt(1 - a ** 2))
-    * (1 + np.sqrt(1 - a ** 2))
+    * (np.sqrt(1 - a**2))
+    * (1 + np.sqrt(1 - a**2))
 )
 da_ADAF_acc_only = L_adv(a, 0.1) - 2 * a
 da_ADAF_Benson = (
     L_adv(a, 0.1)
     - 2 * a
-    - (jet_factor * 0.3) * 2 / a * (np.sqrt(1 - a ** 2)) * (1 + np.sqrt(1 - a ** 2))
+    - (jet_factor * 0.3) * 2 / a * (np.sqrt(1 - a**2)) * (1 + np.sqrt(1 - a**2))
 )
 eps_SD = (
     1
@@ -704,7 +704,7 @@ da_SD_acc_only = L_adv(a, 0.1) - 2 * a * (1 - eps_SD)
 da_SD_Benson = (
     L_adv(a, 0.1)
     - 2 * a * (1 - eps_SD)
-    - (jet_factor * 0.22) * 2 / a * (np.sqrt(1 - a ** 2)) * (1 + np.sqrt(1 - a ** 2))
+    - (jet_factor * 0.22) * 2 / a * (np.sqrt(1 - a**2)) * (1 + np.sqrt(1 - a**2))
 )
 
 
@@ -713,17 +713,17 @@ plt.style.use("classic")
 
 z1 = np.array(
     [
-        1 + (1 - x ** 2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
+        1 + (1 - x**2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
         for x in a
     ]
 )
-z2 = np.array(np.sqrt(3 * a ** 2 + z1 ** 2))
+z2 = np.array(np.sqrt(3 * a**2 + z1**2))
 r_iso = 3 + z2 - np.sign(np.array(a)) * np.sqrt((3 - z1) * (3 + z1 + 2 * z2))
 da_TD_acc_only = 2 / 3 * 1 / np.sqrt(3) * (
     1 + 2 * np.sqrt(3 * r_iso - 2)
 ) - 2 * a * np.sqrt(1 - 2 / (3 * r_iso))
 da_ADAF_Narayan = (
-    0.45 - 12.53 * a - 7.8 * a ** 2 + 9.44 * a ** 3 + 5.71 * a ** 4 - 4.03 * a ** 5
+    0.45 - 12.53 * a - 7.8 * a**2 + 9.44 * a**3 + 5.71 * a**4 - 4.03 * a**5
 )
 
 plt.plot(a, da_ADAF_Narayan, linewidth=2, label="Thick disk", color="blue")

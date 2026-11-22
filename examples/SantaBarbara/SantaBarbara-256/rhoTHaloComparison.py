@@ -10,7 +10,6 @@ Josh Borrow (2019) joshua.borrow@durham.ac.uk
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 
 mH = 1.6733e-24  # g
 kB = 1.38e-16  # erg/K
@@ -68,13 +67,11 @@ def create_group_array(group_sizes: np.array) -> np.array:
 if __name__ == "__main__":
     import argparse as ap
 
-    PARSER = ap.ArgumentParser(
-        description="""
+    PARSER = ap.ArgumentParser(description="""
         Makes many plots comparing the virial temperature and the
         temperature of halos. Requires the velociraptor files and
         the SWIFT snapshot.
-        """
-    )
+        """)
 
     PARSER.add_argument(
         "-s",

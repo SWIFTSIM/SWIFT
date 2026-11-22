@@ -9,25 +9,15 @@ from swiftsimio import load
 
 from unyt import Gyr, erg, mh, kb
 
-from makeIC import (
-    gamma,
-    initial_density,
-    initial_temperature,
-    inject_temperature,
-    mu,
-    particle_mass,
-)
+from makeIC import gamma, initial_temperature, inject_temperature, mu, particle_mass
 
-try:
-    plt.style.use("mnras_durham")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 # Snapshot for grabbing the units.
 snapshot = load("feedback_0000.hdf5")
 units = snapshot.metadata.units
-energy_units = units.mass * units.length ** 2 / (units.time ** 2)
+energy_units = units.mass * units.length**2 / (units.time**2)
 
 data = np.loadtxt("statistics.txt").T
 

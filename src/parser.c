@@ -85,6 +85,12 @@ static int parse_quoted_strings(const char *line, char ***result) {
   int nwords = 0;
   char quote = '\0';
 
+  /* Every word is a sub-string of the line, so bounding the line bounds the
+   * word buffer below. */
+  if (strlen(line) >= PARSER_MAX_LINE_SIZE)
+    error("Parameter value '%s' is too long (max %d characters).", line,
+          PARSER_MAX_LINE_SIZE - 1);
+
   /* Preallocate a number of pointers. */
   char **strings;
   int count = CHUNK;
@@ -513,8 +519,10 @@ static void parse_section_param(char *line, int *isFirstParam,
 
   /* Prefix the parameter name with its section name and
    * copy it into the parameter structure. */
-  strcpy(paramName, sectionName);
-  strcat(paramName, tmpStr);
+  if (snprintf(paramName, PARSER_MAX_LINE_SIZE, "%s%s", sectionName, tmpStr) >=
+      PARSER_MAX_LINE_SIZE)
+    error("Parameter name '%s%s' is too long (max %d characters).", sectionName,
+          tmpStr, PARSER_MAX_LINE_SIZE - 1);
 
   /* Check for duplicate parameter name. */
   find_duplicate_params(params, paramName);

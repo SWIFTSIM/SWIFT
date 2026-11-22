@@ -97,8 +97,8 @@ def get_data(handle: float, n_snaps: int):
             times.append(data.metadata.t.to(Myr).value - t0)
             temps.append(np.mean(data.gas.temperatures.to(K).value))
             densities.append(
-                np.mean(data.gas.densities.to(mh / cm ** 3).value)
-                / (data.metadata.scale_factor ** 3)
+                np.mean(data.gas.densities.to(mh / cm**3).value)
+                / (data.metadata.scale_factor**3)
             )
 
             try:
@@ -149,20 +149,10 @@ def plot_single_data(
 
     if run == 0:
         label_energy = "Particle Energy"
-        label_radiated = "Radiated Energy"
-        label_sum = "Sum"
     else:
         label_energy = ""
-        label_radiated = ""
-        label_sum = ""
 
     ax[2].plot(data[0], data[3], label=label_energy, ls="dotted", color=f"C{run}")
-
-    # ax[2].plot(data[0], data[4], label=label_radiated, ls="dashed", C=f"C{run}")
-
-    # ax[2].plot(
-    #    data[0], [x + y for x, y in zip(*data[3:5])], label=label_sum, C=f"C{run}"
-    # )
 
     return
 

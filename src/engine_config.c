@@ -33,6 +33,7 @@
 #endif
 
 /* This object's header. */
+#include "cell.h"
 #include "engine.h"
 
 /* Local headers. */
@@ -418,6 +419,40 @@ void engine_config(int restart, int fof, struct engine *e,
     e->syncredist =
         parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
 
+    /* Cell tags used to send comms between ranks cannot exceed MPI_TAG_UB.
+     * Print this for clarity and set cell_max_tag for later bounding.
+     *
+     * Note the attribute value is itself a pointer to the int, so we pass the
+     * address of our pointer rather than the address of an int. This is the
+     * form the standard uses for this attribute:
+     * MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &p, &flag) returns in p a
+     * pointer to an int (see "Attributes" and "Environmental Inquiries" in
+     * the MPI standard, and "NOTES FOR C" in man MPI_Comm_get_attr). */
+    int *tag_ub = NULL;
+    int tag_ub_set = 0;
+    MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &tag_ub, &tag_ub_set);
+    if (tag_ub_set) {
+
+      /* We have found MPI_TAG_UB, so we can use it to bound the cell tags. */
+      if (cell_max_tag > *tag_ub) cell_max_tag = *tag_ub;
+
+      /* Report regardless of verbosity setting */
+      if (nodeID == 0) {
+        message("MPI_TAG_UB is %d, cell tags capped at %d", *tag_ub,
+                cell_max_tag);
+      }
+
+    } else if (nodeID == 0) {
+
+      /* Report that MPI_TAG_UB is not available, but don't error out. Note that
+       * the standard requires this exists so its pretty unlikely this will
+       * happen... we will likely never fit this. */
+      message(
+          "MPI_TAG_UB is not available from this MPI implementation, maximum "
+          "possible cell tag is %d",
+          cell_max_tag);
+    }
+
     /* Collect the hostname of each rank into a file */
 
     const int hostname_buffer_length = 256;
@@ -583,8 +618,14 @@ void engine_config(int restart, int fof, struct engine *e,
 #endif  // compiled with RT
     }
 
-    /* Initialize the SFH logger if running with star formation */
-    if (e->policy & engine_policy_star_formation) {
+    /* Initialize the SFH logger if running with star formation or star
+       formation sink */
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
       e->sfh_logger = fopen("SFR.txt", mode);
       if (e->sfh_logger == NULL)
         error("Could not open the file 'SFR.txt' with mode '%s'.", mode);
@@ -682,7 +723,7 @@ void engine_config(int restart, int fof, struct engine *e,
               e->time_end - e->time_begin);
 
     /* Read (or re-read the list of outputs */
-    engine_init_output_lists(e, params, e->output_options);
+    engine_init_output_lists(e, params, e->output_options, restart);
 
     /* Check whether output quantities make sense */
     if (e->policy & engine_policy_cosmology) {
@@ -963,8 +1004,10 @@ void engine_config(int restart, int fof, struct engine *e,
           e->policy & engine_policy_sinks) ||
         !swift_star_formation_model_creates_stars) {
       space_extra_sparts = 0;
-      space_extra_gparts = 0;
       space_extra_sinks = 0;
+      if (!e->s->with_hydro_splitting) {
+        space_extra_gparts = 0;
+      }
     }
 
     engine_max_parts_per_ghost =

@@ -41,3 +41,7 @@ CSDS:
   basename:             index  # Common part of the filenames
   initial_buffer_size:  0.01      # (Optional) Buffer size in GB
   buffer_scale:	        10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
+
+# Parameters related to the EOS (REMIX)
+EoS:
+  planetary_use_idg_def:  1 # default ideal gas, material ID 0

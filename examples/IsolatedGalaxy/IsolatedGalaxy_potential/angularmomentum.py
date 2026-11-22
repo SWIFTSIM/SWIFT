@@ -20,8 +20,6 @@
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-import scipy.optimize as sco
-
 
 Nmax = 2001
 steps = 10
@@ -62,7 +60,7 @@ for i in iterarray:
     Ly = (Z * vx - X * vz) * masses
     Lz = (X * vy - Y * vx) * masses
 
-    L = (Lx ** 2 + Ly ** 2 + Lz ** 2) ** 0.5
+    L = (Lx**2 + Ly**2 + Lz**2) ** 0.5
 
     Lxtot[int(i / steps)] = np.sum(Lx)
     Lytot[int(i / steps)] = np.sum(Ly)

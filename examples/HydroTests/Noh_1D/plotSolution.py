@@ -44,8 +44,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 x = sim["/PartType0/Coordinates"][:, 0]
@@ -76,7 +76,7 @@ rs = us * time
 
 # Post-shock values
 rho_s[np.abs(x_s) < rs] = rho0 * (gas_gamma + 1) / (gas_gamma - 1)
-P_s[np.abs(x_s) < rs] = 0.5 * rho0 * v0 ** 2 * (gas_gamma + 1)
+P_s[np.abs(x_s) < rs] = 0.5 * rho0 * v0**2 * (gas_gamma + 1)
 v_s[np.abs(x_s) < rs] = 0.0
 
 # Pre-shock values
@@ -87,7 +87,7 @@ v_s[x_s <= -rs] = v0
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 
 # Plot the interesting quantities
 plt.figure(figsize=(7, 7 / 1.6))

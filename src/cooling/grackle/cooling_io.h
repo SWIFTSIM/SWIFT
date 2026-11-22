@@ -172,6 +172,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->cmb_temperature_floor = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:cmb_temperature_floor", 1);
 
+  cooling->agora_cmb_temperature_floor = (char)parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:agora_cmb_temperature_floor", 0);
+
   cooling->with_uv_background =
       parser_get_param_int(parameter_file, "GrackleCooling:with_UV_background");
 

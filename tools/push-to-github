@@ -1,0 +1,21 @@
+#!/bin/bash 
+
+#  Create a bare mirror of the SWIFT repository and push that to github.
+#
+#  When mirroring fetching updates does not work, so we just create a
+#  fresh mirror each time:
+#     https://docs.github.com/en/repositories/creating-and-managing-repositories/duplicating-a-repository
+#
+
+#  Remove old mirror:
+cd /home/pwd
+rm -rf swiftsim-mirror.git
+
+#  Create new mirror.
+git clone --mirror https://gitlab.cosma.dur.ac.uk/swift/swiftsim.git swiftsim-mirror.git
+
+#  And push.
+cd swiftsim-mirror.git/
+git push --mirror git@github.com:SWIFTSIM/SWIFT.git
+
+exit

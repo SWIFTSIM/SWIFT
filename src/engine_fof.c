@@ -157,6 +157,9 @@ void engine_fof(struct engine *e, const int dump_results,
 #endif
   }
 
+  /* Free all the memory related to gas and stars sort arrays. */
+  space_free_sort_indices(e->s);
+
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, e->fof_properties);
 
@@ -194,11 +197,16 @@ void engine_fof(struct engine *e, const int dump_results,
 
 #ifdef WITH_MPI
 
-  /* Activate the tasks exchanging all the required gparts */
-  engine_activate_gpart_comms(e);
+  /* The gparts only need to be exchanged again if there is something to attach
+   */
+  if (e->fof_properties->with_attachables) {
 
-  /* Perform send and receive tasks. */
-  engine_launch(e, "fof comms");
+    /* Activate the tasks exchanging all the required gparts */
+    engine_activate_gpart_comms(e);
+
+    /* Perform send and receive tasks. */
+    engine_launch(e, "fof comms");
+  }
 
 #endif
 

@@ -59,11 +59,11 @@ w = 2 * r / r_s
 
 # Powers of alpha ####################################################
 alpha = 1.0 / (1.0 + exp(w))
-alpha2 = alpha ** 2
-alpha3 = alpha ** 3
-alpha4 = alpha ** 4
-alpha5 = alpha ** 5
-alpha6 = alpha ** 6
+alpha2 = alpha**2
+alpha3 = alpha**3
+alpha4 = alpha**4
+alpha5 = alpha**5
+alpha6 = alpha**6
 
 figure()
 plot(w, alpha, label="$\\alpha^1$")

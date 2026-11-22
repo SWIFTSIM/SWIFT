@@ -75,6 +75,24 @@
 static const int io_max_size_output_list = 100;
 
 /**
+ * @brief Moves the pointers of an #io_props to the particle @c n places
+ * further, for the next chunk of a parallel read or write.
+ *
+ * @param props The #io_props to update.
+ * @param n The number of particles to skip.
+ */
+static void io_props_advance(struct io_props *props, const size_t n) {
+
+  props->field += n * props->partSize;
+  if (props->parts != NULL) props->parts += n;
+  if (props->xparts != NULL) props->xparts += n;
+  if (props->gparts != NULL) props->gparts += n;
+  if (props->sparts != NULL) props->sparts += n;
+  if (props->sinks != NULL) props->sinks += n;
+  if (props->bparts != NULL) props->bparts += n;
+}
+
+/**
  * @brief Reads a chunk of data from an open HDF5 dataset
  *
  * @param h_data The HDF5 dataset to write to.
@@ -266,8 +284,9 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
     } else {
 
       /* Create a single instance of the default value */
-      float *temp = (float *)malloc(copySize);
-      for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
+      void *temp = malloc(copySize);
+      io_fill_default_value(temp, props.type, props.dimension,
+                            props.default_value);
 
       /* Copy it everywhere in the particle array */
       for (size_t i = 0; i < N; ++i)
@@ -355,12 +374,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
-      props.field += max_chunk_size * props.partSize; /* char* on the field */
-      props.parts += max_chunk_size;                  /* part* on the part */
-      props.xparts += max_chunk_size;                 /* xpart* on the xpart */
-      props.gparts += max_chunk_size;                 /* gpart* on the gpart */
-      props.sparts += max_chunk_size;                 /* spart* on the spart */
-      props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      io_props_advance(&props, max_chunk_size);
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -393,33 +407,52 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
  * @param props The #io_props of the field to write.
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  */
 void prepare_array_parallel(
     struct engine *e, hid_t grp, const char *fileName, FILE *xmfFile,
     const char *partTypeGroupName, const struct io_props props,
     const long long N_total,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system *snapshot_units) {
+    const struct unit_system *snapshot_units, const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
 
+  /* Decide what chunk size to use based on compression */
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
+
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  if (props.dimension > 1) {
+
+  /* Set the chunking:
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
+    rank = 2;
+    shape[0] = N_total;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = 0;
   }
 
@@ -689,12 +722,7 @@ void write_array_parallel(const struct engine *e, hid_t grp,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
-      props.field += max_chunk_size * props.partSize; /* char* on the field */
-      props.parts += max_chunk_size;                  /* part* on the part */
-      props.xparts += max_chunk_size;                 /* xpart* on the xpart */
-      props.gparts += max_chunk_size;                 /* gpart* on the gpart */
-      props.sparts += max_chunk_size;                 /* spart* on the spart */
-      props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      io_props_advance(&props, max_chunk_size);
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -1413,10 +1441,13 @@ void prepare_file(struct engine *e, const char *fileName,
               (enum part_type)ptype, compression_level_current_default,
               e->verbose);
 
+      const int is_named_column =
+          io_field_is_named_column(h_file, list[i].name);
+
       if (compression_level != compression_do_not_write) {
         prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], N_total[ptype], compression_level,
-                               snapshot_units);
+                               snapshot_units, is_named_column);
         num_fields_written++;
       }
     }

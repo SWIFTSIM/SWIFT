@@ -1,10 +1,14 @@
 #!/bin/bash
 
+set -eo pipefail
+
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
+
 # Generate the initial conditions if they are not present.
 if [ ! -e homogeneousCube_32.hdf5 ]
 then
     echo "Fetching initial conditions..."
-    ./getICS.sh
+    ./getICs.sh
 fi
 
 
@@ -12,13 +16,13 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ../getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh --hm2012 --shielded
 fi
 
 
 # Create output directory
 rm -rf snap
-mkdir snap
+mkdir -p snap
 
 # Run SWIFT
 ../../../swift --hydro --cooling --cosmology --threads=14  CoolingWithPrimordialElements.yml

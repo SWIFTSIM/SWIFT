@@ -23,7 +23,7 @@ z = 77
 T = T0 / (1 + 200) * (1 + z) ** 2  # Anninos & Norman 1996 eq.11
 
 # all abundances per unit of nH
-nHII = 1.2e-5 * Omega0 ** 0.5 / (h0 * Omega_b)  # Anninos & Norman 1996 eq. 9
+nHII = 1.2e-5 * Omega0**0.5 / (h0 * Omega_b)  # Anninos & Norman 1996 eq. 9
 
 nHeI = (1 - fH) / fH / 4
 nHeII = 0  # assume neutral He

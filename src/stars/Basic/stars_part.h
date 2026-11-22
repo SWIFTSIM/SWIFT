@@ -73,9 +73,9 @@ struct spart {
 
   /* Not used in the default stars */
   union {
-    float birth_time;
+    double birth_time;
 
-    float birth_scale_factor;
+    double birth_scale_factor;
   };
 
   /*! Particle time bin */

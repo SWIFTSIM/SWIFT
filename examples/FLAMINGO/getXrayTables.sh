@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eo pipefail
+
+wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/COLIBRE/X_Ray_tables_flamingo.hdf5

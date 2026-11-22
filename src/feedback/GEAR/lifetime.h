@@ -178,6 +178,16 @@ __attribute__((always_inline)) INLINE static void lifetime_init(
 }
 
 /**
+ * @brief Zero pointers in lifetime structs
+ *
+ * @param life lifetime struct in which pointers to tables set to NULL.
+ */
+__attribute__((always_inline)) INLINE static void lifetime_zero_pointers(
+    struct lifetime *life) {
+  /* Nothing to do here */
+}
+
+/**
  * @brief Write a lifetime struct to the given FILE as a stream of bytes.
  *
  * Here we are only writing the arrays, everything else has been copied in the

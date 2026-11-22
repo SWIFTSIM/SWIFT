@@ -28,7 +28,6 @@
 import matplotlib
 
 matplotlib.use("Agg")
-matplotlib.rc("text", usetex=True)
 
 try:
     import yt
@@ -45,6 +44,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.gridspec as gridspec
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 try:
     from tqdm import tqdm
 except ImportError:
@@ -52,13 +53,8 @@ except ImportError:
 
 from make_movie import get_metadata
 
-
 yt.funcs.mylog.setLevel(50)
 tqdm.monitor_interval = 0
-
-
-class InternalUnitSystemError(Exception):
-    pass
 
 
 def get_axes_grid(figure):
@@ -82,7 +78,7 @@ def get_axes_grid(figure):
 def get_yt_actual_data(plot, name="density"):
     """
     Extracts the image data and colourmap from a yt plot.
-    
+
     This is used to put on our own grid.
     """
 
@@ -95,7 +91,7 @@ def get_yt_actual_data(plot, name="density"):
 def chi_square(observed, expected):
     """
     The chi squared statistic.
-        
+
     This also looks for where expected == 0 and masks over those particles to
     avoid divide by zero errors and unrealistically high chi squared.
     """
@@ -105,7 +101,7 @@ def chi_square(observed, expected):
     masked_expected = np.array(expected)[mask]
     masked_observed = np.array(observed)[mask]
 
-    return sum(((masked_observed - masked_expected) ** 2) / masked_expected ** 2)
+    return sum(((masked_observed - masked_expected) ** 2) / masked_expected**2)
 
 
 def load_data(filename):
@@ -148,7 +144,7 @@ def bin_density_r(radii, density, binrange, binnumber):
 
         binned_masses[bin] += density[index]
 
-    areas = [np.pi * (a ** 2 - b ** 2) for a, b in zip(bins[1:], bins[:-1])]
+    areas = [np.pi * (a**2 - b**2) for a, b in zip(bins[1:], bins[:-1])]
     binned_densities = binned_masses / areas
 
     return bins, binned_densities
@@ -236,7 +232,7 @@ def plot_chisq(ax, minsnap, maxsnap, chisq, filename="keplerian_ring"):
     ax.plot(rotations, np.array(chisq) / max(chisq))
 
     ax.set_xlabel("Number of rotations")
-    ax.set_ylabel("$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
+    ax.set_ylabel(r"$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
 
     return
 
@@ -471,12 +467,10 @@ def convert_snapshot_number_to_rotations_at(r, snapnum, filename):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
                     Plotting code for the Keplerian Ring test. Uses yt to make
                     surface density plots.
-                    """
-    )
+                    """)
 
     parser.add_argument(
         "-b",

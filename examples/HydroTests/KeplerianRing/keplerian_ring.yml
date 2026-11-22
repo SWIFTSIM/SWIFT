@@ -26,7 +26,6 @@ Statistics:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters related to the initial conditions
@@ -36,6 +35,7 @@ InitialConditions:
   
 # External potential parameters
 PointMassPotential:
+  useabspos:       1
   position:        [5.,5.,5.]  # location of external point mass in internal units
   mass:            1.498351e7  # mass of external point mass in internal units
   timestep_mult:   0.03        # controls time step

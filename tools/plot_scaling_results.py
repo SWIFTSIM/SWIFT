@@ -87,6 +87,7 @@ else:
         inputFileNames.append(fileName)
     numOfSeries = int(len(sys.argv) - 1)
 
+
 # Get the names of the branch, Git revision, hydro scheme and hydro kernel
 def parse_header(inputFile):
     with open(inputFile, "r") as f:
@@ -351,7 +352,7 @@ def plot_results(totalTime, speedUp, parallelEff, numSeries):
 
 
 # Calculate results
-(totalTime, speedUp, parallelEff) = parse_files()
+totalTime, speedUp, parallelEff = parse_files()
 
 legendTitle = version[0]
 

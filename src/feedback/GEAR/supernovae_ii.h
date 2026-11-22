@@ -67,6 +67,8 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
 void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
                         const struct stellar_model *sm,
                         const struct unit_system *us);
+
+void supernovae_ii_zero_pointers(struct supernovae_ii *snii);
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
                         const struct stellar_model *sm);
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,

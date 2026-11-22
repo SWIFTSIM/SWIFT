@@ -205,10 +205,10 @@ try:
                         this_shape = (sizes[ifile],)
                     else:
                         this_shape = (sizes[ifile], shape)
-                    layout[
-                        offsets[ifile] : offsets[ifile] + sizes[ifile]
-                    ] = h5py.VirtualSource(
-                        f"{prefix}.{ifile}.hdf5", path, shape=this_shape
+                    layout[offsets[ifile] : offsets[ifile] + sizes[ifile]] = (
+                        h5py.VirtualSource(
+                            f"{prefix}.{ifile}.hdf5", path, shape=this_shape
+                        )
                     )
                 newgroup.create_virtual_dataset(dset, layout)
             # also create the soft link to the dataset, now that we are processing it anyway

@@ -31,6 +31,8 @@ import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
 # arguments for plot of references
@@ -46,7 +48,7 @@ plot_time = False
 
 
 # -----------------------------------------------------------------------
-energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
+energy_units = unyt.Msun * unyt.kpc**2 / unyt.kyr**2
 mass_units = unyt.Msun
 length_units = unyt.kpc
 
@@ -202,8 +204,8 @@ def get_snapshot_data(snaplist):
 
     # Units derived from base
     velocity_units = length_units / time_units
-    energy_units = mass_units * velocity_units ** 2
-    density_units = mass_units / length_units ** 3
+    energy_units = mass_units * velocity_units**2
+    density_units = mass_units / length_units**3
 
     scale_factors = np.zeros(nsnaps)
     times = np.zeros(nsnaps) * unyt.Myr
@@ -294,8 +296,8 @@ def get_reference_data(reference_file="CosmoRTCoolingTestReference.txt"):
     velocity_units = float(velocity_units_line[22:-7]) * unyt.cm / unyt.s
 
     # Derived units
-    energy_units = mass_units * velocity_units ** 2
-    density_units = mass_units / length_units ** 3
+    energy_units = mass_units * velocity_units**2
+    density_units = mass_units / length_units**3
 
     # Read in data
     refdata = np.loadtxt(reference_file, dtype=np.float64)
@@ -450,7 +452,7 @@ if __name__ == "__main__":
         ax4.plot(
             xcoords,
             tot_energy,
-            label=f"total energy budget",
+            label="total energy budget",
             color="k",
             ls="--",
             **plotkwargs,
@@ -464,9 +466,7 @@ if __name__ == "__main__":
             )
         ax4.plot(xcoords, u, label="gas internal energy", **plotkwargs)
         ax4.set_xlabel(xlabel)
-        ax4.set_ylabel(
-            r"energy budget [$" + u.units.latex_representation() + "$]", usetex=True
-        )
+        ax4.set_ylabel(r"energy budget [$" + u.units.latex_representation() + "$]")
         ax4.legend(prop=legendprops)
         ax4.grid()
 

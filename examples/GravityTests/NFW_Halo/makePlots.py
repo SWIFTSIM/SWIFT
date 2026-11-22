@@ -65,7 +65,7 @@ def galpy_nfw_orbit():
 
 
 o = galpy_nfw_orbit()
-(R, z) = read_data()
+R, z = read_data()
 
 o.plot()
 plt.scatter(R, z, s=1, color="black", marker="x")

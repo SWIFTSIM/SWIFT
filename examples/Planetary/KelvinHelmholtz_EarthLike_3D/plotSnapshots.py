@@ -21,7 +21,6 @@
 Generate plot of the 3D Kelvin--Helmholtz instability.
 """
 
-import sys
 import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -40,9 +39,7 @@ def make_axes():
     cbar_gap_len = n_gs_cbar_gap * ax_len / n_gs_ax
     cbar_len = n_gs_cbar * ax_len / n_gs_ax
 
-    fig = plt.figure(
-        figsize=(3 * ax_len + 2 * ax_gap_len + cbar_gap_len + cbar_len, ax_len)
-    )
+    plt.figure(figsize=(3 * ax_len + 2 * ax_gap_len + cbar_gap_len + cbar_len, ax_len))
     gs = mpl.gridspec.GridSpec(
         nrows=n_gs_ax, ncols=3 * n_gs_ax + 2 * n_gs_ax_gap + n_gs_cbar_gap + n_gs_cbar
     )
@@ -96,7 +93,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
         A1_x = f["/PartType0/Coordinates"][:, 0] * l
         A1_y = f["/PartType0/Coordinates"][:, 1] * l
         A1_z = f["/PartType0/Coordinates"][:, 2] * l
-        A1_rho = f["/PartType0/Densities"][:] * (m / l ** 3)
+        A1_rho = f["/PartType0/Densities"][:] * (m / l**3)
         A1_m = f["/PartType0/Masses"][:] * m
         A1_mat_id = f["/PartType0/MaterialIDs"][:]
 
@@ -126,13 +123,13 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 
     # Size of plotted particles
     size_factor = 5e4
-    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_l ** 2
+    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_l**2
 
     mask_mat1 = A1_mat_id_slice == mat_id1
     mask_mat2 = A1_mat_id_slice == mat_id2
 
     # Plot
-    scatter = ax.scatter(
+    ax.scatter(
         A1_x_slice[mask_mat1],
         A1_y_slice[mask_mat1],
         c=A1_rho_slice[mask_mat1],
@@ -142,7 +139,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
         edgecolors="none",
     )
 
-    scatter = ax.scatter(
+    ax.scatter(
         A1_x_slice[mask_mat2],
         A1_y_slice[mask_mat2],
         c=A1_rho_slice[mask_mat2],

@@ -122,6 +122,10 @@ struct space {
   /*! Are we doing hydrodynamics? */
   int with_hydro;
 
+  /*! Are we splitting any gas? */
+  int with_hydro_splitting;
+  int splitting_need_unique_id;
+
   /*! Are we doing gravity? */
   int with_self_gravity;
 
@@ -317,6 +321,12 @@ struct space {
   /*! Max multipole power accross all top-level cells */
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
 
+  /*! Gravity pair search range in the negative direction. */
+  int grav_P2P_search_delta_m;
+
+  /*! Gravity pair search range in the positive direction. */
+  int grav_P2P_search_delta_p;
+
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
 
@@ -359,7 +369,7 @@ struct space {
   /*! Buffers for g-parts that we will receive from foreign cells. */
   struct gpart_foreign *gparts_foreign;
   struct gpart_fof_foreign *gparts_fof_foreign;
-  size_t nr_gparts_foreign, size_gparts_foreign;
+  size_t nr_gparts_foreign, size_gparts_foreign, size_gparts_fof_foreign;
 
   /*! Buffers for s-parts that we will receive from foreign cells. */
   struct spart *sparts_foreign;
@@ -378,6 +388,7 @@ struct space {
 
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
+void space_free_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,

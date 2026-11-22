@@ -29,14 +29,14 @@ for ifile, file in enumerate(args.input):
         ut = (units["Unit time in cgs (U_t)"][0] * unyt.s).in_base("galactic")
 
         coords = (coords * uL).in_base("galactic")
-        rho = (rho * uM / uL ** 3).in_base("galactic")
+        rho = (rho * uM / uL**3).in_base("galactic")
         vs = (vs * uL / ut).in_base("galactic")
         t = (t * ut).in_base("galactic")
         box = (box * uL).in_base("galactic")
 
         coords -= 0.5 * box[None, :]
 
-        x = np.sqrt((coords ** 2).sum(axis=1))
+        x = np.sqrt((coords**2).sum(axis=1))
         v = (coords * vs).sum(axis=1) / x
 
         x.convert_to_units("kpc")

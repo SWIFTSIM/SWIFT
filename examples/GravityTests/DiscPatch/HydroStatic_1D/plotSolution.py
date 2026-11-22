@@ -49,6 +49,7 @@ if len(sys.argv) > 1:
 if len(sys.argv) > 2:
     stop = int(sys.argv[2])
 
+
 # Get the analytic solution for the density
 def get_analytic_density(x):
     return (
@@ -66,8 +67,8 @@ def get_analytic_pressure(x):
 def get_data(name):
     file = h5py.File(name, "r")
     coords = np.array(file["/PartType0/Coordinates"])
-    rho = np.array(file["/PartType0/Density"])
-    u = np.array(file["/PartType0/InternalEnergy"])
+    rho = np.array(file["/PartType0/Densities"])
+    u = np.array(file["/PartType0/InternalEnergies"])
     v = np.array(file["/PartType0/Velocities"])
 
     P = (gamma - 1.0) * rho * u

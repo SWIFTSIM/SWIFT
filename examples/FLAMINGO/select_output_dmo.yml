@@ -1,0 +1,40 @@
+# Very limited DMO output
+# Coordinates, Velocities, and Masses only
+
+Default:
+  # Particle Type Gas
+  Coordinates_Gas: DScale5
+  Velocities_Gas: DScale1
+  Masses_Gas: on
+  SmoothingLengths_Gas: off
+  InternalEnergies_Gas: off
+  ParticleIDs_Gas: off
+  Densities_Gas: off
+  Entropies_Gas: off
+  Pressures_Gas: off
+  ViscosityParameters_Gas: off 
+  DiffusionParameters_Gas: off
+  LaplacianInternalEnergies_Gas: off
+  VelocityDivergences_Gas: off
+  VelocityDivergenceTimeDifferentials_Gas: off
+  ProgenitorParticleIDs_Gas: off
+  SplitCounts_Gas: off
+  SplitTrees_Gas: off
+  Temperatures_Gas: off
+
+  # Particle Type DM
+  Coordinates_DM: DScale5
+  Velocities_DM: DScale1
+  Masses_DM: on
+  ParticleIDs_DM: off
+  Softenings_DM: off
+
+  # Particle Type Neutrino
+  Coordinates_Neutrino: DScale5
+  Velocities_Neutrino: DScale1
+  Masses_Neutrino: on
+  ParticleIDs_Neutrino: off
+  Softenings_Neutrino: off
+  SampledSpeeds_Neutrino: on
+  MicroscopicMasses_Neutrino: off
+

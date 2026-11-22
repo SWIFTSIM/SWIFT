@@ -89,26 +89,18 @@ def load_data(filename, silent=True, extra=None, logextra=True, exclude=None):
 
 
 def rms(x):
-    return np.sqrt(sum(x ** 2))
+    return np.sqrt(sum(x**2))
 
 
 def rotation_velocity_at_r(r, params):
     """
     Gets the rotation velocity at a given radius r by assuming it is keplerian.
 
-    Assumes we are in cgs units, which may one day be our downfall.
+    The example runs in cgs units (see keplerian_ring.yml).
     """
 
-    unit_length = float(params[r"InternalUnitSystem:UnitLength_in_cgs"])
-
-    if unit_length != 1.0:
-        print(f"Your unit length: {unit_length}")
-        raise InternalUnitSystemError(
-            "This function is only created to handle CGS units."
-        )
-
     central_mass = float(params["PointMassPotential:mass"])
-    G = 6.67408e-8
+    G = 6.67408e-8  # cgs
 
     v = np.sqrt(G * central_mass / r)
 
@@ -126,7 +118,7 @@ def get_rotation_period_at_r(r, params):
 
 
 def get_metadata(filename, r=1):
-    """ The metadata should be extracted from the first snapshot. """
+    """The metadata should be extracted from the first snapshot."""
     with h5.File(filename, "r") as file_handle:
         header = file_handle["Header"].attrs
         code = file_handle["Code"].attrs
@@ -172,12 +164,10 @@ if __name__ == "__main__":
     import os
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
                    Plots a movie of the current snapshots in your
                    directory. Can also colourmap your information.
-                   """
-    )
+                   """)
 
     parser.add_argument(
         "-e",
@@ -272,7 +262,7 @@ if __name__ == "__main__":
     ax.text(
         offset + left,
         right - offset - 0.35,
-        "Code: {} {} | {} {} \nHydro {}\n$\eta$={:1.4f}".format(
+        "Code: {} {} | {} {} \nHydro {}\n$\\eta$={:1.4f}".format(
             metadata["code"]["Git Branch"].decode("utf-8"),
             metadata["code"]["Git Revision"].decode("utf-8"),
             metadata["code"]["Compiler Name"].decode("utf-8"),

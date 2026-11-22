@@ -20,11 +20,10 @@
 """Create initial conditions for settling, using WoMa. See README.md for more info."""
 
 import numpy as np
-import h5py
 import woma
 
 # Number of particles
-N = 10 ** 7
+N = 10**7
 N_label = "n%d" % (10 * np.log10(N))
 
 # Earth units

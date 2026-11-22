@@ -537,23 +537,24 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  * @param sp The star particle.
  * @param e The #engine
  * @param sink_props The sink properties to use.
+ * @param hydro_properties The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
  * @param cosmo The cosmological parameters and properties.
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,
-    const struct sink_props *sink_props, const struct cosmology *cosmo,
+    const struct sink_props *sink_props, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
     const int with_cosmology, const struct phys_const *phys_const,
-    const struct unit_system *restrict us) {}
+    const struct unit_system *restrict us, float displacement[3]) {}
 
 /**
  * @brief Update the #sink particle properties before spawning a star.
- *
- * In GEAR, we check if the sink had an IMF change from pop III to pop II
- * during the last gas/sink accretion loops. If so, we draw a new target mass
- * with the correct IMF so that stars have the right metallicities.
  *
  * @param sink The #sink particle.
  * @param e The #engine
@@ -566,9 +567,6 @@ INLINE static void sink_update_sink_properties_before_star_formation(
 
 /**
  * @brief Update the #sink particle properties right after spawning a star.
- *
- * In GEAR: Important properties that are updated are the sink mass and the
- * sink->target_mass_Msun to draw the next star mass.
  *
  * @param sink The #sink particle that spawed stars.
  * @param sp The #spart particle spawned.
@@ -585,16 +583,20 @@ INLINE static void sink_update_sink_properties_during_star_formation(
 /**
  * @brief Update the #sink particle properties after star formation.
  *
- * In GEAR, this is unused.
- *
  * @param sink The #sink particle.
- * @param e The #engine
+ * @param with_cosmology if we run with cosmology.
+ * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  * @param phys_const The physical constants in internal units.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 INLINE static void sink_update_sink_properties_after_star_formation(
-    struct sink *sink, const struct engine *e,
-    const struct sink_props *sink_props, const struct phys_const *phys_const) {}
+    struct sink *sink, const int with_cosmology, const struct cosmology *cosmo,
+    const struct sink_props *sink_props, const struct phys_const *phys_const,
+    const integertime_t ti_current, const double time, const double time_base) {
+}
 
 /**
  * @brief Store the gravitational potential of a particle by copying it from
@@ -611,34 +613,74 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * kinetic energy, potential energy, etc. This function works on the
  * neighbouring gas particles.
  *
+ * Nothing to do here.
+ *
  * @param e The #engine.
- * @param p The #part for which we compute the quantities.
- * @param xp The #xpart data of the particle #p.
- * @param pi A neighbouring #part of #p.
+ * @param pi The #part for which we compute the quantities.
  * @param xpi The #xpart data of the particle #pi.
+ * @param pj A neighbouring #part of #pi.
+ * @param xpj The #xpart data of the particle #pj.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
-    struct part *restrict pi, struct xpart *restrict xpi,
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    struct part *restrict pj, struct xpart *restrict xpj,
     const struct cosmology *cosmo, const struct sink_props *sink_props) {}
 
 /**
  * @brief Compute all quantities required for the formation of a sink. This
  * function works on the neighbouring sink particles.
  *
+ * Nothing to do here.
+ *
  * @param e The #engine.
- * @param p The #part for which we compute the quantities.
- * @param xp The #xpart data of the particle #p.
- * @param si A neighbouring #sink of #p.
+ * @param pi The #part for which we compute the quantities.
+ * @param xpi The #xpart data of the particle #pi.
+ * @param sj A neighbouring #sink of #pi.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
-    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
-    struct sink *restrict si, const int with_cosmology,
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const double time) {}
+
+/**
+ * @brief Returns the current co-moving softening of a sink particle
+ *
+ * Notice that on foreign MPI ranks, we do not have access to the gpart. Hence,
+ * we directly read from the gravity props.
+ *
+ * @param sink The particle of interest
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_softening(
+    const struct sink *sink, const struct gravity_props *grav_props) {
+  return grav_props->epsilon_baryon_cur;
+}
+
+/**
+ * @brief Return the current instantaneous accretion rate of the sink.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_accretion_rate(
+    const struct sink *sink) {
+  return sink->accretion_rate;
+}
+
+/**
+ * @brief Return the star formation rate of a particle.
+ *
+ * The Basic sink model does not track a star formation rate.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_SFR(
+    const struct sink *sink) {
+  return 0.f;
+}
 
 #endif /* SWIFT_BASIC_SINK_H */

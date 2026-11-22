@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 snapshot="nifty_0303"
 out_name="halo_0303"
 vr_loc="./stf"

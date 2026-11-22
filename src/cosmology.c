@@ -1159,7 +1159,7 @@ double cosmology_get_drift_factor(const struct cosmology *c,
   const double int_end = interp_table(c->drift_fac_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
-  return int_end - int_start;
+  return max(0., int_end - int_start);
 }
 
 /**
@@ -1187,7 +1187,7 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
   const double int_end = interp_table(c->grav_kick_fac_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
-  return int_end - int_start;
+  return max(0., int_end - int_start);
 }
 
 /**
@@ -1216,7 +1216,7 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
   const double int_end = interp_table(c->hydro_kick_fac_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
-  return int_end - int_start;
+  return max(0., int_end - int_start);
 }
 
 /**
@@ -1245,7 +1245,7 @@ double cosmology_get_corr_kick_factor(const struct cosmology *c,
   const double int_end = interp_table(c->hydro_kick_corr_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
-  return int_end - int_start;
+  return max(0., int_end - int_start);
 }
 
 /**
@@ -1274,7 +1274,7 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
   const double int_end = interp_table(c->drift_fac_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
-  return int_end - int_start;
+  return max(0., int_end - int_start);
 }
 
 /**
@@ -1304,7 +1304,7 @@ double cosmology_get_delta_time(const struct cosmology *c,
   const double t2 = interp_table(c->time_interp_table, log_a_end,
                                  c->log_a_begin, c->log_a_end);
 
-  return t2 - t1;
+  return max(0., t2 - t1);
 }
 
 /**
@@ -1401,7 +1401,7 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
   const double t2 = interp_table(c->time_interp_table, log_a_end,
                                  c->log_a_begin, c->log_a_end);
 
-  return t2 - t1;
+  return max(0., t2 - t1);
 }
 
 /**

@@ -61,6 +61,10 @@ struct pressure_floor_props {
  *
  * Note that the particle is not updated!!
  *
+ * Some callers (e.g. AGN feedback energy injection) pass NULL to signal
+ * that the floor need not be enforced, since they only ever increase the
+ * internal energy. Skip the floor in that case.
+ *
  * @param p The #part.
  * @param pflorr The properties of the pressure floor.
  * @param pressure_comoving The comoving pressure without any pressure floor.
@@ -73,6 +77,8 @@ pressure_floor_get_comoving_pressure(const struct part *p,
                                      const struct pressure_floor_props *pfloor,
                                      const float pressure_comoving,
                                      const struct cosmology *cosmo) {
+
+  if (pfloor == NULL) return pressure_comoving;
 
   const float a_coef = pow_three_gamma_minus_one(cosmo->a);
   const float rho = hydro_get_comoving_density(p);

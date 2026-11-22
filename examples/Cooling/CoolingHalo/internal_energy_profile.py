@@ -41,7 +41,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # read some header/parameter information from the first snapshot
 
-filename = "Hydrostatic_0000.hdf5"
+filename = "CoolingHalo_0000.hdf5"
 f = h5.File(filename, "r")
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
@@ -56,11 +56,11 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
-    filename = "Hydrostatic_%04d.hdf5" % i
+    filename = "CoolingHalo_%04d.hdf5" % i
     f = h5.File(filename, "r")
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
@@ -80,11 +80,11 @@ for i in range(n_snaps):
     u = np.array(u_dset)
 
     # make dimensionless
-    u /= v_c ** 2 / (2.0 * (gamma - 1.0))
+    u /= v_c**2 / (2.0 * (gamma - 1.0))
     r = radius_over_virial_radius
 
     bin_edges = np.linspace(0, 1, n_radial_bins + 1)
-    (hist, u_totals) = do_binning(r, u, bin_edges)
+    hist, u_totals = do_binning(r, u, bin_edges)
 
     bin_widths = 1.0 / n_radial_bins
     radial_bin_mids = np.linspace(
