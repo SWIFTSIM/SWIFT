@@ -180,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 21;
+  *num_fields = 23;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -287,10 +287,11 @@ INLINE static void hydro_write_particles(const struct part *parts,
       force.viscosity_limiter,
       "Cullen & Dehnen (2010) limiter of the viscous pressure with the "
       "shock-presence boost, (boost div v)^2 / ((boost div v)^2 + |S|^2); "
-      "scales the particle's viscous pressure (1 if switched off).");
+      "scales the particle's viscous pressure.");
 
   list[19] = io_make_output_field(
-      "DiffusionFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_diff,
+      "DiffusionParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      alpha_diff,
       "Per-particle coefficient of the artificial conduction terms: grows "
       "where the internal energy has a local minimum, decays towards "
       "diffusion_alpha_min over a kernel-support signal crossing time, and "
@@ -299,13 +300,30 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "surroundings of a particle a feedback event has heated)");
 
   list[20] = io_make_output_field(
-      "ViscosityAlpha", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_visc,
+      "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      alpha_visc,
       "Per-particle coefficient alpha of the viscous pressure, of the "
       "Cullen & Dehnen (2010) form: raised towards the maximum where the "
       "flow converges faster and faster, decaying towards "
       "viscosity_alpha_min otherwise. The coefficient before that floor "
       "(floored at the smaller of viscosity_alpha_min and 0.5), maximised "
       "over the particle and its neighbours, caps the conduction coefficient.");
+
+  list[21] = io_make_output_field(
+      "VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY, -2.f, parts, div_v,
+      "Co-moving divergence of the peculiar velocity field around the "
+      "particles, the trace of the matrix velocity gradient of their last "
+      "force preparation (the a-exponent gives the physical peculiar "
+      "divergence; the Hubble flow is not included). 0 for particles whose "
+      "C-matrix could not be inverted.");
+
+  list[22] = io_make_output_field(
+      "LaplacianInternalEnergies", FLOAT, 1, UNIT_CONV_FREQUENCY_SQUARED,
+      1.f - 3.f * hydro_gamma, parts, laplace_u,
+      "Co-moving SPH estimate of the Laplacian of the internal energies per "
+      "unit mass of the particles from their last gradient loop, with the "
+      "linear part of the jumps removed (the source of the conduction "
+      "coefficient)");
 }
 
 /**

@@ -272,7 +272,7 @@ in a shock. The thermal pressure :math:`\rho u (\gamma - 1)` is used here
 even when a pressure floor is active, so that the floor does not drive
 conduction at its boundary. The pair term is scaled by the pressure-weighted
 mean of the two particles' coefficients :math:`\alpha^D_a`
-(``DiffusionFactors`` in the snapshots), which grow at ``SPH:diffusion_beta``
+(``DiffusionParameters`` in the snapshots), which grow at ``SPH:diffusion_beta``
 :math:`H \nabla^2 u / \sqrt{u}` where :math:`u` has a local minimum, decay
 towards ``SPH:diffusion_alpha_min`` over a signal crossing time of the
 support, and are capped by :math:`1 - (\alpha^{\rm ngb}_{\max} -
@@ -450,14 +450,18 @@ and ``GradientsInternalEnergies`` (the matrix gradients, comoving),
 was regularised but the gradient functions were still used),
 ``GradientFallbackPairs`` (pairs that used kernel gradients in the last force
 loop), ``ConvergenceFraction``, ``ViscosityLimiter`` (the Cullen & Dehnen
-:math:`\xi_a`), ``DiffusionFactors`` (:math:`\alpha^D_a`) and
-``ViscosityAlpha`` (the per-particle :math:`\alpha_a`). A healthy run has ``FallbackFlags`` equal to 0 for essentially all
+:math:`\xi_a`), ``DiffusionParameters`` (:math:`\alpha^D_a`),
+``ViscosityParameters`` (the per-particle :math:`\alpha_a`; the names are
+SPHENIX's), ``VelocityDivergences`` (the trace of the matrix velocity
+gradient, comoving, without the Hubble flow) and
+``LaplacianInternalEnergies`` (the SPH Laplacian of :math:`u` of the last
+gradient loop). A healthy run has ``FallbackFlags`` equal to 0 for essentially all
 particles and a mean ``GradientFallbackPairs`` well below 1; the
 scheme-comparison suite reports both fractions in its summary table. The
 ``HydroScheme`` group records every constant and parameter of the
 dissipation terms (``Alpha viscosity``, ``Beta viscosity``,
 ``Epsilon viscosity``, ``Limiter eta_crit``, ``Limiter width``,
-``Viscosity shear limiter``, ``Viscosity limiter floor``,
+``Viscosity limiter floor``,
 ``Viscosity limiter Mach``, ``Viscosity boost dead zone (noise units)``,
 ``Alpha viscosity (min)``, ``Viscosity decay length``,
 ``Gradient max condition number``, ``Gradient cos angle limit``,

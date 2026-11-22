@@ -455,6 +455,27 @@ hydro_diffusive_feedback_reset(struct part *p) {
 }
 
 /**
+ * @brief Returns the signal velocity of the particle.
+ *
+ * The (comoving) signal speed of the Courant condition (Rosswog 2020,
+ * eq. 36): maximal sound speed of the particle and its neighbours (the
+ * paper's global time-step limits every particle by the hottest one) and
+ * the maximum alpha, the bound of the per-particle coefficient: the
+ * coefficient jumps to it within a step of a shock forming, before the next
+ * time-step computation of the particle sees it. As the sound speed and the
+ * approach velocity it is built from, it is valid after the force loop.
+ *
+ * @param p The particle.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
+    const struct part *p) {
+
+  const float c = p->force.c_sig;
+  return 2.f *
+         (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * This function returns the time-step of a particle given its hydro-dynamical
@@ -484,14 +505,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
              : FLT_MAX;
 
   /* Courant criterion (eq. 36) */
-  /* Signal speed: maximal sound speed of the particle and its neighbours
-   * (the paper's global time-step limits every particle by the hottest one)
-   * and the maximum alpha, the bound of the per-particle coefficient: the
-   * coefficient jumps to it within a step of a shock forming, before the
-   * next time-step computation of the particle sees it. */
-  const float c = p->force.c_sig;
-  const float v_sig =
-      2.f * (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+  const float v_sig = hydro_get_signal_velocity(p);
   const float dt_Courant = 2.f * kernel_gamma * cosmo->a * p->h /
                            (cosmo->a_factor_sound_speed * v_sig);
 
@@ -520,21 +534,6 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
   return ci + cj - beta * mu_ij;
 }
 
-/**
- * @brief Returns the signal velocity of the particle.
- *
- * This scheme has no per-particle signal velocity: its Courant condition is
- * built from the sound speed and the approach velocity (force.c_sig and
- * force.mu_tilde), see hydro_compute_timestep(). Returns 0; no core code
- * relies on this getter.
- *
- * @param p The particle.
- */
-__attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
-    const struct part *p) {
-
-  return 0.;
-}
 /**
  * @brief Returns the velocity divergence of the particle.
  *
@@ -729,9 +728,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
    * Dehnen 2010, eq. 17): the particle's own term, with the sign of its
    * physical divergence (Hubble flow included) from its last gradient
    * evaluation, as the neighbours' terms (none if it had no valid gradient,
-   * i.e. a comoving divergence of exactly zero), and the factors of h of W,
-   * so that the sum compares with the density. */
-  if (p->div_v != 0.f)
+   * see fallback_flags, or a vanishing divergence: sign(0) = 0), and the
+   * factors of h of W, so that the sum compares with the density. */
+  if (!(p->fallback_flags & magma_fallback_inversion) &&
+      p->div_v_previous != 0.f)
     p->gradient.shock_indicator +=
         copysignf(p->mass * kernel_root, p->div_v_previous);
   p->gradient.shock_indicator *= h_inv_dim;
@@ -880,8 +880,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * a decaying viscosity coefficient, so that a raised coefficient does not
    * survive a spell without a valid C-matrix and keep the conduction of the
    * neighbourhood off. */
-  float convergence_fraction = 1.f;
-  float viscosity_limiter = 1.f;
   const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
   /* The flow's full divergence includes the Hubble flow (d H in physical
    * units, d H a^2 in the comoving units of the gradient): the limiter and
@@ -890,25 +888,34 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * the comoving peculiar divergence that hydro_get_div_v() promises. */
   const float div_v_tot =
       div_v + hydro_dimension * cosmo->H * cosmo->a * cosmo->a;
-  /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
-   * the d diagonal entries that exist in d dimensions (the absent ones
-   * would contribute -(div v / d)^2 each and make a pure compression
-   * look partly sheared: xi = 1/3 in 1D, 4/5 in 2D). */
+  /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I and rotation
+   * (V - V^T)/2, with only the components that exist in d dimensions: the
+   * absent diagonal entries would contribute -(div v / d)^2 each and make a
+   * pure compression look partly sheared (xi = 1/3 in 1D, 4/5 in 2D), and a
+   * velocity component out of the plane (v_z in 2D) is a transported
+   * scalar, not a shear. */
   const float iso = div_v / hydro_dimension;
   const float Sxx = gradient_vx[0] - iso;
 #if defined(HYDRO_DIMENSION_1D)
-  const float Syy = 0.f;
-  const float Szz = 0.f;
+  const float Syy = 0.f, Szz = 0.f;
+  const float Sxy = 0.f, Sxz = 0.f, Syz = 0.f;
+  const float Rxy = 0.f, Rxz = 0.f, Ryz = 0.f;
 #elif defined(HYDRO_DIMENSION_2D)
-  const float Syy = gradient_vy[1] - iso;
-  const float Szz = 0.f;
+  const float Syy = gradient_vy[1] - iso, Szz = 0.f;
+  const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
+  const float Sxz = 0.f, Syz = 0.f;
+  const float Rxy = 0.5f * (gradient_vx[1] - gradient_vy[0]);
+  const float Rxz = 0.f, Ryz = 0.f;
 #else
   const float Syy = gradient_vy[1] - iso;
   const float Szz = gradient_vz[2] - iso;
-#endif
   const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
   const float Sxz = 0.5f * (gradient_vx[2] + gradient_vz[0]);
   const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
+  const float Rxy = 0.5f * (gradient_vx[1] - gradient_vy[0]);
+  const float Rxz = 0.5f * (gradient_vx[2] - gradient_vz[0]);
+  const float Ryz = 0.5f * (gradient_vy[2] - gradient_vz[1]);
+#endif
   const float S2 = Sxx * Sxx + Syy * Syy + Szz * Szz +
                    2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
   const float div2 = div_v_tot * div_v_tot;
@@ -917,12 +924,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * against the rotation (the remaining part of the velocity gradient) and
    * treat the degenerate case as pure compression (no limiting), as in
    * exact arithmetic. */
-  const float Rxy = 0.5f * (gradient_vx[1] - gradient_vy[0]);
-  const float Rxz = 0.5f * (gradient_vx[2] - gradient_vz[0]);
-  const float Ryz = 0.5f * (gradient_vy[2] - gradient_vz[1]);
   const float rot2 = 2.f * (Rxy * Rxy + Rxz * Rxz + Ryz * Ryz);
   const float gradient_floor = 1e-12f * (div2 + S2 + rot2);
-  convergence_fraction =
+  const float convergence_fraction =
       (div2 + S2 > gradient_floor) ? div2 / (div2 + S2) : 1.f;
 
   /* Viscosity limiter: the same comparison with the
@@ -930,32 +934,33 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * sum_j sign(div v_j) m_j W_ij is -1 inside a converging front (all
    * neighbours converge) and ~0 where the signs are mixed (noise, smooth
    * shear); the divergence is boosted by 2 (1 - R)^4, up to 32 in a
-   * shock, so that a shock seen through shear keeps its viscosity. */
-  if (const_viscosity_shear_limiter) {
-    const float R_raw =
-        fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
-    /* Dead zone (see hydro_parameters.h): the particle noise of R is its
-     * own term m W(0) / rho plus 1 / sqrt(N_ngb), with N_ngb the number of
-     * neighbours rho h^d kernel_norm / m; R within the dead zone of 0 gets
-     * the R = 0 factor, beyond it R is rescaled so that -1 and +1 are kept.
-     */
-    const float h_inv_dim = pow_dimension(1.f / p->h);
-    const float m_over_rho_hd = p->mass * h_inv_dim / p->rho;
-    const float noise =
-        kernel_root * m_over_rho_hd + sqrtf(m_over_rho_hd / kernel_norm);
-    const float dz = fminf(0.9f, const_viscosity_boost_dead_zone * noise);
-    const float R = R_raw < -dz  ? (R_raw + dz) / (1.f - dz)
-                    : R_raw > dz ? (R_raw - dz) / (1.f - dz)
-                                 : 0.f;
-    const float one_minus_R = 1.f - R;
-    const float boost =
-        2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
-    const float bdiv2 = boost * boost * div2;
-    viscosity_limiter =
-        (bdiv2 + S2 > gradient_floor) ? bdiv2 / (bdiv2 + S2) : 1.f;
-    viscosity_limiter =
-        fmaxf(viscosity_limiter, hydro_props->viscosity.limiter_floor);
-  }
+   * shock, so that a shock seen through shear keeps its viscosity. At the
+   * other end, R = +1 (every neighbour diverging) gives a boost of 0 and
+   * hence xi = 0 wherever there is any shear: in a sheared rarefaction the
+   * viscosity is switched off entirely (the floor below excepted), Cullen
+   * & Dehnen's intent, whatever viscosity_alpha_min. */
+  const float R_raw =
+      fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
+  /* Dead zone (see hydro_parameters.h): the particle noise of R is its
+   * own term m W(0) / rho plus 1 / sqrt(N_ngb), with N_ngb the number of
+   * neighbours rho h^d kernel_norm / m; R within the dead zone of 0 gets
+   * the R = 0 factor, beyond it R is rescaled so that -1 and +1 are kept.
+   */
+  const float h_inv_dim = pow_dimension(1.f / p->h);
+  const float m_over_rho_hd = p->mass * h_inv_dim / p->rho;
+  const float noise =
+      kernel_root * m_over_rho_hd + sqrtf(m_over_rho_hd / kernel_norm);
+  const float dz = fminf(0.9f, const_viscosity_boost_dead_zone * noise);
+  const float R = R_raw < -dz  ? (R_raw + dz) / (1.f - dz)
+                  : R_raw > dz ? (R_raw - dz) / (1.f - dz)
+                               : 0.f;
+  const float one_minus_R = 1.f - R;
+  const float boost =
+      2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
+  const float bdiv2 = boost * boost * div2;
+  const float viscosity_limiter =
+      fmaxf((bdiv2 + S2 > gradient_floor) ? bdiv2 / (bdiv2 + S2) : 1.f,
+            hydro_props->viscosity.limiter_floor);
 
   /* Remember the divergence for the neighbours' shock-presence sums */
   p->div_v = div_v;
@@ -1021,15 +1026,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * the pressure floor (the conduction terms use the pressure without the
    * floor throughout). With the default floor of 1 the source and the decay
    * are inert and the coefficient is the cap alone. */
-  const float H_D = kernel_gamma * p->h * cosmo->a;
   const float v_sig_phys = (gas_soundspeed_from_pressure(p->rho, pressure) +
                             p->gradient.c_max_ngb) *
                            cosmo->a_factor_sound_speed;
   const float source =
-      p->u > 0.f ? hydro_props->diffusion.beta * H_D * p->laplace_u *
+      p->u > 0.f ? hydro_props->diffusion.beta * H * p->laplace_u *
                        cosmo->a_factor_sound_speed * cosmo->a2_inv / sqrtf(p->u)
                  : 0.f;
-  const float ratio = dt_alpha * v_sig_phys / H_D;
+  const float ratio = dt_alpha * v_sig_phys / H;
   float alpha = (p->alpha_diff + dt_alpha * source +
                  ratio * hydro_props->diffusion.alpha_min) /
                 (1.f + ratio);
@@ -1344,7 +1348,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->alpha_shock = hydro_props_default_viscosity_alpha_min;
   p->alpha_visc = hydro_props_default_viscosity_alpha_min;
   p->alpha_diff = hydro_props_default_diffusion_alpha_min;
-  p->fallback_flags = magma_fallback_none;
+  /* No gradient yet: the neighbours' shock-presence sums and the trigger of
+   * the first force preparation treat the particle as one without a valid
+   * C-matrix until that preparation has run. */
+  p->fallback_flags = magma_fallback_inversion;
   p->laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient_u_prev[i] = 0.f;
 

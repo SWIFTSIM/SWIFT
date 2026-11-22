@@ -36,15 +36,21 @@
 #include "kernel_hydro.h"
 #include "parser.h"
 
-// #define TRADITIONAL_SPH_ACCELERATION_TERM /* MI1 (set by configure) */
-// #define MAGMA_MI3_FORMULATION /* MI3 (set by configure): MI2's 1/(rho_a
-// rho_b)
-//                                  weights with P_a on G_a and P_b on G_b,
-//                                  so that a vanishing W_ab(h_b) does not halve
-//                                  the operator of particle a. */
+/* The formulation of the equations of motion is set by configure
+ * (--with-hydro=magma2-MI1, -MI2 or -MI3): TRADITIONAL_SPH_ACCELERATION_TERM
+ * selects MI1, MAGMA_MI3_FORMULATION selects MI3 (MI2's 1/(rho_a rho_b)
+ * weights with P_a on G_a and P_b on G_b, so that a vanishing W_ab(h_b) does
+ * not halve the operator of particle a), neither selects MI2. */
+#if defined(TRADITIONAL_SPH_ACCELERATION_TERM) && defined(MAGMA_MI3_FORMULATION)
+#error "MAGMA: the MI1 and MI3 formulations are mutually exclusive."
+#endif
+
+/* Experimental switches (off by default): no reconstruction to the pair
+ * mid-point (the raw particle velocities and energies enter the viscosity
+ * and conduction terms), and the kernel gradients in place of the
+ * gradient functions for every pair. */
 // #define USE_ZEROTH_ORDER_VELOCITIES
 // #define USE_STANDARD_KERNEL_GRADIENTS
-#define GRAVITY_DIFF_VELOCITY
 
 /**
  * @file MAGMA/hydro_parameters.h
@@ -84,14 +90,10 @@
  * 0.1 * kernel_gamma. */
 #define const_limiter_width (0.1f * kernel_gamma)
 
-/*! Shear limiter of the viscous pressure: each particle's Q is scaled by its
- * Cullen & Dehnen (2010) limiter, the convergence fraction with the
- * shock-presence boost (their eq. 17-18). 0 off, 1 both terms of Q, 2 the
- * quadratic (beta mu^2) term only. */
-#define const_viscosity_shear_limiter 1
-
 /*! Mach number of the pair's velocity jump, |mu| / c, above which the shear
- * limiter also acts on the linear (alpha c mu) term of Q. Below it the
+ * limiter (each particle's Q is scaled by its Cullen & Dehnen (2010)
+ * limiter, the convergence fraction with the shock-presence boost, their
+ * eq. 17-18) also acts on the linear (alpha c mu) term of Q. Below it the
  * linear term keeps its full strength, so subsonic shear layers (which need
  * the viscosity to keep their particle order) are untouched and only cold,
  * supersonic shear (differential rotation) is relieved of it. The 2026-10
@@ -365,17 +367,12 @@ static INLINE void viscosity_print(
       "condition number of %.1f (particle); fallback: cos(angle) < %.3f "
       "(pair).",
       viscosity->max_condition_number, const_gradient_cos_angle_limit);
-  if (const_viscosity_shear_limiter)
-    message(
-        "Viscous pressure scaled by the Cullen & Dehnen limiter (%s, floor "
-        "%.2f, linear term limited for |mu| > %.2f c, shock-presence factor "
-        "dead zone %.1f noise units).",
-        const_viscosity_shear_limiter == 2 ? "quadratic term only"
-                                           : "both terms",
-        viscosity->limiter_floor, const_viscosity_limiter_mach,
-        const_viscosity_boost_dead_zone);
-  else
-    message("Viscous pressure not scaled by the Cullen & Dehnen limiter.");
+  message(
+      "Viscous pressure scaled by the Cullen & Dehnen limiter (floor %.2f, "
+      "linear term limited for |mu| > %.2f c, shock-presence factor dead zone "
+      "%.1f noise units).",
+      viscosity->limiter_floor, const_viscosity_limiter_mach,
+      const_viscosity_boost_dead_zone);
   message(
       "Time-dependent viscosity alpha: max %.2f, min %.2f, decay length "
       "%.3f.",
@@ -397,8 +394,6 @@ static INLINE void viscosity_print_snapshot(
   io_write_attribute_f(h_grpsph, "Epsilon viscosity", const_viscosity_epsilon);
   io_write_attribute_f(h_grpsph, "Limiter eta_crit", viscosity->eta_crit);
   io_write_attribute_f(h_grpsph, "Limiter width", const_limiter_width);
-  io_write_attribute_i(h_grpsph, "Viscosity shear limiter",
-                       const_viscosity_shear_limiter);
   io_write_attribute_f(h_grpsph, "Viscosity limiter floor",
                        viscosity->limiter_floor);
   io_write_attribute_f(h_grpsph, "Viscosity limiter Mach",

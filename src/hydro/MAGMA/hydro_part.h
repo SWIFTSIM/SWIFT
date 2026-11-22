@@ -62,6 +62,11 @@
  * regularised in the degenerate directions; the particle still uses the
  * matrix-inversion gradient functions. Only the bits in
  * magma_fallback_base_sph_mask switch a particle to standard SPH gradients.
+ *
+ * magma_fallback_inversion is also the "no valid gradient" bit read by the
+ * neighbours in the next gradient loop (shock-presence sum) and by the next
+ * force preparation (trigger derivative); it is set at initialisation, before
+ * any gradient has been computed.
  */
 enum magma_fallback_reasons {
   magma_fallback_none = 0,
@@ -175,7 +180,9 @@ struct part {
       /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
-      /*! Derivative of density with respect to h */
+      /*! Derivative of density with respect to h. Not used by the scheme
+       * (no grad-h term); read by the core for the mass-weighted
+       * neighbour-number option (runner_ghost.c). */
       float rho_dh;
 
     } density;
@@ -282,7 +289,7 @@ struct part {
 
       /*! Viscosity limiter (Cullen & Dehnen 2010, eq. 18 with
        * the shock-presence boost of eq. 17): scales this particle's viscous
-       * pressure, 1 when the limiter is switched off */
+       * pressure */
       float viscosity_limiter;
 
       /*! Pair separation, in units of h, below which the slope limiter

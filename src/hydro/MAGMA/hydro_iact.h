@@ -165,15 +165,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Hottest neighbour (signal speed of the conduction coefficient's decay)
    * and most viscous neighbour (its cap). The sound speed comes from the
    * equation of state: the force sub-structure shares its storage with the
    * density and gradient ones and does not survive their loops. */
-  pi->gradient.c_max_ngb = fmaxf(pi->gradient.c_max_ngb,
-                                 gas_soundspeed_from_internal_energy(pj->rho, pj->u));
+  pi->gradient.c_max_ngb =
+      fmaxf(pi->gradient.c_max_ngb,
+            gas_soundspeed_from_internal_energy(pj->rho, pj->u));
   pi->gradient.alpha_shock_max_ngb =
       fmaxf(pi->gradient.alpha_shock_max_ngb, pj->alpha_shock);
 
@@ -215,11 +223,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   /* Shock-presence sum (Cullen & Dehnen 2010, eq. 17) with the sign of the
    * neighbour's physical divergence from its last gradient evaluation
    * (viscosity limiter), Hubble flow included. A neighbour without a valid
-   * gradient (comoving divergence exactly zero) carries no information and
-   * does not count. */
+   * gradient (no C-matrix inverse at its last force preparation, or none
+   * computed yet: fallback_flags) carries no information and does not
+   * count; nor does a vanishing divergence (sign(0) = 0). */
   const float div_v_j_phys = pj->div_v / (a * a) + hydro_dimension * H;
   pi->gradient.shock_indicator +=
-      (pj->div_v != 0.f) ? copysignf(mj * w, div_v_j_phys) : 0.f;
+      (!(pj->fallback_flags & magma_fallback_inversion) && div_v_j_phys != 0.f)
+          ? copysignf(mj * w, div_v_j_phys)
+          : 0.f;
 
   /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. */
@@ -282,6 +293,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Hottest neighbour (signal speed of the conduction coefficient's decay)
    * and most viscous neighbour (its cap). The sound speed comes from the
@@ -346,14 +364,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* Shock-presence sum (Cullen & Dehnen 2010, eq. 17) with the sign of the
    * neighbour's physical divergence from its last gradient evaluation
    * (viscosity limiter), Hubble flow included. A neighbour without a valid
-   * gradient (comoving divergence exactly zero) carries no information and
-   * does not count. */
+   * gradient (no C-matrix inverse at its last force preparation, or none
+   * computed yet: fallback_flags) carries no information and does not
+   * count; nor does a vanishing divergence (sign(0) = 0). */
   const float div_v_i_phys = pi->div_v / (a * a) + hydro_dimension * H;
   const float div_v_j_phys = pj->div_v / (a * a) + hydro_dimension * H;
   pi->gradient.shock_indicator +=
-      (pj->div_v != 0.f) ? copysignf(mj * wi, div_v_j_phys) : 0.f;
+      (!(pj->fallback_flags & magma_fallback_inversion) && div_v_j_phys != 0.f)
+          ? copysignf(mj * wi, div_v_j_phys)
+          : 0.f;
   pj->gradient.shock_indicator +=
-      (pi->div_v != 0.f) ? copysignf(mi * wj, div_v_i_phys) : 0.f;
+      (!(pi->fallback_flags & magma_fallback_inversion) && div_v_i_phys != 0.f)
+          ? copysignf(mi * wj, div_v_i_phys)
+          : 0.f;
 
   /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. The products
@@ -463,7 +486,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -666,31 +688,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
 
-    /* Same for the pressure (only needed with the pressure-residual term of
-     * the conduction signal speed) */
-    if (const_diffusion_alpha_pressure > 0.f) {
-      const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
-                               pi->force.gradient_P[1] * dx[1] +
-                               pi->force.gradient_P[2] * dx[2];
-      const float A_ij_P_den = pj->force.gradient_P[0] * dx[0] +
-                               pj->force.gradient_P[1] * dx[1] +
-                               pj->force.gradient_P[2] * dx[2];
-      const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
-      const float fraction_P =
-          (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
-                         : 0.f;
-      const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
-      const float P_rec_i =
-          P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
-                               pi->force.gradient_P[1] * delta_i[1] +
-                               pi->force.gradient_P[2] * delta_i[2]);
-      const float P_rec_j =
-          P_th_j + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
-                               pj->force.gradient_P[1] * delta_j[1] +
-                               pj->force.gradient_P[2] * delta_j[2]);
-      /* The residual never exceeds the raw jump (reconstruction overshoot) */
-      delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
-    }
+    /* Same for the pressure (the pressure-residual term of the conduction
+     * signal speed) */
+    const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
+                             pi->force.gradient_P[1] * dx[1] +
+                             pi->force.gradient_P[2] * dx[2];
+    const float A_ij_P_den = pj->force.gradient_P[0] * dx[0] +
+                             pj->force.gradient_P[1] * dx[1] +
+                             pj->force.gradient_P[2] * dx[2];
+    const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
+    const float fraction_P =
+        (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
+                       : 0.f;
+    const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
+    const float P_rec_i =
+        P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
+                             pi->force.gradient_P[1] * delta_i[1] +
+                             pi->force.gradient_P[2] * delta_i[2]);
+    const float P_rec_j =
+        P_th_j + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
+                             pj->force.gradient_P[1] * delta_j[1] +
+                             pj->force.gradient_P[2] * delta_j[2]);
+    /* The residual never exceeds the raw jump (reconstruction overshoot) */
+    delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
 
     /* Limiter preventing inversion: the slope limiter above only compares
      * the two slopes, not the actual difference. For steep profiles, the
@@ -844,22 +864,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_beta = const_viscosity_beta;
   /* Shear limiter of the viscous pressure: each particle's Q scaled by its
    * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence
-   * boost of eq. 17, as their alpha_i xi_i). 1 when switched off. Mode 1
-   * scales both terms of Q; mode 2 scales only the quadratic (beta mu^2)
-   * term, which is the one that dominates the dissipation of a cold
-   * (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
-   * maintains particle order in subsonic shear layers. */
+   * boost of eq. 17, as their alpha_i xi_i). The quadratic (beta mu^2) term,
+   * which dominates the dissipation of a cold (Mach >> 1) shear flow, is
+   * always limited; the linear alpha c mu term, which maintains particle
+   * order in subsonic shear layers, only in supersonic shear (|mu| >
+   * limiter_mach c), where it is a Keplerian flow rather than a shear layer
+   * that needs its particle order kept. */
   const float xi_q_i = pi->force.viscosity_limiter;
   const float xi_q_j = pj->force.viscosity_limiter;
-  const int quad_only = (const_viscosity_shear_limiter == 2);
-  /* With the Mach threshold the linear term is limited only
-   * in supersonic shear (|mu| > limiter_mach c), where it is a Keplerian
-   * flow rather than a subsonic shear layer that needs its particle order
-   * kept. */
   const float mach_i = const_viscosity_limiter_mach * ci;
   const float mach_j = const_viscosity_limiter_mach * cj;
-  const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
-  const float xi_lin_j = (quad_only || fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
+  const float xi_lin_i = (fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
+  const float xi_lin_j = (fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
   const float Qi = Q_dissipative_i
                        ? rhoi * (-xi_lin_i * visc_alpha_i * ci * mu_i +
                                  xi_q_i * visc_beta * mu_i * mu_i)
@@ -969,7 +985,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       sqrtf(sum_G[0] * sum_G[0] + sum_G[1] * sum_G[1] + sum_G[2] * sum_G[2]);
 
   /* Diffusion signal velocity (eq. 26) */
-#ifdef GRAVITY_DIFF_VELOCITY
   /* Norm of the reconstructed relative velocity |v~_a - v~_b| (eq. 26, zero
    * in a linear flow), including the Hubble flow, which reconstructs to
    * (1 - Phi) a^2 H dx like the peculiar velocities; converted to sound-speed
@@ -983,10 +998,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_sig_u =
       fac_mu * sqrtf(dv_rec[0] * dv_rec[0] + dv_rec[1] * dv_rec[1] +
                      dv_rec[2] * dv_rec[2]);
-#else
-  const float v_sig_u =
-      sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
-#endif
 
   /* Pressure-residual term (Price 2008's sqrt(|P_a - P_b| / rho) on the
    * reconstructed jump, with its own coefficient): acts on the kernel-scale
@@ -1267,31 +1278,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
 
-    /* Same for the pressure (only needed with the pressure-residual term of
-     * the conduction signal speed) */
-    if (const_diffusion_alpha_pressure > 0.f) {
-      const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
-                               pi->force.gradient_P[1] * dx[1] +
-                               pi->force.gradient_P[2] * dx[2];
-      const float A_ij_P_den = pj->force.gradient_P[0] * dx[0] +
-                               pj->force.gradient_P[1] * dx[1] +
-                               pj->force.gradient_P[2] * dx[2];
-      const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
-      const float fraction_P =
-          (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
-                         : 0.f;
-      const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
-      const float P_rec_i =
-          P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
-                               pi->force.gradient_P[1] * delta_i[1] +
-                               pi->force.gradient_P[2] * delta_i[2]);
-      const float P_rec_j =
-          P_th_j + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
-                               pj->force.gradient_P[1] * delta_j[1] +
-                               pj->force.gradient_P[2] * delta_j[2]);
-      /* The residual never exceeds the raw jump (reconstruction overshoot) */
-      delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
-    }
+    /* Same for the pressure (the pressure-residual term of the conduction
+     * signal speed) */
+    const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
+                             pi->force.gradient_P[1] * dx[1] +
+                             pi->force.gradient_P[2] * dx[2];
+    const float A_ij_P_den = pj->force.gradient_P[0] * dx[0] +
+                             pj->force.gradient_P[1] * dx[1] +
+                             pj->force.gradient_P[2] * dx[2];
+    const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
+    const float fraction_P =
+        (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
+                       : 0.f;
+    const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
+    const float P_rec_i =
+        P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
+                             pi->force.gradient_P[1] * delta_i[1] +
+                             pi->force.gradient_P[2] * delta_i[2]);
+    const float P_rec_j =
+        P_th_j + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
+                             pj->force.gradient_P[1] * delta_j[1] +
+                             pj->force.gradient_P[2] * delta_j[2]);
+    /* The residual never exceeds the raw jump (reconstruction overshoot) */
+    delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
 
     /* Limiter preventing inversion: the slope limiter above only compares
      * the two slopes, not the actual difference. For steep profiles, the
@@ -1447,22 +1456,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_beta = const_viscosity_beta;
   /* Shear limiter of the viscous pressure: each particle's Q scaled by its
    * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence
-   * boost of eq. 17, as their alpha_i xi_i). 1 when switched off. Mode 1
-   * scales both terms of Q; mode 2 scales only the quadratic (beta mu^2)
-   * term, which is the one that dominates the dissipation of a cold
-   * (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
-   * maintains particle order in subsonic shear layers. */
+   * boost of eq. 17, as their alpha_i xi_i). The quadratic (beta mu^2) term,
+   * which dominates the dissipation of a cold (Mach >> 1) shear flow, is
+   * always limited; the linear alpha c mu term, which maintains particle
+   * order in subsonic shear layers, only in supersonic shear (|mu| >
+   * limiter_mach c), where it is a Keplerian flow rather than a shear layer
+   * that needs its particle order kept. */
   const float xi_q_i = pi->force.viscosity_limiter;
   const float xi_q_j = pj->force.viscosity_limiter;
-  const int quad_only = (const_viscosity_shear_limiter == 2);
-  /* With the Mach threshold the linear term is limited only
-   * in supersonic shear (|mu| > limiter_mach c), where it is a Keplerian
-   * flow rather than a subsonic shear layer that needs its particle order
-   * kept. */
   const float mach_i = const_viscosity_limiter_mach * ci;
   const float mach_j = const_viscosity_limiter_mach * cj;
-  const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
-  const float xi_lin_j = (quad_only || fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
+  const float xi_lin_i = (fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
+  const float xi_lin_j = (fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
   const float Qi = Q_dissipative_i
                        ? rhoi * (-xi_lin_i * visc_alpha_i * ci * mu_i +
                                  xi_q_i * visc_beta * mu_i * mu_i)
@@ -1605,7 +1610,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       sqrtf(sum_G[0] * sum_G[0] + sum_G[1] * sum_G[1] + sum_G[2] * sum_G[2]);
 
   /* Diffusion signal velocity (eq. 26) */
-#ifdef GRAVITY_DIFF_VELOCITY
   /* Norm of the reconstructed relative velocity |v~_a - v~_b| (eq. 26, zero
    * in a linear flow), including the Hubble flow, which reconstructs to
    * (1 - Phi) a^2 H dx like the peculiar velocities; converted to sound-speed
@@ -1619,10 +1623,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float v_sig_u =
       fac_mu * sqrtf(dv_rec[0] * dv_rec[0] + dv_rec[1] * dv_rec[1] +
                      dv_rec[2] * dv_rec[2]);
-#else
-  const float v_sig_u =
-      sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
-#endif
 
   /* Pressure-residual term (Price 2008's sqrt(|P_a - P_b| / rho) on the
    * reconstructed jump, with its own coefficient): acts on the kernel-scale
