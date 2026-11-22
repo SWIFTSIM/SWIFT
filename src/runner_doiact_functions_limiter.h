@@ -816,6 +816,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
 
+    runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+    runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
+
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -845,6 +848,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
     if (h_lo < h_hi &&
         ((cell_is_starting_hydro(ci, e) && ci->hydro.h_max_active >= h_lo) ||
          (cell_is_starting_hydro(cj, e) && cj->hydro.h_max_active >= h_lo))) {
+
+      runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
 
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */

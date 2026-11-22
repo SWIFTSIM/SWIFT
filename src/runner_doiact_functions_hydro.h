@@ -1129,6 +1129,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
   /* Let's first lock the cell */
   lock_lock(&cj->hydro.extra_sort_lock);
 
+  runner_count_sort_state_hydro(cj, sid, runner_sort_site_fallback);
+
   /* Is it sorted, if not we use the naive interactions. */
   const int is_sorted =
       (cj->hydro.sorted & (1 << sid)) &&
@@ -1356,8 +1358,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
   /* Get some other useful values. */
   const double hi_max =
-      min(h_hi, ci->hydro.h_max_active) * kernel_gamma - rshift;
-  const double hj_max = min(h_hi, cj->hydro.h_max_active) * kernel_gamma;
+      min(h_hi, CELL_H_MAX_SEARCH(ci)) * kernel_gamma - rshift;
+  const double hj_max = min(h_hi, CELL_H_MAX_SEARCH(cj)) * kernel_gamma;
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
@@ -1386,8 +1388,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (!PART_IS_ACTIVE(pi, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hi > ci->hydro.h_max_active)
-        error("Particle has h larger than h_max_active");
+      if (hi > CELL_H_MAX_SEARCH(ci))
+        error("Particle has h larger than the cell's search h_max");
 #endif
 
       /* Skip particles not in the range of h we care about */
@@ -1506,8 +1508,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (!PART_IS_ACTIVE(pj, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hj > cj->hydro.h_max_active)
-        error("Particle has h larger than h_max_active");
+      if (hj > CELL_H_MAX_SEARCH(cj))
+        error("Particle has h larger than the cell's search h_max");
 #endif
 
       /* Skip particles not in the range of h we care about */
@@ -1826,33 +1828,36 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float piy = pi->x[1] - shift_i[1];
     const float piz = pi->x[2] - shift_i[2];
 
-    const int update_i = PART_IS_ACTIVE(pi, e) && local_i;
+    /* A foreign active pi loops over all of cj if the loop writes inactive
+       neighbours: an inactive local pj gets the pair term on this rank only */
+    const int update_i =
+        PART_IS_ACTIVE(pi, e) && (local_i || LOOP_UPDATES_INACTIVE_NEIGHBOURS);
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
+    defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+    /* ISRF: a foreign active pi books its packet into every local pj,
+     * active or not, for r < h_i. */
+    if (!local_i && local_j && PART_IS_ACTIVE(pi, e) && (hi >= h_lo)) {
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+        struct part *pj = &parts_j[sort_j[pjd].i];
+        if (part_is_inhibited(pj, e)) continue;
+        const float pjx = pj->x[0] - shift_j[0];
+        const float pjy = pj->x[1] - shift_j[1];
+        const float pjz = pj->x[2] - shift_j[2];
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        if (r2 >= hig2) continue;
+        runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, pj->h, pi, pj, a, H,
+                                           packet_constants,
+                                           /*book=*/1,
+                                           /*reverse=*/0);
+      }
+    }
+#endif
 
     /* Do we need to only check active parts in cj
        (i.e. pi does not need updating) ? */
     if (!update_i) {
-
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
-    defined(MPI_SYMMETRIC_FORCE_INTERACTION)
-      /* ISRF: a foreign active pi books its packet into every local pj,
-       * active or not, for r < h_i. */
-      if (!local_i && local_j && PART_IS_ACTIVE(pi, e) && (hi >= h_lo)) {
-        for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-          struct part *pj = &parts_j[sort_j[pjd].i];
-          if (part_is_inhibited(pj, e)) continue;
-          const float pjx = pj->x[0] - shift_j[0];
-          const float pjy = pj->x[1] - shift_j[1];
-          const float pjz = pj->x[2] - shift_j[2];
-          const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-          if (r2 >= hig2) continue;
-          runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, pj->h, pi, pj, a, H,
-                                             packet_constants,
-                                             /*book=*/1,
-                                             /*reverse=*/0);
-        }
-      }
-#endif
 
       /* Loop over the *active* parts in cj within range of pi */
       for (int pjd = 0; pjd < count_active_j && sort_active_j[pjd].d < di;
@@ -2054,9 +2059,18 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                   t_current, cosmo, with_cosmology,
                                   chemistry_properties);
-            runner_iact_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H,
-                                        packet_constants, local_i && local_j,
-                                        local_i && local_j);
+            if (local_i) {
+              runner_iact_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H,
+                                          packet_constants, local_i && local_j,
+                                          local_i && local_j);
+            } else {
+              /* Foreign pi: the inner part came from the booking block */
+              const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
+              runner_iact_nonsym_isrf_packet_hop(r2, dx_ji, hj, hi, pj, pi, a,
+                                                 H, packet_constants,
+                                                 /*book=*/0,
+                                                 /*reverse=*/1);
+            }
 #endif
           } else {
 
@@ -2124,34 +2138,36 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float pjy = pj->x[1] - shift_j[1];
     const float pjz = pj->x[2] - shift_j[2];
 
-    const int update_j = PART_IS_ACTIVE(pj, e) && local_j;
+    /* Same for a foreign active pj and an inactive local pi */
+    const int update_j =
+        PART_IS_ACTIVE(pj, e) && (local_j || LOOP_UPDATES_INACTIVE_NEIGHBOURS);
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
+    defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+    /* ISRF: same for a foreign active pj and every local pi with
+     * r < h_j. */
+    if (!local_j && local_i && PART_IS_ACTIVE(pj, e)) {
+      for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
+           pid--) {
+        struct part *pi = &parts_i[sort_i[pid].i];
+        if (part_is_inhibited(pi, e)) continue;
+        const float pix = pi->x[0] - shift_i[0];
+        const float piy = pi->x[1] - shift_i[1];
+        const float piz = pi->x[2] - shift_i[2];
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        if (r2 >= hjg2) continue;
+        runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, pi->h, pj, pi, a, H,
+                                           packet_constants,
+                                           /*book=*/1,
+                                           /*reverse=*/0);
+      }
+    }
+#endif
 
     /* Do we need to only check active parts in ci
        (i.e. pj does not need updating) ? */
     if (!update_j) {
-
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
-    defined(MPI_SYMMETRIC_FORCE_INTERACTION)
-      /* ISRF: same for a foreign active pj and every local pi with
-       * r < h_j. */
-      if (!local_j && local_i && PART_IS_ACTIVE(pj, e)) {
-        for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
-             pid--) {
-          struct part *pi = &parts_i[sort_i[pid].i];
-          if (part_is_inhibited(pi, e)) continue;
-          const float pix = pi->x[0] - shift_i[0];
-          const float piy = pi->x[1] - shift_i[1];
-          const float piz = pi->x[2] - shift_i[2];
-          const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
-          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-          if (r2 >= hjg2) continue;
-          runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, pi->h, pj, pi, a, H,
-                                             packet_constants,
-                                             /*book=*/1,
-                                             /*reverse=*/0);
-        }
-      }
-#endif
 
       /* Loop over the *active* parts in ci. */
       for (int pid = count_active_i - 1;
@@ -2346,9 +2362,18 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                   t_current, cosmo, with_cosmology,
                                   chemistry_properties);
-            runner_iact_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H,
-                                        packet_constants, local_i && local_j,
-                                        local_i && local_j);
+            if (local_j) {
+              runner_iact_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H,
+                                          packet_constants, local_i && local_j,
+                                          local_i && local_j);
+            } else {
+              /* Foreign pj: the inner part came from the booking block */
+              const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
+              runner_iact_nonsym_isrf_packet_hop(r2, dx_ij, hi, hj, pi, pj, a,
+                                                 H, packet_constants,
+                                                 /*book=*/0,
+                                                 /*reverse=*/1);
+            }
 #endif
           } else {
 
@@ -3170,6 +3195,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
 
+    runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+    runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
+
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -3195,8 +3223,11 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
     const float h_lo = cell_pair_hydro_h_split(ci, cj);
 
     if (h_lo < h_hi &&
-        ((CELL_IS_ACTIVE(ci, e) && ci->hydro.h_max_active >= h_lo) ||
-         (CELL_IS_ACTIVE(cj, e) && cj->hydro.h_max_active >= h_lo))) {
+        ((CELL_IS_ACTIVE(ci, e) && CELL_H_MAX_SEARCH(ci) >= h_lo) ||
+         (CELL_IS_ACTIVE(cj, e) && CELL_H_MAX_SEARCH(cj) >= h_lo))) {
+
+      runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
 
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */
@@ -3261,7 +3292,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, const float h_hi,
     /* The particles with h >= h_lo are handled at this level. */
     const float h_lo = min(h_hi, cell_self_h_split(c));
 
-    if (h_lo < h_hi && c->hydro.h_max_active >= h_lo)
+    if (h_lo < h_hi && CELL_H_MAX_SEARCH(c) >= h_lo)
       DOSELF1_BRANCH(r, c, h_lo, h_hi);
 
     /* Recurse to the lower levels. */
@@ -3330,6 +3361,9 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
 
+    runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+    runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
+
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -3356,6 +3390,9 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
     const float h_lo = cell_pair_hydro_h_split(ci, cj);
 
     if (h_lo < h_hi && max(ci->hydro.h_max, cj->hydro.h_max) >= h_lo) {
+
+      runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
 
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */
