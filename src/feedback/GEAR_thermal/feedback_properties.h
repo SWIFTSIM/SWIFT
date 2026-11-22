@@ -279,6 +279,18 @@ feedback_props_needs_cooling_initialized(
 }
 
 /**
+ * @brief Do the stars build HII regions (GEARFeedback:with_photoionization)?
+ *
+ * @param feedback_props The #feedback_props.
+ * @return True if the HII photoionization is on.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_do_photoionization(const struct feedback_props *feedback_props) {
+  return (feedback_props->radiation_policy &
+          radiation_policy_photoionization) != 0;
+}
+
+/**
  * @brief Print the feedback model.
  *
  * @param feedback_props The #feedback_props

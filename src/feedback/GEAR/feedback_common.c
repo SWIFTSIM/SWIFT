@@ -348,7 +348,8 @@ void feedback_will_do_feedback(
        need to go through the feedback loops in the next timestep to compute
        all required quantities for the stellar evolution. */
     sp->feedback_data.will_do_feedback = 1;
-    radiation_set_star_will_do_HII_ionization(sp, 1);
+    radiation_set_star_will_do_HII_ionization(
+        sp, feedback_props_do_photoionization(feedback_props));
     return;
   }
 
@@ -440,7 +441,7 @@ void feedback_will_do_HII_ionization(
 
   /* Do we need to do HII ionization feedback? */
   const char do_photoionization =
-      feedback_props->radiation_policy & radiation_policy_photoionization;
+      feedback_props_do_photoionization(feedback_props);
   /* A rate question, asked before the pass opens its photon budget: is this
      star emitting at all? */
   const char has_enough_photons =
@@ -1596,7 +1597,8 @@ void feedback_first_init_spart(struct spart *sp,
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
-  radiation_set_star_will_do_HII_ionization(sp, 1);
+  radiation_set_star_will_do_HII_ionization(
+      sp, feedback_props_do_photoionization(feedback_props));
 }
 
 /**
