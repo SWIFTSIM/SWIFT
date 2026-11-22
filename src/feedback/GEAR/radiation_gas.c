@@ -316,7 +316,7 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
  * makes the rectangle rule under-issue photons.
  *
  * @param sp The star.
- * @param dt_back Time elapsed since this star's last HII rebuild pass.
+ * @param dt_back Interval whose photons this pass issues.
  */
 __attribute__((always_inline)) INLINE void
 radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
@@ -366,8 +366,8 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
  * @brief Resync the cached previous rate to the rate now, without opening a
  * budget.
  *
- * Call it when a gas-free cell skips the budget but advances
- * HII_region_last_attempt. Otherwise the next trapezoid averages against a
+ * Call it when a gas-free cell skips the budget but its interval counts as
+ * issued. Otherwise the next trapezoid averages against a
  * stale, too-high rate and over-issues photons.
  *
  * @param sp The star.

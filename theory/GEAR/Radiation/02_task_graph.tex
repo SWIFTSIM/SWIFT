@@ -224,7 +224,7 @@ would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:1257}).
+(\code{runner\_radiation\_feedback.c:1265}).
 
 \begin{figure}[h]
   \centering
@@ -274,7 +274,7 @@ For each active star at that level:
     \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
     \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:1006-1029}); the
+    the comment at \code{runner\_radiation\_feedback.c:1014-1037}); the
     loop breaks once the budget is exhausted or both retry budgets run
     out.
 \end{enumerate}
@@ -583,7 +583,7 @@ model must set explicitly.
   \code{GEARFeedback:HII\_min\_density\_Hpcm3} & 1.0 & candidate density gate (algorithm doc, \S\ref{sec:photon-budget}) \\
   \code{GEARFeedback:HII\_max\_age\_Myr} & 50.0 & star age past which it stops competing for budget \\
   \code{GEARFeedback:HII\_rebuild\_time\_Myr} & 0.1 & per-star rebuild cadence (algorithm doc, \S\ref{sec:persistence}) \\
-  \code{GEARFeedback:HII\_rebuild\_floor\_Myr} & $10^{-4}$ & floor on $\Delta t_{\rm back}$ (algorithm doc, \S\ref{sec:angular-splitting}) \\
+  \code{GEARFeedback:HII\_rebuild\_floor\_Myr} & $10^{-4}$ & interval the first HII pass issues ahead (algorithm doc, \S\ref{sec:angular-splitting}) \\
   \code{GEARFeedback:HII\_deterministic\_boundary\_ionization} & 0 & boundary-particle rule (algorithm doc, \S\ref{sec:angular-splitting}) \\
   \code{GEARFeedback:HII\_angular\_nside} & 0 & angular pixel count (algorithm doc, \S\ref{sec:angular-splitting}) \\
   \code{GEARFeedback:HII\_couple\_ionization\_rate} & 0 & flag-and-floor vs.\ rate-coupled (algorithm doc, \S\ref{sec:rate-coupled}) \\

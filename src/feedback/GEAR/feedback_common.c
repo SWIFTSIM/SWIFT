@@ -480,10 +480,11 @@ void feedback_will_do_HII_ionization(
   message(
       "HII_region_last_rebuild = %e, HII_region_last_attempt = %e, "
       "age_beg_step = %e, age_end_step = %e, next_rebuild_time = %e, "
-      "need_HII_region_rebuild = %i",
+      "need_HII_region_rebuild = %i, HII_photons_issued_age = %.17g",
       sp->feedback_data.radiation.HII_region_last_rebuild,
       HII_region_last_attempt, star_age_beg_step, star_age_end_step,
-      HII_region_last_attempt + HII_rebuild_time, need_HII_region_rebuild);
+      HII_region_last_attempt + HII_rebuild_time, need_HII_region_rebuild,
+      feedback_get_star_HII_photons_issued_age(sp));
 #endif
 
   sp->feedback_data.will_do_HII_ionization =
@@ -817,16 +818,16 @@ feedback_hii_photoionization_rate_HI(
 /**
  * @brief Absolute time until which an ionization tag stamped now stays valid.
  *
- * Sized on the interval the pass just covered, so a tag outlives the gap to
- * its star's next rebuild and cooling cannot expire it first.
+ * Sized on the gap since the star's previous pass, so a tag outlives the gap
+ * to its next rebuild and cooling cannot expire it first.
  *
  * @param time The current simulation time.
- * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_tag Gap since the star's previous HII pass.
  * @return Absolute simulation time until which the tag stays valid.
  */
 __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
-    const double time, const double dt_back) {
-  return time + RADIATION_TAG_LIFETIME_INTERVALS * dt_back;
+    const double time, const double dt_tag) {
+  return time + RADIATION_TAG_LIFETIME_INTERVALS * dt_tag;
 }
 
 /**
@@ -846,7 +847,7 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
  * @param cosmo The current cosmological model.
  * @param cooling Cooling function data.
  * @param time The current simulation time.
- * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_tag Gap since the star's previous HII pass, which the tag outlives.
  * @param cost Ionizing photon count the particle costs; at most the budget
  * left is charged.
  */
@@ -855,12 +856,12 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const double time,
-    const double dt_back, const double cost) {
+    const double dt_tag, const double cost) {
 
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
 
   radiation_tag_part_as_ionized(
-      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
+      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_tag),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
 #ifdef SWIFT_DEBUG_CHECKS
@@ -935,7 +936,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * @param cooling Cooling function data.
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
- * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_back Interval whose photons this pass issues.
+ * @param dt_tag Gap since the star's previous HII pass, which the tag outlives.
  * @return Photons charged for this particle, 0 if the budget was exhausted.
  */
 __attribute__((always_inline)) INLINE double
@@ -945,7 +947,7 @@ feedback_iact_HII_maintain_ionized_part(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const integertime_t ti_begin,
-    const double time, const double dt_back) {
+    const double time, const double dt_back, const double dt_tag) {
 
   /* Counted whether or not its photons can be afforded: this field is the
      mass the star HOLDS ionized, matching h_hii's extent (see stars_io.h). */
@@ -980,7 +982,7 @@ feedback_iact_HII_maintain_ionized_part(
        shortest time bin. Expiry is therefore checked on the gas particle's own
        next cooling task, so recession can lag by up to one of its timesteps. */
     radiation_tag_part_as_ionized(
-        pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
+        pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_tag),
         si->feedback_data.radiation.mean_excess_photon_energy_HI,
         feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo,
                                              cooling));
@@ -1026,7 +1028,8 @@ feedback_iact_HII_maintain_ionized_part(
  * @param feedback_props The #feedback_props.
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
- * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_back Interval whose photons this pass issues.
+ * @param dt_tag Gap since the star's previous HII pass, which the tag outlives.
  * @return The #hii_candidate_outcome.
  */
 __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
@@ -1036,7 +1039,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back) {
+    const double time, const double dt_back, const double dt_tag) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
@@ -1085,7 +1088,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
        and p = budget / cost keeps the claimed cost equal to the budget on
        average. */
     feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                            dt_back, cost);
+                            dt_tag, cost);
   } else if (outcome == hii_candidate_front) {
     /* The front absorbs what is left, which ends the cone. */
     radiation_consume_ionizing_photons(si, pixel, budget);
@@ -1188,6 +1191,27 @@ double feedback_get_star_HII_last_attempt(const struct spart *sp) {
 }
 
 /**
+ * @brief Record the star age up to which the ionizing photons were issued.
+ *
+ * @param sp The #spart to update.
+ * @param star_age The star age.
+ */
+void feedback_set_star_HII_photons_issued_age(struct spart *sp,
+                                              double star_age) {
+  sp->feedback_data.radiation.HII_photons_issued_age = star_age;
+}
+
+/**
+ * @brief The star age up to which the ionizing photons were issued.
+ *
+ * @param sp The #spart to query.
+ * @return The star age up to which the photons have been issued.
+ */
+double feedback_get_star_HII_photons_issued_age(const struct spart *sp) {
+  return sp->feedback_data.radiation.HII_photons_issued_age;
+}
+
+/**
  * @brief The HII rebuild cadence currently in force for this star, i.e. the
  * interval one scheduled pass is expected to cover.
  *
@@ -1219,7 +1243,7 @@ double feedback_get_star_HII_nominal_interval(
  * #feedback_get_star_HII_pixel_count.
  *
  * @param sp The star.
- * @param dt_back Time elapsed since this star's last HII rebuild pass.
+ * @param dt_back Interval whose photons this pass issues.
  */
 void feedback_open_star_ionizing_photon_budget(struct spart *sp,
                                                double dt_back) {
@@ -1429,9 +1453,10 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
      it uninitialized. */
   if (first_init) sp->feedback_data.radiation.n_HII_pixels = 1;
 
-  /* 0.0 reads as "never attempted", so the first attempt's dt_elapsed
-     measures from the star's actual birth age. */
+  /* 0.0 reads as "never attempted" and "nothing issued yet": the first
+     pass measures from the star's birth. */
   sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
+  sp->feedback_data.radiation.HII_photons_issued_age = 0.0;
   sp->feedback_data.radiation.HII_pass_count = 0;
 
   /* Over the whole array, not n_HII_pixels, which can still grow. */

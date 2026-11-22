@@ -368,7 +368,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
      a gas-free working-level cell must still reach
      runner_dosub_stars_hii_ionization_feedback() to have its
-     HII_region_last_attempt stamped (see there); only the recursion
+     attempt and its issued photons stamped (see there); only the recursion
      into progeny and the search itself may be skipped for lack of gas. */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
@@ -692,8 +692,13 @@ static void hii_pass_diagnostics_print(const struct hii_pass_diagnostics *diag,
  */
 struct hii_star_pass {
 
-  /*! Time over which this pass spends photons. */
+  /*! Interval whose photons this pass issues, and whose recombinations they
+      pay. */
   double dt_back;
+
+  /*! Gap since the star's previous pass, which the tags of this pass
+      outlive. */
+  double dt_tag;
 
   /*! Age of the star at the start of its step, floored at 0. */
   double star_age_safe;
@@ -710,8 +715,8 @@ struct hii_star_pass {
  * @param c The working-level #cell holding the star.
  * @param si The #spart.
  * @param pass (return) The budget interval and stamps, set if this returns 1.
- * @return 0 if the cell holds no gas and the star has nothing to search for,
- * 1 otherwise.
+ * @return 0 if the pass has no photons to issue or the cell holds no gas, 1
+ * otherwise.
  */
 static int runner_hii_open_star_pass(const struct engine *e,
                                      const struct cell *c, struct spart *si,
@@ -738,28 +743,41 @@ static int runner_hii_open_star_pass(const struct engine *e,
                &ti_begin_star, ti_current, time_base, time, si->time_bin);
   const double star_age_safe = max(star_age_beg_step, 0.0);
 
-  /* Photon-budget interval anchor is HII_region_last_attempt, not
-     HII_region_last_rebuild: read before stamping this pass, so
-     dt_elapsed measures the time since this star was last given a
-     chance to rebuild, whether or not that chance found gas. This is
-     what lets the gas-free skip below stay cheap without inflating the
-     next REAL pass's budget by the skipped gap; that gap now reads as
-     "photons escaped an empty cell" (correctly excluded), since
-     last_attempt already advanced across it. */
-  const double dt_elapsed =
+  const double dt_since_attempt =
       star_age_safe - feedback_get_star_HII_last_attempt(si);
   feedback_set_star_HII_last_attempt(si, star_age_safe);
   const int64_t pass_index = feedback_count_star_HII_pass(si);
 
-  /* Nothing to search for in a gas-free working-level cell. The star was
-     still "attempted" just above, which is what keeps dt_elapsed correct
-     for whenever a real pass next lands; see runner_do_stars_hii_
-     ionization_feedback's early-return comment for why this cell was
-     reached at all despite holding no gas. Resync the trapezoid
-     quadrature's cached rate here too, since this skip advances
-     last_attempt without calling feedback_open_star_ionizing_photon_budget;
-     otherwise the next real pass would average against a stale rate
-     from before this skip. */
+  /* Each pass issues the photons of [issued age, star age], so every instant
+     of the star's life is issued once. At age 0 nothing has been emitted yet:
+     the first pass issues the floor interval ahead, so that a newborn star
+     ionizes its surroundings at once. */
+  const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
+  const double issued_age = feedback_get_star_HII_photons_issued_age(si);
+  const int is_emitting = feedback_get_star_ionization_rate(si, 0) > 0.0;
+  double issue_until_age = max(issued_age, star_age_safe);
+  if (is_emitting && issue_until_age == 0.0) issue_until_age = dt_floor;
+  feedback_set_star_HII_photons_issued_age(si, issue_until_age);
+  const double dt_issued = issue_until_age - issued_age;
+
+  /* No photons to issue: the star has no rate yet (the start-up pass of a
+     star in the ICs), or the pass lands inside the interval the first pass
+     issued ahead. The region of the last pass stands, and the rate sample of
+     the trapezoid stays at the start of the next interval. */
+  if (!is_emitting || dt_issued <= 0.0) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message(
+        "Star %lld: HII pass skipped, no photons to issue (age %e, "
+        "photons issued up to age %e)",
+        si->id, star_age_safe, issue_until_age);
+#endif
+    return 0;
+  }
+
+  /* Nothing to search for in a gas-free working-level cell: the photons of
+     this interval escaped. See runner_do_stars_hii_ionization_feedback()
+     for why this cell is reached at all. The rate sample moves to the end of
+     the escaped interval. */
   if (c->hydro.count == 0) {
     feedback_resync_star_ionizing_photon_rate_cache(si);
     return 0;
@@ -770,41 +788,31 @@ static int runner_hii_open_star_pass(const struct engine *e,
   feedback_reset_star_HII_mass(si);
   si->h_hii_request = 0.f;
 
-  /* Photons are budgeted as a count over the interval this pass actually
-     covers, so that slicing a run into more (or fewer) rebuild passes
-     hands out the same total. The lower clamp guards a star's first pass
-     (both terms ~0) and the negative age compute_time() can return for a
-     newborn (cf. feedback_will_do_feedback).
-
-     The upper clamp is now a pure backstop: the gas-free-skip case that
-     originally motivated it is instead handled by anchoring dt_elapsed on
-     HII_region_last_attempt above, so this should essentially never bind
-     while gas is present. If the VERBOSE message below still fires
-     repeatedly on such a run, that is a real red flag; e.g. a star
-     pinned below its own desired cadence by min_star_timestep in very
-     dense gas; a distinct failure mode from the benign gas-free skip. */
+  /* The ceiling is a backstop: a star pinned below its own cadence (e.g. by
+     min_star_timestep in very dense gas) would otherwise get the photons of
+     a long interval in one pass. */
   const double dt_nominal =
       feedback_get_star_HII_nominal_interval(feedback_props, dt_enrichment);
-  const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
   const double dt_ceiling = HII_DT_BACK_MAX_INTERVALS * dt_nominal;
-  /* The floor stands in for an unmeasurable interval (a star's first pass),
-     it is NOT a lower bound on a real one: applying it to a genuine
-     dt_elapsed < floor would issue more photons than the star emitted, every
-     pass, in "rebuild every step" mode. */
-  const double dt_floored = dt_elapsed > 0.0 ? dt_elapsed : dt_floor;
-  const double dt_back = min(dt_floored, dt_ceiling);
+  const double dt_back = min(dt_issued, dt_ceiling);
   feedback_open_star_ionizing_photon_budget(si, dt_back);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  if (dt_floored > dt_ceiling)
+  if (dt_issued > dt_ceiling)
     message(
-        "Star %lld: HII budget interval clamped, %e -> %e (dt_elapsed "
+        "Star %lld: HII budget interval clamped, %e -> %e (the interval "
         "exceeds twice the nominal cadence despite gas being present; "
         "this star may be pinned below its own desired cadence)",
-        si->id, dt_floored, dt_back);
+        si->id, dt_issued, dt_back);
 #endif
 
+  /* A tag must outlive the gap to the star's next pass, which the gap since
+     its last attempt measures. The issued interval can be much shorter: the
+     first pass past the floor interval in "rebuild every step" mode. */
+  const double dt_gap = dt_since_attempt > 0.0 ? dt_since_attempt : dt_floor;
+
   pass->dt_back = dt_back;
+  pass->dt_tag = min(dt_gap, dt_ceiling);
   pass->star_age_safe = star_age_safe;
   pass->pass_index = pass_index;
   return 1;
@@ -822,15 +830,14 @@ static int runner_hii_open_star_pass(const struct engine *e,
  * @param si The #spart.
  * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
  * box axes.
- * @param dt_back Time over which the pass spends photons.
+ * @param dt_back Interval whose photons this pass issues.
+ * @param dt_tag Gap since the star's previous pass, which tags outlive.
  * @param interaction_limit The initial search range boundary.
  * @return Number of gas particles the star holds ionized.
  */
-static int runner_hii_maintain_held_region(struct runner *r, struct cell *c,
-                                           struct spart *si,
-                                           const double *frame,
-                                           const double dt_back,
-                                           const float interaction_limit) {
+static int runner_hii_maintain_held_region(
+    struct runner *r, struct cell *c, struct spart *si, const double *frame,
+    const double dt_back, const double dt_tag, const float interaction_limit) {
 
   /* Held outside the #ifndef so it is in scope for the retry loop's
      expansion cap either way. Stays 0 when Phase 1 is compiled out, which
@@ -907,7 +914,7 @@ static int runner_hii_maintain_held_region(struct runner *r, struct cell *c,
     const struct hii_neighbor *nb = &r->hii_maintenance_buffer[k];
     const double charged = feedback_iact_HII_maintain_ionized_part(
         si, nb->p, nb->xp, nb->r2, nb->pixel, phys_const, hydro_props, us,
-        cosmo, cooling, ti_begin_maintenance, time, dt_back);
+        cosmo, cooling, ti_begin_maintenance, time, dt_back, dt_tag);
     if (charged > 0.0) maintenance_ctx.photons_charged += charged;
   }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
@@ -972,7 +979,8 @@ struct hii_claim_summary {
  * @param si The #spart.
  * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
  * box axes.
- * @param dt_back Time over which the pass spends photons.
+ * @param dt_back Interval whose photons this pass issues.
+ * @param dt_tag Gap since the star's previous pass, which tags outlive.
  * @param interaction_limit The initial search range boundary.
  * @param max_reachable_search_radius The neighbour cell margin of this pass.
  * @param count_held Gas the star already held at the start of the pass.
@@ -981,7 +989,7 @@ struct hii_claim_summary {
  */
 static void runner_hii_claim_and_retry(
     struct runner *r, struct cell *c, struct spart *si, const double *frame,
-    const double dt_back, const float interaction_limit,
+    const double dt_back, const double dt_tag, const float interaction_limit,
     const float max_reachable_search_radius, const int count_held,
     struct hii_pass_diagnostics *diag, struct hii_claim_summary *summary) {
 
@@ -1090,7 +1098,7 @@ static void runner_hii_claim_and_retry(
         /* Do the ionization */
         const int outcome = feedback_iact_HII_ionization(
             si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo, cooling,
-            feedback_props, ti_begin, time, dt_back);
+            feedback_props, ti_begin, time, dt_back, dt_tag);
 
         if (outcome == hii_candidate_front) ++attempt_front_count;
 
@@ -1306,13 +1314,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         si, feedback_props, pass.pass_index, cone_frame_storage);
 
     const int count_held = runner_hii_maintain_held_region(
-        r, c, si, frame, pass.dt_back, interaction_limit);
+        r, c, si, frame, pass.dt_back, pass.dt_tag, interaction_limit);
 
     struct hii_pass_diagnostics diag;
     struct hii_claim_summary summary;
-    runner_hii_claim_and_retry(r, c, si, frame, pass.dt_back, interaction_limit,
-                               max_reachable_search_radius, count_held, &diag,
-                               &summary);
+    runner_hii_claim_and_retry(r, c, si, frame, pass.dt_back, pass.dt_tag,
+                               interaction_limit, max_reachable_search_radius,
+                               count_held, &diag, &summary);
 
     hii_pass_diagnostics_print(&diag, e, si, count_held);
     runner_hii_close_star_pass(c, si, pass.star_age_safe, &summary, &diag,

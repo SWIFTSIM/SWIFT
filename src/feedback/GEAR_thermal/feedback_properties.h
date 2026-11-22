@@ -1052,9 +1052,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     if (fp->HII_rebuild_floor_Myr <= 0.f)
       error(
           "GEARFeedback:HII_rebuild_floor_Myr must be > 0 (got %g): it "
-          "floors the interval every per-pass ionizing photon budget is "
-          "integrated over, in every cadence mode: <= 0 silently zeroes "
-          "every star's first-pass budget.",
+          "sets the interval a star's first HII pass issues ahead: <= 0 "
+          "silently zeroes every star's first-pass budget.",
           fp->HII_rebuild_floor_Myr);
 
     /* Convert to internal units */
