@@ -139,14 +139,14 @@
 #define PART_IS_ACTIVE part_is_rt_active
 #define CELL_IS_ACTIVE cell_is_rt_active
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt_sub_cycle
-/* h_max_active omits the RT-active gas that is not hydro-active */
-#define CELL_H_MAX_ACTIVE(c) ((c)->hydro.h_max)
+/* h_max of all gas: h_max_active misses RT-active gas that is hydro-inactive */
+#define CELL_H_MAX_SEARCH(c) ((c)->hydro.h_max)
 #else
 /* default hydro behaviour. */
 #define PART_IS_ACTIVE part_is_active
 #define CELL_IS_ACTIVE cell_is_active_hydro
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted
-#define CELL_H_MAX_ACTIVE(c) ((c)->hydro.h_max_active)
+#define CELL_H_MAX_SEARCH(c) ((c)->hydro.h_max_active)
 /* when running with RT subcycling, we can have RT active
  * particles in a normal swift step that aren't drifted to
  * the current time, so we don't do those checks there. */
