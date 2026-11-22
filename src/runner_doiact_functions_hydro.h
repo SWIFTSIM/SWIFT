@@ -356,11 +356,12 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
 #if CHEMISTRY_FLUX_LOOP
       /* Exclusive dispatch: a pair with doi && doj gets one symmetric flux
          exchange, not two. The one-sided updates above fire from both
-         blocks. */
-      if (doi && doj) {
+         blocks. A pair with a foreign active particle starts from the local
+         one. */
+      if (doi && doj && local_i && local_j) {
         IACT_CHEMISTRY_FLUX(dx0, hi, hj, pi, pj, /*both_updatable_here=*/1,
                             /*local_first=*/local_i, /*local_second=*/local_j);
-      } else if (doi) {
+      } else if (doi && (local_i || !doj)) {
         IACT_CHEMISTRY_FLUX(dx0, hi, hj, pi, pj, /*both_updatable_here=*/0,
                             /*local_first=*/local_i, /*local_second=*/local_j);
       } else if (doj) {
@@ -1932,9 +1933,19 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-            IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
-                                /*local_first=*/local_i,
-                                /*local_second=*/local_j);
+            if (local_i) {
+              IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj,
+                                  /*both_updatable_here=*/1,
+                                  /*local_first=*/local_i,
+                                  /*local_second=*/local_j);
+            } else {
+              /* A foreign pi: the exchange starts from the local pj */
+              const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
+              IACT_CHEMISTRY_FLUX(mdx, hj, hi, pj, pi,
+                                  /*both_updatable_here=*/0,
+                                  /*local_first=*/local_j,
+                                  /*local_second=*/local_i);
+            }
 #endif
           } else {
 
@@ -2197,9 +2208,19 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-            IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/1,
-                                /*local_first=*/local_j,
-                                /*local_second=*/local_i);
+            if (local_j) {
+              IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi,
+                                  /*both_updatable_here=*/1,
+                                  /*local_first=*/local_j,
+                                  /*local_second=*/local_i);
+            } else {
+              /* A foreign pj: the exchange starts from the local pi */
+              const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
+              IACT_CHEMISTRY_FLUX(mdx, hi, hj, pi, pj,
+                                  /*both_updatable_here=*/0,
+                                  /*local_first=*/local_i,
+                                  /*local_second=*/local_j);
+            }
 #endif
           } else {
 

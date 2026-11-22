@@ -630,6 +630,14 @@ runner_iact_chemistry_flux_exchange(
     const struct chemistry_global_data *chem_data,
     const enum chemistry_flux_pass pass, const timebin_t max_active_bin) {
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (both_updatable_here && !(local_first && local_second))
+    error(
+        "runner_iact_chemistry_flux_exchange called with both_updatable_here "
+        "on a pair with a foreign particle (ids %lld/%lld).",
+        pi->id, pj->id);
+#endif
+
   if (both_updatable_here) {
     chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,
                                  cosmo, with_cosmology, chem_data,
