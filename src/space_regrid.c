@@ -157,7 +157,16 @@ void space_regrid(struct space *s, int verbose) {
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+
+  /* On restart no cells exist yet: the saved owners stand in for them, so a
+   * coarser grid is partitioned as it would be without the restart. */
+  const int restart_coarser =
+      s->cells_top == NULL && s->e != NULL && s->e->reparttype != NULL &&
+      s->e->reparttype->ncelllist == s->nr_cells && cdim[0] <= s->cdim[0] &&
+      cdim[1] <= s->cdim[1] && cdim[2] <= s->cdim[2];
+
+  if ((s->cells_top != NULL || restart_coarser) &&
+      (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2])) {
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -176,7 +185,9 @@ void space_regrid(struct space *s, int verbose) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
           cid = cell_getid(oldcdim, i, j, k);
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+          oldnodeIDs[cid] = (s->cells_top != NULL)
+                                ? s->cells_top[cid].nodeID
+                                : s->e->reparttype->celllist[cid];
         }
       }
     }
@@ -359,14 +370,7 @@ void space_regrid(struct space *s, int verbose) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
-        struct partition initial_partition;
-#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
-        initial_partition.type = INITPART_METIS_NOWEIGHT;
-#else
-        initial_partition.type = INITPART_VECTORIZE;
-#endif
-        partition_initial_partition(&initial_partition, s->e->nodeID,
-                                    s->e->nr_nodes, s);
+        partition_unweighted_partition(s->e->nodeID, s->e->nr_nodes, s);
       }
 
       /* Re-distribute the particles to their new nodes. */
