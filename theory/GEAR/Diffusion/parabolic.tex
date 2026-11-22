@@ -767,8 +767,8 @@ Even a Riemann-consistent flux can, once multiplied by a finite timestep
 and summed over all of a particle's neighbours, remove more metal mass
 than the particle possesses. \code{chemistry\_limit\_metal\_mass\_flux}
 (\code{chemistry\_flux.h}) rescales the raw \emph{pairwise} flux
-$\Delta m \equiv F_{\rm HLL}\Aij\, \dt_{\min}$ ($\dt_{\min}$ the smaller
-of the two particles' active chemistry timesteps) through a sequence of
+$\Delta m \equiv F_{\rm HLL}\Aij\, \dt_{ij}$ ($\dt_{ij}$ the pair
+interval of Section~\ref{sec:time-integration}) through a sequence of
 symmetric (particle order-independent) guards:
 
 \begin{enumerate}
@@ -959,24 +959,52 @@ and added to the right state $j$
 (\code{chemistry\_part\_update\_fluxes\_left/right},
 \code{parabolic/chemistry\_flux.h}):
 \begin{equation}
-  \Delta m_{Z,i} \mathrel{-}= F_{\rm HLL}\,\Aij\, \dt_{\min} , \qquad
-  \Delta m_{Z,j} \mathrel{+}= F_{\rm HLL}\,\Aij\, \dt_{\min} .
+  \Delta m_{Z,i} \mathrel{-}= F_{\rm HLL}\,\Aij\, \dt_{ij} , \qquad
+  \Delta m_{Z,j} \mathrel{+}= F_{\rm HLL}\,\Aij\, \dt_{ij} .
 \end{equation}
 Because SWIFT is an individual-timestep code, inactive neighbours of an
 active particle must still receive their share of the exchanged flux to
 preserve exact pairwise mass conservation; this is guaranteed structurally
-by \code{runner\_iact\_chemistry\_fluxes\_common}
-(\code{chemistry\_iact.h}), which always updates both sides of a
-symmetric interaction. At the end of the force loop, each particle
-applies its accumulated buffer to the conserved variable
+by \code{runner\_iact\_chemistry\_flux\_exchange}
+(\code{chemistry\_iact.h}), which updates both sides of a pair with an
+inactive neighbour. A particle is active when its time-bin is at most the
+highest active time-bin of the step, the same test the interaction loops
+use to choose the branch. At the end of the force loop, each active
+particle applies its accumulated buffer to the conserved variable
 (\code{chemistry\_end\_force}, \code{chemistry.h}):
 \begin{equation}
   m_{Z,i}^{n+1} = m_{Z,i}^{n} + \sum_{j\in\mathcal N(i)} \Delta m_{Z,i}^{(j)} ,
 \end{equation}
 i.e.\ a first-order (forward Euler) update of the conserved metal mass
-using the already-limited, already-integrated-over-$\dt_{\min}$ flux sum:
+using the already-limited, already-integrated-over-$\dt_{ij}$ flux sum:
 no further sub-cycling or higher-order time integrator is applied to the
 diffusion term itself.
+
+\paragraph{The pair interval.}
+\code{chemistry\_end\_force} also stores the integer time $t_i^{\rm last}$
+of this application (\code{ti\_flux\_last}); nothing else moves it. A
+pair exchanges its flux at time $t$ over the time since the later of the
+two last applications (\code{chemistry\_get\_pair\_flux\_dt},
+\code{chemistry.c}):
+\begin{equation}
+  \dt_{ij} = a^2(t) \int_{\max(t_i^{\rm last},\, t_j^{\rm last})}^{t}
+             \frac{{\rm d}t'}{a^2(t')} ,
+\end{equation}
+the convention of the thermal kick factor of the hydrodynamics. Without
+cosmology, $\dt_{ij}$ is the difference of the integer times times the
+time base. If no time-step is limited or synchronised, $\dt_{ij}$ is the
+shorter current step of the active particles of the pair. The time-step
+limiter and the synchronisation shorten the step of an inactive particle
+but do not move its $t^{\rm last}$. The next exchange of each of its pairs
+then covers all the time since that pair last exchanged. Each pair
+therefore integrates its flux over the whole time line, without gap or
+overlap, while its two particles stay neighbours.
+
+\paragraph{Pairs that just entered the kernel.} A pair that has just
+come within range integrates from the later of its two $t^{\rm last}$,
+which can be earlier than the time it came within range. Its flux is then
+applied over a longer time than the pair existed. This is a first-order
+error in the time-step, of the same order as the forward Euler update.
 
 \section{Robustness: Unphysical-State Detection and Correction}
 \label{sec:unphysical}
