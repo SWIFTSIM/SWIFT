@@ -69,6 +69,12 @@ void runner_dosub_pair2_chemistry_flux_prep(struct runner *r, struct cell *ci,
 
 /**
  * @brief Set the hydro and chemistry state of a particle for a force loop.
+ *
+ * @param p The #part.
+ * @param xp Its #xpart.
+ * @param m The mass of the particle.
+ * @param active Is the particle active in this step?
+ * @param e The #engine.
  */
 static void init_particle(struct part *p, struct xpart *xp, const double m,
                           const int active, const struct engine *e) {
@@ -151,6 +157,15 @@ static void set_cell_properties(struct cell *c, const struct engine *e) {
  * With split, h is drawn from the band of the top cell or from the band of
  * its progeny, so the particles sit at two depths. Without split, h is in
  * the band of the top cell.
+ *
+ * @param loc The lower corner of the cell.
+ * @param split Is the cell split once?
+ * @param node_id The rank that owns the cell.
+ * @param frac_active The probability that a particle is active.
+ * @param top_band_active Are all particles in the band of the top cell
+ * active?
+ * @param e The #engine.
+ * @return The cell; its progeny follow it in the same allocation.
  */
 static struct cell *make_cell(const double loc[3], const int split,
                               const int node_id, const double frac_active,
@@ -488,6 +503,8 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
   const int ambiguous_before = n_ambiguous_pairs;
   int *ref_i = calloc(ci->hydro.count, sizeof(int));
   int *ref_j = cj ? calloc(cj->hydro.count, sizeof(int)) : NULL;
+  if (ref_i == NULL || (cj && ref_j == NULL))
+    error("Could not allocate the reference counts.");
   const int mixed = cj ? brute_force_count(ci, cj, ref_i, ref_j, e)
                        : brute_force_count(ci, ci, ref_i, ref_i, e);
 
@@ -501,6 +518,8 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
   for (int rank = 0; rank < 2; rank++) {
     miss_i[rank] = calloc(ci->hydro.count, sizeof(int));
     miss_j[rank] = cj ? calloc(cj->hydro.count, sizeof(int)) : NULL;
+    if (miss_i[rank] == NULL || (cj && miss_j[rank] == NULL))
+      error("Could not allocate the predicted misses.");
   }
   if (cj && foreign && foreign_gap_exists) {
     struct cell *first = ci, *second = cj;
@@ -544,7 +563,10 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
   e->nodeID = 0;
 
   const int ambiguous = n_ambiguous_pairs - ambiguous_before;
-  const int reach_ok = expect_misses ? (predicted > 0) : (predicted == 0);
+  /* A split case must reach the ownership rule of mixed-band pairs. */
+  const int split = ci->split || (cj && cj->split);
+  const int reach_ok = (expect_misses ? (predicted > 0) : (predicted == 0)) &&
+                       (!split || mixed > 0);
   message(
       "%-42s reference exchanges=%6d mixed-band pairs=%5d predicted "
       "misses=%4d doubles=%d unpredicted drops=%d mismatches=%d "

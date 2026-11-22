@@ -41,6 +41,20 @@
 
 #define N_NEIGHBOURS 12
 
+/**
+ * @brief Is x finite?
+ *
+ * Reads the exponent bits, because -ffast-math lets the compiler assume
+ * that a comparison never sees a NaN.
+ *
+ * @param x The value.
+ */
+static int is_finite_double(const double x) {
+  uint64_t bits;
+  memcpy(&bits, &x, sizeof(bits));
+  return ((bits >> 52) & 0x7ff) != 0x7ff;
+}
+
 static void init_part(struct part *p, const long long id, const double x[3],
                       const double metal_mass_fraction) {
   bzero(p, sizeof(struct part));
@@ -161,7 +175,7 @@ static int run_fixture(const struct chemistry_global_data *cd,
 
     /* Each pair adds +F and -F, so only the summation rounding remains. */
     const double conservation_bar = 2. * (N_NEIGHBOURS + 1) * DBL_EPSILON;
-    const int finite = (donor_final == donor_final) && (net == net);
+    const int finite = is_finite_double(donor_final) && is_finite_double(net);
     const int positive_m = finite && donor_final >= 0.;
     const int conserved =
         finite && fabs(net) <= conservation_bar * fmax(traffic, DBL_MIN);
