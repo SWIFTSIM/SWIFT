@@ -89,7 +89,7 @@ int feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back);
+    const double time, const double dt_back, const double dt_tag);
 
 double feedback_iact_HII_maintain_ionized_part(
     struct spart *restrict si, struct part *restrict pj,
@@ -97,7 +97,7 @@ double feedback_iact_HII_maintain_ionized_part(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const integertime_t ti_begin,
-    const double time, const double dt_back);
+    const double time, const double dt_back, const double dt_tag);
 
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 int feedback_get_HII_random_cone_frame(
@@ -117,6 +117,9 @@ void feedback_set_star_HII_last_rebuild(struct spart *sp,
 double feedback_get_star_HII_last_attempt(const struct spart *sp);
 void feedback_set_star_HII_last_attempt(struct spart *sp,
                                         double star_age_beg_step);
+double feedback_get_star_HII_photons_issued_age(const struct spart *sp);
+void feedback_set_star_HII_photons_issued_age(struct spart *sp,
+                                              double star_age);
 #else
 /* Without the part: the star carries no HII state. */
 __attribute__((always_inline)) INLINE static void

@@ -1038,8 +1038,13 @@ struct feedback_spart_data {
     double HII_region_last_rebuild;
 
     /*! Star age at the last rebuild attempt, whether or not gas was found.
-        Anchors the interval dt_back. */
+        Clock of the rebuild cadence and of the tag lifetime. */
     double HII_region_last_attempt;
+
+    /*! Star age up to which the ionizing photons have been issued to HII
+        passes. Each pass issues the photons from here to its own age, so no
+        instant is counted twice. */
+    double HII_photons_issued_age;
 
     /*! Number of HII passes made by this star, the clock of the cone frame
         redraw. */
