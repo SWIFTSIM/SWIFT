@@ -34,16 +34,16 @@
  *
  * @param pi Particle i.
  * @param pj Particle j.
- * @param t_current The current integer time, an input of the interval.
  * @param time_base The time base that converts integer time to physical
  * time, an input of the interval.
+ * @param t_current The current integer time, an input of the interval.
  * @param cosmo The #cosmology, an input of the interval with cosmology.
  * @param with_cosmology Are we running with cosmology?
  * @return The interval, or 0 if neither particle is active.
  */
 __attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
-    const struct part *pi, const struct part *pj, const integertime_t t_current,
-    const float time_base, const struct cosmology *cosmo,
+    const struct part *pi, const struct part *pj, const double time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
     const int with_cosmology) {
 
   const float dt_L = pi->chemistry_data.flux.dt;
@@ -80,12 +80,12 @@ __attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i (not modified).
  * @param pj Particle j (not modified).
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The #cosmology.
- * @param t_current The current time (in integer).
  * @param time_base The time base used in order to convert integer to float
  * time.
+ * @param t_current The current time (in integer).
+ * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  * @param totflux (return) Per-element fluxes across the interface.
  * @param flux_dt_out (return) Time interval of the flux exchange.
  * @param vmax_out (return) Maximal signal velocity of the pair (hyperbolic
@@ -95,9 +95,9 @@ __attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
 __attribute__((noinline)) int chemistry_compute_pair_fluxes(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct part *restrict pi, const struct part *restrict pj,
+    const double time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, const integertime_t t_current,
-    const float time_base, const int with_cosmology,
     double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *flux_dt_out,
     float *vmax_out
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
@@ -248,7 +248,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
-  const float flux_dt = chemistry_get_pair_flux_dt(pi, pj, t_current, time_base,
+  const float flux_dt = chemistry_get_pair_flux_dt(pi, pj, time_base, t_current,
                                                    cosmo, with_cosmology);
   *flux_dt_out = flux_dt;
 

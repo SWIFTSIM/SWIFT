@@ -207,9 +207,10 @@ runner_iact_chemistry_flux_exchange(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj,
     const int both_updatable_here, const int local_first,
-    const int local_second, const float a, const float H, const float time_base,
-    const integertime_t t_current, const struct cosmology *cosmo,
-    const int with_cosmology, const struct chemistry_global_data *chem_data,
+    const int local_second, const float a, const float H,
+    const double time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data *chem_data,
     const enum chemistry_flux_pass pass, const timebin_t max_active_bin) {}
 
 #endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */

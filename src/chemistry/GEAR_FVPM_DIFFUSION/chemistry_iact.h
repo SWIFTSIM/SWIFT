@@ -39,9 +39,9 @@
 int chemistry_compute_pair_fluxes(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct part *restrict pi, const struct part *restrict pj,
+    const double time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, const integertime_t t_current,
-    const float time_base, const int with_cosmology,
     double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *flux_dt_out,
     float *vmax_out
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
@@ -392,12 +392,12 @@ __attribute__((always_inline)) INLINE static void chemistry_apply_pair_fluxes(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The #cosmology.
- * @param t_current The current time (in integer).
  * @param time_base The time base used in order to convert integer to float
  * time.
+ * @param t_current The current time (in integer).
+ * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  * @param update_left Whether pi receives the flux.
  * @param update_right Whether pj receives the flux.
  * @param accum_ts_left Whether pi gets the timestep variables.
@@ -406,12 +406,11 @@ __attribute__((always_inline)) INLINE static void chemistry_apply_pair_fluxes(
  */
 __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj,
-    const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, const integertime_t t_current,
-    const float time_base, const int with_cosmology, const int update_left,
-    const int update_right, const int accum_ts_left, const int accum_ts_right,
-    const enum chemistry_flux_pass pass) {
+    struct part *restrict pi, struct part *restrict pj, const double time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data,
+    const int update_left, const int update_right, const int accum_ts_left,
+    const int accum_ts_right, const enum chemistry_flux_pass pass) {
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   if (update_left) pi->chemistry_data.flux_exchange_count[pass]++;
@@ -426,12 +425,12 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
   float delxbar_i = 0.f, delxbar_j = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   const int status = chemistry_compute_pair_fluxes(
-      r2, dx, hi, hj, pi, pj, chem_data, cosmo, t_current, time_base,
-      with_cosmology, totflux, &flux_dt, &vmax, &delxbar_i, &delxbar_j);
+      r2, dx, hi, hj, pi, pj, time_base, t_current, cosmo, with_cosmology,
+      chem_data, totflux, &flux_dt, &vmax, &delxbar_i, &delxbar_j);
 #else
   const int status = chemistry_compute_pair_fluxes(
-      r2, dx, hi, hj, pi, pj, chem_data, cosmo, t_current, time_base,
-      with_cosmology, totflux, &flux_dt, &vmax);
+      r2, dx, hi, hj, pi, pj, time_base, t_current, cosmo, with_cosmology,
+      chem_data, totflux, &flux_dt, &vmax);
 #endif
 
   if (status == CHEMISTRY_PAIR_FLUX_NONE) return;
@@ -485,25 +484,24 @@ chemistry_part_is_flux_inactive(const struct part *p,
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The #cosmology.
- * @param t_current The current time (in integer).
  * @param time_base The time base used in order to convert integer to float
  * time.
+ * @param t_current The current time (in integer).
+ * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  * @param pass The pass of the positivity limiter.
  */
 __attribute__((always_inline)) INLINE static void chemistry_exchange_if_owner(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj,
-    const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, const integertime_t t_current,
-    const float time_base, const int with_cosmology,
+    struct part *restrict pi, struct part *restrict pj, const double time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data,
     const enum chemistry_flux_pass pass) {
 
   if (flux_exchange_is_owner(hi, hj, pi->x, pj->x)) {
-    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                 t_current, time_base, with_cosmology,
+    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,
+                                 cosmo, with_cosmology, chem_data,
                                  /*update_left=*/1, /*update_right=*/1,
                                  /*accum_ts_left=*/1, /*accum_ts_right=*/1,
                                  pass);
@@ -536,24 +534,21 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_if_owner(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi The local particle.
  * @param pj The foreign copy of its neighbour.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The #cosmology.
- * @param t_current The current time (in integer).
  * @param time_base The time base used in order to convert integer to float
  * time.
+ * @param t_current The current time (in integer).
+ * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  * @param pass The pass of the positivity limiter.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_exchange_across_ranks(const float r2, const float dx[3],
-                                const float hi, const float hj,
-                                struct part *restrict pi,
-                                struct part *restrict pj,
-                                const struct chemistry_global_data *chem_data,
-                                const struct cosmology *cosmo,
-                                const integertime_t t_current,
-                                const float time_base, const int with_cosmology,
-                                const enum chemistry_flux_pass pass) {
+chemistry_exchange_across_ranks(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const double time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data,
+    const enum chemistry_flux_pass pass) {
 
   const int pi_less_pj = flux_exchange_precedes(pi->x, pj->x);
   const int pj_less_pi = flux_exchange_precedes(pj->x, pi->x);
@@ -568,15 +563,15 @@ chemistry_exchange_across_ranks(const float r2, const float dx[3],
     return;
   }
   if (pi_less_pj) {
-    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                 t_current, time_base, with_cosmology,
+    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,
+                                 cosmo, with_cosmology, chem_data,
                                  /*update_left=*/1, /*update_right=*/0,
                                  /*accum_ts_left=*/1, /*accum_ts_right=*/0,
                                  pass);
   } else {
     const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
-    chemistry_exchange_pair_flux(r2, mdx, hj, hi, pj, pi, chem_data, cosmo,
-                                 t_current, time_base, with_cosmology,
+    chemistry_exchange_pair_flux(r2, mdx, hj, hi, pj, pi, time_base, t_current,
+                                 cosmo, with_cosmology, chem_data,
                                  /*update_left=*/0, /*update_right=*/1,
                                  /*accum_ts_left=*/0, /*accum_ts_right=*/1,
                                  pass);
@@ -629,26 +624,27 @@ runner_iact_chemistry_flux_exchange(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj,
     const int both_updatable_here, const int local_first,
-    const int local_second, const float a, const float H, const float time_base,
-    const integertime_t t_current, const struct cosmology *cosmo,
-    const int with_cosmology, const struct chemistry_global_data *chem_data,
+    const int local_second, const float a, const float H,
+    const double time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data *chem_data,
     const enum chemistry_flux_pass pass, const timebin_t max_active_bin) {
 
   if (both_updatable_here) {
-    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                 t_current, time_base, with_cosmology,
+    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,
+                                 cosmo, with_cosmology, chem_data,
                                  /*update_left=*/1, /*update_right=*/1,
                                  /*accum_ts_left=*/1, /*accum_ts_right=*/1,
                                  pass);
   } else if (chemistry_part_is_flux_inactive(pj, max_active_bin)) {
-    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                 t_current, time_base, with_cosmology,
+    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,
+                                 cosmo, with_cosmology, chem_data,
                                  /*update_left=*/1, /*update_right=*/1,
                                  /*accum_ts_left=*/1, /*accum_ts_right=*/0,
                                  pass);
   } else if (local_first && local_second) {
-    chemistry_exchange_if_owner(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                t_current, time_base, with_cosmology, pass);
+    chemistry_exchange_if_owner(r2, dx, hi, hj, pi, pj, time_base, t_current,
+                                cosmo, with_cosmology, chem_data, pass);
   } else {
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
     if (!local_first)
@@ -657,8 +653,9 @@ runner_iact_chemistry_flux_exchange(
           "local_first false: the call site's first argument must always be "
           "the locally-owned particle.");
 #endif
-    chemistry_exchange_across_ranks(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                    t_current, time_base, with_cosmology, pass);
+    chemistry_exchange_across_ranks(r2, dx, hi, hj, pi, pj, time_base,
+                                    t_current, cosmo, with_cosmology, chem_data,
+                                    pass);
   }
 }
 
