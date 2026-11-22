@@ -31,8 +31,8 @@
 #include "cooling_struct.h"
 #include "equation_of_state.h" /* For enum material_id */
 #include "feedback_struct.h"
-#include "hydro_part_strength.h"
 #include "forcing_struct.h"
+#include "hydro_part_strength.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
