@@ -121,9 +121,13 @@ static void init_part(struct part *p, long long id, float h, float mass,
   p->v[1] = 0.0;
   p->v[2] = 0.0;
   p->h = h;
-  p->mass = mass;
+  hydro_set_mass(p, mass);
   p->rho = rho;
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+  p->P = 1.0f;
+#else
   p->u = 1.0f;
+#endif
   p->time_bin = 1;
 
   /* Geometry: well-behaved identity-like matrix by default; per-test
@@ -785,6 +789,7 @@ int main(int argc, char *argv[]) {
   const int overall_pass =
       mindt_pass && tiebreak_pass && h_primary_pass && cross_rank_pass;
   if (!overall_pass) error("testChemistryFluxAntisymmetry: FAILED");
+  message("testChemistryFluxAntisymmetry: PASSED");
 
   return 0;
 }
