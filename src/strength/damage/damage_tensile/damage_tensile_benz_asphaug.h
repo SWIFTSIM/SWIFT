@@ -141,6 +141,11 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* Tensile damage is limited by the fraction of activated to total flaws. */
   damage_rates->tensile_max = (float)number_of_activated_flaws / (float)number_of_flaws;
 
+    /* No accumulation once the damage has reached that limit. */
+  if (s->damage.tensile >= damage_rates->tensile_max) {
+    return;
+  }
+
   /* Estimate the crack velocity based on the longitudinal wave speed,
    * Schäfer+2016 Eqn. 24. */
   const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - s->damage.total) * shear_mod) / density);
@@ -176,13 +181,21 @@ __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
   /* See B&A99 and also Schafer16 for correction of cbrt placement here */
   const float max_cbrtD = cbrtf(damage_rates->tensile_max);
   const float max_Delta_cbrtD =
-      fmaxf(0.f, max_cbrtD - cbrtf(d->tensile));
-  if (Delta_cbrtD > max_Delta_cbrtD){
-    Delta_cbrtD = max_Delta_cbrtD;
+      cbrtf(damage_rates->tensile_max) - cbrtf(d->tensile);
+
+  /* Already at or above the limit. */
+  if (max_Delta_cbrtD <= 0.f) {
+    return d->tensile;
+  }
+
+  /* Reaching the limit, so set damage to limit exactly. */
+  if (Delta_cbrtD >= max_Delta_cbrtD) {
+    d->tensile = damage_rates->tensile_max;
+    return d->tensile;
   }
 
   /* Update tensile damage. */
-  const float evolved_cbrtD = fmaxf(cbrtf(d->tensile) + Delta_cbrtD, 0.f);
+  const float evolved_cbrtD = cbrtf(d->tensile) + Delta_cbrtD;
   d->tensile = fminf(powf(evolved_cbrtD, 3.f), 1.f);
 
   return d->tensile;

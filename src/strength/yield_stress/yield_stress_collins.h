@@ -230,7 +230,7 @@ yield_apply_yield_stress_to_sym_matrix(
   M->xz *= f;
   M->yz *= f;
 
-  return f < 1.f;
+  return 1;
 }
 
 #endif /* SWIFT_YIELD_STRESS_COLLINS_H */

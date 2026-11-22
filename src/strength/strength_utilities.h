@@ -26,7 +26,6 @@
  */
 
 #include "math.h"
-#include <string.h>
 
 /**
  * @brief Computes the J_2 invariant of a deviatoric symmetric tensor.

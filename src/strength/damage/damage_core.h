@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DAMAGE_H
-#define SWIFT_DAMAGE_H
+#ifndef SWIFT_DAMAGE_CORE_H
+#define SWIFT_DAMAGE_CORE_H
 
 /**
- * @file strength/damage/damage.h
+ * @file strength/damage/damage_core.h
  * @brief Core damage scheme that combines multiple fracture models.
  */
 
@@ -189,4 +189,4 @@ __attribute__((always_inline)) INLINE static void strength_first_init_part_damag
   damage_tensile_first_init_part(p);
 }
 
-#endif /* SWIFT_DAMAGE_H */
+#endif /* SWIFT_DAMAGE_CORE_H */
