@@ -158,6 +158,9 @@ void feedback_first_init_spart(struct spart *sp,
 
 float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
 
+float feedback_radiation_compute_part_timestep(const struct part *restrict p,
+                                               const struct engine *e);
+
 void feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp);
 void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s);
 void feedback_book_sink_merger(struct sink *si, const struct sink *sj);

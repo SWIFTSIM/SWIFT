@@ -1746,3 +1746,35 @@ void feedback_clean(struct feedback_props *feedback) {
     stellar_evolution_clean(&feedback->stellar_model_first_stars);
   }
 }
+
+/**
+ * @brief Radiation timestep bound of a particle, see
+ * #radiation_isrf_part_timestep.
+ *
+ * Stops the run if the bound is below TimeIntegration:dt_min.
+ *
+ * @param p The particle to consider.
+ * @param e The #engine.
+ * @return The radiation timestep bound (before the cosmology factor), or
+ *     FLT_MAX if none applies.
+ */
+float feedback_radiation_compute_part_timestep(const struct part *restrict p,
+                                               const struct engine *e) {
+  const float dt_isrf = radiation_isrf_part_timestep(p, e);
+  /* Compared to dt_min after the cosmology factor, like the other
+   * candidates in get_part_timestep(). */
+  const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
+  if (dt_isrf_scaled < e->dt_min) {
+    error(
+        "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
+        "the cosmology factor) below TimeIntegration:dt_min (%e): "
+        "GEARFeedback:ISRF_packet_light_speed=fixed with "
+        "GEARFeedback:ISRF_packet_light_speed_fraction_of_c=%g forces "
+        "dt_rad = margin*a*h/(f*c) below dt_min for this particle's h. "
+        "Lower the fraction (dt_rad grows as 1/f), use the mode cap, or "
+        "lower dt_min.",
+        p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
+        e->feedback_props->ISRF_packet_light_speed_fraction_of_c);
+  }
+  return dt_isrf;
+}

@@ -98,7 +98,7 @@ radiation_iact_nonsym_feedback_density(
     si->feedback_data.grad_rho_star[k] += mj * gradW[k];
   }
 
-  /* Same weighting as enrichment_weight, so both share one normalization. */
+  /* Same weighting as the gas density at the star, which normalizes it. */
   si->feedback_data.Z_star +=
       chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
@@ -174,11 +174,11 @@ feedback_prepare_radiation_feedback(
   sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
 
-  /* enrichment_weight is 0 only when the Z_star sum is too, so skipping is
+  /* The gas density is 0 only when the Z_star sum is too, so skipping is
      exact. Z_star needs 1/h^d, not the gradient's 1/h^(d+1). */
-  if (sp->feedback_data.enrichment_weight > 0.0f) {
-    sp->feedback_data.Z_star *=
-        hi_inv_dim / sp->feedback_data.enrichment_weight;
+  const float rho_gas = feedback_get_comoving_gas_density_at_star(sp);
+  if (rho_gas > 0.0f) {
+    sp->feedback_data.Z_star *= hi_inv_dim / rho_gas;
   }
 #endif
 
@@ -241,6 +241,141 @@ __attribute__((always_inline)) INLINE static void radiation_pressure_apply(
     const struct phys_const *phys_const, const struct unit_system *us) {}
 #endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+/**
+ * @brief Instantaneous LW/PE field (packet transport off): zero the field of a
+ * gas particle on the first touch of this step, before the stars sum into it.
+ *
+ * @param pj The gas particle.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_isrf_reset_instantaneous_field(struct part *pj,
+                                         const integertime_t ti_current) {
+  if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      pj->feedback_data.isrf_moment[m].u = 0.f;
+    pj->feedback_data.LW_dissociating_u = 0.;
+    pj->feedback_data.ISRF_last_touch_ti = ti_current;
+  }
+}
+
+/**
+ * @brief Add a share of a star's LW/PE light to the instantaneous field of a
+ * gas particle (packet transport off).
+ *
+ * @param r Comoving distance between the two particles, floored.
+ * @param weight Share of the star's emission given to the gas particle.
+ * @param Delta_t Time over which the star radiates.
+ * @param si The (star) particle (not updated).
+ * @param pj The gas particle.
+ * @param xpj The extended data of the gas particle, or NULL for a foreign
+ * copy.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param fb_props Properties of the feedback scheme.
+ * @param phys_const The physical constants (in internal units).
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static void radiation_isrf_inject_share(
+    const float r, const double weight, const float Delta_t, struct spart *si,
+    struct part *pj, const struct xpart *xpj, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
+
+  const float mj = hydro_get_mass(pj);
+
+  /* Also used to renew the LW/PE illumination window. */
+  const integertime_t ti_step = get_integer_timestep(si->time_bin);
+
+  const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
+  float extinction[ISRF_OPERATOR_COUNT];
+  /* Receiver-side: uses pj's own column density, not the source's. */
+  const float extinction_path = radiation_get_comoving_extinction_path(
+      fb_props, pj, xpj, r, cosmo, phys_const, hydro_props, us, cooling);
+  radiation_get_part_ISRF_extinction_factors(
+      us, phys_const, cosmo, pj, Z_j, cooling, extinction_path, extinction);
+
+  /* Energy; divided by mj below to get the stored specific energy. */
+  double u_inject[ISRF_MOMENT_COUNT];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    u_inject[m] = (double)Delta_t * weight *
+                  si->feedback_data.radiation.L_band[m] *
+                  (double)extinction[radiation_isrf_moment_to_operator[m]];
+  }
+
+  /* Instantaneous field: reset on the first touch this step, then sum over
+   * the stars. */
+  radiation_isrf_reset_instantaneous_field(pj, ti_current);
+
+  /* #u is double: no narrowing cast. */
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
+  }
+  if (feedback_part_tracks_LW_dissociating(&pj->feedback_data))
+    pj->feedback_data.LW_dissociating_u +=
+        (double)radiation_get_star_LW_dissociating_factor(si) *
+        u_inject[ISRF_MOMENT_LW] / (double)mj;
+
+  /* Renew the window on every touch. The expiry check runs once per step
+     in feedback_reset_part(). */
+  pj->feedback_data.ISRF_illumination_end_ti =
+      ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step;
+
+  /* Sync on the first touch only: re-syncing every pass drags the whole
+     region to the shortest time bin. */
+  if (!pj->feedback_data.is_illuminated_ISRF) {
+    pj->feedback_data.is_illuminated_ISRF = 1;
+    timestep_sync_part(pj);
+  }
+}
+
+/**
+ * @brief Give a gas neighbour its share of a star's packet emission (packet
+ * transport on). The share follows the emission cones of the star, whatever
+ * the weights of the feedback module.
+ *
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param Delta_t Time over which the star radiates.
+ * @param si The (star) particle (not updated).
+ * @param pj The gas particle.
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static void radiation_isrf_emit_packets(
+    const float dx[3], const float Delta_t, const struct spart *si,
+    struct part *pj, const struct cosmology *cosmo,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
+  if (fb_props->ISRF_propagation)
+    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, cosmo->H,
+                               ti_current, &fb_props->ISRF_packet_constants);
+}
+
+/**
+ * @brief Record that a star pass reached a gas neighbour with a zero share of
+ * the star's LW/PE light (packet transport off): the neighbour must hold this
+ * pass's share, not the value of an earlier pass.
+ *
+ * @param si The (star) particle (not updated).
+ * @param pj The gas particle.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static void radiation_isrf_zero_share(
+    const struct spart *si, struct part *pj,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
+  if (fb_props->ISRF_propagation) return;
+  if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] == 0.0 &&
+      si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] == 0.0)
+    return;
+  radiation_isrf_reset_instantaneous_field(pj, ti_current);
+}
+
 /**
  * @brief Injection of the local Lyman-Werner/PE field of a star into a gas
  * particle.
@@ -263,7 +398,6 @@ __attribute__((always_inline)) INLINE static void radiation_pressure_apply(
  * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time
  */
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
 __attribute__((always_inline)) INLINE static void radiation_isrf_inject(
     const float dx[3], const float r, const double weight, const float Delta_t,
     struct spart *si, struct part *pj, const struct xpart *xpj,
@@ -272,66 +406,32 @@ __attribute__((always_inline)) INLINE static void radiation_isrf_inject(
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {
 
-  const float mj = hydro_get_mass(pj);
-
-  /* Also used to renew the LW/PE illumination window. */
-  const integertime_t ti_step = get_integer_timestep(si->time_bin);
-
   if (fb_props->ISRF_propagation) {
-    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, cosmo->H,
-                               ti_current, &fb_props->ISRF_packet_constants);
+    radiation_isrf_emit_packets(dx, Delta_t, si, pj, cosmo, fb_props,
+                                ti_current);
   } else if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
              si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
     /* L_band is zero unless with_interstellar_radiation_field is on. */
-
-    const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
-    float extinction[ISRF_OPERATOR_COUNT];
-    /* Receiver-side: uses pj's own column density, not the source's. */
-    const float extinction_path = radiation_get_comoving_extinction_path(
-        fb_props, pj, xpj, r, cosmo, phys_const, hydro_props, us, cooling);
-    radiation_get_part_ISRF_extinction_factors(
-        us, phys_const, cosmo, pj, Z_j, cooling, extinction_path, extinction);
-
-    /* Energy; divided by mj below to get the stored specific energy. */
-    double u_inject[ISRF_MOMENT_COUNT];
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-      u_inject[m] = (double)Delta_t * weight *
-                    si->feedback_data.radiation.L_band[m] *
-                    (double)extinction[radiation_isrf_moment_to_operator[m]];
-    }
-
-    /* Instantaneous field: reset on the first touch this step, then sum over
-     * the stars. */
-    if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-        pj->feedback_data.isrf_moment[m].u = 0.f;
-      pj->feedback_data.LW_dissociating_u = 0.;
-      pj->feedback_data.ISRF_last_touch_ti = ti_current;
-    }
-
-    /* #u is double: no narrowing cast. */
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-      pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
-    }
-    if (feedback_part_tracks_LW_dissociating(&pj->feedback_data))
-      pj->feedback_data.LW_dissociating_u +=
-          (double)radiation_get_star_LW_dissociating_factor(si) *
-          u_inject[ISRF_MOMENT_LW] / (double)mj;
-
-    /* Renew the window on every touch. The expiry check runs once per step
-       in feedback_reset_part(). */
-    pj->feedback_data.ISRF_illumination_end_ti =
-        ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step;
-
-    /* Sync on the first touch only: re-syncing every pass drags the whole
-       region to the shortest time bin. */
-    if (!pj->feedback_data.is_illuminated_ISRF) {
-      pj->feedback_data.is_illuminated_ISRF = 1;
-      timestep_sync_part(pj);
-    }
+    radiation_isrf_inject_share(r, weight, Delta_t, si, pj, xpj, cosmo,
+                                hydro_props, fb_props, phys_const, us, cooling,
+                                ti_current);
   }
 }
 #else
+__attribute__((always_inline)) INLINE static void radiation_isrf_inject_share(
+    const float r, const double weight, const float Delta_t, struct spart *si,
+    struct part *pj, const struct xpart *xpj, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {}
+__attribute__((always_inline)) INLINE static void radiation_isrf_emit_packets(
+    const float dx[3], const float Delta_t, const struct spart *si,
+    struct part *pj, const struct cosmology *cosmo,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {}
+__attribute__((always_inline)) INLINE static void radiation_isrf_zero_share(
+    const struct spart *si, struct part *pj,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {}
 __attribute__((always_inline)) INLINE static void radiation_isrf_inject(
     const float dx[3], const float r, const double weight, const float Delta_t,
     struct spart *si, struct part *pj, const struct xpart *xpj,
@@ -379,6 +479,28 @@ __attribute__((always_inline)) INLINE static double radiation_get_pair_weight(
 
 #endif
 
+#ifdef GEAR_SUBGRID_RADIATION
+/**
+ * @brief Feedback time-step of a star, cached once per star by
+ * feedback_prepare_radiation_feedback().
+ *
+ * @param si The star particle.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static float radiation_get_star_Delta_t(
+    const struct spart *si, const integertime_t ti_current) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (get_integer_time_begin(ti_current, si->time_bin) !=
+      si->feedback_data.radiation.Delta_t_cached_ti_begin)
+    error(
+        "Stale cached Delta_t: star %lld's step boundary moved since it "
+        "was cached.",
+        si->id);
+#endif
+  return si->feedback_data.radiation.Delta_t;
+}
+#endif
+
 /**
  * @brief Radiation feedback interaction between two particles (non-symmetric),
  * updating the gas particles neighbouring a star particle.
@@ -413,17 +535,7 @@ radiation_iact_nonsym_feedback_apply(
 
   float r;
   const double weight = radiation_get_pair_weight(r2, hi, si, pj, &r);
-
-  /* Cached once per star by feedback_prepare_radiation_feedback(). */
-  const float Delta_t = si->feedback_data.radiation.Delta_t;
-#ifdef SWIFT_DEBUG_CHECKS
-  if (get_integer_time_begin(ti_current, si->time_bin) !=
-      si->feedback_data.radiation.Delta_t_cached_ti_begin)
-    error(
-        "Stale cached Delta_t: star %lld's step boundary moved since it "
-        "was cached.",
-        si->id);
-#endif
+  const float Delta_t = radiation_get_star_Delta_t(si, ti_current);
 
   radiation_pressure_apply(dx, r, weight, Delta_t, si, pj, xpj, cosmo, fb_props,
                            phys_const, us);
