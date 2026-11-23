@@ -185,6 +185,33 @@ feedback_prepare_radiation_feedback(
   feedback_star_store_timestep(sp, dt, ti_begin);
 }
 
+#ifdef GEAR_SUBGRID_RADIATION
+/**
+ * @brief Feedback time-step of a star, cached once per star by
+ * feedback_prepare_radiation_feedback().
+ *
+ * @param si The star particle.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static float radiation_get_star_Delta_t(
+    const struct spart *si, const integertime_t ti_current) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (get_integer_time_begin(ti_current, si->time_bin) !=
+      si->feedback_data.radiation.Delta_t_cached_ti_begin)
+    error(
+        "Stale cached Delta_t: star %lld's step boundary moved since it "
+        "was cached.",
+        si->id);
+#endif
+  return si->feedback_data.radiation.Delta_t;
+}
+#else
+__attribute__((always_inline)) INLINE static float radiation_get_star_Delta_t(
+    const struct spart *si, const integertime_t ti_current) {
+  return 0.f;
+}
+#endif
+
 /**
  * @brief Radiation pressure kick of a star on a gas particle.
  *
@@ -357,19 +384,30 @@ __attribute__((always_inline)) INLINE static void radiation_isrf_emit_packets(
 }
 
 /**
- * @brief Record that a star pass reached a gas neighbour with a zero share of
- * the star's LW/PE light (packet transport off): the neighbour must hold this
- * pass's share, not the value of an earlier pass.
+ * @brief LW/PE light of a star for a gas neighbour that gets a zero share of
+ * the feedback module's weights.
  *
+ * With the packet transport on, the neighbour still gets its share of the
+ * packet emission: the emission cones of the star do not depend on the weights
+ * of the module. Without it the field is instantaneous: the neighbour must
+ * hold this pass's share (zero), not the value of an earlier pass.
+ *
+ * @param dx Comoving vector separating both particles (si - pj).
  * @param si The (star) particle (not updated).
  * @param pj The gas particle.
+ * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time
  */
 __attribute__((always_inline)) INLINE static void radiation_isrf_zero_share(
-    const struct spart *si, struct part *pj,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
-  if (fb_props->ISRF_propagation) return;
+    const float dx[3], const struct spart *si, struct part *pj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const integertime_t ti_current) {
+  if (fb_props->ISRF_propagation) {
+    radiation_isrf_emit_packets(dx, radiation_get_star_Delta_t(si, ti_current),
+                                si, pj, cosmo, fb_props, ti_current);
+    return;
+  }
   if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] == 0.0 &&
       si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] == 0.0)
     return;
@@ -430,8 +468,9 @@ __attribute__((always_inline)) INLINE static void radiation_isrf_emit_packets(
     struct part *pj, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const integertime_t ti_current) {}
 __attribute__((always_inline)) INLINE static void radiation_isrf_zero_share(
-    const struct spart *si, struct part *pj,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {}
+    const float dx[3], const struct spart *si, struct part *pj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const integertime_t ti_current) {}
 __attribute__((always_inline)) INLINE static void radiation_isrf_inject(
     const float dx[3], const float r, const double weight, const float Delta_t,
     struct spart *si, struct part *pj, const struct xpart *xpj,
@@ -477,28 +516,6 @@ __attribute__((always_inline)) INLINE static double radiation_get_pair_weight(
   return mj * wi * si_inv_weight;
 }
 
-#endif
-
-#ifdef GEAR_SUBGRID_RADIATION
-/**
- * @brief Feedback time-step of a star, cached once per star by
- * feedback_prepare_radiation_feedback().
- *
- * @param si The star particle.
- * @param ti_current Current integer time
- */
-__attribute__((always_inline)) INLINE static float radiation_get_star_Delta_t(
-    const struct spart *si, const integertime_t ti_current) {
-#ifdef SWIFT_DEBUG_CHECKS
-  if (get_integer_time_begin(ti_current, si->time_bin) !=
-      si->feedback_data.radiation.Delta_t_cached_ti_begin)
-    error(
-        "Stale cached Delta_t: star %lld's step boundary moved since it "
-        "was cached.",
-        si->id);
-#endif
-  return si->feedback_data.radiation.Delta_t;
-}
 #endif
 
 /**
