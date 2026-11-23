@@ -41,6 +41,11 @@
 
 #define N_NEIGHBOURS 12
 
+/* A long flux interval (1e3 at a time base of 1e-5) makes the donor's
+   outflow exceed its mass. */
+#define TI_CURRENT 100000000LL
+#define MAX_ACTIVE_BIN 7
+
 /**
  * @brief Is x finite?
  *
@@ -97,8 +102,8 @@ static void init_part(struct part *p, const long long id, const double x[3],
     ch->metal_mass[m] = hydro_get_mass(p) * metal_mass_fraction * (1. + m);
   }
 
-  /* A long flux time-step makes the donor's outflow exceed its mass. */
-  ch->flux.dt = 1e3f;
+  /* The particles last applied their fluxes at ti = 0. */
+  ch->flux.ti_flux_last = 0;
 }
 
 /**
@@ -114,10 +119,10 @@ static void exchange_all(struct part *donor, struct part *ngb, const int prep,
     runner_iact_chemistry_flux_exchange(
         r2, dx, donor->h, ngb[n].h, donor, &ngb[n],
         /*both_updatable_here=*/1, /*local_first=*/1, /*local_second=*/1,
-        /*a=*/1.f, /*H=*/0.f, /*time_base=*/1e-5, /*t_current=*/1, cosmo,
+        /*a=*/1.f, /*H=*/0.f, /*time_base=*/1e-5, TI_CURRENT, cosmo,
         /*with_cosmology=*/0, cd,
         prep ? chemistry_flux_pass_prep : chemistry_flux_pass_apply,
-        /*max_active_bin=*/num_time_bins);
+        /*max_active_bin=*/MAX_ACTIVE_BIN);
   }
 }
 

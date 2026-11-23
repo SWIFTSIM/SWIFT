@@ -52,7 +52,7 @@
 #define TI_CURRENT 8
 #define ACTIVE_BIN 1
 #define INACTIVE_BIN 4
-#define MAX_ACTIVE_BIN 3
+#define MAX_ACTIVE_BIN 2
 #define PARTS_PER_OCTANT 27
 
 void runner_dosub_self2_force(struct runner *r, struct cell *c,
@@ -119,8 +119,9 @@ static void init_particle(struct part *p, struct xpart *xp, const double m,
     ch->metal_mass[k] = m * 1e-3 * random_uniform(0., 1.);
   }
 
-  /* Inactive particles carry a negative flux time-step. */
-  ch->flux.dt = active ? 1e-3f : -1.f;
+  /* Each particle applied its fluxes last at the start of its step. */
+  ch->flux.ti_flux_last =
+      get_integer_time_begin(TI_CURRENT, active ? ACTIVE_BIN : INACTIVE_BIN);
 }
 
 /**

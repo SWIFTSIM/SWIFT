@@ -28,38 +28,42 @@
 /**
  * @brief Get the time interval over which a pair exchanges its flux.
  *
- * An inactive particle carries a negative flux.dt, so the interval is the
- * smaller positive flux.dt of the two. The test does not assume which slot
- * holds the active particle, because the cross-rank exchange can swap them.
+ * The interval runs from the later of the last flux applications of the two
+ * particles to the current time. It is the thermal kick factor of that
+ * interval times a^2, the time-step convention of the other hydro variables.
+ * Without a limiter or a sync event, it equals the shorter current step of
+ * the active particles.
  *
  * @param pi Particle i.
  * @param pj Particle j.
  * @param time_base The time base that converts integer time to physical
- * time, an input of the interval.
- * @param t_current The current integer time, an input of the interval.
- * @param cosmo The #cosmology, an input of the interval with cosmology.
+ * time.
+ * @param t_current The current integer time.
+ * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
- * @return The interval, or 0 if neither particle is active.
+ * @return The interval in physical units.
  */
 __attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
     const struct part *pi, const struct part *pj, const double time_base,
     const integertime_t t_current, const struct cosmology *cosmo,
     const int with_cosmology) {
 
-  const float dt_L = pi->chemistry_data.flux.dt;
-  const float dt_R = pj->chemistry_data.flux.dt;
-  float flux_dt;
-  if (dt_L > 0.f && dt_R > 0.f) {
-    flux_dt = fminf(dt_L, dt_R);
-  } else if (dt_L > 0.f) {
-    flux_dt = dt_L;
-  } else if (dt_R > 0.f) {
-    flux_dt = dt_R;
-  } else {
-    /* The dispatch never sends a pair with no active particle. */
-    flux_dt = 0.f;
-  }
-  return flux_dt;
+  const integertime_t ti_start = chemistry_get_pair_ti_flux_start(pi, pj);
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (ti_start > t_current)
+    error("Flux interval of the pair %lld-%lld starts at %lld after t=%lld.",
+          pi->id, pj->id, ti_start, t_current);
+#endif
+
+  double dt_therm;
+  if (with_cosmology)
+    dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_start, t_current);
+  else
+    dt_therm = (t_current - ti_start) * time_base;
+
+  /* Round to float before the a^2 factor, as for the hydro time-step. */
+  const float dt_therm_float = dt_therm;
+  return dt_therm_float * cosmo->a * cosmo->a;
 }
 
 /**
@@ -308,8 +312,8 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui[4], Uj[4];
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, cosmo, chem_data, Ui,
-                                Uj);
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, flux_dt, cosmo,
+                                chem_data, Ui, Uj);
     /* Note: The returned values are in physical units. No conversion needed */
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
@@ -318,7 +322,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
     totflux[m][2] = 0.0;
     totflux[m][3] = 0.0;
     chemistry_compute_flux(dx, pi, pj, m, Ui, Uj, Wi, Wj, n_unit, Anorm_p,
-                           chem_data, cosmo, totflux[m]);
+                           flux_dt, chem_data, cosmo, totflux[m]);
 
     /* Flux limiter */
     /* First check that we won't have negative masses. If so, we have a check

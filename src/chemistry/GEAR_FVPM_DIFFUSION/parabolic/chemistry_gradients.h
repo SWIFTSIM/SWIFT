@@ -113,6 +113,7 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i
+ * @param flux_dt The time interval of the pair exchange (unused here).
  * @param cosmo The #cosmology.
  * @param chem_data The global properties of the chemistry scheme.
  * @param Ui (return) Resulting predicted and limited diffusion state of
@@ -122,7 +123,7 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
-    const float dx[3], const float r, const float xij_i[3],
+    const float dx[3], const float r, const float xij_i[3], const float flux_dt,
     const struct cosmology *cosmo,
     const struct chemistry_global_data *chem_data, double Ui[4], double Uj[4]) {
 
