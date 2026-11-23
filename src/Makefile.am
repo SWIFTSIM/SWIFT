@@ -17,7 +17,7 @@
 
 # Add the non-standard paths to the included library headers
 AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) \
-        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS) \
+        $(GRACKLE_INCS) $(GEAJAY_INCS) $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS) \
         $(AGAMA_INCS)
 
 # Assign a "safe" version number
@@ -29,7 +29,7 @@ GIT_CMD = @GIT_CMD@
 # Additional dependencies for shared libraries.
 EXTRA_LIBS = $(GSL_LIBS) $(GMP_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) \
         $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) \
-        $(GRACKLE_LIBS)  $(SUNDIALS_LIBS) $(CHEALPIX_LIBS) $(LUSTREAPI_LIBS)
+        $(GRACKLE_LIBS) $(GEAJAY_LIBS) $(SUNDIALS_LIBS) $(CHEALPIX_LIBS) $(LUSTREAPI_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -131,6 +131,12 @@ if HAVEGRACKLECOOLING
 GRACKLE_COOLING_SOURCES += cooling/grackle/cooling.c
 endif
 
+# source files for geajay cooling
+GEAJAY_COOLING_SOURCES =
+if HAVEGEAJAYCOOLING
+GEAJAY_COOLING_SOURCES += cooling/geajay/cooling.c
+endif
+
 # source files for EAGLE floor
 EAGLE_FLOOR_SOURCES =
 if HAVEEAGLEFLOOR
@@ -145,10 +151,8 @@ COMMON_GEAR_SOURCES = \
     feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
     feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
-COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c feedback/GEAR/radiation_star.c \
+COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c feedback/GEAR/radiation_gas.c \
     feedback/GEAR/radiation_getters.c feedback/GEAR/radiation_table_io.c
-COMMON_GEAR_SOURCES += feedback/GEAR/feedback_radiation.c \
-    feedback/GEAR/radiation_gas.c
 COMMON_GEAR_SOURCES += runner_radiation_feedback.h
 
 # Parts of the subgrid radiation selected by --with-subgrid-radiation
@@ -159,7 +163,7 @@ if HAVEGEARRADIATIONHII
 COMMON_GEAR_SOURCES += runner_radiation_feedback.c
 endif
 if HAVEGEARRADIATIONISRF
-COMMON_GEAR_SOURCES += feedback/GEAR/radiation_isrf.c
+COMMON_GEAR_SOURCES += feedback/GEAR/radiation_isrf.c feedback/GEAR/radiation_packet.c
 endif
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
@@ -237,7 +241,7 @@ AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES)
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
-AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
+AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAJAY_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
 AM_SOURCES += $(EAGLE_FLOOR_SOURCES)
 AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
@@ -443,7 +447,10 @@ nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h
 nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h
 nobase_noinst_HEADERS += cooling/grackle/cooling_debug.h cooling/grackle/cooling_utils.h
-nobase_noinst_HEADERS += cooling/grackle/cooling_gear_subgrid.h cooling/grackle/cooling_none_subgrid.h
+nobase_noinst_HEADERS += cooling/radiation_rates_to_chemistry.h
+nobase_noinst_HEADERS += cooling/geajay/cooling.h cooling/geajay/cooling_struct.h
+nobase_noinst_HEADERS += cooling/geajay/cooling_io.h cooling/geajay/cooling_properties.h
+nobase_noinst_HEADERS += cooling/geajay/cooling_debug.h cooling/geajay/cooling_utils.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h
@@ -559,12 +566,16 @@ nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation.h feedback/GEAR/radiation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_struct.h feedback/GEAR/feedback_radiation.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation_isrf_extinction.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_isrf.h feedback/GEAR/radiation_propagation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_properties.h feedback/GEAR/feedback_radiation_io.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation_packet.h
+nobase_noinst_HEADERS += feedback/GEAR/star_gas_weights.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_selection.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_tracers_struct.h feedback/GEAR/feedback_tracers_common.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation_hii.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback.h feedback/GEAR_thermal/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_properties.h feedback/GEAR_thermal/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h feedback/GEAR_thermal/feedback_tracers.h

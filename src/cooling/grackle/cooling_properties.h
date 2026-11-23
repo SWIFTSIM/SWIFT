@@ -51,11 +51,8 @@ struct cooling_function_data {
    * (2004) */
   int H2_cie_cooling;
 
-  /*! Flag to enable H2 formation on dust grains */
+  /*! Flag to enable H2 formation on dust grains (-1: not set by the user) */
   int H2_on_dust;
-
-  /*! Flag to enable heating from H2 photodissociation and UV pumping */
-  int H2_photodissociation_heating;
 
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
@@ -98,7 +95,7 @@ struct cooling_function_data {
       onto the tagged particle, itself frozen unconditionally per star in
       feedback/GEAR/stellar_evolution.c) ->
       cooling/grackle/cooling.c (cooling_copy_to_grackle, both call sites)
-      -> cooling/grackle/cooling_gear_subgrid.h
+      -> cooling/radiation_rates_to_chemistry.h
       (cooling_ionize_part_subgrid, cooling_expire_rate_coupled_tag_subgrid)
       -> cooling/grackle/cooling_io.h (parsing, forces
       use_radiative_transfer). Keep this list in sync when adding a new
@@ -126,14 +123,15 @@ struct cooling_function_data {
       photodissociation) fields, instead of Grackle's spatially-uniform
       scalars. Forces use_isrf_field/dust_chemistry/photoelectric_heating
       on internally (cooling_init_grackle) and, at COOLING_GRACKLE_MODE >
-      1, use_radiative_transfer (cooling_io.h). See cooling_gear_subgrid.h's
+      1, use_radiative_transfer (cooling_io.h). See
+      radiation_rates_to_chemistry.h's
       cooling_get_isrf_habing_subgrid/cooling_get_LW_dissociation_rate_
       subgrid. */
   int with_ISRF;
 
   /*! Grackle photoelectric_heating option used when with_ISRF is on,
-      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant),
-      3 (wolfire1995) or 4 (density_dependent). */
+      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant) or
+      3 (wolfire1995). */
   int photoelectric_heating_efficiency;
 
   /*! Volumetric heating rates */

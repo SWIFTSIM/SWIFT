@@ -79,7 +79,9 @@ A similar behavior will be obtained if the parameter ``Stars:overwrite_birth_tim
 
 Cooling: Grackle
 ~~~~~~~~~~~~~~~~
-   
+
+SWIFT can also use the library geajay in place of Grackle: see :doc:`geajay_cooling`.
+
 Grackle is a chemistry and cooling library presented in `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_ 
 (do not forget to cite if used).  Four different modes are available:
 equilibrium, 6 species network (H, H\\( ^+ \\), e\\( ^- \\), He, He\\( ^+ \\)
@@ -188,13 +190,13 @@ Here is the complete section in the parameter file:
 
     H2_self_shielding: 0                         # H2 self-shielding from the Lyman-Werner field: 0 none, 2 kernel-based, 3 local Jeans length. The default is wrong for an ISRF run tracking H2, see below
     H2_self_shielding_path: kernel_radius        # Mode 2 only: kernel_radius or kernel_diameter
-    photoelectric_heating_efficiency: constant   # constant, wolfire1995 or density_dependent, see below
+    photoelectric_heating_efficiency: constant   # constant or wolfire1995, see below
 
     volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
     specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
     H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
     H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
-    H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+    H2_on_dust: -1                               # Flag to enable H2 formation on dust grains (-1: unset, off except with the ISRF at primordial_chemistry 2 or above)
     local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value).
     cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
     agora_cmb_temperature_floor : 0              # Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z))

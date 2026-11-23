@@ -2289,7 +2289,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * is available at all (e.g. the request hasn't propagated down yet).
  *
  * Also activates the super's stars.feedback_ghost. radiation_in's barrier
- * waits on it (engine_radiation_wire_super_deps, engine_maketasks.c:3586) so
+ * waits on it (engine_radiation_wire_super_deps) so
  * SN feedback writes happen-before the HII gather reads. On a star-inactive
  * super, engine_do_unskip_stars() never visits the cell, so without this
  * call feedback_ghost stays skipped and that wait silently has no effect.
@@ -2622,16 +2622,11 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
         if (cj_nodeID == nodeID) cell_radiation_activate_supers_out(cj, s);
       }
 
-      /* We only want to activate the task if the cell is active and is
-         going to update some gas on the *local* node */
-      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-          (ci_active || cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+      /* The rank that owns the star computes, so the HII task of a local side
+         runs whenever either side is active (the radiation_in rule) and
+         also unlocks stars_out through this task. */
+      if ((ci_active || cj_active) &&
+          (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
         scheduler_activate(s, t);
       }
     }

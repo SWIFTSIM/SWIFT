@@ -1,0 +1,87 @@
+# Intro
+One 29.7 Msun star in a uniform, periodic box of cold (50 K), zero-metallicity
+molecular gas, with the ISRF transport on (`ISRF_propagation: 1`) and the H2 line
+absorption of the transport on (`ISRF_H2_line_absorption: 1`). The star's
+Lyman-Werner (LW) light is absorbed by the H2 lines along its path. The check compares,
+for every gas particle, the fraction of its own LW energy that the lines let through
+(`LWOwnDissociatingSpecificEnergies` over `LWOwnSpecificEnergies`) with the shielding
+function at the column `N_H2 = n_H2 r`,
+where `n_H2` is the particle's own H2 density and `r` its distance to the star. The
+shielding function is the Wolcott-Green and Haiman (2019) fit that geajay uses.
+
+The run is cooling with geajay only: with `ISRF_H2_line_absorption: 1` SWIFT tells the
+library not to shield the transported LW rate a second time, so no cooling parameter is
+needed for it. Official Grackle refuses `ISRF_H2_line_absorption: 1`.
+
+## What the run holds fixed
+The check reads the end of a short run in which H2 and the temperature stay frozen. The
+parameters therefore switch off photoionization, stellar winds and supernovae, and set the
+light speed to `unlimited`. The light crosses one hop per step, so it needs several steps to
+reach the whole box. The steps are short so that the H2 stays frozen while the light
+arrives; the run stops after 8 steps and the check reads the last snapshot. The check
+refuses a run that departs from these settings. Only particles at `r < L/2 - 2h` are read,
+so that the nearest periodic image of the star is the right one.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The geajay build must provide the option that leaves the transported LW rate out of its H2
+shielding; without it SWIFT stops at start-up. The packet
+transport needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`; see the README of
+`ISRFH2Photodissociation` for how to obtain it.
+
+# Run
+```
+./run.sh                      # main leg, then the check
+leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
+leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
+ranks=2 run_name=two_ranks ./run.sh
+leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
+```
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
+override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
+about 2e18 cm^-2 over the box.
+
+# Checking
+`checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
+`makeIC.py`), the first and last snapshot, the SWIFT log (`--startup-log output.log`) and
+`timesteps.txt` (`--timesteps`). SWIFT does not write the LW shielding option to
+`used_parameters.yml`, so the check reads it from the start-up line
+`h2_transported_lw_rate_shielding = 1` that SWIFT prints. `run.sh` passes the log.
+
+The parameter files set `GEARFeedback:ISRF_LW_population_dissociation: 0`, so the
+dissociating light of the star is its LW light times the line transmission. With 1 and a
+table that carries `L_LW_dissociating`, it is also multiplied by the dissociation factor
+`f` of the star (`L_LW_dissociating / L_LW` from the table); pass that value to the
+`starlit` and `velocity` checks with `--population-factor f`. SWIFT caps the kernel mean of
+the dissociating energy at the largest factor of the table times the LW energy; `starlit`
+reads that bound from the line `ISRF LW dissociation factor bound` of the start-up log.
+
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log --timesteps timesteps.txt`
+
+The reference is `snapshot_0001`, the first snapshot written after the first step and
+before any probe is lit. The check compares, for every probe, the transmission of the
+own LW light with the shielding function at the column `n_H2 r`, the kernel mean of that
+transmission and of the LW energies that the cooling reads, the number and extent of the lit
+probes, and the carried H2 column.
+
+The exit class of the check is 0 for a pass, 1 for a failed bar, 2 for a missing file,
+field or key, 3 for a non-finite value and 4 for a void run (a premise or a positive
+control is not met). A void run never passes. `parity` alone also returns 5 for a pass
+without a counters file.
+
+Two runs are compared particle by particle with `parity`, on `LWSpecificEnergies`,
+`LWDissociatingSpecificEnergies` and `LWLineH2ColumnDensities`:
+```
+python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5
+python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --first one/snap/snapshot_0001.hdf5 --params one/used_parameters.yml
+```
+- `restart`: every `LW` and `Packet` field must be equal bit for bit (same binary, same
+  rank count, one thread).
+- `ranks`: the float sums run in another order, so the fields agree within a round-off bar.
+
+`testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
+error in each case, and prints the exit class of each.

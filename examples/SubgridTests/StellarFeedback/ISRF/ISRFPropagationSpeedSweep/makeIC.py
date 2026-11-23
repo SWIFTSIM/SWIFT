@@ -1,411 +1,125 @@
-################################################################################
-# This file is part of SWIFT.
-# Copyright (c) 2022 Yves Revaz (yves.revaz@epfl.ch)
-#               2026 Darwin Roduit (darwin.roduit@epfl.ch)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-################################################################################
+#!/usr/bin/env python3
+"""Initial conditions: uniform gas in a periodic glass cube. One pulse of light is injected by a test parameter, written to beam_args.txt."""
 
-import os
+import argparse
+import json
+
 import h5py
 import numpy as np
-import argparse
-from astropy import units
-from astropy import constants
+
+UNIT_LENGTH = 3.0856775814913673e21  # 1 kpc in cm
+UNIT_MASS = 1.988409870698051e43  # 1e10 Msun in g
+UNIT_VELOCITY = 1e5  # km/s in cm/s
+MSUN = 1.988409870698051e33  # g
+M_PROTON = 1.67262192369e-24  # g
 
 
-class store_as_array(argparse._StoreAction):
-    """Provides numpy array as argparse arguments."""
+def glass_box(glass_file, rho_per_cm3, mass_msun):
+    """Scale a glass cube to the requested density and gas mass.
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        values = np.array(values)
-        return super().__call__(parser, namespace, values, option_string)
-
-
-def parse_options():
-
-    usage = "usage: %prog [options] file"
-    parser = argparse.ArgumentParser(description=usage)
-
-    parser.add_argument(
-        "--rho",
-        action="store",
-        dest="rho",
-        type=float,
-        default=5,
-        help="Mean gas density in atom/cm3",
-    )
-
-    parser.add_argument(
-        "--mass",
-        action="store",
-        dest="mass",
-        type=float,
-        default=0.1,
-        help="Gas particle mass in solar mass",
-    )
-
-    parser.add_argument(
-        "--level",
-        action="store",
-        dest="level",
-        type=int,
-        default=6,
-        help="Resolution level: N = (2**l)**3",
-    )
-
-    parser.add_argument(
-        "--boxsize",
-        action="store",
-        dest="boxsize",
-        type=float,
-        default=None,
-        help="Boxzise in kpc",
-    )
-
-    parser.add_argument(
-        "--star_mass",
-        action="store",
-        type=float,
-        default=29.7,
-        help="Mass of the star in M_sun",
-    )
-
-    parser.add_argument(
-        "--star_pos",
-        action=store_as_array,
-        nargs=3,
-        type=float,
-        default=None,
-        help="Position of the star in internal units. By default, places the star at the center of the box",
-    )
-
-    parser.add_argument(
-        "--star_type",
-        action="store",
-        type=str,
-        default="single_star",
-        choices=["single_star", "continuous_IMF", "SSP"],
-        help="Type of the star for the GEAR model.",
-    )
-
-    parser.add_argument(
-        "-o",
-        action="store",
-        dest="outputfilename",
-        type=str,
-        default="box.hdf5",
-        help="output filename",
-    )
-
-    parser.add_argument(
-        "--seed-pulse-amplitude",
-        type=float,
-        default=0.0,
-        help="If > 0, write a Gaussian PESpecificEnergy/LWSpecificEnergy "
-        "pulse of this peak value (internal units) at the box centre and "
-        "write no star particle.",
-    )
-
-    parser.add_argument(
-        "--seed-pulse-sigma-h",
-        type=float,
-        default=2.0,
-        help="Gaussian pulse width, in units of the mean smoothing length "
-        "eta*d (see --seed-pulse-amplitude).",
-    )
-
-    parser.add_argument(
-        "--seed-delta-amplitude",
-        type=float,
-        default=0.0,
-        help="If > 0, write this PESpecificEnergy/LWSpecificEnergy value on "
-        "the single particle nearest the box centre only (Nyquist-scale "
-        "delta seed), zero elsewhere, and write no star particle.",
-    )
-
-    parser.add_argument(
-        "--seed-noise-amplitude",
-        type=float,
-        default=0.0,
-        help="If > 0, write a uniform PESpecificEnergy/LWSpecificEnergy "
-        "background of this value plus 1%% relative white noise (fixed "
-        "seed) on every particle, and write no star particle.",
-    )
-
-    parser.add_argument(
-        "--no-star",
-        action="store_true",
-        help="Write zero star particles. Implied by --seed-pulse-amplitude, "
-        "--seed-delta-amplitude or --seed-noise-amplitude > 0; also usable "
-        "on its own.",
-    )
-
-    # Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
-    options = parser.parse_args()
-    return options
+    Return positions, smoothing lengths, box side, gas particle mass and
+    density, all in internal units.
+    """
+    with h5py.File(glass_file, "r") as g:
+        pos = g["PartType0/Coordinates"][:]
+        h = g["PartType0/SmoothingLength"][:]
+    n = len(pos)
+    m = mass_msun * MSUN / UNIT_MASS
+    rho = rho_per_cm3 * M_PROTON / UNIT_MASS * UNIT_LENGTH**3
+    box = (n * m / rho) ** (1.0 / 3.0)
+    pos = (pos - pos.min()) / (pos.max() - pos.min() + 1e-6) * box
+    return pos, h * box, box, m, rho
 
 
-########################################
-# main
-########################################
+def write_ic(path, pos, h, box, m, rho):
+    """Write the gas particles in the SWIFT IC format."""
+    n = len(pos)
+    kw = dict(compression="gzip", compression_opts=4, shuffle=True, chunks=True)
+    with h5py.File(path, "w") as f:
+        hd = f.create_group("Header")
+        hd.attrs["BoxSize"] = [box, box, box]
+        hd.attrs["NumPart_Total"] = [n, 0, 0, 0, 0, 0]
+        hd.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
+        hd.attrs["NumPart_ThisFile"] = [n, 0, 0, 0, 0, 0]
+        hd.attrs["Time"] = 0.0
+        hd.attrs["NumFileOutputsPerSnapshot"] = 1
+        hd.attrs["MassTable"] = [0.0] * 6
+        hd.attrs["Flag_Entropy_ICs"] = [0] * 6
+        hd.attrs["Dimension"] = 3
+        un = f.create_group("Units")
+        un.attrs["Unit length in cgs (U_L)"] = UNIT_LENGTH
+        un.attrs["Unit mass in cgs (U_M)"] = UNIT_MASS
+        un.attrs["Unit time in cgs (U_t)"] = UNIT_LENGTH / UNIT_VELOCITY
+        un.attrs["Unit current in cgs (U_I)"] = 1.0
+        un.attrs["Unit temperature in cgs (U_T)"] = 1.0
+        g = f.create_group("PartType0")
+        g.create_dataset("Coordinates", data=pos, dtype="d", **kw)
+        g.create_dataset("Velocities", data=np.zeros((n, 3)), dtype="f", **kw)
+        g.create_dataset("Masses", data=np.full(n, m), dtype="f", **kw)
+        g.create_dataset("SmoothingLength", data=h, dtype="f", **kw)
+        g.create_dataset("InternalEnergy", data=np.ones(n), dtype="f", **kw)
+        g.create_dataset("ParticleIDs", data=np.arange(n), dtype="L", **kw)
+        g.create_dataset("Densities", data=np.full(n, rho), dtype="f", **kw)
 
-opt = parse_options()
 
-# define standard units
-UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
-UnitLength_in_cgs = 3.0856775814913673e21  # kpc in centimeters
-UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
-UnitCurrent_in_cgs = 1  # Amperes
-UnitTemp_in_cgs = 1  # Kelvin
-UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
+def parse(extra):
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--glass", required=True, help="Glass cube file (getGlass.sh)")
+    p.add_argument("--rho", type=float, default=1e3, help="Gas density in atom/cm^3")
+    p.add_argument("--mass", type=float, default=0.1, help="Gas particle mass in Msun")
+    p.add_argument("-o", dest="out", default="ICs.hdf5", help="Output file")
+    extra(p)
+    return p.parse_args()
 
-UnitMass = UnitMass_in_cgs * units.g
-UnitLength = UnitLength_in_cgs * units.cm
-UnitTime = UnitTime_in_cgs * units.s
-UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 
-np.random.seed(1)
+# Direction of the beam, at least 15 degrees from the borders of the
+# reception slots (12 slots, default frame), so that the beam fills one slot.
+DIRECTION = (-0.3977, -0.6757, -0.6207)
+START_DISTANCE_H = 12.0  # pulse centre to the box centre at the start
+PULSE_H = 10.0  # side of the cubic pulse
+ENERGY_PE = 1e-6  # energy per particle of the pulse, PE band, internal units
+ENERGY_LW = 0.25e-6  # LW band
 
-# Number of particles
-if opt.level is not None:
-    N = (2**opt.level) ** 3
 
-# Mean density
-rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm**3
-
-# Gas particle mass
-m = opt.mass  # in solar mass
-m = m * units.Msun
-
-# Size of the box
-if opt.level is not None:
-    if opt.boxsize is None:
-        # If we don't give the boxsize and we gave the level, then we can determine
-        # gas mass in the box
-        M = N * m
-        L = (M / rho) ** (1 / 3.0)
-    else:
-        # If we fixed the boxsize, then the number of particles might change
-        L = opt.boxsize * units.kpc
-        M = rho * L**3
-
-        print(M.to(units.Msun))
-        N = int(np.ceil(M.to(units.Msun) / m))
-        print(N)
-else:
-    if opt.boxsize is not None:
-        L = opt.boxsize * units.kpc
-        M = (rho * L**3).to(units.Msun)
-        N = int(np.ceil(M / m))
-    else:
-        raise RuntimeError(
-            "If the opt.level and opt.boxsize are None, then we cannot determine the number of particles"
+def main():
+    opt = parse(
+        lambda p: p.add_argument(
+            "--energy_scale",
+            type=float,
+            default=1.0,
+            help="Factor on the energy of the pulse",
         )
-
-
-# Gravitational constant
-G = constants.G
-
-print("Boxsize                               : {}".format(L.to(units.kpc)))
-print("Total mas                             : {}".format(M.to(units.Msun)))
-print("Number of particles                   : {}".format(N))
-
-# Convert to code units
-m = m.to(UnitMass).value
-L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength**3).value
-
-# Pre-relaxed glass (getGlass.sh): random placement's shot noise would
-# swamp the smooth radial u(r) profile this example measures.
-if opt.level is not None and opt.boxsize is None:
-    glass_n = 2**opt.level
-    glass_filename = f"glassCube_{glass_n}.hdf5"
-    if not os.path.exists(glass_filename):
-        raise RuntimeError(
-            f"Missing {glass_filename}. Run ./getGlass.sh {glass_n} first."
-        )
-    with h5py.File(glass_filename, "r") as glass:
-        pos = glass["/PartType0/Coordinates"][:, :]
-        h_glass = glass["/PartType0/SmoothingLength"][:]
-    if pos.shape[0] != N:
-        raise RuntimeError(
-            f"{glass_filename} has {pos.shape[0]} particles, expected {N} "
-            f"for level={opt.level}."
-        )
-    eps = 1e-6
-    pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * L
-    h = h_glass * L
-else:
-    print(
-        "No matching glass file for this --boxsize/--level combination; "
-        "falling back to a random, non-thermally-relaxed placement."
     )
-    pos = np.random.random([N, 3]) * np.array([L, L, L])
-    h = np.ones(N) * 3 * L / N ** (1 / 3.0)
-
-vel = np.zeros([N, 3])
-mass = np.ones(N) * m
-u = np.ones(N)
-ids = np.arange(N)
-rho = np.ones(N) * rho
-
-print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
-
-# L_code is the box length, already converted to code units above.
-L_code = L
-
-#####################
-# Seeded PE/LW pulse (no star): see --seed-pulse-amplitude's own help.
-#####################
-u_pe = np.zeros(N)
-u_lw = np.zeros(N)
-if opt.seed_pulse_amplitude > 0.0:
-    # 1.2348 = SPH:resolution_eta (params.yml); must match if that value changes.
-    h_mean = 1.2348 * L_code / N ** (1.0 / 3.0)
-    sigma = opt.seed_pulse_sigma_h * h_mean
-    centre = 0.5 * L_code
-    dx = pos - centre
-    dx -= L_code * np.round(dx / L_code)
-    r2 = np.sum(dx**2, axis=1)
-    u_pe = opt.seed_pulse_amplitude * np.exp(-0.5 * r2 / sigma**2)
-    u_lw = u_pe.copy()
-    print(
-        f"Seeded pulse: amplitude={opt.seed_pulse_amplitude}, "
-        f"sigma={sigma} code = {sigma / h_mean} h, no star particle."
+    pos, h, box, m, rho = glass_box(opt.glass, opt.rho, opt.mass)
+    h0 = float(h.mean())
+    centre = np.full(3, 0.5 * box)
+    write_ic(opt.out, pos, h, box, m, rho)
+    d = np.asarray(DIRECTION) / np.linalg.norm(DIRECTION)
+    c = centre - START_DISTANCE_H * h0 * d
+    lo = (c - 0.5 * PULSE_H * h0).astype(np.float32).astype(np.float64)
+    hi = (c + 0.5 * PULSE_H * h0).astype(np.float32).astype(np.float64)
+    value = ",".join(
+        "%.9g" % v
+        for v in [
+            *lo,
+            *hi,
+            *d,
+            ENERGY_PE * opt.energy_scale,
+            ENERGY_LW * opt.energy_scale,
+        ]
     )
-elif opt.seed_delta_amplitude > 0.0:
-    # Nyquist-scale delta seed (S2 leg a): the single particle nearest the
-    # box centre carries the whole amplitude, every other particle is zero.
-    centre = 0.5 * L_code
-    dx = pos - centre
-    dx -= L_code * np.round(dx / L_code)
-    centre_idx = int(np.argmin(np.sum(dx**2, axis=1)))
-    u_pe[centre_idx] = opt.seed_delta_amplitude
-    u_lw[centre_idx] = opt.seed_delta_amplitude
-    print(
-        f"Seeded delta: amplitude={opt.seed_delta_amplitude} at particle "
-        f"{centre_idx}, no star particle."
+    open("beam_args.txt", "w").write(
+        f"-P\nGEARFeedback:ISRF_packet_test_beam_1:[{value}]\n"
     )
-elif opt.seed_noise_amplitude > 0.0:
-    # Uniform background + 1% relative white noise (S2 leg c), fixed seed
-    # (np.random.seed(1) above) for reproducibility.
-    noise_pe = 1.0 + 0.01 * np.random.standard_normal(N)
-    noise_lw = 1.0 + 0.01 * np.random.standard_normal(N)
-    u_pe = opt.seed_noise_amplitude * noise_pe
-    u_lw = opt.seed_noise_amplitude * noise_lw
-    print(
-        f"Seeded noise: background={opt.seed_noise_amplitude}, 1% relative "
-        f"white noise, no star particle."
+    geometry = dict(
+        box_kpc=box,
+        h0_kpc=h0,
+        centre_kpc=centre.tolist(),
+        direction=d.tolist(),
     )
-
-write_star = not (
-    opt.no_star
-    or opt.seed_pulse_amplitude > 0.0
-    or opt.seed_delta_amplitude > 0.0
-    or opt.seed_noise_amplitude > 0.0
-)
-
-#####################
-# Now, take care of the star
-#####################
-N_star = 1 if write_star else 0
-if write_star:
-    M_star = opt.star_mass * units.M_sun
-    pos_star = opt.star_pos
-
-    # Convert the star mass to internal units
-    M_star = [M_star.to(UnitMass).value]
-    print("Mass of the star (internal units)     : {:e}".format(M_star[0]))
-
-    # If no position was given, place the star at the center of the box
-    if pos_star is None:
-        pos_star = np.ones([N_star, 3]) * L / 2
-
-    # Remaining required data
-    # vel_star = np.zeros([N_star, 3])
-    vel_star = np.zeros([N_star, 3])
-    h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0)  # Same as the gas particles
-
-    if opt.star_type == "single_star":
-        star_type = 0
-    elif opt.star_type == "continuous_IMF":
-        star_type = 1
-    elif opt.star_type == "SSP":
-        star_type = 2
-    else:
-        raise ValueError(f"Star type {opt.star_type} is not known!")
-
-    star_particle_type = np.ones(N_star) * star_type
-    star_id = [N + N_star]
-    star_birth_time = np.zeros(N_star)
-
-#####################
-# Finally write the ICs in the file
-#####################
-
-# File
-fileOutput = h5py.File(opt.outputfilename, "w")
-print("{} saved.".format(opt.outputfilename))
-
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, L]
-grp.attrs["NumPart_Total"] = [N, 0, 0, 0, N_star, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, N_star, 0]  # N_star=0: no PartType4 group
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFileOutputsPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+    json.dump(geometry, open("geometry.json", "w"), indent=1)
+    print(json.dumps(geometry))
 
 
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
-grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
-
-
-# Write Gas particle group
-grp = fileOutput.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=vel, dtype="f")
-grp.create_dataset("Masses", data=mass, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("Densities", data=rho, dtype="f")
-grp.create_dataset("PESpecificEnergy", data=u_pe, dtype="f")
-grp.create_dataset("LWSpecificEnergy", data=u_lw, dtype="f")
-
-
-# Write star particle group
-if write_star:
-    grp = fileOutput.create_group("/PartType4")
-    grp.create_dataset("Coordinates", data=pos_star, dtype="d")
-    grp.create_dataset("Velocities", data=vel_star, dtype="f")
-    grp.create_dataset("Masses", data=M_star, dtype="f")
-    grp.create_dataset("ParticleIDs", data=star_id, dtype="L")
-    grp.create_dataset("SmoothingLength", data=h_star, dtype="f")
-    grp.create_dataset("BirthMass", data=M_star, dtype="f")
-    grp.create_dataset("BirthTime", data=star_birth_time, dtype="f")
-    grp.create_dataset("StellarParticleType", data=star_particle_type, dtype="i")
-
-fileOutput.close()
+if __name__ == "__main__":
+    main()

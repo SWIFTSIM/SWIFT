@@ -32,10 +32,14 @@
 #include "feedback_properties.h"
 #include "minmax.h"
 #include "radiation.h"
+#include "radiation_packet.h"
 #include "timestep_sync_part.h"
 #include "tracers.h"
 
-#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+#include "radiation_isrf_extinction.h"
+#endif
+
 /**
  * @brief Radiation density interaction between two particles (non-symmetric).
  *
@@ -54,6 +58,7 @@
  * @param cooling The #cooling_function_data used in the run.
  * @param ti_current Current integer time value
  */
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
 __attribute__((always_inline)) INLINE static void
 radiation_iact_nonsym_feedback_density(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -93,7 +98,7 @@ radiation_iact_nonsym_feedback_density(
     si->feedback_data.grad_rho_star[k] += mj * gradW[k];
   }
 
-  /* Same weighting as the gas density at the star, which normalizes it. */
+  /* Same weighting as enrichment_weight, so both share one normalization. */
   si->feedback_data.Z_star +=
       chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
@@ -108,13 +113,13 @@ radiation_iact_nonsym_feedback_density(
     const integertime_t ti_current) {}
 #endif
 
-#ifdef GEAR_SUBGRID_RADIATION
 /**
  * @brief Store the star's feedback time-step for this step.
  *
  * Cached so the per-pair loop avoids the cosmological lookup. @p dt must be
- * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns,
- * in physical time also under cosmology.
+ * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns.
+ * Under cosmology it is a proper time, as in compute_time() of
+ * feedback_common.c.
  *
  * @param sp The #spart to update.
  * @param dt Length of the star's feedback step, in internal units.
@@ -123,48 +128,15 @@ radiation_iact_nonsym_feedback_density(
 __attribute__((always_inline)) INLINE static void feedback_star_store_timestep(
     struct spart *restrict sp, const double dt, const integertime_t ti_begin) {
 
+#ifdef GEAR_SUBGRID_RADIATION
   sp->feedback_data.radiation.Delta_t = (float)dt;
 #ifdef SWIFT_DEBUG_CHECKS
   sp->feedback_data.radiation.Delta_t_cached_ti_begin = ti_begin;
 #else
   (void)ti_begin;
 #endif
-}
-#else
-__attribute__((always_inline)) INLINE static void feedback_star_store_timestep(
-    struct spart *restrict sp, const double dt, const integertime_t ti_begin) {}
 #endif
-
-/**
- * @brief Add the missing h factors to the gas density gradient and
- * metallicity a star accumulated in its density loop.
- *
- * @param sp The #spart.
- */
-#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
-__attribute__((always_inline)) INLINE static void
-radiation_pressure_prepare_star(struct spart *restrict sp) {
-  /* Add missing h factor */
-  const float hi_inv = 1.f / sp->h;
-  const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
-  const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
-
-  sp->feedback_data.grad_rho_star[0] *= hi_inv_dim_plus_one;
-  sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
-  sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
-
-  /* The gas density is 0 only when the Z_star sum is too, so skipping is
-     exact. Z_star needs 1/h^d, not the gradient's 1/h^(d+1). The density is
-     already normalized by the caller. */
-  const float rho_gas = feedback_get_comoving_gas_density_at_star(sp);
-  if (rho_gas > 0.0f) {
-    sp->feedback_data.Z_star *= hi_inv_dim / rho_gas;
-  }
 }
-#else
-__attribute__((always_inline)) INLINE static void
-radiation_pressure_prepare_star(struct spart *restrict sp) {}
-#endif
 
 /**
  * @brief Finalize a #spart's radiation-feedback inputs (density gradient,
@@ -192,34 +164,50 @@ feedback_prepare_radiation_feedback(
     const struct phys_const *phys_const, const double star_age_beg_step,
     const double dt, const double time, const integertime_t ti_begin,
     const int with_cosmology) {
-  radiation_pressure_prepare_star(sp);
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
+  /* Add missing h factor */
+  const float hi_inv = 1.f / sp->h;
+  const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
+  const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
+
+  sp->feedback_data.grad_rho_star[0] *= hi_inv_dim_plus_one;
+  sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
+  sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
+
+  /* enrichment_weight is 0 only when the Z_star sum is too, so skipping is
+     exact. Z_star needs 1/h^d, not the gradient's 1/h^(d+1). */
+  if (sp->feedback_data.enrichment_weight > 0.0f) {
+    sp->feedback_data.Z_star *=
+        hi_inv_dim / sp->feedback_data.enrichment_weight;
+  }
+#endif
+
   feedback_star_store_timestep(sp, dt, ti_begin);
 }
 
 /**
- * @brief Radiation pressure of a star on one gas neighbour, for a given
- * share of the star's momentum (non-symmetric).
+ * @brief Radiation pressure kick of a star on a gas particle.
  *
- * @param weight Share of the star's momentum given to pj.
- * @param dir Vector pointing from pj towards the star.
- * @param dir_norm Norm of @p dir, > 0.
- * @param si First (star) particle (not updated).
- * @param xpj Extra particle data of the gas particle.
- * @param mj Mass of the gas particle.
- * @param Delta_t The star's feedback time-step.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param r Comoving distance between the two particles, floored.
+ * @param weight Kernel weight of the gas particle in the star's feedback.
+ * @param Delta_t Time over which the star radiates.
+ * @param si The (star) particle (not updated).
+ * @param pj The gas particle.
+ * @param xpj Extra particle data
  * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
  * @param phys_const The physical constants (in internal units).
  * @param us The internal system of units.
  */
 #ifdef GEAR_SUBGRID_RADIATION_PRESSURE
-__attribute__((always_inline)) INLINE static void
-radiation_pressure_iact_nonsym_apply_weighted(
-    const double weight, const float dir[3], const float dir_norm,
-    const struct spart *si, struct xpart *xpj, const float mj,
-    const float Delta_t, const struct cosmology *cosmo,
-    const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us) {
+__attribute__((always_inline)) INLINE static void radiation_pressure_apply(
+    const float dx[3], const float r, const double weight, const float Delta_t,
+    const struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct phys_const *phys_const, const struct unit_system *us) {
+
+  const float mj = hydro_get_mass(pj);
 
   /* Test the policy bit first: L_bol can be positive from two negative
      factors even with the switch off. */
@@ -229,10 +217,10 @@ radiation_pressure_iact_nonsym_apply_weighted(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
-    /* Along -dir, away from the star; cosmo->a converts to comoving. */
+    /* Radially outwards from the star; cosmo->a converts to comoving. */
     for (int i = 0; i < 3; i++) {
       xpj->feedback_data.radiation.delta_p[i] -=
-          delta_p_rad * dir[i] / dir_norm * cosmo->a;
+          delta_p_rad * dx[i] / r * cosmo->a;
     }
 
     /* Tracer. The kick velocity is a magnitude because
@@ -246,27 +234,27 @@ radiation_pressure_iact_nonsym_apply_weighted(
   }
 }
 #else
-__attribute__((always_inline)) INLINE static void
-radiation_pressure_iact_nonsym_apply_weighted(
-    const double weight, const float dir[3], const float dir_norm,
-    const struct spart *si, struct xpart *xpj, const float mj,
-    const float Delta_t, const struct cosmology *cosmo,
-    const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us) {}
+__attribute__((always_inline)) INLINE static void radiation_pressure_apply(
+    const float dx[3], const float r, const double weight, const float Delta_t,
+    const struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct phys_const *phys_const, const struct unit_system *us) {}
 #endif
 
 /**
- * @brief Inject a star's LW/PE emission into one gas neighbour, for a given
- * share of the star's emission (non-symmetric).
+ * @brief Injection of the local Lyman-Werner/PE field of a star into a gas
+ * particle.
  *
- * @param r Comoving distance between the two particles, floored above 0.
- * @param weight Share of the star's emission given to pj.
- * @param si First (star) particle (not updated).
- * @param pj Second (gas) particle.
- * @param xpj Extra particle data
- * @param mj Mass of the gas particle.
- * @param Delta_t The star's feedback time-step.
- * @param ti_step The star's integer time-step.
+ * With the packet transport on, the star emits packets instead.
+ *
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param r Comoving distance between the two particles, floored.
+ * @param weight Kernel weight of the gas particle in the star's feedback.
+ * @param Delta_t Time over which the star radiates.
+ * @param si The (star) particle (not updated).
+ * @param pj The gas particle.
+ * @param xpj The extended data of the gas particle, or NULL for a foreign
+ * copy.
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
@@ -276,19 +264,25 @@ radiation_pressure_iact_nonsym_apply_weighted(
  * @param ti_current Current integer time
  */
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-__attribute__((always_inline)) INLINE static void
-radiation_isrf_iact_nonsym_inject_weighted(
-    const float r, const double weight, const struct spart *si, struct part *pj,
-    struct xpart *xpj, const float mj, const float Delta_t,
-    const integertime_t ti_step, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
+__attribute__((always_inline)) INLINE static void radiation_isrf_inject(
+    const float dx[3], const float r, const double weight, const float Delta_t,
+    struct spart *si, struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {
 
-  /* L_band is zero unless with_interstellar_radiation_field is on. */
-  if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
-      si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
+  const float mj = hydro_get_mass(pj);
+
+  /* Also used to renew the LW/PE illumination window. */
+  const integertime_t ti_step = get_integer_timestep(si->time_bin);
+
+  if (fb_props->ISRF_propagation) {
+    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, cosmo->H,
+                               ti_current, &fb_props->ISRF_packet_constants);
+  } else if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
+             si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
+    /* L_band is zero unless with_interstellar_radiation_field is on. */
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction[ISRF_OPERATOR_COUNT];
@@ -306,30 +300,23 @@ radiation_isrf_iact_nonsym_inject_weighted(
                     (double)extinction[radiation_isrf_moment_to_operator[m]];
     }
 
-    if (fb_props->ISRF_propagation) {
-      /* Pure accumulation, no reset, so stars on any time bin just add. The
-         fold-in happens in radiation_end_force_propagation(). */
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u_dose_reservoir +=
-            (float)(u_inject[m] / (double)mj);
-      }
-      pj->feedback_data.ISRF_reservoir_end_ti =
-          max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
+    /* Instantaneous field: reset on the first touch this step, then sum over
+     * the stars. */
+    if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
+      for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+        pj->feedback_data.isrf_moment[m].u = 0.f;
+      pj->feedback_data.LW_dissociating_u = 0.;
       pj->feedback_data.ISRF_last_touch_ti = ti_current;
-    } else {
-      /* Instantaneous field: reset on the first touch this step, then sum
-         over the stars. */
-      if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-          pj->feedback_data.isrf_moment[m].u = 0.f;
-        pj->feedback_data.ISRF_last_touch_ti = ti_current;
-      }
-
-      /* #u is double: no narrowing cast. */
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
-      }
     }
+
+    /* #u is double: no narrowing cast. */
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
+    }
+    if (feedback_part_tracks_LW_dissociating(&pj->feedback_data))
+      pj->feedback_data.LW_dissociating_u +=
+          (double)radiation_get_star_LW_dissociating_factor(si) *
+          u_inject[ISRF_MOMENT_LW] / (double)mj;
 
     /* Renew the window on every touch. The expiry check runs once per step
        in feedback_reset_part(). */
@@ -345,130 +332,58 @@ radiation_isrf_iact_nonsym_inject_weighted(
   }
 }
 #else
-__attribute__((always_inline)) INLINE static void
-radiation_isrf_iact_nonsym_inject_weighted(
-    const float r, const double weight, const struct spart *si, struct part *pj,
-    struct xpart *xpj, const float mj, const float Delta_t,
-    const integertime_t ti_step, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
+__attribute__((always_inline)) INLINE static void radiation_isrf_inject(
+    const float dx[3], const float r, const double weight, const float Delta_t,
+    struct spart *si, struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {}
 #endif
 
+#if defined(GEAR_SUBGRID_RADIATION_PRESSURE) || \
+    defined(GEAR_SUBGRID_RADIATION_ISRF)
 /**
- * @brief Record that a star pass reached a gas neighbour with a zero share of
- * the star's LW/PE emission.
+ * @brief Kernel weight of a gas particle in the feedback of a star, shared by
+ * the radiation pressure and the ISRF injection.
  *
- * Without propagation the field is instantaneous: the neighbour must hold this
- * pass's share (zero), not the value of an earlier pass.
- *
- * @param si First (star) particle (not updated).
- * @param pj Second (gas) particle.
- * @param fb_props Properties of the feedback scheme.
- * @param ti_current Current integer time
+ * @param r2 Comoving square distance between the two particles.
+ * @param hi Comoving smoothing-length of the star.
+ * @param si The (star) particle.
+ * @param pj The gas particle.
+ * @param r (return) Comoving distance between the two particles, floored.
+ * @return The weight: gas mass times kernel, over the star's enrichment
+ * weight.
  */
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-__attribute__((always_inline)) INLINE static void
-radiation_iact_nonsym_feedback_apply_zero_share(
-    const struct spart *si, struct part *pj,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
-
-  if (fb_props->ISRF_propagation) return;
-  if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] == 0.0 &&
-      si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] == 0.0)
-    return;
-
-  if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-      pj->feedback_data.isrf_moment[m].u = 0.f;
-    pj->feedback_data.ISRF_last_touch_ti = ti_current;
-  }
-}
-#else
-__attribute__((always_inline)) INLINE static void
-radiation_iact_nonsym_feedback_apply_zero_share(
-    const struct spart *si, struct part *pj,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {}
-#endif
-
-#ifdef GEAR_SUBGRID_RADIATION
-/**
- * @brief Radiation feedback of a star on one gas neighbour, for a given
- * share of the star's emission (non-symmetric).
- *
- * Applies radiation pressure and injects the local Lyman-Werner/PE field.
- * The neighbour receives the fraction @p weight of the star's radiation
- * momentum, along -@p dir, and the fraction @p weight of its LW/PE energy.
- * The caller chooses the weights; they must sum to 1 over the neighbours.
- *
- * @param r Comoving distance between the two particles, floored above 0.
- * @param weight Share of the star's emission given to pj.
- * @param dir Vector pointing from pj towards the star (comoving separation
- * or dimensionless weight).
- * @param dir_norm Norm of @p dir, > 0.
- * @param si First (star) particle (not updated).
- * @param pj Second (gas) particle.
- * @param xpj Extra particle data
- * @param cosmo The cosmological model.
- * @param hydro_props The properties of the hydro scheme.
- * @param fb_props Properties of the feedback scheme.
- * @param phys_const The physical constants (in internal units).
- * @param us The internal system of units.
- * @param cooling The properties of the cooling scheme.
- * @param ti_current Current integer time
- */
-__attribute__((always_inline)) INLINE static void
-radiation_iact_nonsym_feedback_apply_weighted(
-    const float r, const double weight, const float dir[3],
-    const float dir_norm, struct spart *si, struct part *pj, struct xpart *xpj,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, const struct cooling_function_data *cooling,
-    const integertime_t ti_current) {
+__attribute__((always_inline)) INLINE static double radiation_get_pair_weight(
+    const float r2, const float hi, const struct spart *si,
+    const struct part *pj, float *r) {
 
   const float mj = hydro_get_mass(pj);
+  /* Floor avoids a NaN in the radial kick for a coincident pair (r2 == 0). */
+  const float r2_min = 1e-6f * hi * hi;
+  *r = sqrtf(max(r2, r2_min));
 
-  /* Also used to renew the LW/PE illumination window. */
-  const integertime_t ti_step = get_integer_timestep(si->time_bin);
+  float hi_inv = 1.0f / hi;
+  float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  float xi = *r * hi_inv;
+  float wi, wi_dx;
+  kernel_deval(xi, &wi, &wi_dx);
+  wi *= hi_inv_dim;
 
-  /* Cached once per star by feedback_prepare_radiation_feedback(). */
-  const float Delta_t = si->feedback_data.radiation.Delta_t;
-#ifdef SWIFT_DEBUG_CHECKS
-  if (get_integer_time_begin(ti_current, si->time_bin) !=
-      si->feedback_data.radiation.Delta_t_cached_ti_begin)
-    error(
-        "Stale cached Delta_t: star %lld's step boundary moved since it "
-        "was cached.",
-        si->id);
-#endif
-
-  radiation_pressure_iact_nonsym_apply_weighted(weight, dir, dir_norm, si, xpj,
-                                                mj, Delta_t, cosmo, fb_props,
-                                                phys_const, us);
-  radiation_isrf_iact_nonsym_inject_weighted(
-      r, weight, si, pj, xpj, mj, Delta_t, ti_step, cosmo, hydro_props,
-      fb_props, phys_const, us, cooling, ti_current);
+  const double si_inv_weight = si->feedback_data.enrichment_weight == 0
+                                   ? 0.
+                                   : 1. / si->feedback_data.enrichment_weight;
+  return mj * wi * si_inv_weight;
 }
-#else
-__attribute__((always_inline)) INLINE static void
-radiation_iact_nonsym_feedback_apply_weighted(
-    const float r, const double weight, const float dir[3],
-    const float dir_norm, struct spart *si, struct part *pj, struct xpart *xpj,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, const struct cooling_function_data *cooling,
-    const integertime_t ti_current) {}
+
 #endif
 
-#ifdef GEAR_SUBGRID_RADIATION
 /**
  * @brief Radiation feedback interaction between two particles (non-symmetric),
  * updating the gas particles neighbouring a star particle.
  *
- * Applies radiation pressure and injects the local Lyman-Werner/PE field,
- * shared by the SPH kernel mass weights and directed radially away from the
- * star.
+ * Applies radiation pressure and injects the local Lyman-Werner/PE field.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -485,6 +400,8 @@ radiation_iact_nonsym_feedback_apply_weighted(
  * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time
  */
+#if defined(GEAR_SUBGRID_RADIATION_PRESSURE) || \
+    defined(GEAR_SUBGRID_RADIATION_ISRF)
 __attribute__((always_inline)) INLINE static void
 radiation_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -494,25 +411,24 @@ radiation_iact_nonsym_feedback_apply(
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {
 
-  const float mj = hydro_get_mass(pj);
-  /* Floor avoids a NaN in the radial kick for a coincident pair (r2 == 0). */
-  const float r2_min = 1e-6f * hi * hi;
-  const float r = sqrtf(max(r2, r2_min));
+  float r;
+  const double weight = radiation_get_pair_weight(r2, hi, si, pj, &r);
 
-  float hi_inv = 1.0f / hi;
-  float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
-  float xi = r * hi_inv;
-  float wi, wi_dx;
-  kernel_deval(xi, &wi, &wi_dx);
-  wi *= hi_inv_dim;
+  /* Cached once per star by feedback_prepare_radiation_feedback(). */
+  const float Delta_t = si->feedback_data.radiation.Delta_t;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (get_integer_time_begin(ti_current, si->time_bin) !=
+      si->feedback_data.radiation.Delta_t_cached_ti_begin)
+    error(
+        "Stale cached Delta_t: star %lld's step boundary moved since it "
+        "was cached.",
+        si->id);
+#endif
 
-  const float rho_gas = feedback_get_comoving_gas_density_at_star(si);
-  const double si_inv_weight = rho_gas == 0 ? 0. : 1. / rho_gas;
-  const double weight = mj * wi * si_inv_weight;
-
-  radiation_iact_nonsym_feedback_apply_weighted(
-      r, weight, dx, r, si, pj, xpj, cosmo, hydro_props, fb_props, phys_const,
-      us, cooling, ti_current);
+  radiation_pressure_apply(dx, r, weight, Delta_t, si, pj, xpj, cosmo, fb_props,
+                           phys_const, us);
+  radiation_isrf_inject(dx, r, weight, Delta_t, si, pj, xpj, cosmo, hydro_props,
+                        fb_props, phys_const, us, cooling, ti_current);
 }
 #else
 __attribute__((always_inline)) INLINE static void
@@ -525,24 +441,24 @@ radiation_iact_nonsym_feedback_apply(
     const integertime_t ti_current) {}
 #endif
 
-#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
 /**
  * @brief Update the properties of the particle due to radiation feedback.
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
- * @param mass Mass of the gas the momentum is divided by (GEAR thermal: the
- * mass before any winds or SN).
+ * @param initial_mass Initial mass of the gas, i.e. before any winds or SN.
  */
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
-                               const struct engine *e, const float mass) {
+                               const struct engine *e,
+                               const float initial_mass) {
 
   /* Momentum only; internal energy is handled elsewhere, before cooling. */
   if (xp->feedback_data.hit_by_radiation) {
     for (int i = 0; i < 3; i++) {
-      const float dv = xp->feedback_data.radiation.delta_p[i] / mass;
+      const float dv = xp->feedback_data.radiation.delta_p[i] / initial_mass;
       xp->v_full[i] += dv;
       p->v[i] += dv;
 
@@ -554,7 +470,8 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
 #else
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
-                               const struct engine *e, const float mass) {}
+                               const struct engine *e,
+                               const float initial_mass) {}
 #endif
 
 #endif /* SWIFT_RADIATION_IACT_GEAR_H */

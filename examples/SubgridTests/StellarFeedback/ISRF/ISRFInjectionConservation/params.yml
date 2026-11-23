@@ -10,7 +10,7 @@ Restarts:
   enable: 0
 
 # No Potential: block, since --external-gravity (run.sh) is a no-op force,
-# matching the sibling ISRFHyperbolicPropagation/StromgrenSphere* examples'
+# matching the sibling StromgrenSphere* examples'
 # idiom for "no gravity".
 Gravity:
   MAC:                           adaptive
@@ -72,6 +72,8 @@ GEARChemistry:
   diffusion_coefficient: 1e-3
 
 GrackleCooling:
+  # H2 self-shielding: 0 is no shielding. Use 2 or 3 in a run that tracks H2 (grackle_2 or grackle_3).
+  H2_self_shielding: 0                          # 0 off, 2 column set by H2_self_shielding_path, 3 local Jeans length (Default: 0)
   # Core Grackle settings. Each optional key states its parser default.
   cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
   with_UV_background: 0                         # Metagalactic UV background on or off (required)
@@ -90,7 +92,7 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
 
   # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
-  photoelectric_heating_efficiency: constant    # constant, wolfire1995 or density_dependent (Default: constant)
+  photoelectric_heating_efficiency: constant    # constant or wolfire1995 (Default: constant)
   local_dust_to_gas_ratio: -1                   # Dust-to-gas mass ratio, -1 keeps Grackle's own default (Default: -1)
 
   # Radiation field and RT rates (cgs).
@@ -128,14 +130,7 @@ GEARFeedback:
   # ISRF
   with_interstellar_radiation_field: 1                             # ISRF feedback master switch
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
-  ISRF_propagation: 0                                       # Run the hyperbolic ISRF propagation update (default)
-  ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
-  ISRF_dissipation_alpha_max: 0.5                           # Artificial-dissipation trigger ceiling (default)
-  ISRF_dissipation_negativity_threshold: 0.01               # Negativity trigger threshold, relative (default)
-  ISRF_dissipation_alpha_floor: 0.5                         # Dissipation floor near the front (default)
-  ISRF_dissipation_floor_h_over_lambda: 0.5                 # Floor's h/lambda knee, eps_lambda (default)
-  ISRF_dissipation_floor_relaxation_residual: 0.40          # Floor's relaxation-residual gate, eps_R (default)
-  ISRF_dissipation_alpha_pin_for_debugging: 0               # Debug: fixed dissipation coefficient (default)
+  ISRF_propagation: 0                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.

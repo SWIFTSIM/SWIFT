@@ -779,3 +779,98 @@ void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
     }
   }
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+static struct runner_sort_counters sort_counters;
+
+/**
+ * @brief Reset the sort state counters.
+ */
+void runner_sort_counters_reset(void) {
+  bzero(&sort_counters, sizeof(sort_counters));
+}
+
+/**
+ * @brief Copy the sort state counters.
+ *
+ * @param counters (return) The counters.
+ */
+void runner_sort_counters_get(struct runner_sort_counters *counters) {
+  *counters = sort_counters;
+}
+
+/**
+ * @brief Print the sort state counters of this step, if any is not zero.
+ *
+ * @param e The #engine.
+ */
+void runner_sort_counters_report(const struct engine *e) {
+
+  const int (*n)[2][3] = sort_counters.count;
+  int any = 0;
+  for (int type = 0; type < 2; type++)
+    for (int site = 0; site < 2; site++)
+      for (int state = 0; state < 3; state++) any |= n[type][site][state];
+  if (!any) return;
+
+  message(
+      "Sort state counters, step %d (unsorted/stale/beyond): pair leaves gas "
+      "%d/%d/%d stars %d/%d/%d, fallback loops gas %d/%d/%d stars %d/%d/%d",
+      e->step, n[0][0][0], n[0][0][1], n[0][0][2], n[1][0][0], n[1][0][1],
+      n[1][0][2], n[0][1][0], n[0][1][1], n[0][1][2], n[1][1][0], n[1][1][1],
+      n[1][1][2]);
+}
+
+/**
+ * @brief Count the state of a sort that a loop is about to read.
+ *
+ * @param counts The counters of the particle type and site.
+ * @param sorted The sorted flags of the cell.
+ * @param dx_max_sort_old The dx_max_sort_old of the cell.
+ * @param dx_max_sort The dx_max_sort of the cell.
+ * @param dmin The dmin of the cell.
+ * @param sid The direction of the pair.
+ */
+static void runner_count_sort_state(int counts[3], const int sorted,
+                                    const float dx_max_sort_old,
+                                    const float dx_max_sort, const float dmin,
+                                    const int sid) {
+
+  if (!(sorted & (1 << sid)))
+    atomic_inc(&counts[runner_sort_state_unsorted]);
+  else if (dx_max_sort_old > space_maxreldx * dmin)
+    atomic_inc(&counts[runner_sort_state_stale]);
+  else if (dx_max_sort > space_maxreldx * dmin)
+    atomic_inc(&counts[runner_sort_state_beyond]);
+}
+
+/**
+ * @brief Count the state of the gas sort of a cell along @p sid.
+ *
+ * @param c The #cell.
+ * @param sid The direction of the pair.
+ * @param site The loop that reads the sort.
+ */
+void runner_count_sort_state_hydro(const struct cell *c, const int sid,
+                                   const enum runner_sort_site site) {
+  runner_count_sort_state(sort_counters.count[0][site], c->hydro.sorted,
+                          c->hydro.dx_max_sort_old, c->hydro.dx_max_sort,
+                          c->dmin, sid);
+}
+
+/**
+ * @brief Count the state of the stars sort of a cell along @p sid.
+ *
+ * @param c The #cell.
+ * @param sid The direction of the pair.
+ * @param site The loop that reads the sort.
+ */
+void runner_count_sort_state_stars(const struct cell *c, const int sid,
+                                   const enum runner_sort_site site) {
+  runner_count_sort_state(sort_counters.count[1][site], c->stars.sorted,
+                          c->stars.dx_max_sort_old, c->stars.dx_max_sort,
+                          c->dmin, sid);
+}
+
+#endif /* SWIFT_DEBUG_CHECKS */

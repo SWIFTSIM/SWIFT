@@ -337,6 +337,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
             /* One last action before death? */
             hydro_remove_part(p, xp, e->time);
+            feedback_book_removed_gas_left_box(p);
 
             /* Remove the particle entirely */
             cell_remove_part(e, c, p, xp);
@@ -407,7 +408,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* A particle was inside its cell at the last rebuild. */
-    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+    if (dx_outside_max > 1.0001f * dx_max + cell_face_tolerance(c))
       error("Particle further outside its cell than it moved: %e > %e",
             dx_outside_max, dx_max);
 #endif
@@ -754,6 +755,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
+            feedback_book_star_left_box(sp);
+
             /* Remove the particle entirely */
             cell_remove_spart(e, c, sp);
           }
@@ -818,7 +821,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* A particle was inside its cell at the last rebuild. */
-    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+    if (dx_outside_max > 1.0001f * dx_max + cell_face_tolerance(c))
       error("Particle further outside its cell than it moved: %e > %e",
             dx_outside_max, dx_max);
 #endif
@@ -1036,7 +1039,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* A particle was inside its cell at the last rebuild. */
-    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+    if (dx_outside_max > 1.0001f * dx_max + cell_face_tolerance(c))
       error("Particle further outside its cell than it moved: %e > %e",
             dx_outside_max, dx_max);
 #endif
@@ -1185,6 +1188,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
               error("Logging of sink particles is not yet implemented.");
             }
 #endif
+
+            feedback_book_sink_left_box(sink);
 
             /* Remove the particle entirely */
             cell_remove_sink(e, c, sink);

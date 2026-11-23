@@ -1,0 +1,62 @@
+# Intro
+Uniform, metal-enriched gas in a periodic box that expands with the universe, cooling
+radiatively with Grackle or geajay. The gas starts at 100 K, well above the temperature of the
+cosmic microwave background (CMB), T_CMB(z) = T_CMB,0 (1 + z). With the CMB temperature floor of
+the cooling library on, the gas cools onto T_CMB(z) when the library follows the cooling
+accurately over each time step. With the floor off, it cools far below T_CMB(z). The box holds
+32768 gas particles at 10 H atoms/cm^3 and a metal mass fraction of 0.01, with no gravity and no
+stars, and expands by a factor 1.25 in scale factor.
+
+The floor is an option of the cooling library. In official Grackle it is
+`GrackleCooling:cmb_temperature_floor` and T_CMB,0 is 2.73 K. In geajay it is
+`GeajayCooling:metal_cooling_cmb_floor` and T_CMB,0 is 2.725 K. Both default to 1. They subtract
+the metal cooling rate at T_CMB(z) from the metal cooling rate, so metal cooling stops at
+T_CMB(z). `agora_cmb_temperature_floor` is a different option: SWIFT applies it itself as a
+lower bound on the internal energy, with T_CMB,0 = 2.7255 K. This example leaves it at 0.
+
+The time step decides the result with official Grackle. The floor holds only when the step is
+short against the time the metal cooling needs to restore the floor. At the default
+`n_steps=400` it does not hold; `n_steps=3200` does. geajay holds the floor at the default.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+Use `grackle_1` or a higher mode. With geajay, replace `--with-cooling=grackle_1` and
+`--with-grackle=...` by `--with-cooling=geajay_3 --with-geajay=path/to/geajay`.
+
+# Run
+```
+redshift=9 cmb_floor=1 n_steps=3200 ./run.sh
+redshift=9 cmb_floor=0 ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_z<redshift>_floor<cmb_floor>`, which it empties first. Override a setting with an
+environment variable: `n_threads`, `redshift` (starting redshift), `cmb_floor`
+(1 or 0), `gas_density` (atom/cm^3, physical), `gas_mass` (Msun), `temperature` (K),
+`expansion` (a_end / a_begin), `n_steps`, `n_snapshots`, `swift_exe`, `run_dir` (a plain
+directory name) and `extra_args` (further swift arguments). The metal mass fraction is in
+`params.yml`. SWIFT rounds `n_steps` up to a power of two, so the default 400 gives 512 steps.
+Keep `n_snapshots` a power of two (default 8), so that all snapshots fall at the same point of
+a time step. A run takes a few minutes on 8 threads at the default step count.
+
+# Check
+```
+python3 checkCMBFloor.py run_z9_floor1
+```
+The snapshots hold no temperature, so the script rebuilds it from the internal energy, the
+species and the metal mass fraction, as the cooling library does. It reads the library that ran
+from `used_parameters.yml` and takes its T_CMB,0; `--t-cmb-0` overrides it. In every snapshot
+after the first it checks that all temperatures are finite and that the lowest one is at least
+T_CMB(z) within 1e-4 plus half the time step in ln a (floor held). The half step is an
+empirical lag of the gas below the floor. In the last snapshot it checks that the highest
+temperature is within 1e-3 above T_CMB(z) (floor reached). It exits with status 1 if a check
+fails. A run with `cmb_floor=0` is expected to fail the floor-held check:
+
+```
+python3 checkCMBFloor.py run_z9_floor0 --expect-below-floor
+```
+exits with status 0 only if that run fails the floor-held check and all its temperatures end
+below half of T_CMB(z).

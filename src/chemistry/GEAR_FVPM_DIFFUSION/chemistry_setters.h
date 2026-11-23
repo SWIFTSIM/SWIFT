@@ -206,8 +206,8 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
  * @param m_snii Stellar mass involved per supernova II event.
  * @param m_non_processed Mass of unprocessed gas that retains the star's
  * initial metallicity.
- * @param number_snii Number of Type II supernovae events.
- * @param number_snia Number of Type Ia supernovae events.
+ * @param number_snii Number of Type II supernovae events (may be fractional).
+ * @param number_snia Number of Type Ia supernovae events (may be fractional).
  * @param snii_yields Array of metal yields per element for Type II supernovae.
  *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
  * @param snia_yields Array of metal yields per element for Type Ia supernovae.
@@ -220,7 +220,8 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
 __attribute__((always_inline)) INLINE static void
 chemistry_set_star_supernovae_ejected_yields(
     struct spart *restrict sp, const float mass_snii_event,
-    const float m_non_processed, const int number_snii, const int number_snia,
+    const float m_non_processed, const float number_snii,
+    const float number_snia,
     const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const struct phys_const *phys_const) {

@@ -9,9 +9,7 @@ InternalUnitSystem:
 Restarts:
   enable: 0
 
-# No Potential: block, since --external-gravity (run.sh) is a no-op force,
-# matching the sibling StromgrenSphere*/RadiationPressureShellExpansion
-# examples' idiom for "no gravity".
+# No Potential: block, since --external-gravity (run.sh) is a no-op force.
 Gravity:
   MAC:                           adaptive
   epsilon_fmm:                   0.001
@@ -20,7 +18,7 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration; run.sh sets each configuration's values.
+# Parameters governing the time integration: 32 steps of 1.5625e-6 (dt_max rounds down to a power-of-two fraction of time_end).
 TimeIntegration:
   time_begin:        0.
   time_end:          5e-5
@@ -34,7 +32,7 @@ Snapshots:
   time_first: 0.0
   delta_time: 1e-5
   recording_triggers_sink:   [-1, -1, -1]
-  compression: 9
+  compression: 1
 
 Scheduler:
   cell_extra_gparts: 10
@@ -61,12 +59,12 @@ SPH:
   initial_temperature:   1000
 
 GEARChemistry:
-  # Solar: the screening length lambda needs a nonzero metallicity.
   initial_metallicity: 1
   scale_initial_metallicity: 1
-  diffusion_coefficient: 1e-3
 
 GrackleCooling:
+  # H2 self-shielding: 0 is no shielding. Use 2 or 3 in a run that tracks H2 (grackle_2 or grackle_3).
+  H2_self_shielding: 0                          # 0 off, 2 column set by H2_self_shielding_path, 3 local Jeans length (Default: 0)
   # Core Grackle settings. Each optional key states its parser default.
   cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
   with_UV_background: 0                         # Metagalactic UV background on or off (required)
@@ -85,8 +83,8 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
 
   # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
-  photoelectric_heating_efficiency: constant    # constant, wolfire1995 or density_dependent (Default: constant)
-  local_dust_to_gas_ratio: -1                   # Grackle's compiled default, which this example's screening length is derived against (Default: -1)
+  photoelectric_heating_efficiency: constant    # constant or wolfire1995 (Default: constant)
+  local_dust_to_gas_ratio: -1                   # Grackle's own compiled default (Default: -1)
 
   # Radiation field and RT rates (cgs).
   use_radiative_transfer: 0                     # Ionization and heating rates are provided; forced on by HII_couple_ionization_rate, and by the ISRF in grackle_2 and grackle_3 builds (Default: 0)
@@ -100,12 +98,12 @@ GrackleCooling:
   specific_heating_rates_cgs: 0                 # Constant specific heating rate [erg/s/g] (Default: 0)
 
   # Debug.
-  disable_cooling_for_debugging: 1              # Skips the per-particle cooling update to isolate the ISRF from the gas response; cooling_init() still resolves chemistry_data (Default: 0)
+  disable_cooling_for_debugging: 1              # Gas state frozen: the example follows the light only; cooling_init() still resolves chemistry_data (Default: 0)
 
 GEARFeedback:
   # Stellar evolution
-  yields_table: PopII_parsec_spectral.hdf5                  # Stellar yields table, with the Data/Radiation group
-  yields_table_first_stars: PopII_parsec_spectral.hdf5      # First-star table; the same file, so the ISRF source is Pop II either side of the transition
+  yields_table: PopII_parsec_spectral_with_pe_photon_energy.hdf5                  # Stellar yields table, with the Data/Radiation group
+  yields_table_first_stars: PopII_parsec_spectral_with_pe_photon_energy.hdf5      # First-star table; the same file, so the ISRF source is Pop II either side of the transition
   imf_transition_metallicity: -5                            # Pop III/II IMF cutoff, [Fe/H] (default)
   discrete_yields: 1                                        # Use discrete stellar yields
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Chemical elements read from yields table
@@ -121,18 +119,12 @@ GEARFeedback:
   with_stellar_wind_feedback: 0                             # Stellar wind feedback switch
 
   # ISRF
-  with_interstellar_radiation_field: 1                             # ISRF feedback master switch
-  ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
-  ISRF_propagation: 1                                       # Run the hyperbolic ISRF propagation update
-  ISRF_c_hyp_scheme: kernel_local                           # Propagation scheme. kernel_local = kernel-local speed (default), fixed_fraction = one fixed speed for the whole box
-  ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
-  ISRF_c_hyp_fixed_fraction_of_c: 0                         # fixed_fraction's speed as a fraction of c; must be positive there and 0 otherwise
-  ISRF_dissipation_alpha_max: 0.5                           # Artificial-dissipation trigger ceiling (default)
-  ISRF_dissipation_negativity_threshold: 0.01               # Negativity trigger threshold, relative (default)
-  ISRF_dissipation_alpha_floor: 0.5                         # Dissipation floor near the front (default)
-  ISRF_dissipation_floor_h_over_lambda: 0.5                 # Floor's h/lambda knee, eps_lambda (default)
-  ISRF_dissipation_floor_relaxation_residual: 0.40          # Floor's relaxation-residual gate, eps_R (default)
-  ISRF_dissipation_alpha_pin_for_debugging: 0               # Debug: fixed dissipation coefficient (default)
+  with_interstellar_radiation_field: 1                      # ISRF feedback master switch
+  ISRF_extinction_path: pair_separation                     # Receiver-side dust extinction path: the star-to-particle separation (default)
+  ISRF_propagation: 1                                       # Transport the light of the stars (needs --with-chealpix)
+  ISRF_packet_light_speed: cap                              # Speed limit of the light: cap, fixed or unlimited (default)
+  ISRF_packet_light_speed_fraction_of_c: 0.99               # Limit speed as a fraction of c (default)
+  ISRF_packet_cone_power: 4                                 # Power of the transmission cone, larger is narrower (default)
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
@@ -140,8 +132,7 @@ Stars:
   max_timestep_young_Myr:               0.1
   max_timestep_old_Myr:                 1
   min_star_timestep_Myr: 1e-4
-  # Photoionization is off in this example, so this search radius is
-  # otherwise inert, but it must still stay under the box half-width.
+  # Photoionization is off, so this search radius is inert, but it must stay under the box half-width.
   HII_max_search_radius: 0.001
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5

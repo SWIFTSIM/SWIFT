@@ -1,13 +1,19 @@
 # Intro
 A single 29.7 Msun star at the centre of a uniform, periodic box of cold
-(50 K), zero-metallicity gas at 1e3 atom/cm^3, with ISRF propagation on and
-Grackle's H2 network. The star's Lyman-Werner (LW) band propagates through
-the box and photodissociates the H2. The check compares every gas
+(50 K), zero-metallicity gas at 1e3 atom/cm^3, with the ISRF transport on
+(`ISRF_propagation: 1`) and Grackle's H2 network. The star's
+Lyman-Werner (LW) band propagates through the box and photodissociates the H2. The check compares every gas
 particle's H2 abundance history against the shielded photodissociation rate
 `k_diss,0 * f_shield(N_H2)`, predicted from that particle's own LW field.
 The shielding function is Grackle's: the Draine and Bertoldi (1996, Eq. 37)
 form with the Wolcott-Green and Haiman (2019) exponent. The derivation, with
 equation numbers, is in the check script's docstring.
+
+The transport is the packet hop: a star splits its light into emission cones
+and each gas particle hands what it receives on to its downstream neighbours.
+Its keys are `ISRF_propagation` (on here), `ISRF_packet_light_speed` (the speed
+limit of the light, default `cap`) and `ISRF_packet_cone_power`; see
+`examples/parameter_example.yml`.
 
 ## Configurations
 `config=thin` and `config=thick` differ only in the initial H2 abundance
@@ -18,12 +24,19 @@ density, not by the size of the cloud. With mode 3, `thin` gives
 `N_H2 ~ 1e13 cm^-2` (`f_shield ~ 0.96`) and `thick` gives
 `N_H2 ~ 6e17 cm^-2` (`f_shield ~ 1e-3`).
 
-`config=draine_spectrum` is `thin` with a 7.61 Msun star. Its LW fraction
-`u_LW/(u_PE+u_LW)` is 0.148, the value of the Draine (1978) field that the
-Draine and Bertoldi (1996) rate `3.3e-11 G_0 s^-1` assumes (the 29.7 Msun
-star gives 0.36). The code's rate is then 0.92 times that rate, instead of
-2.24. The star is fainter in the LW band, so the run is 12.5 times longer, with
-snapshots 6.2 times further apart.
+The LW fraction `u_LW/(u_PE+u_LW)` is the share of a gas particle's radiation
+energy density that sits in the LW band (11.2 to 13.6 eV) rather than in the
+PE band (6 to 11.2 eV). For a star it equals the ratio `L_LW/(L_PE+L_LW)` of
+its two band luminosities in the radiation table. The check prints the ratio of
+the code's LW photodissociation rate to the Draine and Bertoldi (1996) rate
+`3.3e-11 G_0 s^-1`.
+
+## Snapshot spacing
+`thin` and `thick` write one snapshot per gas step (`Snapshots:delta_time`
+1.015625e-10, 257 snapshots). The light a gas particle receives pulses with a
+period of 8 gas steps, and the check integrates the rate over the snapshots. If you change `time_end`, `dt_max` or `level`, set
+`delta_time` to the new gas step, which is the step the run prints in
+`timesteps.txt`.
 
 ## Self-shielding modes
 `h2_self_shielding` sets `GrackleCooling:H2_self_shielding`:
@@ -50,18 +63,33 @@ does not bias the comparison.
 
 # Configure
 ```
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_2 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_2 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix
 make -j
 ```
 `--with-cooling=grackle_2` (or `grackle_3`) is required, because H2 is only
-tracked in these modes. `--with-tracers=GEAR` registers the
-`LWSpecificEnergies` snapshot output.
+tracked in these modes. The GEAR feedback module registers the
+`LWSpecificEnergies` snapshot output. The packet transport needs a radiation
+table whose `Data/Radiation` group carries `MeanPhotonEnergyPE` and
+`Integrated_MeanPhotonEnergyPE`. The pychem table generator produces such a
+table from its parameter file
+`params/chimieparam_radiation_parsec_spectral_popII.py` (see the section
+"Where each Radiation field comes from" of the pychem page "How to generate a
+Chemistry Table for GEAR"). The published table that `run.sh` downloads
+predates the two datasets. Copy the generated table to this directory as
+`PopII_parsec_spectral.hdf5` and run with
+`GEAR_RADIATION_TABLE_ALLOW_MISMATCH=1`, which lets `getRadiationTable.sh`
+accept a local file that differs from the published checksum.
+
+`--with-chealpix` is required by the ISRF transport. The yields table named
+by `GEARFeedback:yields_table` must carry, in its `Data/Radiation` group, the
+datasets of the ISRF and `MeanPhotonEnergyPE` with its `Integrated_` twin (see
+the documentation of the GEAR stellar evolution table). SWIFT stops at
+start-up if one is missing. The pychem table generator produces such a table.
 
 # Run
 ```
 config=thin  run_name=thin  ./run.sh
 config=thick run_name=thick ./run.sh
-config=draine_spectrum run_name=draine_spectrum ./run.sh
 ```
 Add `h2_self_shielding=0` for the unshielded reference, or
 `h2_self_shielding=2` for the kernel-length column. Resolution is set
@@ -70,17 +98,20 @@ them together to keep the box size: `level=5 gas_mass=0.1` (the default)
 and `level=6 gas_mass=0.0125` give the same 5.1 pc box. Level 5 is the
 lowest level SWIFT accepts here: at level 4, the star's initial smoothing
 length is larger than a top-level cell. A level-5 run takes two to three
-minutes on 8 threads (`draine_spectrum` about seven minutes). See `run.sh` for the other overrides.
+minutes on 8 threads. See `run.sh` for the other overrides.
 
 # Checking
 ```
 python3 isrf_h2_photodissociation_check.py --config thin  -s "thin/snap/snapshot_*.hdf5"
 python3 isrf_h2_photodissociation_check.py --config thick -s "thick/snap/snapshot_*.hdf5"
 ```
+`run.sh` passes only `GrackleCooling:` overrides, so it makes Grackle runs. For a
+geajay run made another way, set `H2_SHIELDING_LIBRARY=geajay` (default
+`grackle`): the libraries differ in the column, `N_H2 = 2 n_H2 l` for Grackle
+and `n_H2 l` for geajay, and in the Doppler mass, `m_H` and `2 m_H`.
 Pass the run's `--h2-self-shielding` (0, 2 or 3) and, for mode 2,
 `--h2-self-shielding-path`, and check a mode-0 run
-with `--config thin`, since no shielding applies. `--config draine_spectrum`
-uses the `thin` bar. For `thin`, the median relative
+with `--config thin`, since no shielding applies. For `thin`, the median relative
 error on the H2 abundance must be at most 8% where the predicted
 destruction reaches two e-folds. For `thick`, the measured ratio of the
 shielded to the unshielded destruction rate must be within 25% of the

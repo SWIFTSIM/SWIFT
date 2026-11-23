@@ -10,17 +10,15 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-config=${config:="thin"}  #thin, thick or draine_spectrum
+config=${config:="thin"}  #thin or thick
 
 # thin and thick differ only in the initial H2 abundance, which sets the
-# column Grackle's local self-shielding estimate sees. draine_spectrum is thin
-# with a 7.61 Msun star, whose LW fraction u_LW/(u_PE+u_LW) = 0.148 matches
-# the Draine (1978) field; its LW luminosity is 184 times lower, hence the
-# longer run. Its snapshot spacing keeps the same number of snapshots per
-# e-fold as thin, which the check's quadrature error assumes.
+# column Grackle's local self-shielding estimate sees.
+# The snapshot spacing is one gas step: time_end / 2^8 for dt_max 1.6e-10.
+# Set delta_time to the new step if you change time_end, dt_max or level.
 star_mass_default=29.7
 time_end_default=2.6e-8
-delta_time_default=6.5e-10
+delta_time_default=1.015625e-10
 initial_metallicity_default=0
 case "$config" in
     thin)
@@ -29,14 +27,8 @@ case "$config" in
     thick)
 	nH2_ratio_default=3.1e-5
 	;;
-    draine_spectrum)
-	nH2_ratio_default=5e-10
-	star_mass_default=7.61
-	time_end_default=3.24e-7
-	delta_time_default=4.05e-9
-	;;
     *)
-	echo "Unknown config '$config'. Use thin, thick or draine_spectrum."
+	echo "Unknown config '$config'. Use thin or thick."
 	exit 1
 	;;
 esac

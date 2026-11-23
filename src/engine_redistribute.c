@@ -274,37 +274,38 @@ struct redist_mapper_data {
 /* Generic function for accumulating counts for TYPE parts. Note
  * we use a local counts array to avoid the atomic_add in the parts
  * loop. */
-#define ENGINE_REDISTRIBUTE_DEST_MAPPER(TYPE)                              \
-  engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
-                                         void *extra_data) {               \
-    struct TYPE *parts = (struct TYPE *)map_data;                          \
-    struct redist_mapper_data *mydata =                                    \
-        (struct redist_mapper_data *)extra_data;                           \
-    struct space *s = mydata->s;                                           \
-    int *dest =                                                            \
-        mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
-    int *lcounts = NULL;                                                   \
-    if ((lcounts = (int *)calloc(mydata->nr_nodes * mydata->nr_nodes,      \
-                                 sizeof(int))) == NULL)                    \
-      error("Failed to allocate counts thread-specific buffer");           \
-    for (int k = 0; k < num_elements; k++) {                               \
-      for (int j = 0; j < 3; j++) {                                        \
-        if (parts[k].x[j] < 0.0)                                           \
-          parts[k].x[j] += s->dim[j];                                      \
-        else if (parts[k].x[j] >= s->dim[j])                               \
-          parts[k].x[j] -= s->dim[j];                                      \
-        if (parts[k].x[j] == s->dim[j]) parts[k].x[j] = 0.0;               \
-      }                                                                    \
-      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
-                                 parts[k].x[1] * s->iwidth[1],             \
-                                 parts[k].x[2] * s->iwidth[2]);            \
-      dest[k] = s->cells_top[cid].nodeID;                                  \
-      size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
-      lcounts[ind] += 1;                                                   \
-    }                                                                      \
-    for (int k = 0; k < (mydata->nr_nodes * mydata->nr_nodes); k++)        \
-      atomic_add(&mydata->counts[k], lcounts[k]);                          \
-    free(lcounts);                                                         \
+#define ENGINE_REDISTRIBUTE_DEST_MAPPER(TYPE)                                 \
+  engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements,    \
+                                         void *extra_data) {                  \
+    struct TYPE *parts = (struct TYPE *)map_data;                             \
+    struct redist_mapper_data *mydata =                                       \
+        (struct redist_mapper_data *)extra_data;                              \
+    struct space *s = mydata->s;                                              \
+    int *dest =                                                               \
+        mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);      \
+    int *lcounts = NULL;                                                      \
+    if ((lcounts = (int *)calloc(mydata->nr_nodes * mydata->nr_nodes,         \
+                                 sizeof(int))) == NULL)                       \
+      error("Failed to allocate counts thread-specific buffer");              \
+    for (int k = 0; k < num_elements; k++) {                                  \
+      for (int j = 0; j < 3; j++) {                                           \
+        if (parts[k].x[j] < 0.0)                                              \
+          parts[k].x[j] += s->dim[j];                                         \
+        else if (parts[k].x[j] >= s->dim[j])                                  \
+          parts[k].x[j] -= s->dim[j];                                         \
+        parts[k].x[j] = box_wrap_cell_edge(                                   \
+            parts[k].x[j], s->dim[j], s->iwidth[j], s->cdim[j], s->periodic); \
+      }                                                                       \
+      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],       \
+                                 parts[k].x[1] * s->iwidth[1],                \
+                                 parts[k].x[2] * s->iwidth[2]);               \
+      dest[k] = s->cells_top[cid].nodeID;                                     \
+      size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];               \
+      lcounts[ind] += 1;                                                      \
+    }                                                                         \
+    for (int k = 0; k < (mydata->nr_nodes * mydata->nr_nodes); k++)           \
+      atomic_add(&mydata->counts[k], lcounts[k]);                             \
+    free(lcounts);                                                            \
   }
 
 /**

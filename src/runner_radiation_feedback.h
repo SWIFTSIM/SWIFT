@@ -1,10 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2026 Darwin Roduit (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -80,11 +76,10 @@ feedback_radiation_subgrid_needed(int with_stars, int with_feedback,
  * (radiation_in/radiation_out self and pair tasks)?
  *
  * True only when GEAR ionization feedback is compiled in and both the
- * hydro and stars policies are active. Unlike
- * #feedback_radiation_subgrid_needed, the feedback policy is not required:
- * the geometric gather task graph is built from hydro + stars alone, with
- * the ionization task itself gated separately. The feedback module must
- * also ask for it (#feedback_props_radiation_tasks_needed).
+ * hydro and stars policies are active and the feedback module asks for it
+ * (#feedback_props_radiation_tasks_needed). The feedback policy is not tested
+ * here: the start-up check #feedback_radiation_needs_feedback_option refuses
+ * a run with hydro and stars but no feedback, so it is always set.
  *
  * @param with_hydro Is engine_policy_hydro set?
  * @param with_stars Is engine_policy_stars set?
@@ -105,66 +100,26 @@ feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars,
 #endif
 
 /**
- * @brief Result of offering one untagged candidate to a cone.
+ * @brief Do these run-time options create the radiation gather tasks without
+ * the ionization task and super pointer they act on?
+ *
+ * The gather tasks dereference the super pointer when they are activated, so
+ * a run with gas and stars but no feedback cannot start. Always false when
+ * GEAR ionization feedback is compiled out. The feedback properties are not
+ * read yet when this runs, so the request of the feedback module is not used.
+ *
+ * @param with_hydro Is the run using hydrodynamics?
+ * @param with_stars Is the run using stars?
+ * @param with_feedback Is the run using stellar feedback?
  */
-enum hii_candidate_outcome {
-
-  /*! The candidate is claimed and its cost charged. */
-  hii_candidate_claimed = 0,
-
-  /*! Already ionized: nothing charged, the cone goes on. */
-  hii_candidate_passed = 1,
-
-  /*! Not claimed: the candidate is an ionization front that absorbs photons. */
-  hii_candidate_front = 2,
-};
-
-/**
- * @brief Decide whether a cone claims an untagged candidate.
- *
- * The first candidate a cone cannot afford ends the cone: it is claimed on a
- * won roll, and it is a front that absorbs the rest of the budget otherwise
- * (Hopkins et al. 2018, Appendix E). The win probability is budget / cost, so
- * the expected spend equals the budget. The roll is the one-per-cone draw of
- * the caller, so a cone rolls once per pass.
- *
- * @param deterministic 1 if the boundary candidate is always claimed.
- * @param budget Photons left in the cone.
- * @param cost Photons the candidate costs: its neutral atoms plus one
- * interval of recombinations.
- * @param random_number The cone's draw in [0, 1), read only if the candidate
- * is unaffordable.
- * @return The #hii_candidate_outcome.
- */
-__attribute__((always_inline)) INLINE static enum hii_candidate_outcome
-runner_hii_candidate_outcome(const int deterministic, const double budget,
-                             const double cost, const float random_number) {
-
-  if (cost <= budget) return hii_candidate_claimed;
-  if (deterministic) return hii_candidate_claimed;
-
-  const float proba = budget / cost;
-  if (random_number <= proba) return hii_candidate_claimed;
-
-  return hii_candidate_front;
-}
-
-/**
- * @brief Decide whether a held particle whose upkeep was paid in part keeps
- * its ionization tag.
- *
- * The tag is kept with probability paid / owed, so the expected photons spent
- * on the particle equal what it costs. A fully paid upkeep always renews.
- *
- * @param paid Photons charged for the upkeep.
- * @param owed Photons the upkeep costs.
- * @param random_number A draw in [0, 1), read only if @p paid < @p owed.
- * @return 1 if the tag is renewed.
- */
-__attribute__((always_inline)) INLINE static int runner_hii_upkeep_renewed(
-    const double paid, const double owed, const double random_number) {
-  if (paid >= owed) return 1;
-  return random_number < paid / owed;
+__attribute__((always_inline)) INLINE static int
+feedback_radiation_needs_feedback_option(int with_hydro, int with_stars,
+                                         int with_feedback) {
+#ifdef IONIZATION_FEEDBACK_LOOP
+  return with_hydro && with_stars && !with_feedback;
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -242,7 +197,7 @@ __attribute__((always_inline)) INLINE static float runner_hii_requested_radius(
 }
 
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
- * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
+ * compile-time constant by design; see runner_dosub_stars_hii_ionization_
  * feedback()). Sized to comfortably cover a single rebuild's typical new
  * shell of gas at gas_mass=0.01-resolution test problems without needing
  * many retries (empirically ~a few thousand particles per shell in
@@ -341,6 +296,43 @@ struct hii_maintenance_context {
   int buffer_count;
 };
 
+/**
+ * @brief State of one neighbour traversal of a star, shared by every function
+ * of the traversal.
+ *
+ * Both phases of a rebuild pass (gas the star already holds, new candidates)
+ * walk the same cells and differ only in @a mode.
+ */
+struct hii_gather_state {
+
+  /*! Runner performing the traversal. */
+  struct runner *r;
+
+  /*! The star performing the feedback. */
+  struct spart *si;
+
+  /*! Distance out to which gas is considered. */
+  float search_radius;
+
+  /*! Array receiving the candidates (unused for already-ionized gas). */
+  struct hii_neighbor *buffer;
+
+  /*! Capacity of @a buffer. */
+  int max_size;
+
+  /*! (return) Number of particles gathered or processed. */
+  int count_found;
+
+  /*! Which set of gas particles the traversal is after. */
+  enum hii_gather_mode mode;
+
+  /*! Maintenance context, non-NULL only for #hii_gather_already_ionized. */
+  struct hii_maintenance_context *ctx;
+
+  /*! Rotation of the cone frame (row-major 3x3), or NULL for the box axes. */
+  const double *frame;
+};
+
 int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const struct cell *cj, const int sid,
                                          const int flipped,
@@ -367,10 +359,12 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 #endif
 
 /**
- * @brief Print startup warnings about the HII search-radius / box-size
- * relationship, called unconditionally from engine_config().
+ * @brief Start-up of the subgrid radiation, called from engine_config() in a
+ * stars run: prints warnings about the HII search-radius / box-size
+ * relationship.
  *
- * A no-op when GEAR ionization feedback is compiled out.
+ * A no-op when the HII loop is not compiled. The packet transport start-up
+ * is a separate call in engine_config(), made with or without stars.
  *
  * @param e The #engine.
  */
@@ -385,28 +379,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                                 struct cell *c,
                                                 const float interaction_limit);
 void runner_do_stars_hii_ionization_feedback_branch(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const int flipped, const double shift[3], struct spart *si,
-    const float search_radius, struct hii_neighbor *ngb_buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame);
+    struct cell *ci, struct cell *cj, const int sid, const int flipped,
+    const double shift[3], struct hii_gather_state *gather);
 
 void runner_doself_stars_hii_ionization_feedback(
-    struct runner *r, struct cell *c, struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame);
+    struct cell *c, struct hii_gather_state *gather);
 void runner_dopair_naive_stars_hii_ionization_feedback(
-    struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
-    struct spart *si, const float search_radius, struct hii_neighbor *buffer,
-    int max_size, int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame);
+    struct cell *ci, struct cell *cj, const double shift[3],
+    struct hii_gather_state *gather);
 void runner_dopair_stars_hii_ionization_feedback(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const int flipped, const double shift[3], struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame);
+    struct cell *ci, struct cell *cj, const int sid, const int flipped,
+    const double shift[3], struct hii_gather_state *gather);
 
 /**
  * @brief Shift that brings the neighbour cell next to the star's cell.
@@ -456,159 +439,28 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
     struct part *p, struct xpart *xp, struct cell *c, int pixel) {
 
-  /* Case A: Buffer is not yet full */
-  if (*count_found < max_size) {
-    int i = *count_found - 1;
-    /* Shift elements to make room (standard insertion) */
-    while (i >= 0 &&
-           runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
-      buffer[i + 1] = buffer[i];
-      i--;
-    }
-    buffer[i + 1].r2 = r2;
-    buffer[i + 1].p = p;
-    buffer[i + 1].xp = xp;
-    buffer[i + 1].pixel = pixel;
-#ifdef SWIFT_DEBUG_CHECKS
-    buffer[i + 1].c = c;
-#endif
-    (*count_found)++;
+  /* A full buffer drops its furthest element, and only if the new one sorts
+     before it. */
+  const int is_full = *count_found >= max_size;
+  if (is_full && !runner_hii_r2_id_before(r2, p->id, buffer[max_size - 1].r2,
+                                          buffer[max_size - 1].p->id))
+    return;
+
+  /* Shift elements to make room (standard insertion). */
+  int i = is_full ? max_size - 2 : *count_found - 1;
+  while (i >= 0 &&
+         runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
+    buffer[i + 1] = buffer[i];
+    i--;
   }
-  /* Case B: Buffer is full, check if new particle sorts before the furthest
-   */
-  else if (runner_hii_r2_id_before(r2, p->id, buffer[max_size - 1].r2,
-                                   buffer[max_size - 1].p->id)) {
-    int i = max_size - 2;
-    /* Shift elements to replace the furthest */
-    while (i >= 0 &&
-           runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
-      buffer[i + 1] = buffer[i];
-      i--;
-    }
-    buffer[i + 1].r2 = r2;
-    buffer[i + 1].p = p;
-    buffer[i + 1].xp = xp;
-    buffer[i + 1].pixel = pixel;
+  buffer[i + 1].r2 = r2;
+  buffer[i + 1].p = p;
+  buffer[i + 1].xp = xp;
+  buffer[i + 1].pixel = pixel;
 #ifdef SWIFT_DEBUG_CHECKS
-    buffer[i + 1].c = c;
+  buffer[i + 1].c = c;
 #endif
-  }
-}
-
-/**
- * @brief Index of the cone frame a star uses at one of its passes.
- *
- * @param pass_index Number of passes the star has made before this one.
- * @param redraw_period Passes per frame, or 0 for a frame kept for the star's
- * life.
- * @return pass_index / redraw_period, or 0 when @a redraw_period <= 0.
- */
-__attribute__((always_inline)) INLINE static int64_t
-runner_hii_cone_frame_epoch(const int64_t pass_index, const int redraw_period) {
-  if (redraw_period <= 0) return 0;
-  return pass_index / redraw_period;
-}
-
-/**
- * @brief Build the rotation of a star's HEALPix cone frame from its ID and
- * the frame epoch.
- *
- * Shoemake's uniform random unit quaternion, built from three numbers drawn
- * with random_unit_interval(), gives a rotation uniform on SO(3). The result
- * depends only on the star ID, the epoch and the compile-time random seed, so
- * it is the same on every rank, after a restart and in any processing order.
- *
- * @param id The star ID.
- * @param epoch The frame epoch (see #runner_hii_cone_frame_epoch).
- * @param R (return) The rotation matrix, row-major.
- */
-__attribute__((always_inline)) INLINE static void runner_hii_cone_frame_from_id(
-    const int64_t id, const int64_t epoch, double R[9]) {
-
-  const integertime_t ti = 3 * (integertime_t)epoch;
-  const double u1 =
-      random_unit_interval(id, ti, random_number_HII_frame_rotation);
-  const double u2 =
-      random_unit_interval(id, ti + 1, random_number_HII_frame_rotation);
-  const double u3 =
-      random_unit_interval(id, ti + 2, random_number_HII_frame_rotation);
-
-  const double a = sqrt(1.0 - u1);
-  const double b = sqrt(u1);
-  const double qx = a * sin(2.0 * M_PI * u2);
-  const double qy = a * cos(2.0 * M_PI * u2);
-  const double qz = b * sin(2.0 * M_PI * u3);
-  const double qw = b * cos(2.0 * M_PI * u3);
-
-  R[0] = 1.0 - 2.0 * (qy * qy + qz * qz);
-  R[1] = 2.0 * (qx * qy - qz * qw);
-  R[2] = 2.0 * (qx * qz + qy * qw);
-  R[3] = 2.0 * (qx * qy + qz * qw);
-  R[4] = 1.0 - 2.0 * (qx * qx + qz * qz);
-  R[5] = 2.0 * (qy * qz - qx * qw);
-  R[6] = 2.0 * (qx * qz - qy * qw);
-  R[7] = 2.0 * (qy * qz + qx * qw);
-  R[8] = 1.0 - 2.0 * (qx * qx + qy * qy);
-}
-
-/**
- * @brief Compute the angular (HEALPix) pixel a gas candidate falls into,
- * as seen from the star.
- *
- * Hard single-pixel assignment (no fractional/multi-pixel overlap): a
- * candidate belongs to exactly one pixel, never split across several.
- *
- * @param dx Star-minus-particle position offset (dx = x_star - x_particle).
- * @param n_HII_pixels Number of active pixels for this star (1 = spherical,
- * HEALPix disabled).
- * @param frame Rotation of the cone frame (row-major 3x3, see
- * #runner_hii_cone_frame_from_id), or NULL for cones fixed to the box axes.
- * @return Pixel index in [0, n_HII_pixels).
- */
-__attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
-    const float dx[3], int n_HII_pixels, const double *frame) {
-
-  if (n_HII_pixels <= 1) return 0;
-
-#if defined(HAVE_CHEALPIX)
-  /* n_HII_pixels = 12*nside^2 for every value radiation_init() accepts
-     (src/feedback/GEAR/radiation.c, validated against the build's
-     HII_MAX_ANGULAR_PIXELS); invert it to recover nside for
-     vec2pix_ring64, which takes nside, not a pixel count. Only exact
-     values reach here, so this is exact integer arithmetic, not a
-     rounded approximation, for any nside the build supports. */
-  const int nside = (int)lround(sqrt(n_HII_pixels / 12.0));
-#ifdef SWIFT_DEBUG_CHECKS
-  if (n_HII_pixels != 12 * nside * nside)
-    error(
-        "n_HII_pixels=%d does not correspond to any nside supported by "
-        "radiation_init() -- got non-integer or unrecognised nside=%d.",
-        n_HII_pixels, nside);
-#endif
-  /* A particle exactly on the star gives a zero-length direction, which is
-     undefined for vec2pix_ring64 -- fall back to pixel 0 (measure-zero in
-     continuous positions, but must not read/write out of bounds). */
-  if (dx[0] == 0.0f && dx[1] == 0.0f && dx[2] == 0.0f) return 0;
-
-  /* Pixels are defined around the star, so the direction of interest is
-     from the star to the particle -- the negation of dx. vec2pix_ring64
-     does not require a normalized vector. */
-  double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
-  if (frame != NULL) {
-    const double d0 = dir[0], d1 = dir[1], d2 = dir[2];
-    dir[0] = frame[0] * d0 + frame[1] * d1 + frame[2] * d2;
-    dir[1] = frame[3] * d0 + frame[4] * d1 + frame[5] * d2;
-    dir[2] = frame[6] * d0 + frame[7] * d1 + frame[8] * d2;
-  }
-  int64_t ipix = 0;
-  vec2pix_ring64(nside, dir, &ipix);
-  return (int)ipix;
-#else
-  error(
-      "n_HII_pixels > 1 but HAVE_CHEALPIX is not defined -- this should be "
-      "unreachable (radiation_init() validates this at startup).");
-  return 0;
-#endif
+  if (!is_full) (*count_found)++;
 }
 
 /**

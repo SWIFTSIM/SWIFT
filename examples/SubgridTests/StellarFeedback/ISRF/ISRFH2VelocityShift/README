@@ -1,0 +1,29 @@
+# Intro
+A star lights the gas at rest inside a sphere around it, then a molecular cloud that
+starts at a spherical face centred on the star (`0.25 L` from it) and moves radially away
+from it. Light that crosses gas moving by more than three line widths
+(`3 b`, `b = sqrt(2 k T / m_H2)`, 0.64 km/s at 50 K) relative to the column it carries sees
+fresh absorption: the transport resets the carried column. The check reads particles
+inside the cloud and compares their line transmission with the bar of the reset (the
+column of the cloud alone) or of no reset (the column of all the gas from the star). Read
+the README of `ISRFH2StarLit` for the build, the table, the parameters that the run holds
+fixed and the exit classes.
+
+# Run
+```
+./run.sh                       # cloud at 10 widths: expect the reset
+widths=1 run_name=control ./run.sh   # cloud at 1 width: expect no reset
+```
+The run lasts 16 steps of `dt_max` (`TimeIntegration:time_end`, keep it a power of two times
+`dt_max`). The light then crosses the cloud face by several hops and the check reads the
+last snapshot.
+`makeIC.py --widths` sets the radial speed of the cloud in units of `b`. The check picks
+the expected case from the speed written in `fixture.json`: more than 3 widths gives the
+reset.
+
+# Checking
+For each particle in the cloud away from the box edge, the check compares the own
+transmission of the LW light with the shielding function at the column expected for the
+reset or for no reset, within a bar set by the hop of the transport. The speed of 1 width
+is the control: a run that shows a reset there fails. `run.sh` calls
+`checkH2Attenuation.py velocity`; the exit classes are those of `ISRFH2StarLit`.

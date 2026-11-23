@@ -25,7 +25,6 @@
 #include "cooling.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "radiation_selection.h"
 #include "units.h"
 
 /**
@@ -76,6 +75,30 @@ double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget_max(const struct spart *sp);
 double feedback_get_star_ionization_budget_total(const struct spart *sp);
+float feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
+char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
+                                  const struct engine *e);
+int feedback_iact_HII_ionization(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling,
+    const struct feedback_props *feedback_props, const integertime_t ti_begin,
+    const double time, const double dt_back, const double dt_tag);
+
+double feedback_iact_HII_maintain_ionized_part(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back, const double dt_tag);
+
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 int feedback_get_HII_random_cone_frame(
     const struct feedback_props *feedback_props);
@@ -94,6 +117,9 @@ void feedback_set_star_HII_last_rebuild(struct spart *sp,
 double feedback_get_star_HII_last_attempt(const struct spart *sp);
 void feedback_set_star_HII_last_attempt(struct spart *sp,
                                         double star_age_beg_step);
+double feedback_get_star_HII_photons_issued_age(const struct spart *sp);
+void feedback_set_star_HII_photons_issued_age(struct spart *sp,
+                                              double star_age);
 #else
 /* Without the part: the star carries no HII state. */
 __attribute__((always_inline)) INLINE static void
@@ -107,10 +133,21 @@ feedback_get_star_HII_last_rebuild(const struct spart *sp) {
 }
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
+char feedback_is_part_tagged_as_ionized(const struct part *p,
+                                        const struct xpart *xp);
+long long feedback_get_part_ionized_star_id(const struct part *p,
+                                            const struct xpart *xp);
 float feedback_get_star_HII_mass(const struct spart *sp);
 double feedback_get_star_L_PE(const struct spart *sp);
 double feedback_get_star_L_LW(const struct spart *sp);
 float feedback_get_star_teff(const struct spart *sp);
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+double feedback_get_part_u_PE(const struct part *p);
+double feedback_get_part_u_LW(const struct part *p);
+double feedback_get_part_u_LW_PHOTON(const struct part *p);
+double feedback_get_part_u_LW_dissociating(const struct part *p);
+double feedback_get_part_LW_line_transmission(const struct part *p);
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -121,30 +158,14 @@ void feedback_first_init_spart(struct spart *sp,
 
 float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
 
-/*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
- * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
- * reduced-flux dissipation fields, 5 HII random cone frame flag in
- * #feedback_props, 6 HII cone frame redraw period in #feedback_props, 7 HII
- * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
- * cone claim rule removed from #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 10
-
-/*! The restart layout marker adds this factor times
-    #radiation_selection_absent_mask(), so that a build with all the parts
-    writes #FEEDBACK_RESTART_ISRF_PART_LAYOUT unchanged. */
-#define FEEDBACK_RESTART_SELECTION_FACTOR 16
-
-/**
- * @brief The particle layout marker this build writes to its restart files.
- *
- * @return #FEEDBACK_RESTART_ISRF_PART_LAYOUT plus
- * #FEEDBACK_RESTART_SELECTION_FACTOR times the absent-part mask.
- */
-__attribute__((always_inline)) INLINE static int
-feedback_restart_particle_layout(void) {
-  return FEEDBACK_RESTART_ISRF_PART_LAYOUT +
-         FEEDBACK_RESTART_SELECTION_FACTOR * radiation_selection_absent_mask();
-}
+void feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp);
+void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s);
+void feedback_book_sink_merger(struct sink *si, const struct sink *sj);
+void feedback_book_removed_gas_left_box(const struct part *p);
+void feedback_book_star_left_box(const struct spart *sp);
+void feedback_book_sink_left_box(const struct sink *s);
+void feedback_book_removed_gas_swallowed_by_black_hole(const struct part *p);
+void feedback_first_init_sink(struct sink *s);
 
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,

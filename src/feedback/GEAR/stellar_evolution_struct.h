@@ -269,9 +269,20 @@ struct radiation {
     };
 
     union {
+      /*! LW energy rate that, times RADIATION_SIGMA_H2_OVER_E_LW_CGS, gives
+          the H2 dissociation rate of the star's own spectrum, from the
+          optional "L_LW_dissociating" dataset (#has_l_lw_dissociating).
+          Stored like #l_lw. */
+      struct interpolation_1d l_lw_dissociating;
+
+      /*! #l_lw_dissociating, mass x metallicity variant. */
+      struct interpolation_2d l_lw_dissociating_2d;
+    };
+
+    union {
       /*! PE band lower-edge (6 eV) spectral photon rate dQ/dE, PRE-MULTIPLIED
           by #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and unit-converted the same
-          way #l_pe is (see radiation_read_luminosity_edge_pe_array()), so it is
+          way #l_pe is (see radiation_table_conversion_factor()), so it is
           directly comparable to #l_pe: their ratio (after the same
           Mmin-to-m difference both are read with) is lambda_E(PE) - 1.
           Read from pychem's "SpectralPhotonRateAtPEEdge" dataset (required
@@ -310,6 +321,17 @@ struct radiation {
 
       /*! #mean_photon_energy_lw, mass x metallicity variant. */
       struct interpolation_2d mean_photon_energy_lw_2d;
+    };
+
+    union {
+      /*! Photon-number-weighted mean PE photon energy of a single star,
+          L_PE/Q_PE over 6-11.2 eV, from the optional "MeanPhotonEnergyPE"
+          dataset (#has_mean_photon_energy_pe). In cgs erg, stored like
+          #mean_photon_energy_lw. */
+      struct interpolation_1d mean_photon_energy_pe;
+
+      /*! #mean_photon_energy_pe, mass x metallicity variant. */
+      struct interpolation_2d mean_photon_energy_pe_2d;
     };
 
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
@@ -381,6 +403,15 @@ struct radiation {
     };
 
     union {
+      /*! IMF-integrated twin of #raw.l_lw_dissociating, from the
+          "Integrated_L_LW_dissociating" dataset. Linear, like #l_lw. */
+      struct interpolation_1d l_lw_dissociating;
+
+      /*! #l_lw_dissociating, mass x metallicity variant. */
+      struct interpolation_2d l_lw_dissociating_2d;
+    };
+
+    union {
       /*! IMF-integrated PE band lower-edge spectral photon rate, from
           pychem's "Integrated_SpectralPhotonRateAtPEEdge" dataset,
           pre-multiplied/unit-converted like #raw.l_edge_pe. Linear
@@ -423,6 +454,15 @@ struct radiation {
 
       /*! #mean_photon_energy_lw, mass x metallicity variant. */
       struct interpolation_2d mean_photon_energy_lw_2d;
+    };
+
+    union {
+      /*! PE counterpart of #mean_photon_energy_lw, from the optional
+          "Integrated_MeanPhotonEnergyPE" dataset. */
+      struct interpolation_1d mean_photon_energy_pe;
+
+      /*! #mean_photon_energy_pe, mass x metallicity variant. */
+      struct interpolation_2d mean_photon_energy_pe_2d;
     };
   } integrated;
 
@@ -477,6 +517,25 @@ struct radiation {
       none, and must still load: every read of #raw.teff is gated on this
       flag. */
   char has_teff;
+
+  /*! Does the table carry MeanPhotonEnergyPE and its integrated twin? Probed
+      on every read like #has_teff. The ISRF packet transport needs them. */
+  char has_mean_photon_energy_pe;
+
+  /*! Is GEARFeedback:ISRF_LW_population_dissociation on? Set in
+      radiation_init() like #with_ISRF and kept across restart. */
+  char with_LW_population_dissociation;
+
+  /*! Does this table give the stars their H2-dissociating LW energy? Set when
+      #with_ISRF and #with_LW_population_dissociation are on and the table
+      carries L_LW_dissociating and its integrated twin. Re-probed on every
+      read. Without it every star has the factor 1. */
+  char has_l_lw_dissociating;
+
+  /*! Upper bound of the factor L_LW_dissociating / L_LW over every single star
+      and every population window of this table, at least 1. Exactly 1 without
+      #has_l_lw_dissociating. */
+  float lw_dissociating_factor_max;
 
   /*! The radiation table's own provenance attributes, one entry per key in
       #radiation_table_source_keys and in that order. GEARFeedback:yields_table

@@ -3,7 +3,7 @@
 Demonstrates that the sorted-window prune operates on a GLOBAL 1D axis of
 ABSOLUTE projections (runner_sort.c: entries[k].d = px . runner_shift[sid],
 px = parts[k].x, an absolute position). The star is projected onto that same
-axis (runner_radiation_feedback.c:998-1004); adjacency between A and C plays
+axis (runner_radiation_feedback.c:246-249); adjacency between A and C plays
 no role: only whether the window [di_star - R - dx_max, di_star + R +
 dx_max] intersects C's own d-range.
 

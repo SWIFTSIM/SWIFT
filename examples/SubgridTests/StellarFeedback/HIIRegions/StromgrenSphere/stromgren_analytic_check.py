@@ -86,7 +86,7 @@ from radiation_table_reader import ionizing_photon_rate, load_radiation_table
 # -----------------------------------------------------------------------------
 # This code's own ionized-gas temperature floor is metallicity-dependent
 # (min(Delta_u_ionized, u_collisional), src/cooling/grackle/
-# cooling_gear_subgrid.h), unlike the classical D-type solution's flat
+# radiation_rates_to_chemistry.h), unlike the classical D-type solution's flat
 # 1e4 K assumption. At this example's default Z=0, the applied temperature
 # is ~47,500 K (Delta_u_ionized binds; see theory/GEAR/Radiation/,
 # Section "Metallicity is not the explanation..."), not 1e4 K -- both

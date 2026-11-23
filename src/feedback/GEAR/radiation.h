@@ -29,6 +29,7 @@
 #include "cooling_properties.h"
 #include "hdf5_functions.h"
 #include "hydro.h"
+#include "minmax.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "radiation_isrf.h"
@@ -49,11 +50,6 @@
     visit. */
 #define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
 
-/*! Decay length, in particle smoothing lengths, of the negativity-triggered
-    artificial-dissipation coefficient. Sets the transient, not the steady
-    state (ISRF_dissipation_alpha_max does that). */
-#define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
-
 /*! Ceiling, in rebuild cadences, on the interval the per-pass photon budget
     is integrated over. Photons emitted while the star's cell held no gas
     escaped and must not be handed to the next pass. */
@@ -69,8 +65,10 @@
     hydrogen fraction: the dust-to-gas mass ratio cancels the composition. */
 #define RADIATION_MU_H 1.4
 
-/*! Dust cross-section per hydrogen nucleon, cm^2 (Kim et al. 2023, Weingartner
-    & Draine 2001 grains): PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). */
+/*! Dust cross-section per hydrogen nucleon, cm^2: PE (6-11.2 eV) and
+    Lyman-Werner (11.2-13.6 eV). The LW value is from Kim et al. 2023, Table 3.
+    The origin of the PE value is not recorded: Table 3 gives 8.6e-22 (used in
+    src/cooling/geajay/cooling_io.h), 4.65 per cent below 9e-22. */
 #define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
@@ -82,15 +80,37 @@
     GrackleCooling:local_dust_to_gas_ratio is unset. */
 #define RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO 0.009387
 
+/**
+ * @brief Dust-to-gas ratio relative to the Milky Way, following Grackle:
+ * `(fgr/fgr_default) * Z/z_solar`.
+ *
+ * See #RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO.
+ *
+ * @param Z Gas metal mass fraction.
+ * @param local_dust_to_gas_ratio Resolved chemistry_data value, not the raw
+ * `-1` sentinel.
+ * @return Dust-to-gas ratio relative to the Milky Way.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
+                                               float local_dust_to_gas_ratio) {
+  const float D_relative_Z =
+      max(Z, 0.f) / RADIATION_GRACKLE_SOLAR_METAL_FRACTION;
+  return D_relative_Z * (local_dust_to_gas_ratio /
+                         (float)RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
+}
+
 /*! Habing flux, erg/s/cm^2: G0=1 is this flux over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
-/*! H2 Lyman-Werner photodissociation coefficient sigma_H2/E_LW, cm^2 erg^-1
-    (Sternberg et al. 2014, ApJ 790:10). The particle carries only the LW
-    energy flux, so the rate depends on this quotient alone. Agreement with the
-    anchor is at the 10% level. See
-    theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py. */
-#define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.2847106348798106e-07
+/*! H2 Lyman-Werner photodissociation coefficient sigma_H2/E_LW, cm^2 erg^-1,
+    for the Draine (1978) field. The particle carries only the LW energy flux,
+    so the rate depends on this quotient alone. Mean of three computations,
+    1.4425e-7 +- 1.9%: an H2 line-list integral (Abgrall et al. 2000),
+    Sternberg et al. 2014 (ApJ 790:10) and Draine & Bertoldi 1996 (Table 2).
+    A hotter spectrum raises the coefficient (+17% for a 2e4 K blackbody). See
+    theory/GEAR/Radiation/04_isrf_packet_transport.tex. */
+#define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.4425206587e-07
 
 /*! Representative Lyman-Werner photon energy, eV (Kim et al. 2023, Table 3).
     Not used by the dissociation rate. */
@@ -100,10 +120,10 @@
     #RADIATION_LW_PHOTON_ENERGY_EV in erg. The rate does not read it. It is a
     literal so the check scripts can parse it; a unit test asserts it equals
     the product. */
-#define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
+#define RADIATION_SIGMA_H2_LW_CGS 2.8196309e-18
 
 /*! Metallicity mass fraction at which the diagnostic mean LW photon energy is
-    read from a 2D table (#radiation_lw_photon_energy_cgs). The gas particle
+    read from a 2D table (#radiation_set_lw_photon_energy_cgs). The gas particle
     is source-anonymous, so one representative rung is used. */
 #define RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY 0.014
 
@@ -114,9 +134,22 @@
 
 /*! PE/LW band lower edges, eV. Photons redshift downward through these
     energies (fixed in physical energy). See
-    theory/GEAR/Radiation/02_fuv_isrf.tex. */
+    theory/GEAR/Radiation/04_isrf_packet_transport.tex. */
 #define RADIATION_PE_BAND_LOWER_EDGE_EV 6.0
 #define RADIATION_LW_BAND_LOWER_EDGE_EV 11.2
+
+/*! LW band upper edge, eV: the HI ionisation threshold. The PE upper edge is
+    #RADIATION_LW_BAND_LOWER_EDGE_EV. */
+#define RADIATION_LW_BAND_UPPER_EDGE_EV 13.6
+
+/*! #RADIATION_LW_BAND_UPPER_EDGE_EV in erg. */
+#define RADIATION_LW_BAND_UPPER_EDGE_CGS 2.1789602e-11
+
+/*! HI ionisation energy in erg (13.598 eV), the energy per atom the ionized
+    floor temperature is built from. It differs from
+    #RADIATION_LW_BAND_UPPER_EDGE_CGS (13.6 eV); the two are not merged so
+    that no result changes. */
+#define RADIATION_HI_IONIZATION_ENERGY_CGS 2.17872e-11
 
 /*! The band lower edges in erg (1 eV = 1.602176634e-12 erg), hardcoded because
     eV is not an internal unit. They enter only a dimensionless ratio. */
@@ -127,10 +160,10 @@
     initialise the #feedback_props band_edge weights and are used when the
     table's Integrated_L_PE or Integrated_L_LW denominator vanishes.
     lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (theory/GEAR/Radiation/
-    02_fuv_isrf.tex). The values are the young-population end of the spectral
-    family, which dominates the LW luminosity. An aged population's Lambda_LW
-    reaches about 18.3, 3x higher. The bias against a population average is
-    not sized. */
+    04_isrf_packet_transport.tex). The values are the young-population end of
+    the spectral family, which dominates the LW luminosity. An aged
+    population's Lambda_LW reaches about 18.3, 3x higher. The bias against a
+    population average is not sized. */
 #define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
 #define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
 #define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0
@@ -185,6 +218,27 @@ struct radiation_grid_metadata {
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
+/**
+ * @brief The run-wide inputs of the gas getters of the HII scheme.
+ */
+struct radiation_gas_context {
+
+  /*! Physical constants. */
+  const struct phys_const *phys_const;
+
+  /*! Hydro scheme properties. */
+  const struct hydro_props *hydro_props;
+
+  /*! Unit system. */
+  const struct unit_system *us;
+
+  /*! Cosmological model. */
+  const struct cosmology *cosmo;
+
+  /*! Cooling function properties. */
+  const struct cooling_function_data *cooling;
+};
+
 /*----------------------------------------------------------------------------*/
 /* HII regions (--with-subgrid-radiation part hii)                            */
 /*----------------------------------------------------------------------------*/
@@ -192,33 +246,23 @@ struct radiation_grid_metadata {
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
 double radiation_get_part_number_hydrogen_atoms(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_number_neutral_hydrogen_atoms(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_rate_to_fully_ionize(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_ionized_internal_energy(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_mean_molecular_weight(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_case_b_recombination_coefficient_cgs(const double T);
@@ -228,21 +272,21 @@ double radiation_get_T_collisional_K(const double Z);
 double radiation_get_photoionization_rate_coefficient_from_flux_HI(
     const struct unit_system *us, const double ionizing_flux_HI);
 
-void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
+void radiation_tag_part_as_ionized(struct part *p, struct xpart *xp,
                                    long long star_id, double end_time,
                                    float excess_photon_energy_HI,
                                    float photoionization_rate_HI);
-void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
+void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xp);
 char radiation_is_part_tagged_as_ionized(const struct part *p,
-                                         const struct xpart *xpj);
+                                         const struct xpart *xp);
 double radiation_get_part_ionized_end_time(const struct part *p,
-                                           const struct xpart *xpj);
+                                           const struct xpart *xp);
 long long radiation_get_part_ionized_star_id(const struct part *p,
-                                             const struct xpart *xpj);
+                                             const struct xpart *xp);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,
-                                                 const struct xpart *xpj);
+                                                 const struct xpart *xp);
 float radiation_get_part_photoionization_rate_coefficient(
-    const struct part *p, const struct xpart *xpj);
+    const struct part *p, const struct xpart *xp);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
@@ -281,40 +325,38 @@ radiation_set_star_will_do_HII_ionization(struct spart *sp, const char flag) {
 
 __attribute__((always_inline)) INLINE static double
 radiation_get_part_ionized_internal_energy(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
   return 0.;
 }
 __attribute__((always_inline)) INLINE static void radiation_tag_part_as_ionized(
-    struct part *p, struct xpart *xpj, long long star_id, double end_time,
+    struct part *p, struct xpart *xp, long long star_id, double end_time,
     float excess_photon_energy_HI, float photoionization_rate_HI) {}
 __attribute__((always_inline)) INLINE static void
-radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj) {}
+radiation_reset_part_ionized_tag(struct part *p, struct xpart *xp) {}
 __attribute__((always_inline)) INLINE static char
 radiation_is_part_tagged_as_ionized(const struct part *p,
-                                    const struct xpart *xpj) {
+                                    const struct xpart *xp) {
   return 0;
 }
 __attribute__((always_inline)) INLINE static double
 radiation_get_part_ionized_end_time(const struct part *p,
-                                    const struct xpart *xpj) {
+                                    const struct xpart *xp) {
   return 0.;
 }
 __attribute__((always_inline)) INLINE static long long
 radiation_get_part_ionized_star_id(const struct part *p,
-                                   const struct xpart *xpj) {
+                                   const struct xpart *xp) {
   return 0;
 }
 __attribute__((always_inline)) INLINE static float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
-                                           const struct xpart *xpj) {
+                                           const struct xpart *xp) {
   return 0.f;
 }
 __attribute__((always_inline)) INLINE static float
 radiation_get_part_photoionization_rate_coefficient(const struct part *p,
-                                                    const struct xpart *xpj) {
+                                                    const struct xpart *xp) {
   return 0.f;
 }
 __attribute__((always_inline)) INLINE static void
@@ -343,31 +385,103 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 double radiation_get_part_LW_dissociation_rate_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p);
+double radiation_get_part_LW_dissociation_rate_with_lines_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p);
+
+/**
+ * @brief Is the H2 line absorption of the transported LW light on for a
+ * particle?
+ *
+ * @param p The #part.
+ * @return Non-zero if GEARFeedback:ISRF_H2_line_absorption is on.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_H2_line_absorption(const struct part *p) {
+  return feedback_part_has_H2_lines(&p->feedback_data);
+}
+
+/**
+ * @brief Is the H2 dissociation rate of a particle read from its dissociating
+ * LW energy rather than from its LW energy?
+ *
+ * @param p The #part.
+ * @return Non-zero with H2 line absorption or the population factor on.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_LW_dissociating_track(const struct part *p) {
+  return feedback_part_tracks_LW_dissociating(&p->feedback_data);
+}
+
+/**
+ * @brief Set the H2 dissociation factor of a star's LW light.
+ *
+ * @param sp The #spart.
+ * @param f The factor, see #radiation_get_LW_dissociating_factor.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_LW_dissociating_factor(struct spart *sp, const float f) {
+  sp->feedback_data.radiation.LW_dissociating_factor = f;
+}
+
+/**
+ * @brief H2 dissociation factor of a star's LW light.
+ *
+ * @param sp The #spart.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_get_star_LW_dissociating_factor(const struct spart *sp) {
+  return sp->feedback_data.radiation.LW_dissociating_factor;
+}
 
 /**
  * @brief Set the luminosity of a star in one ISRF moment.
  *
  * @param sp The #spart.
- * @param m The #radiation_isrf_moment.
+ * @param moment The #radiation_isrf_moment.
  * @param L The luminosity (physical units).
  */
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_band_luminosity(struct spart *sp,
-                                   const enum radiation_isrf_moment m,
+                                   const enum radiation_isrf_moment moment,
                                    const double L) {
-  sp->feedback_data.radiation.L_band[m] = L;
+  sp->feedback_data.radiation.L_band[moment] = L;
 }
 
 /**
  * @brief Luminosity of a star in one ISRF moment (physical units).
  *
  * @param sp The #spart.
- * @param m The #radiation_isrf_moment.
+ * @param moment The #radiation_isrf_moment.
  */
 __attribute__((always_inline)) INLINE static double
 radiation_get_star_band_luminosity(const struct spart *sp,
-                                   const enum radiation_isrf_moment m) {
-  return sp->feedback_data.radiation.L_band[m];
+                                   const enum radiation_isrf_moment moment) {
+  return sp->feedback_data.radiation.L_band[moment];
+}
+
+/**
+ * @brief Set the packet photon number a star emits per unit energy in one
+ * band, `E_lo / E_bar`, from its mean photon energy. A mean energy outside
+ * the band, possible only at a table edge, is moved to the nearest edge.
+ *
+ * @param sp The #spart.
+ * @param o The band, a #radiation_isrf_operator.
+ * @param E_bar_cgs Mean photon energy of the band, erg.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_packet_photon_fraction(struct spart *sp,
+                                          const enum radiation_isrf_operator o,
+                                          const double E_bar_cgs) {
+  const double E_lo = o == ISRF_OPERATOR_PE ? RADIATION_PE_BAND_LOWER_EDGE_CGS
+                                            : RADIATION_LW_BAND_LOWER_EDGE_CGS;
+  const double E_hi = o == ISRF_OPERATOR_PE ? RADIATION_LW_BAND_LOWER_EDGE_CGS
+                                            : RADIATION_LW_BAND_UPPER_EDGE_CGS;
+
+  double E = E_bar_cgs;
+  if (!(E >= E_lo)) E = E_lo;
+  if (E > E_hi) E = E_hi;
+  sp->feedback_data.radiation.packet.photon_fraction[o] = (float)(E_lo / E);
 }
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
@@ -390,15 +504,38 @@ radiation_get_part_LW_dissociation_rate_internal(
     const struct cosmology *cosmo, const struct part *p) {
   return 0.;
 }
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_LW_dissociation_rate_with_lines_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_H2_line_absorption(const struct part *p) {
+  return 0;
+}
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_LW_dissociating_track(const struct part *p) {
+  return 0;
+}
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_LW_dissociating_factor(struct spart *sp, const float f) {}
+__attribute__((always_inline)) INLINE static float
+radiation_get_star_LW_dissociating_factor(const struct spart *sp) {
+  return 1.f;
+}
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_band_luminosity(struct spart *sp,
-                                   const enum radiation_isrf_moment m,
+                                   const enum radiation_isrf_moment moment,
                                    const double L) {}
 __attribute__((always_inline)) INLINE static double
 radiation_get_star_band_luminosity(const struct spart *sp,
-                                   const enum radiation_isrf_moment m) {
+                                   const enum radiation_isrf_moment moment) {
   return 0.;
 }
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_packet_photon_fraction(struct spart *sp, const int o,
+                                          const double E_bar_cgs) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
@@ -585,6 +722,24 @@ double radiation_get_mean_photon_energy_lw_from_raw_2d(
     const struct radiation *rad, float log_z, float log_m);
 double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
                                                 float log_m, float log_z);
+double radiation_get_star_mean_photon_energy_pe(const struct radiation *rad,
+                                                float log_m, float log_z);
+double radiation_get_population_mean_photon_energy_pe(
+    const struct radiation *rad, float log_z, float log_m);
+double radiation_get_population_mean_photon_energy_lw(
+    const struct radiation *rad, float log_z, float log_m);
+float radiation_get_population_luminosity_pe(const struct radiation *rad,
+                                             float log_z, float log_m1,
+                                             float log_m2);
+float radiation_get_population_luminosity_lw(const struct radiation *rad,
+                                             float log_z, float log_m1,
+                                             float log_m2);
+float radiation_get_population_luminosity_edge_pe(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2);
+float radiation_get_population_luminosity_edge_lw(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2);
 double radiation_get_mean_photon_energy_lw_from_integral(
     const struct radiation *rad, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral_2d(
@@ -602,6 +757,13 @@ float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
 float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
                                                    float log_z, float log_m1,
                                                    float log_m2);
+float radiation_get_LW_dissociating_factor(const double l_dissociating,
+                                           const double l_lw,
+                                           const float f_max);
+float radiation_get_single_star_LW_dissociating_factor(
+    const struct radiation *rad, float log_m, float log_z);
+float radiation_get_population_LW_dissociating_factor(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
 
 float radiation_get_luminosity_edge_pe_from_integral(
     const struct radiation *rad, float log_m1, float log_m2);
@@ -617,41 +779,6 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct unit_system *us,
                          const struct phys_const *phys_const,
                          const int restart);
-void radiation_read_luminosities_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_ionization_rate_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_mean_excess_photon_energy_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us);
-void radiation_read_luminosity_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_mean_photon_energy_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
-void radiation_read_luminosity_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_luminosity_edge_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_luminosity_edge_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

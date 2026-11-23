@@ -140,6 +140,7 @@ tests/testRadiationRebuildCheck
 tests/testRadiationPairShift
 tests/testRadiationHIIConeFrame
 tests/testRadiationHIIConeClaim
+tests/testRadiationPacketSlotGeometry
 tests/testIOOptionalFieldDefaultWidth
 tests/test27cellsStars_subset
 tests/testPeriodicBC
@@ -235,8 +236,11 @@ tests/testUtilities
 tests/testCosmologyAccuracy
 tests/testOutputList
 tests/testCbrt
+tests/testBoxWrapCellIndex
+tests/testCellDxOutsideCheck
 tests/testFormat.sh
 tests/testCooling
+tests/testCoolingSplit
 tests/testComovingCooling
 tests/testHashmap
 tests/testNeutrinoCosmology

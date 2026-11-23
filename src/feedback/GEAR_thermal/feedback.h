@@ -20,7 +20,8 @@
 #define SWIFT_FEEDBACK_GEAR_H
 
 #include "../GEAR/feedback_common.h"
-#include "../GEAR/feedback_radiation.h"
+#include "../GEAR/radiation_hii.h"
+#include "../GEAR/radiation_packet.h"
 #include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
@@ -35,17 +36,12 @@
 
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
-void feedback_end_density(struct part *p, struct xpart *xp,
-                          const struct engine *e);
-void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
-                                     const struct engine *e);
 void feedback_end_gradient(struct part *p, const struct engine *e);
 void feedback_end_force(struct part *p, const struct engine *e);
 float feedback_compute_part_timestep(const struct part *restrict p,
                                      const struct engine *e);
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e);
-void feedback_init_part(struct part *p, const struct engine *e);
 void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_is_star_dead(const struct spart *sp);
@@ -85,7 +81,20 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                const int with_cosmology);
 
 /**
- * @brief Writes the current model of feedback to the file
+ * @brief Finishes the #part density calculation. Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_end_density(
+    struct part *p, struct xpart *xp, const struct engine *e) {}
+
+/**
+ * @brief Writes the current model of feedback to the file. With
+ * SWIFT_DEBUG_CHECKS_ISRF, also the packet ledgers of the gas, the stars and
+ * the sinks that left the box and of the gas swallowed by black holes, summed
+ * over the ranks, PE then LW, in snapshot units.
  *
  * @param feedback The #feedback_props.
  * @param h_grp The HDF5 group in which to write
@@ -94,6 +103,63 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+  struct feedback_isrf_packet_removed_data l;
+  double f;
+  radiation_packet_left_box_total(&l, &f);
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    l.removed_energy[b] *= f;
+    l.removed_photons[b] *= f;
+    l.inherited_energy[b] *= f;
+    l.inherited_photons[b] *= f;
+  }
+  io_write_attribute(h_grp, "PacketLeftBoxEscapedEnergies", DOUBLE,
+                     l.removed_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketLeftBoxEscapedPhotonNumbers", DOUBLE,
+                     l.removed_photons, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketLeftBoxInheritedEnergies", DOUBLE,
+                     l.inherited_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketLeftBoxInheritedPhotonNumbers", DOUBLE,
+                     l.inherited_photons, ISRF_OPERATOR_COUNT);
+
+  struct feedback_isrf_packet_box_data x;
+  radiation_packet_box_total(&x);
+  double *v = (double *)&x;
+  for (size_t k = 0; k < sizeof(x) / sizeof(double); k++) v[k] *= f;
+  const struct feedback_isrf_packet_star_ledger_data *st = &x.stars_left_box;
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEmittedEnergies", DOUBLE,
+                     st->emitted_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEmittedPhotonNumbers", DOUBLE,
+                     st->emitted_photons, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEscapedEnergies", DOUBLE,
+                     st->escaped_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEscapedPhotonNumbers", DOUBLE,
+                     st->escaped_photons, ISRF_OPERATOR_COUNT);
+  const struct {
+    const char *name;
+    const struct feedback_isrf_packet_removed_data *r;
+  } groups[3] = {{"StarsLeftBox", &st->removed},
+                 {"SinksLeftBox", &x.sinks_left_box},
+                 {"SwallowedByBlackHoles", &x.gas_swallowed_by_black_holes}};
+  for (int g = 0; g < 3; g++) {
+    char name[64];
+    snprintf(name, sizeof(name), "Packet%sRemovedEnergies", groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->removed_energy,
+                       ISRF_OPERATOR_COUNT);
+    snprintf(name, sizeof(name), "Packet%sRemovedPhotonNumbers",
+             groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->removed_photons,
+                       ISRF_OPERATOR_COUNT);
+    snprintf(name, sizeof(name), "Packet%sInheritedEnergies", groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->inherited_energy,
+                       ISRF_OPERATOR_COUNT);
+    snprintf(name, sizeof(name), "Packet%sInheritedPhotonNumbers",
+             groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->inherited_photons,
+                       ISRF_OPERATOR_COUNT);
+  }
+#endif
 };
 
 /**
@@ -245,6 +311,81 @@ feedback_unpack_hii_state_update(struct part *restrict p,
   p->feedback_data.mu_eligibility = data->mu_eligibility;
   p->feedback_data.neutral_H_frac = data->neutral_H_frac;
 #endif
+}
+
+/**
+ * @brief Start-up of the ISRF packet transport: sets the speed limit of the
+ * packet light, with or without stars.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_startup(const struct engine *e) {
+  radiation_packet_startup(e);
+}
+
+/**
+ * @brief Follows the cell width after a regrid: the packet reach margin
+ * depends on it.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_regrid(const struct engine *e) {
+  radiation_packet_refresh_frame_width(e);
+}
+
+/**
+ * @brief Prints the far light of the packet transport at the statistics
+ * cadence. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_statistics(const struct engine *e) {
+  radiation_packet_far_diagnostics(e);
+}
+
+/**
+ * @brief Reports and resets the arrival bin counters of the step. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_diagnostics(const struct engine *e) {
+  radiation_packet_step_diagnostics(e);
+}
+
+/**
+ * @brief Checks the share of the packet light in the far arrival cells once
+ * per step. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_report(const struct engine *e) {
+  radiation_packet_far_share_report(e);
+}
+
+/**
+ * @brief Prints the far share of the whole run. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_end_of_run(const struct engine *e) {
+  radiation_packet_far_share_final(e);
+}
+
+/**
+ * @brief Sums the ledger of the gas that left the box over the ranks before a
+ * snapshot. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_snapshot_reduce(const struct engine *e) {
+  radiation_packet_reduce_left_box(e);
 }
 
 #endif /* SWIFT_FEEDBACK_GEAR_H */

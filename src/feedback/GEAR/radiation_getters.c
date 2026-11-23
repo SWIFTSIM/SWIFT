@@ -85,6 +85,64 @@ float radiation_get_log_metallicity(float Z) {
 }
 
 /**
+ * @brief Nudge a log-mass query strictly inside a 2D IMF-integrated table's
+ * top edge.
+ *
+ * A query exactly at the top edge takes #interpolate_2d's out-of-range branch,
+ * which snaps the Z axis to the nearest row instead of blending. That case is
+ * common: the upper mass bound is clamped to sm->imf.mass_max for an early-age
+ * population. The nudge is a #RADIATION_2D_EDGE_EPS fraction of the mass span.
+ *
+ * @param interp The 2D IMF-integrated table the caller is about to query.
+ * @param log_m The mass-axis query, in log10.
+ * @return @p log_m, or the table's top edge minus a small margin,
+ * whichever is smaller.
+ */
+__attribute__((always_inline)) INLINE static float radiation_nudge_mass_edge_2d(
+    const struct interpolation_2d *interp, float log_m) {
+  const float cap = interp->ymin + (interp->Ny - 1) * interp->dy *
+                                       (1.f - RADIATION_2D_EDGE_EPS);
+  return min(log_m, cap);
+}
+
+/**
+ * @brief Difference of a 1D IMF-integrated table between two masses.
+ *
+ * @param interp The 1D IMF-integrated table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return interp(log_m2) - interp(log_m1), in the table's linear values.
+ */
+__attribute__((always_inline)) INLINE static float radiation_integral_window_1d(
+    const struct interpolation_1d *interp, float log_m1, float log_m2) {
+  const float value_1 = interpolate_1d(interp, log_m1);
+  const float value_2 = interpolate_1d(interp, log_m2);
+  return value_2 - value_1;
+}
+
+/**
+ * @brief Difference of a 2D IMF-integrated table between two masses at one
+ * metallicity. The top-edge queries are nudged by
+ * #radiation_nudge_mass_edge_2d.
+ *
+ * @param interp The 2D IMF-integrated table.
+ * @param log_z The metallicity in log10.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return interp(log_z, log_m2) - interp(log_z, log_m1), in the table's
+ * linear values.
+ */
+__attribute__((always_inline)) INLINE static float radiation_integral_window_2d(
+    const struct interpolation_2d *interp, float log_z, float log_m1,
+    float log_m2) {
+  const float value_1 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
+  const float value_2 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
+  return value_2 - value_1;
+}
+
+/**
  * @brief Get the IMF-averaged bolometric luminosity per mass.
  *
  * Reads #rad->integrated.luminosities in linear value space, with no
@@ -99,9 +157,8 @@ float radiation_get_luminosities_from_integral(const struct radiation *rad,
                                                float log_m1, float log_m2) {
 
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  float luminosity_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
-  float luminosity_2 = interpolate_1d(&rad->integrated.luminosities, log_m2);
-  return luminosity_2 - luminosity_1;
+  return radiation_integral_window_1d(&rad->integrated.luminosities, log_m1,
+                                      log_m2);
 }
 
 /**
@@ -336,27 +393,6 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
 }
 
 /**
- * @brief Nudge a log-mass query strictly inside a 2D IMF-integrated table's
- * top edge.
- *
- * A query exactly at the top edge takes #interpolate_2d's out-of-range branch,
- * which snaps the Z axis to the nearest row instead of blending. That case is
- * common: the upper mass bound is clamped to sm->imf.mass_max for an early-age
- * population. The nudge is a #RADIATION_2D_EDGE_EPS fraction of the mass span.
- *
- * @param interp The 2D IMF-integrated table the caller is about to query.
- * @param log_m The mass-axis query, in log10.
- * @return @p log_m, or the table's top edge minus a small margin,
- * whichever is smaller.
- */
-__attribute__((always_inline)) INLINE static float radiation_nudge_mass_edge_2d(
-    const struct interpolation_2d *interp, float log_m) {
-  const float cap = interp->ymin + (interp->Ny - 1) * interp->dy *
-                                       (1.f - RADIATION_2D_EDGE_EPS);
-  return min(log_m, cap);
-}
-
-/**
  * @brief Get the IMF-averaged bolometric luminosity per mass, at a given
  * metallicity, from a 2D ("M,Z") table.
  *
@@ -374,12 +410,8 @@ float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
                                                   float log_z, float log_m1,
                                                   float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  const struct interpolation_2d *interp = &rad->integrated.luminosities_2d;
-  const float luminosity_1 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
-  const float luminosity_2 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
-  return luminosity_2 - luminosity_1;
+  return radiation_integral_window_2d(&rad->integrated.luminosities_2d, log_z,
+                                      log_m1, log_m2);
 }
 
 /**
@@ -642,6 +674,40 @@ double radiation_get_mean_photon_energy_lw_from_integral_2d(
 }
 
 /**
+ * @brief Get a single star's photon-number-weighted mean PE photon energy,
+ * dispatching on #rad->is_2d. Needs #radiation.has_mean_photon_energy_pe.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @return Mean PE photon energy, cgs erg.
+ */
+double radiation_get_star_mean_photon_energy_pe(const struct radiation *rad,
+                                                float log_m, float log_z) {
+  if (rad->is_2d)
+    return exp10(
+        interpolate_2d(&rad->raw.mean_photon_energy_pe_2d, log_z, log_m));
+  return exp10(interpolate_1d(&rad->raw.mean_photon_energy_pe, log_m));
+}
+
+/**
+ * @brief Get the mean PE photon energy of the population formed between the
+ * IMF's mass_min and @p log_m, dispatching on #rad->is_2d.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m Upper mass bound of the population, in log.
+ * @return Mean PE photon energy, cgs erg.
+ */
+double radiation_get_population_mean_photon_energy_pe(
+    const struct radiation *rad, float log_z, float log_m) {
+  if (rad->is_2d)
+    return exp10(interpolate_2d(&rad->integrated.mean_photon_energy_pe_2d,
+                                log_z, log_m));
+  return exp10(interpolate_1d(&rad->integrated.mean_photon_energy_pe, log_m));
+}
+
+/**
  * @brief Get the photospheric effective temperature at a given mass, from a
  * 1D (mass-only) table.
  *
@@ -797,9 +863,7 @@ float radiation_get_star_luminosity_lw(const struct radiation *rad, float log_m,
 float radiation_get_luminosity_pe_from_integral(const struct radiation *rad,
                                                 float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  const float l_pe_1 = interpolate_1d(&rad->integrated.l_pe, log_m1);
-  const float l_pe_2 = interpolate_1d(&rad->integrated.l_pe, log_m2);
-  return l_pe_2 - l_pe_1;
+  return radiation_integral_window_1d(&rad->integrated.l_pe, log_m1, log_m2);
 }
 
 /**
@@ -818,12 +882,8 @@ float radiation_get_luminosity_pe_from_integral_2d(const struct radiation *rad,
                                                    float log_z, float log_m1,
                                                    float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  const struct interpolation_2d *interp = &rad->integrated.l_pe_2d;
-  const float l_pe_1 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
-  const float l_pe_2 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
-  return l_pe_2 - l_pe_1;
+  return radiation_integral_window_2d(&rad->integrated.l_pe_2d, log_z, log_m1,
+                                      log_m2);
 }
 
 /**
@@ -839,9 +899,7 @@ float radiation_get_luminosity_pe_from_integral_2d(const struct radiation *rad,
 float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
                                                 float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  const float l_lw_1 = interpolate_1d(&rad->integrated.l_lw, log_m1);
-  const float l_lw_2 = interpolate_1d(&rad->integrated.l_lw, log_m2);
-  return l_lw_2 - l_lw_1;
+  return radiation_integral_window_1d(&rad->integrated.l_lw, log_m1, log_m2);
 }
 
 /**
@@ -861,12 +919,92 @@ float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
                                                    float log_z, float log_m1,
                                                    float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  const struct interpolation_2d *interp = &rad->integrated.l_lw_2d;
-  const float l_lw_1 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
-  const float l_lw_2 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
-  return l_lw_2 - l_lw_1;
+  return radiation_integral_window_2d(&rad->integrated.l_lw_2d, log_z, log_m1,
+                                      log_m2);
+}
+
+/**
+ * @brief Factor of the H2 dissociation rate per unit LW energy of a source
+ * over the constant RADIATION_SIGMA_H2_OVER_E_LW_CGS, from its two energies.
+ *
+ * @param l_dissociating The H2-dissociating LW energy (rate).
+ * @param l_lw The LW energy (rate).
+ * @param f_max The bound of the factor, #radiation.lw_dissociating_factor_max.
+ * @return The factor in (0, f_max], 1 if @p l_lw or the ratio is not positive.
+ */
+float radiation_get_LW_dissociating_factor(const double l_dissociating,
+                                           const double l_lw,
+                                           const float f_max) {
+  if (!(l_lw > 0.)) return 1.f;
+  const double f = l_dissociating / l_lw;
+  if (!(f > 0.)) return 1.f;
+  if (f > (double)f_max) return f_max;
+  return (float)f;
+}
+
+/**
+ * @brief Dissociating factor of a single star at a given mass, see
+ * #radiation_get_LW_dissociating_factor. Exactly 1 without
+ * #radiation.has_l_lw_dissociating.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10, used only for a 2D table.
+ * @return The factor.
+ */
+float radiation_get_single_star_LW_dissociating_factor(
+    const struct radiation *rad, float log_m, float log_z) {
+  if (!rad->has_l_lw_dissociating) return 1.f;
+  double log_l_lw, log_l_dissociating;
+  if (rad->is_2d) {
+    log_l_lw = interpolate_2d(&rad->raw.l_lw_2d, log_z, log_m);
+    log_l_dissociating =
+        interpolate_2d(&rad->raw.l_lw_dissociating_2d, log_z, log_m);
+  } else {
+    log_l_lw = interpolate_1d(&rad->raw.l_lw, log_m);
+    log_l_dissociating = interpolate_1d(&rad->raw.l_lw_dissociating, log_m);
+  }
+  return radiation_get_LW_dissociating_factor(
+      exp10(log_l_dissociating - log_l_lw), 1.,
+      rad->lw_dissociating_factor_max);
+}
+
+/**
+ * @brief Dissociating factor of a population over the mass window
+ * [m1, m2], the ratio of the windows of the two cumulative tables. See
+ * #radiation_get_LW_dissociating_factor. Exactly 1 without
+ * #radiation.has_l_lw_dissociating.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only for a 2D table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return The factor.
+ */
+float radiation_get_population_LW_dissociating_factor(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2) {
+  if (!rad->has_l_lw_dissociating) return 1.f;
+  double l_lw, l_dissociating;
+  if (rad->is_2d) {
+    l_lw = radiation_get_luminosity_lw_from_integral_2d(rad, log_z, log_m1,
+                                                        log_m2);
+    const struct interpolation_2d *interp =
+        &rad->integrated.l_lw_dissociating_2d;
+    const float l_1 = interpolate_2d(
+        interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
+    const float l_2 = interpolate_2d(
+        interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
+    l_dissociating = (double)(l_2 - l_1);
+  } else {
+    l_lw = radiation_get_luminosity_lw_from_integral(rad, log_m1, log_m2);
+    const float l_1 =
+        interpolate_1d(&rad->integrated.l_lw_dissociating, log_m1);
+    const float l_2 =
+        interpolate_1d(&rad->integrated.l_lw_dissociating, log_m2);
+    l_dissociating = (double)(l_2 - l_1);
+  }
+  return radiation_get_LW_dissociating_factor(l_dissociating, l_lw,
+                                              rad->lw_dissociating_factor_max);
 }
 
 /**
@@ -886,9 +1024,8 @@ float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
 float radiation_get_luminosity_edge_pe_from_integral(
     const struct radiation *rad, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  const float l_edge_pe_1 = interpolate_1d(&rad->integrated.l_edge_pe, log_m1);
-  const float l_edge_pe_2 = interpolate_1d(&rad->integrated.l_edge_pe, log_m2);
-  return l_edge_pe_2 - l_edge_pe_1;
+  return radiation_integral_window_1d(&rad->integrated.l_edge_pe, log_m1,
+                                      log_m2);
 }
 
 /**
@@ -907,12 +1044,8 @@ float radiation_get_luminosity_edge_pe_from_integral(
 float radiation_get_luminosity_edge_pe_from_integral_2d(
     const struct radiation *rad, float log_z, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  const struct interpolation_2d *interp = &rad->integrated.l_edge_pe_2d;
-  const float l_edge_pe_1 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
-  const float l_edge_pe_2 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
-  return l_edge_pe_2 - l_edge_pe_1;
+  return radiation_integral_window_2d(&rad->integrated.l_edge_pe_2d, log_z,
+                                      log_m1, log_m2);
 }
 
 /**
@@ -928,9 +1061,8 @@ float radiation_get_luminosity_edge_pe_from_integral_2d(
 float radiation_get_luminosity_edge_lw_from_integral(
     const struct radiation *rad, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  const float l_edge_lw_1 = interpolate_1d(&rad->integrated.l_edge_lw, log_m1);
-  const float l_edge_lw_2 = interpolate_1d(&rad->integrated.l_edge_lw, log_m2);
-  return l_edge_lw_2 - l_edge_lw_1;
+  return radiation_integral_window_1d(&rad->integrated.l_edge_lw, log_m1,
+                                      log_m2);
 }
 
 /**
@@ -949,10 +1081,104 @@ float radiation_get_luminosity_edge_lw_from_integral(
 float radiation_get_luminosity_edge_lw_from_integral_2d(
     const struct radiation *rad, float log_z, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  const struct interpolation_2d *interp = &rad->integrated.l_edge_lw_2d;
-  const float l_edge_lw_1 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
-  const float l_edge_lw_2 = interpolate_2d(
-      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
-  return l_edge_lw_2 - l_edge_lw_1;
+  return radiation_integral_window_2d(&rad->integrated.l_edge_lw_2d, log_z,
+                                      log_m1, log_m2);
+}
+
+/**
+ * @brief Get the IMF-averaged PE band emission rate per mass, dispatching on
+ * #rad->is_2d. See #radiation_get_luminosity_pe_from_integral.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return PE band emission rate per Msun of stars formed, internal units.
+ */
+float radiation_get_population_luminosity_pe(const struct radiation *rad,
+                                             float log_z, float log_m1,
+                                             float log_m2) {
+  if (rad->is_2d)
+    return radiation_get_luminosity_pe_from_integral_2d(rad, log_z, log_m1,
+                                                        log_m2);
+  return radiation_get_luminosity_pe_from_integral(rad, log_m1, log_m2);
+}
+
+/**
+ * @brief Get the IMF-averaged LW band emission rate per mass, dispatching on
+ * #rad->is_2d. See #radiation_get_luminosity_lw_from_integral.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return Lyman-Werner band emission rate per Msun of stars formed, internal
+ * units.
+ */
+float radiation_get_population_luminosity_lw(const struct radiation *rad,
+                                             float log_z, float log_m1,
+                                             float log_m2) {
+  if (rad->is_2d)
+    return radiation_get_luminosity_lw_from_integral_2d(rad, log_z, log_m1,
+                                                        log_m2);
+  return radiation_get_luminosity_lw_from_integral(rad, log_m1, log_m2);
+}
+
+/**
+ * @brief Get the IMF-averaged PE band lower-edge spectral photon rate,
+ * dispatching on #rad->is_2d. See
+ * #radiation_get_luminosity_edge_pe_from_integral.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return E_lo(PE)^2 * (IMF-averaged dQ/dE at the PE edge), internal power
+ * units.
+ */
+float radiation_get_population_luminosity_edge_pe(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2) {
+  if (rad->is_2d)
+    return radiation_get_luminosity_edge_pe_from_integral_2d(rad, log_z, log_m1,
+                                                             log_m2);
+  return radiation_get_luminosity_edge_pe_from_integral(rad, log_m1, log_m2);
+}
+
+/**
+ * @brief Get the IMF-averaged LW band lower-edge spectral photon rate,
+ * dispatching on #rad->is_2d. See
+ * #radiation_get_luminosity_edge_lw_from_integral.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return E_lo(LW)^2 * (IMF-averaged dQ/dE at the LW edge), internal power
+ * units.
+ */
+float radiation_get_population_luminosity_edge_lw(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2) {
+  if (rad->is_2d)
+    return radiation_get_luminosity_edge_lw_from_integral_2d(rad, log_z, log_m1,
+                                                             log_m2);
+  return radiation_get_luminosity_edge_lw_from_integral(rad, log_m1, log_m2);
+}
+
+/**
+ * @brief Get the mean LW photon energy of the population formed between the
+ * IMF's mass_min and @p log_m, dispatching on #rad->is_2d.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m Upper mass bound of the population, in log.
+ * @return Mean LW photon energy, cgs erg.
+ */
+double radiation_get_population_mean_photon_energy_lw(
+    const struct radiation *rad, float log_z, float log_m) {
+  if (rad->is_2d)
+    return radiation_get_mean_photon_energy_lw_from_integral_2d(rad, log_z,
+                                                                log_m);
+  return radiation_get_mean_photon_energy_lw_from_integral(rad, log_m);
 }

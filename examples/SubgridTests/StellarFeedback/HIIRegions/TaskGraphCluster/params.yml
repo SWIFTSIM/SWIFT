@@ -129,7 +129,7 @@ GEARFeedback:
 
   # HII regions
   with_photoionization: 1                                   # Subgrid photoionization switch
-  HII_min_density_Hpcm3: 0.01                               # Minimum density for HII eligibility, H/cm^3
+  HII_min_density_Hpcm3: 0.01                               # Minimum density for HII eligibility (in nucleons/cm^3: the density divided by the proton mass)
   HII_max_age_Myr: 50
   HII_rebuild_time_Myr: 0.5
   HII_angular_nside: 0                                      # HEALPix splitting of HII budget, 0=spherical (default)

@@ -1273,6 +1273,8 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
   /* Let's first lock the cell */
   lock_lock(&cj->hydro.extra_sort_lock);
 
+  runner_count_sort_state_hydro(cj, sid, runner_sort_site_fallback);
+
   const int is_sorted =
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
@@ -1500,6 +1502,9 @@ void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   int sorted = 1;
   if (do_ci) {
 
+    runner_count_sort_state_stars(ci, sid, runner_sort_site_fallback);
+    runner_count_sort_state_hydro(cj, sid, runner_sort_site_fallback);
+
     /* Verify that the conditions for sorted interactions are not violated */
     const int ci_stars_sorted = (ci->stars.sorted & (1 << sid));
     const int cj_hydro_sorted = (cj->hydro.sorted & (1 << sid));
@@ -1512,6 +1517,9 @@ void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
              cj_hydro_disp_ok;
   }
   if (do_cj) {
+
+    runner_count_sort_state_hydro(ci, sid, runner_sort_site_fallback);
+    runner_count_sort_state_stars(cj, sid, runner_sort_site_fallback);
 
     /* Verify that the conditions for sorted interactions are not violated */
     const int cj_stars_sorted = (cj->stars.sorted & (1 << sid));
@@ -1621,6 +1629,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
     if (do_ci) {
+      runner_count_sort_state_stars(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
       if (!(ci->stars.sorted & (1 << sid)) ||
           ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
         runner_do_stars_sort(r, ci, (1 << sid), 0, 0);
@@ -1632,6 +1642,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       }
     }
     if (do_cj) {
+      runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_stars(cj, sid, runner_sort_site_pair_leaf);
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
         runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
@@ -1670,6 +1682,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */
       if (do_ci_here) {
+        runner_count_sort_state_stars(ci, sid, runner_sort_site_pair_leaf);
+        runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
         if (!(ci->stars.sorted & (1 << sid)) ||
             ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
           runner_do_stars_sort(r, ci, (1 << sid), 0, 0);
@@ -1681,6 +1695,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         }
       }
       if (do_cj_here) {
+        runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+        runner_count_sort_state_stars(cj, sid, runner_sort_site_pair_leaf);
         if (!(ci->hydro.sorted & (1 << sid)) ||
             ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
           runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,

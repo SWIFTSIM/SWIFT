@@ -1,0 +1,44 @@
+# Intro
+Two 29.7 Msun stars in a periodic box of molecular gas, with the ISRF transport on
+(`ISRF_propagation: 1`) and the H2 line absorption of the transport on
+(`ISRF_H2_line_absorption: 1`). A dense slab (density contrast 300 at a uniform H2 ratio)
+shadows star A. Star B sits in clear gas on the other side of the slab. A reception slot
+spans about 90 degrees, and two lights share a slot only where their directions fall in
+the same slot. Where the two lights fall in different slots (the check verifies this and
+voids the run otherwise), they do not interact: the field of the two-star run must equal
+the sum of the fields of two runs with one star each. The check tests that, tests the
+carried H2 column of each star against the straight ray through the slab, and tests the
+column of the two-star run against the one-star columns.
+
+Read the README of `ISRFH2StarLit` for the build, the radiation table, the parameters that
+the run holds fixed and the exit classes.
+
+# Run
+```
+./run.sh
+leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
+leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
+```
+The main leg runs swift four times with one binary: star A alone, star B alone, star A
+alone again, and both stars. Each run is kept in its own directory (`only_a`, `only_b`,
+`only_a2`, `main`). A star keeps its particle ID in the one-star runs, because the ID seeds the
+random frame of the emission pixels. `run.sh` reads the number of reception slots from
+`config.h` next to the `swift` executable. `contrast` (default 300), `level`, `gas_density`,
+`gas_mass`, `h2_ratio` and `n_threads` override the defaults.
+
+# Checking
+`checkH2Attenuation.py twosource` reads the first and last snapshot of the two-star run,
+the last snapshots of the three one-star runs (`--only-a`, `--only-b`, `--repeat-a`, run
+directories), `fixture.json`, the parameters, the logs and `--slots`. The reference is
+snapshot 1, the first written after the first step. The check is void (exit class 4) if
+the four runs differ in parameters or build, or if the light of the two stars shares a slot
+at a particle that holds both.
+
+It tests that:
+- the own LW energies of the two-star run equal the sums of the one-star fields, within the
+  round-off of a reordered float sum;
+- the carried H2 column of each one-star run follows the straight ray from the star through
+  the slab and the clear gas;
+- where both stars are lit, the column of the two-star run is the mean of the one-star
+  columns weighted by their dissociating energies. This needs
+  `ISRF_packet_read_mean_time_Myr = 0` (the default).

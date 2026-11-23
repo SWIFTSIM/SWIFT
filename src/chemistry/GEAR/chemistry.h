@@ -639,6 +639,7 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
  *
  * @param bp_data The black hole data to add to.
  * @param p_data The gas data to use.
+ * @param gas_mass_orig The mass of the gas particle before nibbling.
  * @param bh_mass_old The dynamical mass of the black hole before this gain.
  * @param bh_mass_gained The dynamical mass gained by the black hole.
  * @param nibble_fraction The fraction of the (original) mass of the gas
@@ -647,6 +648,7 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
 __attribute__((always_inline)) INLINE static void
 chemistry_transfer_part_to_bpart(struct chemistry_bpart_data *bp_data,
                                  struct chemistry_part_data *p_data,
+                                 const double gas_mass_orig,
                                  const double bh_mass_old,
                                  const double bh_mass_gained,
                                  const double nibble_fraction) {
@@ -771,6 +773,19 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
     const struct sink *restrict sink) {
 
   return sink->chemistry_data.metal_mass_fraction[0];
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * sink particle.
+ *
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_metal_mass_fraction(const struct sink *restrict sink) {
+
+  return sink->chemistry_data
+      .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
 }
 
 /**
@@ -912,7 +927,7 @@ chemistry_set_star_supernovae_ejected_yields(
     const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const struct phys_const *phys_const) {
-
+#if defined(FEEDBACK_GEAR) || defined(FEEDBACK_GEAR_MECHANICAL)
   /* Use a chemistry function */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 
@@ -933,6 +948,7 @@ chemistry_set_star_supernovae_ejected_yields(
     /* Convert everything in code units */
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
   }
+#endif
 }
 
 /**

@@ -1,0 +1,83 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
+
+Restarts:
+  enable: 0
+
+# a_begin and a_end are run.sh overrides.
+Cosmology:
+  h:              0.6777
+  a_begin:        0.1
+  a_end:          0.125
+  Omega_lambda:   0.693
+  Omega_cdm:      0.2587481
+  Omega_b:        0.0482519
+  Omega_r:        0.
+
+# dt_max is a step in ln a (run.sh override).
+TimeIntegration:
+  dt_min:            1e-16
+  dt_max:            1e-3
+
+# delta_time is multiplicative in a (run.sh override).
+Snapshots:
+  subdir:             snap
+  basename:           snapshot
+  scale_factor_first: 0.1
+  delta_time:         1.05
+  compression:        1
+
+Statistics:
+  scale_factor_first: 0.1
+  delta_time:         1.05
+
+Scheduler:
+  max_top_level_cells: 4
+
+InitialConditions:
+  file_name:          ICs_cmb_floor.hdf5
+  periodic:           1
+
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   1                     # Far below the CMB temperature, so the floor is the only lower bound
+  initial_temperature:   0                     # 0: makeIC.py writes the internal energy
+
+GEARChemistry:
+  initial_metallicity: 0.01                    # Absolute metal mass fraction, not in solar units
+  scale_initial_metallicity: 0
+
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
+  with_UV_background: 0                         # Metagalactic UV background on or off (required)
+  redshift: -1                                  # Redshift of the UV background, -1 follows the simulation time (required)
+  with_metal_cooling: 1                         # Metal cooling on or off (required)
+  thermal_time_myr: 0                           # Adiabatic-cooling time in Myr after a feedback event (required)
+  maximal_density_Hpcm3: -1                     # Cooling density ceiling in H atoms/cm^3, a value < 0 disables it (required)
+  cmb_temperature_floor: 1                      # Grackle's CMB temperature floor of the metal cooling, run.sh override (Default: 1)
+  agora_cmb_temperature_floor: 0                # AGORA floor T_CMB,0 (1+z) applied by SWIFT, a different key (Default: 0)
+  HydrogenFractionByMass: 0.76                  # Hydrogen mass fraction (Default: 0.76)
+
+GeajayCooling:
+  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required): linear or remy_ruyer_2014
+  cloudy_table_file: CloudyData_UVB=HM2012.h5   # Name of the Cloudy table
+  with_uv_background: 0                         # Enable or not the UV background
+  redshift: -1                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                         # Enable or not the metal cooling
+  thermal_time_myr: 0                           # Adiabatic-cooling time in Myr after a feedback event
+  metal_cooling_cmb_floor: 1                    # CMB temperature floor of the metal cooling, run.sh override (default: 1)
+  agora_cmb_temperature_floor: 0                # AGORA floor T_CMB,0 (1+z) applied by SWIFT, a different key (default: 0)
+
+GEARFeedback:
+  yields_table: POPIIsw.h5                      # Stellar yields table (getChemistryTable.sh)
+  yields_table_first_stars: POPIIsw.h5          # First-star table, the same file
+  discrete_yields: 1
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0
