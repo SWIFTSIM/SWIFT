@@ -7,7 +7,7 @@ neighbour (r <= R) always falls inside the [di_star - R, di_star + R] window
 on EVERY axis; the window can admit extra, farther candidates that the exact
 r^2 < R^2 test then rejects, but it can never wrongly exclude a true one.
 This is what justifies falling back to any sorted axis of cj
-(runner_radiation_feedback.c:1384-1397) instead of only the carried sid.
+(runner_radiation_feedback.c:1382-1395) instead of only the carried sid.
 """
 
 from __future__ import annotations
