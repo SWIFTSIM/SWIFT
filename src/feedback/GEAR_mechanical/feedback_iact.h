@@ -67,6 +67,10 @@ runner_iact_nonsym_feedback_density(
   kernel_eval(ui, &wi);
   si->feedback_data.gas_density += mj * wi;
 
+  /* Weight sums of the emission cones of the packet transport */
+  if (fb_props->ISRF_propagation)
+    radiation_packet_star_density(si, pj, dx, ti_current);
+
   /* Radiation: density gradient and metallicity at the star */
   radiation_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                          fb_props, hydro_props, phys_const, us,
@@ -390,8 +394,7 @@ runner_iact_nonsym_feedback_apply(
         pj->id, sqrt(r2), fb_props->r_max);
 #endif
     if (feedback_should_inject_radiation_feedback(si, fb_props))
-      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
-                                                      ti_current);
+      radiation_isrf_zero_share(dx, si, pj, cosmo, fb_props, ti_current);
     return;
   }
 
@@ -399,8 +402,7 @@ runner_iact_nonsym_feedback_apply(
      neighbour contributes: the normalization below would divide by 0. */
   if (si->feedback_data.enrichment_weight <= 0.f) {
     if (feedback_should_inject_radiation_feedback(si, fb_props))
-      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
-                                                      ti_current);
+      radiation_isrf_zero_share(dx, si, pj, cosmo, fb_props, ti_current);
     return;
   }
 
@@ -416,8 +418,7 @@ runner_iact_nonsym_feedback_apply(
    * avoids 1./0. */
   if (w_j_bar_norm == 0) {
     if (feedback_should_inject_radiation_feedback(si, fb_props))
-      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
-                                                      ti_current);
+      radiation_isrf_zero_share(dx, si, pj, cosmo, fb_props, ti_current);
     return;
   }
 
@@ -426,18 +427,22 @@ runner_iact_nonsym_feedback_apply(
      radiation momentum along w_j_bar. Sum_j |w_j_bar| = 1, so the norms of
      the momenta sum to the star's momentum. Sum_j w_j_bar = 0, so the
      momenta sum to zero, only if every axis has gas on both sides of the
-     star. */
+     star. With the packet transport on, the LW/PE light follows the emission
+     cones of the star instead. */
   if (feedback_should_inject_radiation_feedback(si, fb_props)) {
     const float r2_min = 1e-6f * hi * hi;
     const float r_rad = sqrtf(max(r2, r2_min));
-    /* The shared body pushes along -dir */
+    const float Delta_t = radiation_get_star_Delta_t(si, ti_current);
+    /* The pressure kick pushes along -dir */
     const double w_j_bar_norm_inv = 1.0 / w_j_bar_norm;
     const float dir[3] = {(float)(-w_j_bar[0] * w_j_bar_norm_inv),
                           (float)(-w_j_bar[1] * w_j_bar_norm_inv),
                           (float)(-w_j_bar[2] * w_j_bar_norm_inv)};
-    radiation_iact_nonsym_feedback_apply_weighted(
-        r_rad, w_j_bar_norm, dir, /*dir_norm=*/1.f, si, pj, xpj, cosmo,
-        hydro_props, fb_props, phys_const, us, cooling, ti_current);
+    radiation_pressure_apply(dir, /*r=*/1.f, w_j_bar_norm, Delta_t, si, pj, xpj,
+                             cosmo, fb_props, phys_const, us);
+    radiation_isrf_inject(dx, r_rad, w_j_bar_norm, Delta_t, si, pj, xpj, cosmo,
+                          hydro_props, fb_props, phys_const, us, cooling,
+                          ti_current);
 
     /* A radiation kick puts the gas on a step that resolves it */
     if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&

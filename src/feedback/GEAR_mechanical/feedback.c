@@ -175,20 +175,6 @@ static void feedback_update_part_events(struct part *p, struct xpart *xp,
 __attribute__((always_inline)) INLINE void feedback_end_density(
     struct part *p, struct xpart *xp, const struct engine *e) {
   p->feedback_data.density.wcount = p->density.wcount;
-  radiation_end_density_propagation(p, e);
-}
-
-/**
- * @brief Sets all particle fields to sensible values when the #part has 0
- * neighbours, see #radiation_part_has_no_neighbours.
- *
- * @param p The particle to act upon.
- * @param xp The extra particle to act upon.
- * @param e The #engine.
- */
-void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
-                                     const struct engine *e) {
-  radiation_part_has_no_neighbours(p, e);
 }
 
 /**
@@ -237,21 +223,8 @@ float feedback_compute_part_timestep(const struct part *restrict p,
  */
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
-  radiation_snapshot_part_propagation(p, e);
+  radiation_snapshot_part_propagation(p, xp, e);
   radiation_reset_part_ISRF_illumination_tag(p, e);
-  /* Must stay after the tag reset: an expired tag can zero `u`. */
-  radiation_cache_m1_closure_part(p);
-}
-
-/**
- * @brief Re-initialise the feedback fields of a gas particle at the start of
- * each density h-iteration.
- *
- * @param p The particle.
- * @param e The #engine.
- */
-void feedback_init_part(struct part *p, const struct engine *e) {
-  radiation_init_part_propagation(p);
 }
 
 /**
@@ -377,6 +350,7 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.gas_density = 0.0;
   sp->feedback_data.weighted_gas_density = 0.0;
   sp->feedback_data.weighted_gas_metallicity = 0.0;
+  radiation_packet_init_star_cones(sp);
 
   sp->feedback_data.f_sum_minus_term[0] = 0.0;
   sp->feedback_data.f_sum_minus_term[1] = 0.0;
@@ -474,6 +448,9 @@ void feedback_prepare_feedback(struct spart *restrict sp,
   feedback_prepare_radiation_feedback(sp, feedback_props, cosmo, us, phys_const,
                                       star_age_beg_step, dt, time, ti_begin,
                                       with_cosmology);
+
+  if (feedback_props->ISRF_propagation)
+    radiation_packet_star_book_emission(sp, (float)dt);
 }
 
 /**
