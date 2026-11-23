@@ -394,6 +394,33 @@ void partition_initial_partition(struct partition *initial_partition,
 }
 
 /**
+ * @brief Partition the top-level cells with a scheme that needs no particle
+ *        data: METIS without weights when available, otherwise a vectorised
+ *        partition.
+ *
+ * Used when the existing assignment of cells to ranks cannot be carried over
+ * to a new top-level grid. Must be called by every rank.
+ *
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells.
+ */
+void partition_unweighted_partition(int nodeID, int nr_nodes, struct space *s) {
+
+  /* Every field is set, so that all ranks take the same METIS branch. */
+  struct partition initial_partition;
+  bzero(&initial_partition, sizeof(struct partition));
+#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
+  initial_partition.type = INITPART_METIS_NOWEIGHT;
+  initial_partition.usemetis = s->e->reparttype->usemetis;
+  initial_partition.metis_seed = s->e->reparttype->metis_seed;
+#else
+  initial_partition.type = INITPART_VECTORIZE;
+#endif
+  partition_initial_partition(&initial_partition, nodeID, nr_nodes, s);
+}
+
+/**
  * @brief Initialises the partition and re-partition scheme from the parameter
  *        file.
  *
@@ -725,12 +752,28 @@ void partition_store_celllist(struct space *s, struct repartition *reparttype) {
  * @brief restore the saved list of nodeIDs by applying them to the
  *        top-level cells of a space. Used when restarting application.
  *
+ * If the top-level grid built at restart differs from the saved one, a fresh
+ * partition is made instead. Must be called by every rank.
+ *
  * @param s the space with the top-level cells.
  * @param reparttype struct with the list of nodeIDs saved,
  *
  */
 void partition_restore_celllist(struct space *s,
                                 struct repartition *reparttype) {
+
+#if defined(WITH_MPI) && defined(SWIFT_DEBUG_CHECKS)
+  /* Every rank must take the same branch below, as each branch enters
+   * collectives. */
+  int ncell_range[2] = {-reparttype->ncelllist, reparttype->ncelllist};
+  if (MPI_Allreduce(MPI_IN_PLACE, ncell_range, 2, MPI_INT, MPI_MAX,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to reduce the saved celllist sizes.");
+  if (-ncell_range[0] != ncell_range[1])
+    error("Ranks restored celllists of different sizes (%d to %d).",
+          -ncell_range[0], ncell_range[1]);
+#endif
+
   if (reparttype->ncelllist > 0) {
     if (reparttype->ncelllist == s->nr_cells) {
       for (int i = 0; i < s->nr_cells; i++) {
@@ -740,11 +783,14 @@ void partition_restore_celllist(struct space *s,
         error("Not all ranks are present in the restored partition");
       }
     } else {
-      error(
-          "Cannot apply the saved partition celllist as the "
-          "number of top-level cells (%d) is different to the "
-          "saved number (%d)",
-          s->nr_cells, reparttype->ncelllist);
+      /* The first rebuild after a restart derives the grid from the current
+       * smoothing lengths, which need not give the saved grid. */
+      if (s->e->nodeID == 0)
+        message(
+            "The number of top-level cells (%d) differs from the saved "
+            "number (%d): making a fresh partition.",
+            s->nr_cells, reparttype->ncelllist);
+      partition_unweighted_partition(s->e->nodeID, s->e->nr_nodes, s);
     }
   }
 }

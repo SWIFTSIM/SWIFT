@@ -93,6 +93,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_tasks);
 void partition_initial_partition(struct partition *initial_partition,
                                  int nodeID, int nr_nodes, struct space *s);
+void partition_unweighted_partition(int nodeID, int nr_nodes, struct space *s);
 
 int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
                              struct space *s);
