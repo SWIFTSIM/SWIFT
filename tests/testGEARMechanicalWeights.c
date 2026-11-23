@@ -138,8 +138,8 @@ int main(int argc, char *argv[]) {
 
   int fail = 0;
   double norm_err, vec_err;
-  const int bad = check_weight_sums((const double(*)[3])w_bar, N_GAS,
-                                    &norm_err, &vec_err);
+  const int bad =
+      check_weight_sums((const double (*)[3])w_bar, N_GAS, &norm_err, &vec_err);
   printf(
       "weights: |sum |w_bar| - 1| = %.3e (bar %.3e), |sum w_bar| = %.3e "
       "(bar %.3e)\n",
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
   static double w_bad[N_GAS][3];
   memcpy(w_bad, w_bar, sizeof(w_bar));
   for (int k = 0; k < 3; k++) w_bad[7][k] *= 1. + 1e-6;
-  if (!check_weight_sums((const double(*)[3])w_bad, N_GAS, &norm_err,
+  if (!check_weight_sums((const double (*)[3])w_bad, N_GAS, &norm_err,
                          &vec_err)) {
     printf("FAILED: the check passes a weight changed by 1e-6\n");
     fail = 1;
@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
   /* Control: all weights scaled by 1 + 1e-3 must fail the norm check. */
   for (int j = 0; j < N_GAS; j++)
     for (int k = 0; k < 3; k++) w_bad[j][k] = w_bar[j][k] * (1. + 1e-3);
-  if (!check_weight_sums((const double(*)[3])w_bad, N_GAS, &norm_err,
+  if (!check_weight_sums((const double (*)[3])w_bad, N_GAS, &norm_err,
                          &vec_err)) {
     printf("FAILED: the check passes weights scaled by 1 + 1e-3\n");
     fail = 1;
