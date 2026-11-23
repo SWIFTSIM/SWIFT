@@ -515,58 +515,6 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
 }
 
 /**
- * @brief Exchange the flux of a pair of active local particles in different
- * depth bands, if this visit owns the pair.
- *
- * Two tasks visit such a pair. The visit of the side with the larger h owns
- * it (see flux_exchange_is_owner()) and updates both particles; the other
- * visit does nothing. h is frozen for the step, so both passes of the
- * limiter pick the same owner. A tie in h and position skips the pair on
- * both visits.
- *
- * @param r2 Comoving squared distance between particle i and particle j.
- * @param dx Comoving distance vector between the particles (dx = pi->x -
- * pj->x).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi Particle i.
- * @param pj Particle j.
- * @param time_base The time base used in order to convert integer to float
- * time.
- * @param t_current The current time (in integer).
- * @param cosmo The #cosmology.
- * @param with_cosmology Are we running with cosmology?
- * @param chem_data The global properties of the chemistry scheme.
- * @param pass The pass of the positivity limiter.
- */
-__attribute__((always_inline)) INLINE static void chemistry_exchange_if_owner(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double time_base,
-    const integertime_t t_current, const struct cosmology *cosmo,
-    const int with_cosmology, const struct chemistry_global_data *chem_data,
-    const enum chemistry_flux_pass pass) {
-
-  if (flux_exchange_is_owner(hi, hj, pi->x, pj->x)) {
-    chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,
-                                 cosmo, with_cosmology, chem_data,
-                                 /*update_left=*/1, /*update_right=*/1,
-                                 /*accum_ts_left=*/1, /*accum_ts_right=*/1,
-                                 pass);
-    return;
-  }
-
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-  if (hi == hj && pi->x[0] == pj->x[0] && pi->x[1] == pj->x[1] &&
-      pi->x[2] == pj->x[2])
-    warning(
-        "Coincident distinct particles (ids %lld/%lld) at pos "
-        "[%g %g %g] in the local mixed-band chemistry flux exchange: "
-        "skipping degenerate face.",
-        pi->id, pj->id, pi->x[0], pi->x[1], pi->x[2]);
-#endif
-}
-
-/**
  * @brief Exchange the flux of a pair whose neighbour is a foreign copy.
  *
  * Both ranks compute the flux with the two particles in the same order,
@@ -635,10 +583,9 @@ chemistry_exchange_across_ranks(
  *      symmetrically. Both particles are updated.
  *   2. pj inactive: this is the only visit of the pair this step. Both
  *      particles are updated, and only pi gets the timestep variables.
- *   3. both local (both active, different depth bands): the owner visit
- *      updates both particles, see chemistry_exchange_if_owner().
- *   4. otherwise pj is a foreign copy: only pi is updated, see
- *      chemistry_exchange_across_ranks().
+ *   3. otherwise pj is an active foreign copy: only pi is updated, see
+ *      chemistry_exchange_across_ranks(). Two local active particles always
+ *      take case 1.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -648,8 +595,8 @@ chemistry_exchange_across_ranks(
  * @param pi The particle this call site may update.
  * @param pj Its neighbour.
  * @param both_updatable_here Whether the gate of this call site already
- * guarantees both particles active, local and in the same depth band (the
- * one symmetric visit of the pair this step).
+ * guarantees both particles active and local (the one symmetric visit of the
+ * pair this step).
  * @param local_first Whether the cell @p pi belongs to is local to this
  * rank. Named by argument position, since several call sites pass the
  * particle of cell j first.
@@ -703,11 +650,13 @@ runner_iact_chemistry_flux_exchange(
                                  /*update_left=*/1, /*update_right=*/1,
                                  /*accum_ts_left=*/1, /*accum_ts_right=*/0,
                                  pass);
-  } else if (local_first && local_second) {
-    chemistry_exchange_if_owner(r2, dx, hi, hj, pi, pj, time_base, t_current,
-                                cosmo, with_cosmology, chem_data, pass);
   } else {
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+    if (local_first && local_second)
+      error(
+          "Unreachable: both local active particles (ids %lld/%lld) take the "
+          "symmetric call.",
+          pi->id, pj->id);
     if (!local_first)
       error(
           "runner_iact_chemistry_flux_exchange's cross-rank arm reached with "

@@ -51,7 +51,7 @@ static int is_finite_double(const double x) {
  * @brief Gate test for the chemistry diffusion flux-exchange dispatcher
  * (runner_iact_chemistry_flux_exchange(), chemistry_iact.h).
  *
- * Four things are exercised, each a distinct arm of the dispatcher's decision
+ * Three things are exercised, each a distinct arm of the dispatcher's decision
  * table; they are reported separately and must not be conflated:
  *
  *  - GATE (both_updatable_here=1, the "sym" call sites): a single evaluation
@@ -64,10 +64,6 @@ static int is_finite_double(const double x) {
  *    exercises chemistry_compute_pair_fluxes()'s mindt computation
  *    for the two argument bindings of
  *    the same physical pair, independent of the dispatcher's arm selection.
- *  - LOCAL MIXED-BAND TIE-BREAK (both_updatable_here=0, both local): the
- *    dispatcher's own two-sided visitation is simulated by calling it once
- *    per argument order; exactly one of the two must act (the position
- *    winner), the other must skip, and ties must skip on both sides.
  *  - CROSS-RANK (both_updatable_here=0, only the first argument local): the
  *    canonical-order computation must always apply only to the local slot,
  *    regardless of which side of the pair happens to be "first" here, and a
@@ -528,12 +524,12 @@ static void run_config(const char *label, enum test_geometry geom,
 }
 
 /* ------------------------------------------------------------------------ */
-/* Local mixed-band tie-break (arm 3) and cross-rank (arm 4) checks          */
+/* Cross-rank arm checks                                                     */
 /* ------------------------------------------------------------------------ */
 
 /**
  * @brief Build a simple, well-behaved both-active pair and drive it through
- * the dispatcher's non-GATE arms.
+ * the dispatcher's cross-rank arm.
  *
  * The position used for the tie-break (flux_exchange_precedes()) is
  * deliberately decoupled from the physical separation used for the flux
@@ -562,144 +558,6 @@ static void build_tiebreak_pair(struct part *pi, struct part *pj,
   }
   pi->chemistry_data.flux.ti_flux_last = TI_CURRENT - 70000;
   pj->chemistry_data.flux.ti_flux_last = TI_CURRENT - 130000;
-}
-
-/**
- * @brief Build a pair with hi != hj and the position order deliberately set
- * OPPOSITE of what h dictates, isolating h-primary designation (A1) from
- * the position fallback exercised by build_tiebreak_pair()/hi==hj above.
- *
- * @param hi_larger 1 => pi has the larger h; 0 => pj does. Either way,
- * position alone would pick the OTHER side, so a pass here requires h to
- * actually override position.
- */
-static void build_h_primary_pair(struct part *pi, struct part *pj,
-                                 int hi_larger) {
-  const float h_big = 2.0f, h_small = 1.0f;
-  init_part(pi, /*id=*/1, hi_larger ? h_big : h_small, /*mass=*/10.0f,
-            /*rho=*/1.0f, /*metal_mass_frac=*/0.3);
-  init_part(pj, /*id=*/2, hi_larger ? h_small : h_big, /*mass=*/10.0f,
-            /*rho=*/1.0f, /*metal_mass_frac=*/0.1);
-  pj->x[0] = 100.0;
-  pi->x[0] = hi_larger ? 100.1 : 99.9;
-  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
-    pi->chemistry_data.gradients.rhoZ[m][0] = 0.05;
-    pj->chemistry_data.gradients.rhoZ[m][0] = -0.03;
-  }
-  pi->chemistry_data.flux.ti_flux_last = TI_CURRENT - 70000;
-  pj->chemistry_data.flux.ti_flux_last = TI_CURRENT - 130000;
-}
-
-/**
- * @brief Check that the local mixed-band arm's ownership is h-primary (A1):
- * with position deliberately reversed from what h dictates, the larger-h
- * side must still be the one that acts.
- *
- * @return 1 on pass, 0 on failure.
- */
-static int check_h_primary_designation(
-    const struct cosmology *cosmo,
-    const struct chemistry_global_data *chem_data) {
-  const double time_base = 1e-5;
-  const integertime_t ti_current = TI_CURRENT;
-  int all_ok = 1;
-
-  for (int hi_larger = 0; hi_larger < 2; hi_larger++) {
-    struct part pi, pj;
-    build_h_primary_pair(&pi, &pj, hi_larger);
-    const float dx[3] = {0.3f, 0.f, 0.f};
-    const float r2 = dx[0] * dx[0];
-
-    reset_flux_accumulators(&pi);
-    reset_flux_accumulators(&pj);
-    runner_iact_chemistry_flux_exchange(
-        r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
-        /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
-    const int pi_acted = flux_acted(&pi);
-    const int pj_acted = flux_acted(&pj);
-    /* pi is entitled at this call site; it must act iff it has the larger
-       h; the position was deliberately set to say the opposite. */
-    const int ok = flux_is_finite(&pi) && flux_is_finite(&pj) &&
-                   (pi_acted == hi_larger) && (pi_acted == pj_acted);
-    message(
-        "  h-primary designation hi_larger=%d (position reversed): "
-        "pi_acted=%d pj_acted=%d: %s",
-        hi_larger, pi_acted, pj_acted, ok ? "PASS" : "FAIL");
-    all_ok = all_ok && ok;
-  }
-  return all_ok;
-}
-
-/**
- * @brief Check the local mixed-band tie-break arm (both_updatable_here=0,
- * local_first=local_second=1): exactly one of the two argument orders must
- * act (apply a nonzero, exactly-conservative flux), the other must skip
- * (leave both particles' flux untouched); a tied position must skip both
- * ways.
- *
- * @return 1 on pass, 0 on failure (message()s the details either way).
- */
-static int check_local_tiebreak(const struct cosmology *cosmo,
-                                const struct chemistry_global_data *chem_data) {
-  const double time_base = 1e-5;
-  const integertime_t ti_current = TI_CURRENT;
-  int all_ok = 1;
-
-  const float test_order_signs[3] = {1.f, -1.f, 0.f};
-  for (int t = 0; t < 3; t++) {
-    struct part pi, pj;
-    build_tiebreak_pair(&pi, &pj, test_order_signs[t]);
-    const float dx[3] = {0.3f, 0.f, 0.f};
-    const float r2 = dx[0] * dx[0];
-
-    reset_flux_accumulators(&pi);
-    reset_flux_accumulators(&pj);
-    runner_iact_chemistry_flux_exchange(
-        r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
-        /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
-    const int fwd_acted = flux_acted(&pi) || flux_acted(&pj);
-    const int fwd_finite = flux_is_finite(&pi) && flux_is_finite(&pj);
-
-    struct part pi2, pj2;
-    build_tiebreak_pair(&pi2, &pj2, test_order_signs[t]);
-    const float mdx[3] = {-dx[0], 0.f, 0.f};
-    reset_flux_accumulators(&pi2);
-    reset_flux_accumulators(&pj2);
-    runner_iact_chemistry_flux_exchange(
-        r2, mdx, pj2.h, pi2.h, &pj2, &pi2, /*both_updatable_here=*/0,
-        /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
-    const int bwd_acted = flux_acted(&pi2) || flux_acted(&pj2);
-    const int bwd_finite = flux_is_finite(&pi2) && flux_is_finite(&pj2);
-
-    int ok;
-    const char *expect;
-    if (test_order_signs[t] == 0.0f) {
-      ok = !fwd_acted && !bwd_acted;
-      expect = "tie -> both skip";
-    } else {
-      ok = (fwd_acted != bwd_acted); /* exactly one of the two acts */
-      expect = "exactly one side acts";
-    }
-    ok = ok && fwd_finite && bwd_finite;
-    if (ok && fwd_acted) {
-      const double Fi = pi.chemistry_data.flux.metal_mass[TEST_METAL];
-      const double Fj = pj.chemistry_data.flux.metal_mass[TEST_METAL];
-      if (fabs(Fi + Fj) > 1e-12 * max(fabs(Fi), fabs(Fj))) ok = 0;
-    }
-    message(
-        "  local tie-break order_sign=% .0f: fwd_acted=%d bwd_acted=%d (%s)"
-        ": %s",
-        test_order_signs[t], fwd_acted, bwd_acted, expect,
-        ok ? "PASS" : "FAIL");
-    all_ok = all_ok && ok;
-  }
-  return all_ok;
 }
 
 /**
@@ -851,20 +709,11 @@ int main(int argc, char *argv[]) {
   message("Worst mindt residual: %.3e (%s)", worst_mindt_residual,
           mindt_pass ? "PASS (order-independent)" : "FAIL (order-dependent)");
 
-  message("=== local mixed-band tie-break arm ===");
+  message("=== cross-rank arm ===");
   struct chemistry_global_data chem_data_tb;
   build_chem_data(&chem_data_tb, 1e-15);
   struct cosmology cosmo_tb;
   cosmology_init_no_cosmo(&cosmo_tb);
-  const int tiebreak_pass = check_local_tiebreak(&cosmo_tb, &chem_data_tb);
-  message("Local tie-break arm: %s", tiebreak_pass ? "PASS" : "FAIL");
-
-  message("=== h-primary designation (A1) ===");
-  const int h_primary_pass =
-      check_h_primary_designation(&cosmo_tb, &chem_data_tb);
-  message("h-primary designation: %s", h_primary_pass ? "PASS" : "FAIL");
-
-  message("=== cross-rank arm ===");
   const int cross_rank_pass = check_cross_rank(&cosmo_tb, &chem_data_tb);
   message("Cross-rank arm: %s", cross_rank_pass ? "PASS" : "FAIL");
 
@@ -874,12 +723,9 @@ int main(int argc, char *argv[]) {
       worst_gate_residual, GATE_RESIDUAL_BAR, gate_pass ? "PASS" : "FAIL",
       worst_gate_label);
   message("Worst mindt residual (mixed activity): %.3e", worst_mindt_residual);
-  message("Local tie-break arm: %s", tiebreak_pass ? "PASS" : "FAIL");
-  message("h-primary designation: %s", h_primary_pass ? "PASS" : "FAIL");
   message("Cross-rank arm: %s", cross_rank_pass ? "PASS" : "FAIL");
 
-  const int overall_pass = gate_pass && mindt_pass && tiebreak_pass &&
-                           h_primary_pass && cross_rank_pass;
+  const int overall_pass = gate_pass && mindt_pass && cross_rank_pass;
   if (!overall_pass) error("testChemistryFluxAntisymmetry: FAILED");
   message("testChemistryFluxAntisymmetry: PASSED");
 

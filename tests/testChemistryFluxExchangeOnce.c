@@ -36,7 +36,7 @@
  * compared to a brute-force count: one per pair with r < gamma max(hi, hj)
  * and at least one active particle. Cells are optionally split once, with h
  * in two depth bands, so that the recursion of the sub-cell tasks and the
- * ownership rule of mixed-band pairs are exercised.
+ * active pairs in different depth bands are exercised.
  *
  * A pair with a foreign cell misses exchanges in the pair enumeration itself
  * when the force loop does not update inactive neighbours (SPH). There, each
@@ -349,7 +349,7 @@ static void pair_frames(const struct cell *a, const int i, const struct cell *b,
  * least one active particle.
  *
  * @return The number of pairs with both particles active in different depth
- * bands, which only the ownership rule settles.
+ * bands.
  */
 static int brute_force_count(const struct cell *a, const struct cell *b,
                              int *ref_a, int *ref_b, const struct engine *e) {
@@ -517,7 +517,7 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
   e->nodeID = 0;
 
   const int ambiguous = n_ambiguous_pairs - ambiguous_before;
-  /* A split case must reach the ownership rule of mixed-band pairs. */
+  /* A split case must hold active pairs in different depth bands. */
   const int split = ci->split || (cj && cj->split);
   const int reach_ok = (expect_misses ? (predicted > 0) : (predicted == 0)) &&
                        (!split || mixed > 0);
