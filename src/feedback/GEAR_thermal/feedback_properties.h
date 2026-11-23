@@ -1059,9 +1059,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         fp->HII_rebuild_floor_Myr > fp->HII_rebuild_time)
       error(
           "GEARFeedback:HII_rebuild_floor_Myr (%g) must not exceed "
-          "GEARFeedback:HII_rebuild_time_Myr (%g): the budget of a pass is "
-          "capped at twice the rebuild time, so the photons of a longer "
-          "floor interval are lost.",
+          "GEARFeedback:HII_rebuild_time_Myr (%g): the first pass issues the "
+          "floor interval ahead, so it must fit inside one rebuild interval "
+          "(above twice the rebuild time, photons are lost).",
           fp->HII_rebuild_floor_Myr, fp->HII_rebuild_time);
 
     /* Convert to internal units */

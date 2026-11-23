@@ -519,9 +519,13 @@ $\Delta t_{\rm back} = a - a_{\rm iss}$, and sets $a_{\rm iss} = a$.
 Every instant of the star's life is then issued once, and the photons
 issued over its life are at most $\int \dot N_{\rm ion}\,{\rm d}t$ (the
 ceiling clamp and the passes in gas-free cells drop photons). A star whose
-first pass finds it at age 0 has emitted nothing yet; that pass issues the
+first pass finds it younger than the floor interval, in practice at age 0, has
+emitted almost nothing; that pass issues the
 interval $[0, \Delta t_{\rm floor}]$ ahead, with $\Delta t_{\rm floor}$ =
-\code{GEARFeedback:HII\_rebuild\_floor\_Myr}. Only a star of the initial
+\code{GEARFeedback:HII\_rebuild\_floor\_Myr}. The age is compared to the floor
+and not to 0, so a rounding residue above 0 does not shorten that interval.
+The floor must not exceed a positive \code{HII\_rebuild\_time\_Myr}: the run
+stops at start-up otherwise. Only a star of the initial
 conditions and every star in ``rebuild every step'' mode get this interval
 ahead. With \code{HII\_rebuild\_time\_Myr}$\,>0$ a newborn star first passes
 at an age of about one rebuild cadence and issues $[0, a]$. A pass that lands inside this
