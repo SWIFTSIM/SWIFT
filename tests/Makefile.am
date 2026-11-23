@@ -41,7 +41,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testSinkApertureEdgeRounding testSinkDriftFlags \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
-        testRadiationHIIConeClaim testRadiationPacketSlotGeometry \
+        testRadiationHIIConeClaim testRadiationPacketSlotGeometry testGEARMechanicalWeights \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -64,7 +64,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
-		 testRadiationHIIConeClaim testRadiationPacketSlotGeometry \
+		 testRadiationHIIConeClaim testRadiationPacketSlotGeometry testGEARMechanicalWeights \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
@@ -89,6 +89,8 @@ testRadiationHIIConeFrame_SOURCES = testRadiationHIIConeFrame.c
 testRadiationHIIConeClaim_SOURCES = testRadiationHIIConeClaim.c
 
 testRadiationPacketSlotGeometry_SOURCES = testRadiationPacketSlotGeometry.c
+
+testGEARMechanicalWeights_SOURCES = testGEARMechanicalWeights.c
 
 testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 
