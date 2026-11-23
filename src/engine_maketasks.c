@@ -3262,11 +3262,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* TODO(MPI): the prep loop on several ranks needs a send and a recv
-         of the prep-loop state of foreign cells. Also, with split cells and
-         a foreign neighbour, some call sites of the template pass the
-         foreign particle first, which the chemistry flux exchange does not
-         support. The chemistry modules that use the prep loop refuse runs
-         on several ranks. */
+         of the prep-loop state of foreign cells. The chemistry modules that
+         use the prep loop refuse runs on several ranks. */
       if (with_chemistry_flux_prep)
         engine_make_chemistry_flux_prep_task(e, ci, cj, flags, t_force);
 #else

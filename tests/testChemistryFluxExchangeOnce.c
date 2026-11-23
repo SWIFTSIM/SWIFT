@@ -631,8 +631,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Split foreign pairs are not run: see the TODO(MPI) in
-     engine_maketasks.c. */
+  /* Split foreign pairs are not run: predict_foreign_gap() only knows the
+     cell order of the top-level pair. */
 
   if (!pass) error("testChemistryFluxExchangeOnce: FAILED");
   message("testChemistryFluxExchangeOnce: PASSED");

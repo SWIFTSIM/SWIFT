@@ -582,7 +582,8 @@ chemistry_exchange_across_ranks(
  *   1. both_updatable_here: the gate of the call site covers the pair
  *      symmetrically. Both particles are updated.
  *   2. pj inactive: this is the only visit of the pair this step. Both
- *      particles are updated, and only pi gets the timestep variables.
+ *      particles are updated, and only pi gets the timestep variables. pi
+ *      can be a foreign copy, whose update is then discarded.
  *   3. otherwise pj is an active foreign copy: only pi is updated, see
  *      chemistry_exchange_across_ranks(). Two local active particles always
  *      take case 1.
