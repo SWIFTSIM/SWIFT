@@ -19,12 +19,13 @@ refuses a run it cannot judge: no transport, a cosmological run, a last snapshot
 a luminosity that changes between the last two snapshots (the formula needs a constant L, as
 for a single star), a star count that changes, or a star with no age.
 
-The bar 1e-6 is that of the light budget. L is stored in float32 (relative error 6e-8, one
-rounding). The booked total gathers one float32 sum per star update, 2^-24 = 6e-8 each. The most
-updates in a cadence of the example is 32, which gives 3.4e-7 for independent roundings (sqrt(32)
-x 6e-8). The error measured at the three cadences is 2.5e-8. The smallest real defect, the first
-step lost at the finest step limit of 2.5e-5 over 4e-4, is 6.25e-2. The check excludes the way
-the light is spread in time, and a wrong L, which cancels in R.
+The bar 1e-6 is that of the light budget. L and the booked sum are double. The only float32 step is
+the cast of the step length at the booking call, with a relative error of -2.5e-8 for 1e-4 and for
+1e-4 divided by any power of two, so every step of the example rounds the same way. The error is
+therefore systematic and bounded by one float32 rounding, 2^-24 = 6e-8, whatever the number of
+steps: the bar is 17 times above that bound. The error measured at the three step limits is 2.5e-8.
+The smallest real defect, the first step lost at the finest step limit of 2.5e-5 over 4e-4, is
+6.25e-2. The check excludes the way the light is spread in time, and a wrong L, which cancels in R.
 """
 
 import argparse
@@ -80,6 +81,14 @@ def read_snapshot(path: str) -> dict:
 
 
 def main() -> int:
+    """Check the light booked by the stars of a run directory and return the exit status.
+
+    Returns
+    -------
+    int
+        0 when every star and band is within the bar, 1 when one is outside it. A run the check
+        cannot judge, or a non-finite value, stops the program with a message and status 1.
+    """
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("run", nargs="?", default=".", help="Run directory (default: .)")
     p.add_argument("--bar", type=float, default=1e-6, help="Largest |R - 1| allowed")
@@ -89,11 +98,21 @@ def main() -> int:
 
     with open(os.path.join(opt.run, "used_parameters.yml")) as handle:
         used = yaml.safe_load(handle)
-    if int(used["GEARFeedback"]["ISRF_propagation"]) != 1:
+    try:
+        propagation = int(used["GEARFeedback"]["ISRF_propagation"])
+        time_end = float(used["TimeIntegration"]["time_end"])
+    except KeyError as err:
+        sys.exit(
+            f"Refused: used_parameters.yml has no {err} entry (GEARFeedback:ISRF_propagation, TimeIntegration:time_end)."
+        )
+    if propagation != 1:
         sys.exit(
             "Refused: GEARFeedback:ISRF_propagation is 0, so no light is booked into PacketEmittedEnergies."
         )
-    time_end = float(used["TimeIntegration"]["time_end"])
+    if not (np.isfinite(time_end) and time_end > 0.0):
+        sys.exit(
+            f"Refused: TimeIntegration:time_end={time_end} is not finite and positive."
+        )
 
     files = sorted(glob.glob(os.path.join(opt.run, "snap", "snapshot_*.hdf5")))
     if len(files) < 2:

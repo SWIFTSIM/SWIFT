@@ -74,8 +74,12 @@ and rebuilds that mechanism's column. `--kernel-gamma` (default Wendland C2 in
 `temperature_capped_jeans` is refused. Without `--dusty` a nonzero metallicity
 is an error. The gates and their derivation are in the script docstring.
 
-With the light transported (`propagation=1 time_end=4e-4 dt_max=1e-4 delta_time=5e-5 ./run.sh`),
-`run.sh` runs `isrf_emitted_total_check.py` instead. It requires the light the star emitted to equal
-`L * age` in each band, within 1e-6. This needs a build with `--with-chealpix` and
-`--enable-isrf-debugging-checks`, and `radiation_table=<file>` naming a table with
-`MeanPhotonEnergyPE`.
+With the light transported, `run.sh` runs `isrf_emitted_total_check.py` instead:
+```
+n_threads=4 propagation=1 time_end=4e-4 dt_max=1e-4 delta_time=5e-5 ./run.sh
+```
+The check requires the light the star emitted to equal `L * age` in each band,
+within 1e-6. This needs a build with `--with-chealpix` and
+`--enable-isrf-debugging-checks`, and a radiation table that carries
+`MeanPhotonEnergyPE` (the default table does; `radiation_table=<file>` names
+another one, for instance a pychem output).
