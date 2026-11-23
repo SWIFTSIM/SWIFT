@@ -32,6 +32,22 @@
  * @brief Properties of the cooling with the geajay library.
  */
 
+/*! The unset UV background redshift of the library (FLOAT_UNDEFINED) */
+#define COOLING_GEAJAY_REDSHIFT_UNSET -99999.
+
+/**
+ * @brief Where the cosmic-ray value of a particle comes from
+ * (GeajayCooling:cosmic_ray_source).
+ */
+enum cooling_cosmic_ray_source {
+  /*! One value for the whole run, from the parameter file */
+  cooling_cosmic_ray_source_constant = 0,
+  /*! The energy density stored in each particle, written by another module */
+  cooling_cosmic_ray_source_per_particle = 1,
+  /*! FIRE-2 law of the local n_H, computed at each call, not stored */
+  cooling_cosmic_ray_source_fire2 = 2
+};
+
 /**
  * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
  *
@@ -111,6 +127,12 @@ struct cooling_function_data {
   /*! Set the three-body reaction rate fit (see geajay_options) */
   int H2_three_body_rate;
 
+  /*! Radiative cooling and heating update the energy
+   * (GeajayCooling:with_radiative_cooling,
+   * chemistry_data.with_radiative_cooling). 0: the chemistry evolves, the
+   * energy does not change. */
+  int with_radiative_cooling;
+
   /*! Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel
    * (2004) */
   int H2_cie_cooling;
@@ -166,6 +188,10 @@ struct cooling_function_data {
   /*! Do the HII regions feed their ionization rate to the cooling
    * (GEARFeedback:HII_couple_ionization_rate)? */
   int HII_couple_ionization_rate;
+
+  /*! Recombination case (GeajayCooling:case_b_recombination,
+   * chemistry_data.CaseBRecombination): 0 case A, 1 case B. */
+  int case_b_recombination;
 
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double reference_dust_to_gas_ratio;
@@ -243,8 +269,31 @@ struct cooling_function_data {
    * the library default. */
   double lw_background_j21;
 
-  /*! G_0 is read from the particle field (Grackle use_isrf_field). */
+  /*! Redshifts where the UV background switches on, is fully on, starts to
+   * drop and switches off (GeajayCooling:uv_background_redshift_on, _full_on,
+   * _drop and _off, chemistry_data.UVbackground_redshift_on, _fullon, _drop
+   * and _off). COOLING_GEAJAY_REDSHIFT_UNSET: the redshift range of the table.
+   */
+  double uv_background_redshift_on, uv_background_redshift_full_on,
+      uv_background_redshift_drop, uv_background_redshift_off;
+
+  /*! Sawtooth suppression of the table Lyman-Werner background
+   * (GeajayCooling:lw_background_sawtooth_suppression,
+   * chemistry_data.LWbackground_sawtooth_suppression). */
+  int lw_background_sawtooth_suppression;
+
+  /*! G_0 is read from the particle field (Grackle use_isrf_field). The module
+   * does not fill that field yet (it stays 0): with background_mode grackle the
+   * key is refused when set to 1. With per_band, dust_background_attenuation
+   * per_band and a G_0 background it must be 1, else the library refuses: the
+   * empty field then adds nothing to the background. */
   int isrf_from_field;
+
+  /*! Constant G_0 of every particle [Habing] (GeajayCooling:isrf_habing,
+   * chemistry_data.interstellar_radiation_field). Negative: unset. With
+   * background_mode grackle the library refuses it when a term reads G_0; with
+   * per_band SWIFT passes 0 and G_0 comes from the background. */
+  double isrf_habing;
 
   /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and PE
    * (6-11.2 eV) bands [cm^2]. */
@@ -253,9 +302,17 @@ struct cooling_function_data {
   /*! Converts rho * path (internal units) to the H nucleon column [cm^-2]. */
   double column_factor;
 
-  /*! Initial cosmic-ray value of every particle, in the unit of the input
-   * (GeajayCooling:cosmic_ray_initial_value); 0 with the input "constant". */
+  /*! Source of the cosmic-ray value (GeajayCooling:cosmic_ray_source). */
+  enum cooling_cosmic_ray_source cosmic_ray_source;
+
+  /*! Value of every particle with the source "constant", in the unit of the
+   * input (GeajayCooling:cosmic_ray_initial_value); 0 with the input
+   * "constant". */
   float cosmic_ray_initial_value;
+
+  /*! e_cr of the source "fire2", eV cm^-3
+   * (GeajayCooling:cosmic_ray_fire2_energy_density). */
+  double cosmic_ray_fire2_energy_density;
 
   /*! Enable/Disable metal cooling */
   int with_metal_cooling;
@@ -317,6 +374,20 @@ struct cooling_function_data {
 
   /*! initial nHDI to nH ratio (number density ratio) */
   float initial_hdi_to_h_ratio;
+
+  /*! Total deuterium to hydrogen mass ratio
+   * (GeajayCooling:deuterium_to_hydrogen_mass_ratio,
+   * chemistry_data.DeuteriumToHydrogenRatio): -1 keeps the library value. */
+  double deuterium_to_hydrogen_mass_ratio;
+
+  /*! initial nDM to nH ratio (number density ratio) */
+  float initial_dm_to_h_ratio;
+
+  /*! initial nHDII to nH ratio (number density ratio) */
+  float initial_hdii_to_h_ratio;
+
+  /*! initial nHeHII to nH ratio (number density ratio) */
+  float initial_hehii_to_h_ratio;
 
   /*! Self shielding method (1 -> 4 for the library's ones, 0 for none and -1
    * for a density threshold) */
@@ -387,7 +458,7 @@ struct cooling_function_data {
    * chemistry_data.cheap_energy_update). */
   int cheap_energy_update;
 
-  /*! Solver of networks 1 to 3: 0 cheap, 1 accurate, -1 the geajay default
+  /*! Solver of networks 1 to 4: 0 cheap, 1 accurate, -1 the geajay default
    * (GeajayCooling:solver, chemistry_data.solver). */
   int solver;
 

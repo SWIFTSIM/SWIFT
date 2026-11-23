@@ -726,7 +726,6 @@ GrackleCooling:
   H2_on_dust: -1                               # H2 formation on dust grains: 1 on, 0 off, -1 unset (off, except with the ISRF at primordial_chemistry 2 or above, where Grackle always forms it; an explicit 0 then warns). (Default: -1)
   photoelectric_heating_efficiency: constant   # (optional) Photoelectric efficiency with the ISRF on: constant (0.05, Wolfire et al. 1995 Eq. 1), wolfire1995 (Eq. 2, depends on the electron density). (Default: constant)
   local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
-  cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.  
   initial_nHeII_to_nH_ratio:   -1              # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
@@ -746,7 +745,7 @@ GrackleCooling:
 # The snapshots hold CoolingTimes and CoolingRates; to switch them off, set Snapshots:select_output_on: 1 and CoolingTimes_Gas: off, CoolingRates_Gas: off under Default: in the output selection file
 GeajayCooling:
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
-  primordial_chemistry_network: tabulated      # (optional) Primordial chemistry network: tabulated, H_He, H_He_H2 or H_He_H2_D (or 0 to 3), not above the mode selected at configure time (default: that mode)
+  primordial_chemistry_network: tabulated      # (optional) Primordial chemistry network: tabulated, H_He, H_He_H2, H_He_H2_D or H_He_H2_D_ions (or 0 to 4), not above the mode selected at configure time (default: that mode)
   with_uv_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
@@ -755,7 +754,8 @@ GeajayCooling:
   energy_change_limit: 0                       # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1], or 0 for the geajay default: 0.03 with
                                                # cheap_energy_update 1, 0.1 with 0 (the value Grackle fixes). The accurate solver (solver 1) does not read it. Smaller values take more sub-steps (default: 0)
   cheap_energy_update: 1                       # (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order (default: the geajay default, 1)
-  solver: 0                                    # (optional) Solver of networks 1 to 3: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the geajay default)
+  with_radiative_cooling: 1                    # (optional) 1 or 0. With 0 the chemistry evolves but the library does not change the internal energy (not exactly the temperature: the mean molecular weight changes with H2; SWIFT floors still act) (default: 1)
+  solver: 0                                    # (optional) Solver of networks 1 to 4: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the geajay default)
   accurate_relative_tolerance: 1e-6            # (optional) Relative tolerance of the accurate solver, in [1e-12, 1e-2] (default: the geajay default, 1e-6)
   accurate_absolute_tolerance: 1e-18           # (optional) Absolute tolerance of the accurate solver, as a fraction of the element mass density, in [1e-30, 1e-6] (default: the geajay default, 1e-18)
   thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
@@ -784,7 +784,7 @@ GeajayCooling:
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate (the line of the end cell, as Grackle) or edge (the value at the edge) (default: extrapolate)
   maximal_density_nucleon_per_cm3: -1          # (optional) Largest density passed to geajay, as the nucleon density rho / m_p [cm^-3], the value of GrackleCooling:maximal_density_Hpcm3. Zero or negative: no cap (default: -1)
-  hydrogen_mass_fraction: -1                   # (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's: 0.76 in modes 1 to 3. In mode 0 it is X of the Cloudy
+  hydrogen_mass_fraction: -1                   # (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's: 0.76 in modes 1 to 4. In mode 0 it is X of the Cloudy
                                                # table: the tables of the geajay tools are built at X = 0.7614 (He/H 0.0789), other tables (for example the SWIFT example HM2012 table) carry their own composition, and a table without that information
                                                # gives 0.7158. Mode 0 refuses any other value (default: -1)
   rt_use_fields: 0                             # (optional) Arrays of ionization and heating rates are provided (default: 0)
@@ -793,16 +793,16 @@ GeajayCooling:
   rt_hei_ionisation_rate_per_s:  0             # (optional) HeI ionisation rate [1/s]. Must be 0 with GEARFeedback:HII_couple_ionization_rate: 1
   rt_heii_ionisation_rate_per_s: 0             # (optional) HeII ionisation rate [1/s]. Must be 0 with GEARFeedback:HII_couple_ionization_rate: 1
   rt_h2_dissociation_rate_per_s: 0             # (optional) H2 dissociation rate [1/s]
-  volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
-  specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
+  volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3], 0 or more: a negative rate stops the run
+  specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g], 0 or more: a negative rate stops the run
   h2_three_body_fit: Abel+2002                 # (optional) H2 three-body formation rate by name: Abel+2002, Palla+1983, Cohen+Westberg1983, Flower+Harris2007, Glover2008 or Forrey2013; 0 to 5 also accepted (Grackle) (default: Abel+2002)
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   dust_model: none                             # (optional) Dust chemistry: none or basic (or 0, 1). basic turns on the gas-grain heat exchange, the dust temperature, H2 formation on grains, photoelectric heating and the recombination cooling on
                                                # grains. It reads the metal mass fraction of each particle to compute the dust-to-gas ratio (default: none)
-  dust_to_gas_model: linear                    # (required, no default) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014,
+  dust_to_gas_model: linear                    # (required with a dust switch) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014,
                                                # linear above its transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one,
-                                               # remy_ruyer_2014 stops the run. The run stops if the key is absent
-  photoelectric_heating_model: default         # (optional) Photoelectric heating of the dust: default (-1, constant_efficiency with dust_model: basic, else none), none (0), fixed_rate (1, the constant photoelectric_heating_rate),
+                                               # remy_ruyer_2014 stops the run. The run stops if a dust switch is on and the key is absent
+  photoelectric_heating_model: default         # (optional) Photoelectric heating of the dust: default (-1, constant_efficiency with dust_model: basic, else none), none (0), fixed_rate (1, the constant photoelectric_heating_rate scaled by G_0 / 1.7),
                                                # constant_efficiency (2, 0.05 G_0 x 1e-24 erg/s per H atom, Wolfire et al. 1995 eq. 1), grain_charge_epsilon (3, an efficiency set by the grain charge, Bakes and Tielens 1994 eq. 43 with the
                                                # coefficients of Wolfire et al. 2003 eq. 24) or density_epsilon (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and A2). Every model scales with D / D_ref and n_H and gives no
                                                # heating above 2e4 K. A value above none also works with dust_model: none, because SWIFT passes the metal mass fraction of every particle.
@@ -811,12 +811,14 @@ GeajayCooling:
                                                # The heating per volume is this rate times n_H times D / D_ref, where D is the dust-to-gas ratio from the metal mass fraction of each particle and D_ref the reference ratio (default: -1)
   dust_recombination_cooling: default          # (optional) Recombination cooling on grains: default (-1, on with dust_model: basic, else off), disabled (0) or enabled (1). It reads the metal mass fraction of each particle, so enabled also works
                                                # with dust_model: none (default: default)
-  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none and with the
-                                               # network tabulated, but the library refuses it at the network H_He (primordial_chemistry 1) with a start-up error, whatever dust_model is; SWIFT does not check it itself (default: default)
+  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none, but the
+                                               # library refuses it at the networks tabulated (primordial_chemistry 0) and H_He (1) with a start-up error, whatever dust_model is; SWIFT does not check it itself (default: default)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   compton_xray_heating: 0                      # (optional) Enable/disable the Compton exchange with the X-ray background, k_X (T_x - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
                                                # Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)
+  case_b_recombination: B                      # (optional) Recombination case of the H and He recombination rates: A (0) or B (1). The library default is A (default: B)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run)
+  # The initial ratios are numbers per H nucleus: H2 holds two, and HI takes the H nuclei that the other species do not hold (the run stops if they hold more than the gas has)
   initial_hii_to_h_ratio: -1                   # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_hei_to_h_ratio: -1                   # (optional) Initial nHeI to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_heii_to_h_ratio: -1                  # (optional) Initial nHeII to nH ratio (number density ratio). Ignored if -1 (default: -1)
@@ -827,10 +829,18 @@ GeajayCooling:
   initial_h2i_to_h_ratio: -1                   # (optional) Initial nH2I to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_h2ii_to_h_ratio: -1                  # (optional) Initial nH2II to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_hdi_to_h_ratio: -1                   # (optional) Initial nHDI to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  deuterium_to_hydrogen_mass_ratio: -1         # (optional) Total deuterium to hydrogen mass ratio, read with the network H_He_H2_D or above. -1 is the library value, 6.8e-5 (3.4e-5 by number). geajay rescales D, D+ and HD (and D- and HD+ with H_He_H2_D_ions) to it at every call,
+                                               # so the run stops if the initial D ratios give another total: 2 x (initial_di_to_h_ratio + initial_dii_to_h_ratio + initial_hdi_to_h_ratio + initial_dm_to_h_ratio + initial_hdii_to_h_ratio),
+                                               # an unset initial_di_to_h_ratio counting as the library total (default: -1)
+  initial_dm_to_h_ratio: -1                    # (optional) Initial nDM to nH ratio (number density ratio), network H_He_H2_D_ions. Ignored if -1 (default: -1)
+  initial_hdii_to_h_ratio: -1                  # (optional) Initial nHDII to nH ratio (number density ratio), network H_He_H2_D_ions. Ignored if -1 (default: -1)
+  initial_hehii_to_h_ratio: -1                 # (optional) Initial nHeHII to nH ratio (number density ratio), network H_He_H2_D_ions. Ignored if -1 (default: -1)
   cosmic_rays: off                             # (optional) Cosmic-ray network: off or reduced (needs primordial_chemistry_network H_He or above) (default: off)
   # With it the fields CosmicRayValues and CosmicRayEnergyLossRates join the snapshot, but swift -o does not list them.
-  cosmic_ray_input: ionisation_rate            # (optional) Read only with cosmic_rays: reduced. Meaning of the per-particle value: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)
-  # cosmic_ray_initial_value: 2e-16              # Read only with cosmic_rays: reduced and a per-particle input (ionisation_rate or energy_density), then required. Start value of every particle, proper
+  cosmic_ray_source: constant                  # (optional) Read only with cosmic_rays: reduced. constant (one value), per_particle (stored energy density, starts at 0, set by the injecting module) or fire2 (e_cr n_H / (0.01 + n_H), 0 in a cosmological run when the gas density is not above 1000 times the mean baryonic density) (default: constant)
+  cosmic_ray_input: ionisation_rate            # (optional) Read only with cosmic_rays: reduced. Meaning of the value with the source constant: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)
+  # cosmic_ray_initial_value: 2e-16              # Read only with cosmic_rays: reduced, cosmic_ray_source: constant and a value input (ionisation_rate or energy_density), then required. Value of every particle for the whole run, proper
+  # cosmic_ray_fire2_energy_density: 1.0         # Read only with cosmic_ray_source: fire2, then required, no default. Fixed cosmic-ray energy density e_cr [eV cm^-3]
   # cosmic_ray_constant_rate: 2e-16              # Read only with cosmic_ray_input: constant, then required. Primary ionisation rate per H [s^-1]
   # cosmic_ray_rate_per_energy_density: 3e-17    # Read only with cosmic_ray_input: energy_density, then required. Ionisation rate per energy density kappa [s^-1 / (eV cm^-3)]
   # cosmic_ray_coulomb_loss_coefficient: 1.65e-16 # Read only with cosmic_ray_input: energy_density, then required. Coulomb loss coefficient [cm^3 s^-1]
@@ -838,10 +848,16 @@ GeajayCooling:
   cosmic_ray_heating: atomic_molecular_fit     # (optional) Read only with cosmic_rays: reduced. Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
   cosmic_ray_heat_per_ionisation: 20           # (optional) Read only with cosmic_ray_heating: fixed_energy. Heat per ionisation [eV] (default: 20)
   lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default. Above 0 it replaces the table k31 and adds to rt_h2_dissociation_rate_per_s (default: -1)
-  isrf_from_field: 0                           # (optional) No effect: the cooling reads the particle G_0 whenever GEARFeedback:with_interstellar_radiation_field is on (default: 0)
-  # With background_mode: grackle the cooling passes the library value of interstellar_radiation_field (1.7 Habing) for every particle.
-  # With per_band it passes 0, the local field only, to which the background G_0 is added.
-  # With the ISRF on, the local field comes from the ISRF module.
+  lw_background_sawtooth_suppression: 0        # (optional) 0 or 1. Lowers the Lyman-Werner background of the table before reionisation, as in Grackle. Needs with_uv_background: 1 and the table k31 (default: 0)
+  uv_background_redshift_on: -99999            # (optional) Redshift where the UV background switches on. Needs a UV table: with_uv_background: 1, or a uv_table model of per_band. -99999 is unset: the last redshift of the table (default: unset)
+  uv_background_redshift_full_on: -99999       # (optional) Redshift where the UV background is fully on. -99999 is unset: the last redshift of the Cloudy table (default: unset)
+  uv_background_redshift_drop: -99999          # (optional) Redshift where the UV background starts to drop. -99999 is unset: the first redshift of the Cloudy table (default: unset)
+  uv_background_redshift_off: -99999           # (optional) Redshift where the UV background switches off. -99999 is unset: the first redshift of the Cloudy table (default: unset)
+  isrf_habing: 1.7                             # (optional) Constant G_0 of every particle [Habing], 0 or above. There is no default: unset, the run stops if a term reads G_0 (dust_model: basic, h2_formation_on_dust, dust_recombination_cooling, photoelectric_heating_model above none), else G_0 is 0. Not read with per_band (default: unset)
+  isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field). The module does not fill it (it stays 0): 1 stops the run with background_mode: grackle, use isrf_habing. With per_band, dust_background_attenuation: per_band and a G_0 background it must be 1, else the library refuses (default: 0)
+  # A constant G_0 and a constant Lyman-Werner background (lw_background_j21) are independent settings: choose consistent values.
+  # With per_band the cooling passes 0, the local field only, to which the background G_0 is added.
+  # With GEARFeedback:with_interstellar_radiation_field on, the solve reads the ISRF G_0 of each particle. The ISRF turns dust_model: basic on, so with background_mode: grackle isrf_habing is required but the solve does not read it.
   background_mode: grackle                     # (optional) Background rules: grackle (Grackle's) or per_band (one switch per band; the options below) (default: grackle)
   ionising_background_model: default           # (optional) Read only with background_mode: per_band. Ionising band: default (follows with_uv_background), none or uv_table (default: default)
   lw_background_model: default                 # (optional) Read only with background_mode: per_band. Lyman-Werner band: default, none, uv_table, constant_j21, Brown+2025_strong or Brown+2025_weak;

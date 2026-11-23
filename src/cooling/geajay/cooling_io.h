@@ -32,6 +32,7 @@
 #include "units.h"
 
 #include <float.h>
+#include <geajay.h>
 #include <geajay_message.h>
 #include <geajay_options.h>
 #include <limits.h>
@@ -61,6 +62,8 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
   io_write_attribute_s(h_grp, "Cooling Model", "geajay2");
 #elif COOLING_GEAJAY_MODE == 3
   io_write_attribute_s(h_grp, "Cooling Model", "geajay3");
+#elif COOLING_GEAJAY_MODE == 4
+  io_write_attribute_s(h_grp, "Cooling Model", "geajay4");
 #else
   error("This function should be called only with one of the geajay cooling.");
 #endif
@@ -119,11 +122,61 @@ INLINE static void convert_part_cooling_rates(const struct engine *e,
                        xp, ret);
 }
 
+/**
+ * @brief Whether a library dust switch is on, i.e. a switch that makes the
+ * library read the dust density.
+ *
+ * As in the library (geajay_dust_is_used), a switch left at default follows
+ * dust_model. The dust attenuation of the background is not a switch: the
+ * module computes it.
+ *
+ * @param cooling The #cooling_function_data.
+ * @return 1 if a switch is on.
+ */
+INLINE static int cooling_dust_switch_is_on(
+    const struct cooling_function_data *cooling) {
+  return cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
+         cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
+         cooling->dust_recombination_cooling ==
+             GEAJAY_DUST_RECOMBINATION_ENABLED ||
+         cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE;
+}
+
+/**
+ * @brief Does a dust switch or the per_band dust attenuation read the
+ * dust-to-gas ratio?
+ *
+ * @param cooling The #cooling_function_data.
+ * @return 1 if the ratio enters the cooling, 0 otherwise.
+ */
+INLINE static int cooling_dust_is_used(
+    const struct cooling_function_data *cooling) {
+  return cooling_dust_switch_is_on(cooling) ||
+         cooling->dust_background_attenuation ==
+             GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND;
+}
+
+/**
+ * @brief Dust-to-gas ratio of a particle for the snapshot.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The ratio of dust mass to gas mass.
+ */
+INLINE static void convert_part_dust_to_gas_ratio(const struct engine *e,
+                                                  const struct part *p,
+                                                  const struct xpart *xp,
+                                                  float *ret) {
+  *ret = (float)cooling_get_dust_to_gas_ratio(e->cooling_func, p);
+}
+
 #if COOLING_GEAJAY_MODE >= 1
 /**
  * @brief Cosmic-ray value of a particle in internal units, for the snapshot.
  *
- * The stored value is proper and in cgs: s^-1 for an ionisation rate, eV
+ * With the source per_particle it is the stored energy density, else the
+ * value of the run. It is proper and in cgs: s^-1 for an ionisation rate, eV
  * cm^-3 for an energy density.
  *
  * @param e The #engine.
@@ -140,7 +193,10 @@ INLINE static void convert_part_cosmic_ray_value(const struct engine *e,
   if (cooling_cosmic_ray_input_is_energy_density())
     factor = e->physical_constants->const_electron_volt *
              pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
-  *ret = (float)(xp->cooling_data.cosmic_ray_value * factor);
+  const double value = cooling_cosmic_ray_source_is_per_particle()
+                           ? xp->cooling_data.cosmic_ray_value
+                           : e->cooling_func->cosmic_ray_initial_value;
+  *ret = (float)(value * factor);
 }
 
 /**
@@ -241,6 +297,21 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   num += 3;
 #endif
 
+#if COOLING_GEAJAY_MODE >= 4
+  list[12] =
+      io_make_output_field("DM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.DM_frac, "DM mass fraction");
+
+  list[13] =
+      io_make_output_field("HDII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HDII_frac, "HDII mass fraction");
+
+  list[14] =
+      io_make_output_field("HeHII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HeHII_frac, "HeHII mass fraction");
+  num += 3;
+#endif
+
   list[num] = io_make_physical_output_field_convert_part(
       "CoolingTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
       /*can convert to comoving=*/1, convert_part_cooling_time,
@@ -267,19 +338,33 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "end of the step that contains the snapshot.");
   num++;
 
+  if (cooling_with_dust_to_gas_ratio()) {
+    list[num] = io_make_physical_output_field_convert_part(
+        "DustToGasRatios", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+        /*can convert to comoving=*/0, convert_part_dust_to_gas_ratio,
+        "Dust-to-gas mass ratio of the dust law of GeajayCooling:"
+        "dust_to_gas_model, from the metal mass fraction of the particle, as "
+        "the cooling reads it. Written only when a dust switch is on.");
+    num++;
+  }
+
 #if COOLING_GEAJAY_MODE >= 1
   if (cooling_with_cosmic_rays()) {
-    list[num] = io_make_physical_output_field_convert_part(
-        "CosmicRayValues", FLOAT, 1,
-        cooling_cosmic_ray_input_is_energy_density() ? UNIT_CONV_ENERGY_DENSITY
-                                                     : UNIT_CONV_INV_TIME,
-        0.f, parts, xparts, /*can convert to comoving=*/0,
-        convert_part_cosmic_ray_value,
-        "Cosmic-ray value of the cooling, proper: the primary ionisation rate "
-        "per H or the cosmic-ray energy density, as "
-        "GeajayCooling:cosmic_ray_input says (not read with the input "
-        "constant).");
-    num++;
+    if (!cooling_cosmic_ray_source_is_fire2()) {
+      list[num] = io_make_physical_output_field_convert_part(
+          "CosmicRayValues", FLOAT, 1,
+          cooling_cosmic_ray_input_is_energy_density()
+              ? UNIT_CONV_ENERGY_DENSITY
+              : UNIT_CONV_INV_TIME,
+          0.f, parts, xparts, /*can convert to comoving=*/0,
+          convert_part_cosmic_ray_value,
+          "Cosmic-ray value of the cooling, proper: the primary ionisation "
+          "rate per H or the cosmic-ray energy density, as "
+          "GeajayCooling:cosmic_ray_input says. The energy density stored in "
+          "the particle with GeajayCooling:cosmic_ray_source per_particle, "
+          "else the value of the run (not read with the input constant).");
+      num++;
+    }
 
     list[num] = io_make_physical_output_field_convert_part(
         "CosmicRayEnergyLossRates", FLOAT, 1, UNIT_CONV_POWER_DENSITY, 0.f,
@@ -310,6 +395,28 @@ __attribute__((noinline)) static int cooling_double_is_finite(const double *x) {
   uint64_t bits;
   memcpy(&bits, x, sizeof(bits));
   return ((bits >> 52) & 0x7ffULL) != 0x7ffULL;
+}
+
+/**
+ * @brief The dust-to-gas ratio of the attenuation of the background, with the
+ * law of the user. The library may hold linear instead, see
+ * cooling_init_geajay().
+ *
+ * @param cooling The cooling properties.
+ * @param metal_mass_fraction The metal mass fraction.
+ * @return The dust-to-gas ratio (mass per mass).
+ */
+INLINE static double cooling_attenuation_dust_to_gas_ratio(
+    const struct cooling_function_data *cooling,
+    const double metal_mass_fraction) {
+  const geajay_chemistry_data *chemistry = &cooling->chemistry_data;
+  geajay_chemistry_data user_law;
+  if (chemistry->dust_to_gas_model != cooling->dust_to_gas_model) {
+    user_law = cooling->chemistry_data;
+    user_law.dust_to_gas_model = cooling->dust_to_gas_model;
+    chemistry = &user_law;
+  }
+  return geajay_dust_to_gas_ratio(chemistry, metal_mass_fraction, 1.);
 }
 
 /**
@@ -508,10 +615,16 @@ INLINE static void cooling_read_cosmic_ray_parameters(
   geajay_cosmic_ray_settings *settings = &cooling->cosmic_ray_settings;
   geajay_cosmic_ray_settings_init(settings);
   cooling->cosmic_ray_initial_value = 0.f;
+  cooling->cosmic_ray_source = cooling_cosmic_ray_source_constant;
+  cooling->cosmic_ray_fire2_energy_density = 0.;
 
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_rays");
   if (settings->network == GEAJAY_COSMIC_RAYS_OFF) {
     const char *off = "GeajayCooling:cosmic_rays is off";
+    cooling_refuse_unread_string(
+        parameter_file, "GeajayCooling:cosmic_ray_source", "constant", off);
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_fire2_energy_density", off);
     cooling_refuse_unread_cosmic_ray_option(parameter_file, "cosmic_ray_input",
                                             off);
     cooling_refuse_unread_cosmic_ray_option(parameter_file,
@@ -534,7 +647,37 @@ INLINE static void cooling_read_cosmic_ray_parameters(
     return;
   }
 
+  char source[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file, "GeajayCooling:cosmic_ray_source",
+                              source, "constant");
+  if (strcmp(source, "constant") == 0)
+    cooling->cosmic_ray_source = cooling_cosmic_ray_source_constant;
+  else if (strcmp(source, "per_particle") == 0)
+    cooling->cosmic_ray_source = cooling_cosmic_ray_source_per_particle;
+  else if (strcmp(source, "fire2") == 0)
+    cooling->cosmic_ray_source = cooling_cosmic_ray_source_fire2;
+  else
+    error(
+        "GeajayCooling:cosmic_ray_source must be constant, per_particle or "
+        "fire2, got '%s'.",
+        source);
+  const int host_source =
+      cooling->cosmic_ray_source != cooling_cosmic_ray_source_constant;
+
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_input");
+  if (host_source) {
+    if (parser_does_param_exist(parameter_file,
+                                "GeajayCooling:cosmic_ray_input") &&
+        settings->input != GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY)
+      error(
+          "GeajayCooling:cosmic_ray_input must be energy_density with "
+          "GeajayCooling:cosmic_ray_source %s.",
+          source);
+    if (geajay_cosmic_ray_settings_set(settings, "cosmic_ray_input",
+                                       "energy_density") == GEAJAY_FAIL)
+      error("geajay refused the input energy_density: %s",
+            geajay_last_error_message());
+  }
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_heating");
   if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
     cooling_set_cosmic_ray_option(parameter_file, settings,
@@ -567,8 +710,28 @@ INLINE static void cooling_read_cosmic_ray_parameters(
         parameter_file, "cosmic_ray_heat_per_ionisation",
         "GeajayCooling:cosmic_ray_heating is not fixed_energy");
 
-  /* The initial value is SWIFT's: read only by a per-particle input */
-  if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+  /* The fixed e_cr is SWIFT's: read by the source fire2 only */
+  const char *fire2_key = "GeajayCooling:cosmic_ray_fire2_energy_density";
+  if (cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2) {
+    if (!parser_does_param_exist(parameter_file, fire2_key))
+      error("%s is required with GeajayCooling:cosmic_ray_source: fire2.",
+            fire2_key);
+    cooling->cosmic_ray_fire2_energy_density =
+        parser_get_param_double(parameter_file, fire2_key);
+    if (!cooling_double_is_finite(&cooling->cosmic_ray_fire2_energy_density) ||
+        !(cooling->cosmic_ray_fire2_energy_density > 0.))
+      error("%s must be finite and > 0, got %e.", fire2_key,
+            cooling->cosmic_ray_fire2_energy_density);
+  } else
+    cooling_refuse_unread_key(parameter_file, fire2_key,
+                              "GeajayCooling:cosmic_ray_source is not fire2");
+
+  /* The constant value is SWIFT's: read by the source constant only */
+  if (host_source)
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_initial_value",
+        "GeajayCooling:cosmic_ray_source is not constant");
+  else if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
     cooling_refuse_unread_key(parameter_file,
                               "GeajayCooling:cosmic_ray_initial_value",
                               "GeajayCooling:cosmic_ray_input is constant");
@@ -617,6 +780,27 @@ INLINE static void cooling_read_background_parameters(
       parameter_file, "GeajayCooling:lw_background_j21", -1.);
   cooling->isrf_from_field = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:isrf_from_field", 0);
+  if (cooling->isrf_from_field != 0 &&
+      cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND)
+    error(
+        "GeajayCooling:isrf_from_field is %d: with background_mode grackle the "
+        "module does not fill a per-particle field yet; use isrf_habing.",
+        cooling->isrf_from_field);
+
+  /* Unset is -1 in the library; any key value below 0 is refused here */
+  cooling->isrf_habing = -1.;
+  if (parser_does_param_exist(parameter_file, "GeajayCooling:isrf_habing")) {
+    if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+      cooling_refuse_unread_key(
+          parameter_file, "GeajayCooling:isrf_habing",
+          "GeajayCooling:background_mode is per_band (G_0 comes from "
+          "isrf_background_model and isrf_background_habing)");
+    const double g0 =
+        parser_get_param_double(parameter_file, "GeajayCooling:isrf_habing");
+    if (!cooling_double_is_finite(&g0) || g0 < 0.)
+      error("GeajayCooling:isrf_habing must be finite and >= 0, got %g.", g0);
+    cooling->isrf_habing = g0;
+  }
 
   cooling->ionising_background_model = GEAJAY_IONISING_BACKGROUND_DEFAULT;
   cooling->lw_background_model = GEAJAY_LW_BACKGROUND_DEFAULT;
@@ -957,25 +1141,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   /* The ISRF heats through the dust, so it forces the dust chemistry on. */
   if (cooling->with_ISRF) cooling->dust_model = GEAJAY_DUST_MODEL_BASIC;
 
-  if (!parser_does_param_exist(parameter_file,
-                               "GeajayCooling:dust_to_gas_model"))
-    error(
-        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
-        "it to linear or remy_ruyer_2014.");
-  cooling->dust_to_gas_model = cooling_read_choice(
-      parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
-      GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);
-  if (cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_LINEAR &&
-      cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
-    error(
-        "GeajayCooling:dust_to_gas_model must be linear (0) or "
-        "remy_ruyer_2014 (1), got %d.%s",
-        cooling->dust_to_gas_model,
-        cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_FROM_FIELD
-            ? " from_field is not available: SWIFT has no per-particle dust "
-              "field."
-            : "");
-
   cooling->H2_on_dust = cooling_read_choice(
       parameter_file, "GeajayCooling:h2_formation_on_dust",
       "h2_formation_on_dust", GEAJAY_H2_ON_DUST_DEFAULT, NULL, 0);
@@ -1033,6 +1198,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "disabled (0) or enabled (1), got %d.",
         cooling->dust_recombination_cooling);
 
+  /* Reading a key with a default adds it to the parameter table. */
+  const int dust_to_gas_key_given = parser_does_param_exist(
+      parameter_file, "GeajayCooling:dust_to_gas_model");
+  cooling->dust_to_gas_model = cooling_read_choice(
+      parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
+      GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);
+  if (cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_LINEAR &&
+      cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
+    error(
+        "GeajayCooling:dust_to_gas_model must be linear (0) or "
+        "remy_ruyer_2014 (1), got %d.%s",
+        cooling->dust_to_gas_model,
+        cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_FROM_FIELD
+            ? " from_field is not available: SWIFT has no per-particle dust "
+              "field."
+            : "");
+
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
 #if COOLING_GEAJAY_MODE < 2
@@ -1069,6 +1251,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:compton_xray_heating must be 0 or 1, got %d.",
           cooling->compton_xray_heating);
 
+  cooling->case_b_recombination = cooling_read_choice(
+      parameter_file, "GeajayCooling:case_b_recombination",
+      "case_b_recombination", GEAJAY_RECOMBINATION_CASE_B, NULL, 0);
+  if (cooling->case_b_recombination != GEAJAY_RECOMBINATION_CASE_A &&
+      cooling->case_b_recombination != GEAJAY_RECOMBINATION_CASE_B)
+    error("GeajayCooling:case_b_recombination must be A (0) or B (1), got %d.",
+          cooling->case_b_recombination);
+
   cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
   if (!cooling_double_is_finite(&cooling->reference_dust_to_gas_ratio) ||
@@ -1087,6 +1277,33 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->with_uv_background =
       parser_get_param_int(parameter_file, "GeajayCooling:with_uv_background");
+
+  static const char *uvb_redshift_keys[] = {
+      "GeajayCooling:uv_background_redshift_on",
+      "GeajayCooling:uv_background_redshift_full_on",
+      "GeajayCooling:uv_background_redshift_drop",
+      "GeajayCooling:uv_background_redshift_off"};
+  double uvb_redshifts[4];
+  for (int i = 0; i < 4; i++) {
+    uvb_redshifts[i] = parser_get_opt_param_double(
+        parameter_file, uvb_redshift_keys[i], COOLING_GEAJAY_REDSHIFT_UNSET);
+    if (!cooling_double_is_finite(&uvb_redshifts[i]))
+      error("%s must be a finite redshift, got %g.", uvb_redshift_keys[i],
+            uvb_redshifts[i]);
+  }
+  cooling->uv_background_redshift_on = uvb_redshifts[0];
+  cooling->uv_background_redshift_full_on = uvb_redshifts[1];
+  cooling->uv_background_redshift_drop = uvb_redshifts[2];
+  cooling->uv_background_redshift_off = uvb_redshifts[3];
+
+  cooling->lw_background_sawtooth_suppression = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:lw_background_sawtooth_suppression", 0);
+  if (cooling->lw_background_sawtooth_suppression != 0 &&
+      cooling->lw_background_sawtooth_suppression != 1)
+    error(
+        "GeajayCooling:lw_background_sawtooth_suppression must be 0 or 1, got "
+        "%d.",
+        cooling->lw_background_sawtooth_suppression);
 
   cooling->redshift =
       parser_get_param_double(parameter_file, "GeajayCooling:redshift");
@@ -1137,11 +1354,21 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "it, zero included. If it is a leftover from before "
         "with_interstellar_radiation_field was enabled, set it to 0.");
 
-  cooling->volumetric_heating_rates = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:volumetric_heating_rates_cgs", 0);
-
-  cooling->specific_heating_rates = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:specific_heating_rates_cgs", 0);
+  static const char *heating_keys[] = {
+      "GeajayCooling:volumetric_heating_rates_cgs",
+      "GeajayCooling:specific_heating_rates_cgs"};
+  double heating_rates[2];
+  for (int i = 0; i < 2; i++) {
+    heating_rates[i] =
+        parser_get_opt_param_double(parameter_file, heating_keys[i], 0);
+    if (!cooling_double_is_finite(&heating_rates[i]) || heating_rates[i] < 0.)
+      error(
+          "%s must be a finite number >= 0, got %g. A negative rate would be "
+          "extra cooling, which this module does not apply.",
+          heating_keys[i], heating_rates[i]);
+  }
+  cooling->volumetric_heating_rates = heating_rates[0];
+  cooling->specific_heating_rates = heating_rates[1];
 
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:hydrogen_mass_fraction", -1.);
@@ -1170,7 +1397,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
                         {"GeajayCooling:initial_dii_to_h_ratio", 3,
                          &cooling->initial_dii_to_h_ratio},
                         {"GeajayCooling:initial_hdi_to_h_ratio", 3,
-                         &cooling->initial_hdi_to_h_ratio}};
+                         &cooling->initial_hdi_to_h_ratio},
+                        {"GeajayCooling:initial_dm_to_h_ratio", 4,
+                         &cooling->initial_dm_to_h_ratio},
+                        {"GeajayCooling:initial_hdii_to_h_ratio", 4,
+                         &cooling->initial_hdii_to_h_ratio},
+                        {"GeajayCooling:initial_hehii_to_h_ratio", 4,
+                         &cooling->initial_hehii_to_h_ratio}};
   for (size_t i = 0; i < sizeof(initial_ratios) / sizeof(initial_ratios[0]);
        i++) {
     *initial_ratios[i].value = -1.f;
@@ -1183,6 +1416,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           "the species network GeajayCooling:primordial_chemistry_network "
           "has no such species");
   }
+
+  cooling->deuterium_to_hydrogen_mass_ratio = -1.;
+  if (cooling->primordial_chemistry >= 3) {
+    cooling->deuterium_to_hydrogen_mass_ratio = parser_get_opt_param_double(
+        parameter_file, "GeajayCooling:deuterium_to_hydrogen_mass_ratio", -1.);
+    if (!cooling_double_is_finite(&cooling->deuterium_to_hydrogen_mass_ratio) ||
+        (cooling->deuterium_to_hydrogen_mass_ratio != -1. &&
+         !(cooling->deuterium_to_hydrogen_mass_ratio >= 0.)))
+      error(
+          "GeajayCooling:deuterium_to_hydrogen_mass_ratio must be -1 (the "
+          "library value) or a finite number >= 0, got %g.",
+          cooling->deuterium_to_hydrogen_mass_ratio);
+  } else
+    cooling_refuse_unread_double(
+        parameter_file, "GeajayCooling:deuterium_to_hydrogen_mass_ratio", -1.,
+        "the species network GeajayCooling:primordial_chemistry_network has "
+        "no deuterium");
 
   /* Self shielding */
   const int uv_shielding = cooling_read_choice(
@@ -1379,6 +1629,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->cheap_energy_update = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:cheap_energy_update", -1);
 
+  /* 0 evolves the chemistry and leaves the energy to the other modules */
+  cooling->with_radiative_cooling = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:with_radiative_cooling", 1);
+  if (cooling->with_radiative_cooling != 0 &&
+      cooling->with_radiative_cooling != 1)
+    error("GeajayCooling:with_radiative_cooling must be 0 or 1, got %d.",
+          cooling->with_radiative_cooling);
+
   /* Solver choice and accurate-solver tolerances; geajay checks the values */
   cooling->solver =
       parser_get_opt_param_int(parameter_file, "GeajayCooling:solver", -1);
@@ -1428,6 +1686,42 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling_read_cosmic_ray_parameters(parameter_file, cooling);
   cooling_read_background_parameters(parameter_file, cooling, us);
   cooling_read_column_shielding_parameters(parameter_file, cooling);
+
+  /* As in the library (geajay_dust_is_used), the model is required only when a
+   * switch reads the dust density. A switch left at default follows
+   * dust_model. The module also counts the per_band dust attenuation of the
+   * background, which reads the dust-to-gas ratio. */
+  const int dust_is_used = cooling_dust_is_used(cooling);
+  if (dust_is_used && !dust_to_gas_key_given)
+    error(
+        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
+        "it to linear or remy_ruyer_2014. A dust switch needs it: dust_model "
+        "basic, h2_formation_on_dust enabled, dust_recombination_cooling "
+        "enabled, a photoelectric_heating_model above none or "
+        "dust_background_attenuation per_band.");
+
+  /* The redshifts are used by the UV table, which a model of per_band can load
+   * with with_uv_background 0 */
+  const int uv_table_loaded =
+      cooling->with_uv_background ||
+      (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND &&
+       (cooling->ionising_background_model ==
+            GEAJAY_IONISING_BACKGROUND_UV_TABLE ||
+        cooling->lw_background_model == GEAJAY_LW_BACKGROUND_UV_TABLE ||
+        cooling->isrf_background_model == GEAJAY_ISRF_BACKGROUND_UV_TABLE));
+  const double uvb_redshift_values[4] = {
+      cooling->uv_background_redshift_on,
+      cooling->uv_background_redshift_full_on,
+      cooling->uv_background_redshift_drop,
+      cooling->uv_background_redshift_off};
+  for (int i = 0; i < 4; i++)
+    if (!uv_table_loaded &&
+        uvb_redshift_values[i] > COOLING_GEAJAY_REDSHIFT_UNSET)
+      error(
+          "%s is set, but it is not read: no UV background table is loaded "
+          "(GeajayCooling:with_uv_background is 0 and no model of per_band is "
+          "uv_table).",
+          uvb_redshift_keys[i]);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */

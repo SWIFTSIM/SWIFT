@@ -1,0 +1,145 @@
+# id|key|base lines (both runs)|test lines (test run only)|expected (&& separated)|hint
+cloudy_table_file|cloudy_table_file||cloudy_table_file: alt_table.h5|LIB cloudy_table_file=alt_table.h5|lib
+primordial_chemistry_network|primordial_chemistry_network||primordial_chemistry_network: H_He|LIB species_network=1|lib
+with_uv_background|with_uv_background||with_uv_background: 1|LIB uv_background=1|lib
+with_metal_cooling|with_metal_cooling||with_metal_cooling: 0|LIB metal_line_cooling=0|lib
+redshift|redshift||redshift: 2.5|LIBCALL set_redshift=2.5|lib
+thermal_time_myr|thermal_time_myr||thermal_time_myr: 7|~MOD thermal_time|swift
+uv_self_shielding|uv_self_shielding||uv_self_shielding: HI|LIB uv_self_shielding=1|lib
+uv_shielding_threshold|uv_shielding_threshold_nucleon_per_cm3|uv_self_shielding: density_threshold;uv_shielding_threshold_nucleon_per_cm3: 0.007|uv_shielding_threshold_nucleon_per_cm3: 0.5|~MOD uv_shielding_threshold|swift
+compton_xray_heating|compton_xray_heating||compton_xray_heating: 1|LIB compton_xray_heating=1|lib
+energy_change_limit|energy_change_limit||energy_change_limit: 0.05|LIB energy_change_limit=0.05|lib
+table_density_edge|table_density_edge||table_density_edge: edge|LIBCALL set_table_density_edge=1|lib
+maximal_density|maximal_density_nucleon_per_cm3||maximal_density_nucleon_per_cm3: 100|~MOD maximal_density|swift
+metal_cooling_cmb_floor|metal_cooling_cmb_floor||metal_cooling_cmb_floor: 0|LIB metal_cooling_cmb_floor=0|lib
+agora_cmb_temperature_floor|agora_cmb_temperature_floor||agora_cmb_temperature_floor: 1|MOD agora_cmb_temperature_floor=1|swift
+hydrogen_mass_fraction|hydrogen_mass_fraction||hydrogen_mass_fraction: 0.7|LIB hydrogen_mass_fraction=0.7|lib
+dust_model|dust_model|isrf_habing: 1.7|dust_model: basic|LIB dust_model=1|lib
+dust_to_gas_model|dust_to_gas_model|dust_model: basic;isrf_habing: 1.7|dust_to_gas_model: remy_ruyer_2014|LIB dust_to_gas_model=1|lib
+h2_formation_on_dust|h2_formation_on_dust|isrf_habing: 1.7|h2_formation_on_dust: enabled|LIB h2_formation_on_dust=1|lib
+photoelectric_heating_model|photoelectric_heating_model|isrf_habing: 1.7|photoelectric_heating_model: constant_efficiency|LIB photoelectric_heating_model=2|lib
+photoelectric_heating_rate|photoelectric_heating_rate|photoelectric_heating_model: fixed_rate;isrf_habing: 1.7|photoelectric_heating_rate: 1.7e-25|LIB photoelectric_heating_rate=1.7e-25|lib
+dust_recombination_cooling|dust_recombination_cooling|isrf_habing: 1.7|dust_recombination_cooling: enabled|LIB dust_recombination_cooling=1|lib
+h2_photodissociation_heating|h2_photodissociation_heating||h2_photodissociation_heating: 1|LIB h2_photodissociation_heating=1|lib
+reference_dust_to_gas_ratio|reference_dust_to_gas_ratio||reference_dust_to_gas_ratio: 0.01|LIB reference_dust_to_gas_ratio=0.01|lib
+h2_three_body_fit|h2_three_body_fit||h2_three_body_fit: 1|LIB h2_three_body_fit=1|lib
+h2_cie_cooling|h2_cie_cooling||h2_cie_cooling: 1|LIB h2_cie_cooling=1|lib
+max_substeps|max_substeps||max_substeps: 5000|LIB max_substeps=5000|lib
+subcycle_on_failure|subcycle_on_failure||subcycle_on_failure: 5|LIBCALL set_subcycle_on_failure=5|lib
+cheap_energy_update|cheap_energy_update||cheap_energy_update: 0|LIB cheap_energy_update=0|lib
+solver|solver||solver: 1|LIB solver=1|lib
+accurate_relative_tolerance|accurate_relative_tolerance|solver: 1|accurate_relative_tolerance: 1e-5|LIB accurate_relative_tolerance=1e-05|lib
+accurate_absolute_tolerance|accurate_absolute_tolerance|solver: 1|accurate_absolute_tolerance: 1e-15|LIB accurate_absolute_tolerance=1e-15|lib
+lw_background_j21|lw_background_j21||lw_background_j21: 0.5|LIB lw_background_j21=0.5|lib
+isrf_from_field|isrf_from_field refused with background_mode grackle||isrf_from_field: 1|!the module does not fill a per-particle field yet|refuse
+isrf_habing|isrf_habing||isrf_habing: 1.7|LIB isrf_habing=1.7|lib
+isrf_habing_zero|isrf_habing 0 is allowed with a G_0 reader|dust_model: basic;isrf_habing: 1.7|isrf_habing: 0|LIB isrf_habing=0|lib
+isrf_habing_unset_reader|isrf_habing unset with a G_0 reader is refused|dust_model: basic;isrf_habing: 1.7|-isrf_habing|!geajay has no default far-UV field|refuse
+isrf_habing_unset_no_reader|isrf_habing unset without a G_0 reader starts|isrf_habing: 1.7|-isrf_habing|=LIB isrf_habing=0|lib
+isrf_habing_negative|isrf_habing below 0 is refused||isrf_habing: -1|!GeajayCooling:isrf_habing must be finite and >= 0, got -1|refuse
+isrf_habing_inf|isrf_habing not finite is refused||isrf_habing: inf|!GeajayCooling:isrf_habing must be finite and >= 0|refuse
+isrf_habing_per_band|isrf_habing with background_mode per_band is refused|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1|isrf_habing: 1.7|!GeajayCooling:isrf_habing is set, but it is not read|refuse
+isrf_habing_pe_fixed_rate|photoelectric option 1 reads G_0: unset is refused|photoelectric_heating_model: fixed_rate;isrf_habing: 1.7|-isrf_habing|!geajay has no default far-UV field|refuse
+rt_use_fields|rt_use_fields||rt_use_fields: 1|LIB rt_rates_from_fields=1|lib
+rt_heating_rate_cgs|rt_heating_rate_cgs|rt_use_fields: 1|rt_heating_rate_cgs: 3e-25|~MOD rt_heating_rate|swift
+rt_hi_ionisation_rate_per_s|rt_hi_ionisation_rate_per_s|rt_use_fields: 1|rt_hi_ionisation_rate_per_s: 1e-12|~MOD rt_hi_ionisation_rate|swift
+rt_hei_ionisation_rate_per_s|rt_hei_ionisation_rate_per_s|rt_use_fields: 1|rt_hei_ionisation_rate_per_s: 1e-12|~MOD rt_hei_ionisation_rate|swift
+rt_heii_ionisation_rate_per_s|rt_heii_ionisation_rate_per_s|rt_use_fields: 1|rt_heii_ionisation_rate_per_s: 1e-12|~MOD rt_heii_ionisation_rate|swift
+rt_h2_dissociation_rate_per_s|rt_h2_dissociation_rate_per_s|rt_use_fields: 1|rt_h2_dissociation_rate_per_s: 1e-12|~MOD rt_h2_dissociation_rate|swift
+volumetric_heating_rates_cgs|volumetric_heating_rates_cgs||volumetric_heating_rates_cgs: 1e-25|LIB volumetric_heating_from_field=1&&~MOD volumetric_heating_rates|lib
+specific_heating_rates_cgs|specific_heating_rates_cgs||specific_heating_rates_cgs: 1e-25|LIB specific_heating_from_field=1&&~MOD specific_heating_rates|lib
+initial_hii_to_h_ratio|initial_hii_to_h_ratio||initial_hii_to_h_ratio: 0.001|~MOD initial_hii_to_h_ratio|swift
+initial_hei_to_h_ratio|initial_hei_to_h_ratio||initial_hei_to_h_ratio: 0.001|~MOD initial_hei_to_h_ratio|swift
+initial_heii_to_h_ratio|initial_heii_to_h_ratio||initial_heii_to_h_ratio: 0.001|~MOD initial_heii_to_h_ratio|swift
+initial_heiii_to_h_ratio|initial_heiii_to_h_ratio||initial_heiii_to_h_ratio: 0.001|~MOD initial_heiii_to_h_ratio|swift
+initial_hm_to_h_ratio|initial_hm_to_h_ratio||initial_hm_to_h_ratio: 0.001|~MOD initial_hm_to_h_ratio|swift
+initial_h2i_to_h_ratio|initial_h2i_to_h_ratio||initial_h2i_to_h_ratio: 0.001|~MOD initial_h2i_to_h_ratio|swift
+initial_h2ii_to_h_ratio|initial_h2ii_to_h_ratio||initial_h2ii_to_h_ratio: 0.001|~MOD initial_h2ii_to_h_ratio|swift
+initial_di_to_h_ratio|initial_di_to_h_ratio||initial_di_to_h_ratio: 0.001;deuterium_to_hydrogen_mass_ratio: 2e-3|~MOD initial_di_to_h_ratio|swift
+initial_dii_to_h_ratio|initial_dii_to_h_ratio||initial_di_to_h_ratio: 0.001;initial_dii_to_h_ratio: 0.001;deuterium_to_hydrogen_mass_ratio: 4e-3|~MOD initial_dii_to_h_ratio|swift
+initial_hdi_to_h_ratio|initial_hdi_to_h_ratio||initial_di_to_h_ratio: 0.001;initial_hdi_to_h_ratio: 0.001;deuterium_to_hydrogen_mass_ratio: 4e-3|~MOD initial_hdi_to_h_ratio|swift
+h2_shielding_length_method|h2_shielding_length_method||h2_shielding_length_method: given_length|LIB h2_shielding_length_method=2|lib
+h2_shielding_path|h2_shielding_path|h2_shielding_length_method: given_length|h2_shielding_path: kernel_diameter|MOD h2_shielding_path_in_kernel_radii=2|swift
+cosmic_rays|cosmic_rays||cosmic_rays: reduced;cosmic_ray_initial_value: 2e-16|LIB cr.network=1&&LIBCALL cosmic_ray_reduced_context_create|lib
+cosmic_ray_input|cosmic_ray_input|cosmic_rays: reduced;cosmic_ray_initial_value: 2e-16|cosmic_ray_input: constant;cosmic_ray_constant_rate: 3e-16;-cosmic_ray_initial_value|LIB cr.input=2|lib
+cosmic_ray_constant_rate|cosmic_ray_constant_rate|cosmic_rays: reduced;cosmic_ray_input: constant;cosmic_ray_constant_rate: 1e-16|cosmic_ray_constant_rate: 3e-16|LIB cr.constant_rate=3e-16|lib
+cosmic_ray_heating|cosmic_ray_heating|cosmic_rays: reduced;cosmic_ray_initial_value: 2e-16|cosmic_ray_heating: fixed_energy|LIB cr.heating=1|lib
+cosmic_ray_heat_per_ionisation|cosmic_ray_heat_per_ionisation|cosmic_rays: reduced;cosmic_ray_initial_value: 2e-16;cosmic_ray_heating: fixed_energy|cosmic_ray_heat_per_ionisation: 30|LIB cr.heat_per_ionisation=30|lib
+cosmic_ray_rate_per_energy_density|cosmic_ray_rate_per_energy_density|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_rate_per_energy_density: 4e-16|LIB cr.rate_per_energy_density=4e-16|lib
+cosmic_ray_coulomb_loss_coefficient|cosmic_ray_coulomb_loss_coefficient|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_coulomb_loss_coefficient: 5e-16|LIB cr.coulomb_loss_coefficient=5e-16|lib
+cosmic_ray_hadronic_loss_coefficient|cosmic_ray_hadronic_loss_coefficient|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_hadronic_loss_coefficient: 6e-16|LIB cr.hadronic_loss_coefficient=6e-16|lib
+cosmic_ray_initial_value|cosmic_ray_initial_value|cosmic_rays: reduced;cosmic_ray_initial_value: 2e-16|cosmic_ray_initial_value: 5e-16|~MOD cosmic_ray_initial_value|swift
+background_mode|background_mode||background_mode: per_band|LIB background_mode=1&&LIBPATH geajay_context_create_from_options|lib
+ionising_background_model|ionising_background_model|background_mode: per_band;with_uv_background: 1|ionising_background_model: none|LIB ionising_background_model=0|lib
+lw_background_model|lw_background_model|background_mode: per_band|lw_background_model: constant_j21;lw_background_j21: 0.5|LIB lw_background_model=2|lib
+isrf_background_model|isrf_background_model|background_mode: per_band|isrf_background_model: constant;isrf_background_habing: 1|LIB isrf_background_model=1|lib
+isrf_background_habing|isrf_background_habing|background_mode: per_band;isrf_background_model: constant;isrf_background_habing: 1|isrf_background_habing: 2.5|LIB isrf_background_habing=2.5|lib
+dust_background_attenuation|dust_background_attenuation|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;dust_model: basic|dust_background_attenuation: per_band|LIB dust_background_attenuation=1|lib
+dust_cross_section_lw_cm2|dust_cross_section_lw_cm2|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;dust_model: basic;dust_background_attenuation: per_band|dust_cross_section_lw_cm2: 2e-21|MOD dust_cross_section_lw_cgs=2e-21|swift
+dust_cross_section_pe_cm2|dust_cross_section_pe_cm2|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;dust_model: basic;dust_background_attenuation: per_band|dust_cross_section_pe_cm2: 2e-21|MOD dust_cross_section_pe_cgs=2e-21|swift
+uv_rates_file|uv_rates_file|background_mode: per_band;with_uv_background: 1|uv_rates_file: uvrates.h5|LIB uv_rates_file=uvrates.h5|lib
+ionising_rates_file|ionising_rates_file|background_mode: per_band;with_uv_background: 1|ionising_rates_file: uvrates.h5|LIB ionising_rates_file=uvrates.h5|lib
+lw_rates_file|lw_rates_file|background_mode: per_band;with_uv_background: 1;lw_background_model: uv_table|lw_rates_file: uvrates.h5|LIB lw_rates_file=uvrates.h5|lib
+isrf_rates_file|isrf_rates_file|background_mode: per_band;with_uv_background: 1;isrf_background_model: uv_table;isrf_rates_file: g0file.h5|isrf_rates_file: g0file2.h5|LIB isrf_rates_file=g0file2.h5|lib
+uv_self_shielding_column|uv_self_shielding (HI_HeI_HeII_column)|with_uv_background: 1;cloudy_table_file: hm12thin.h5|uv_self_shielding: HI_HeI_HeII_column;uv_shielding_table_file: colA.h5;uv_shielding_length_method: given_length|LIB uv_self_shielding=4&&LIBPATH geajay_context_create_from_options|lib
+uv_shielding_table_file|uv_shielding_table_file|with_uv_background: 1;cloudy_table_file: hm12thin.h5;uv_self_shielding: HI_HeI_HeII_column;uv_shielding_length_method: given_length;uv_shielding_table_file: colA.h5|uv_shielding_table_file: colB.h5|LIB uv_shielding_table_file=colB.h5|lib
+uv_shielding_length_method|uv_shielding_length_method|with_uv_background: 1;cloudy_table_file: hm12thin.h5;uv_self_shielding: HI_HeI_HeII_column;uv_shielding_table_file: colA.h5;uv_shielding_length_method: given_length|uv_shielding_length_method: Jeans|LIB uv_shielding_length_method=3|lib
+uv_shielding_length_factor|uv_shielding_length_factor|with_uv_background: 1;cloudy_table_file: hm12thin.h5;uv_self_shielding: HI_HeI_HeII_column;uv_shielding_table_file: colA.h5;uv_shielding_length_method: given_length|uv_shielding_length_factor: 2|LIB uv_shielding_length_factor=2|lib
+uv_shielding_path|uv_shielding_path|with_uv_background: 1;cloudy_table_file: hm12thin.h5;uv_self_shielding: HI_HeI_HeII_column;uv_shielding_table_file: colA.h5;uv_shielding_length_method: given_length|uv_shielding_path: kernel_diameter|MOD uv_shielding_path_in_kernel_radii=2|swift
+deuterium_to_hydrogen_mass_ratio|deuterium_to_hydrogen_mass_ratio||deuterium_to_hydrogen_mass_ratio: 5e-5|LIB deuterium_to_hydrogen_mass_ratio=5e-05|lib
+deuterium_initial_matching|initial_di_to_h_ratio with the total||initial_di_to_h_ratio: 4e-5;deuterium_to_hydrogen_mass_ratio: 8e-5|LIB deuterium_to_hydrogen_mass_ratio=8e-05&&~MOD initial_di_to_h_ratio|lib
+deuterium_initial_three_species|the three initial D ratios with the total||initial_di_to_h_ratio: 2.529538E-005;initial_dii_to_h_ratio: 4.284496E-009;initial_hdi_to_h_ratio: 3.356904E-010;deuterium_to_hydrogen_mass_ratio: 5.06e-5|LIB deuterium_to_hydrogen_mass_ratio=5.06e-05|lib
+deuterium_initial_mismatch|initial_di_to_h_ratio without the total||initial_di_to_h_ratio: 4e-5|!give a deuterium to hydrogen mass ratio of 7.9999998e-05, but the total of geajay is 6.8e-05|refuse
+deuterium_initial_dii_mismatch|initial_dii_to_h_ratio without the total||initial_dii_to_h_ratio: 1e-6|!so the D ratios give 7e-05, and geajay rescales|refuse
+deuterium_network_2|deuterium_to_hydrogen_mass_ratio below network 3|primordial_chemistry_network: H_He_H2|deuterium_to_hydrogen_mass_ratio: 5e-5|!has no deuterium|refuse
+deuterium_negative|deuterium_to_hydrogen_mass_ratio below -1||deuterium_to_hydrogen_mass_ratio: -2|!must be -1 (the library value) or a finite number >= 0|refuse
+case_b_recombination|case_b_recombination||case_b_recombination: A|LIB case_b_recombination=0|lib
+case_b_recombination_default|case_b_recombination (default B)||case_b_recombination: B|=LIB case_b_recombination=1|lib
+adiabatic_index_default|adiabatic_index at the 5/3 build||redshift: 0|=LIB adiabatic_index=1.666666667|lib
+case_b_recombination_bad|case_b_recombination out of range||case_b_recombination: 2|!case_b_recombination must be A (0) or B (1), got 2|refuse
+volumetric_heating_negative|volumetric_heating_rates_cgs below 0||volumetric_heating_rates_cgs: -1e-25|!volumetric_heating_rates_cgs must be a finite number >= 0, got -1e-25|refuse
+specific_heating_negative|specific_heating_rates_cgs below 0||specific_heating_rates_cgs: -1e-25|!specific_heating_rates_cgs must be a finite number >= 0, got -1e-25|refuse
+specific_heating_inf|specific_heating_rates_cgs not finite||specific_heating_rates_cgs: inf|!specific_heating_rates_cgs must be a finite number >= 0, got inf|refuse
+uv_background_redshift_on|uv_background_redshift_on|with_uv_background: 1|uv_background_redshift_on: 8.5|LIB uv_background_redshift_on=8.5|lib
+uv_background_redshift_full_on|uv_background_redshift_full_on|with_uv_background: 1|uv_background_redshift_full_on: 7.5|LIB uv_background_redshift_full_on=7.5|lib
+uv_background_redshift_drop|uv_background_redshift_drop|with_uv_background: 1|uv_background_redshift_drop: 0.8|LIB uv_background_redshift_drop=0.8|lib
+uv_background_redshift_off|uv_background_redshift_off|with_uv_background: 1|uv_background_redshift_off: 0.3|LIB uv_background_redshift_off=0.3|lib
+lw_background_sawtooth_suppression|lw_background_sawtooth_suppression|with_uv_background: 1|lw_background_sawtooth_suppression: 1|LIB lw_background_sawtooth_suppression=1|lib
+uv_background_redshift_unread|uv_background_redshift_on without a UV background||uv_background_redshift_on: 8.5|!is set, but it is not read: no UV background table is loaded|refuse
+uv_background_redshift_nan|uv_background_redshift_off not finite|with_uv_background: 1|uv_background_redshift_off: nan|!must be a finite redshift, got nan|refuse
+lw_background_sawtooth_bad|lw_background_sawtooth_suppression out of range|with_uv_background: 1|lw_background_sawtooth_suppression: 2|!lw_background_sawtooth_suppression must be 0 or 1, got 2|refuse
+uv_background_redshift_per_band|uv_background_redshift_on with a per_band UV table only|background_mode: per_band;ionising_background_model: uv_table|uv_background_redshift_on: 8.5|LIB uv_background_redshift_on=8.5|lib
+deuterium_suggested_value|the value suggested by the deuterium refusal starts the run||initial_di_to_h_ratio: 6.172825e-5|@deuterium_to_hydrogen_mass_ratio|refuse
+dust_to_gas_per_band_attenuation_missing|dust_to_gas_model needed with per_band dust attenuation|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;-dust_to_gas_model|dust_background_attenuation: per_band|!GeajayCooling:dust_to_gas_model is required|refuse
+dust_to_gas_per_band_attenuation_key|dust_to_gas_model given with per_band dust attenuation|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;-dust_to_gas_model|dust_background_attenuation: per_band;dust_to_gas_model: linear|=LIB dust_to_gas_model=0&&LIB dust_background_attenuation=1|lib
+dust_to_gas_per_band_no_attenuation|no key and no dust switch still starts|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;-dust_to_gas_model|isrf_background_habing: 2|=LIB dust_background_attenuation=0|lib
+cosmic_ray_source_per_particle|cosmic_ray_source|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_source: per_particle;-cosmic_ray_initial_value|=MOD cosmic_ray_source=1&&=LIB cr.input=1|swift
+cosmic_ray_source_fire2|cosmic_ray_source|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_source: fire2;cosmic_ray_fire2_energy_density: 1;-cosmic_ray_initial_value|=MOD cosmic_ray_source=2&&=MOD cosmic_ray_fire2_energy_density=1|swift
+cosmic_ray_source_default|cosmic_ray_source|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16||=MOD cosmic_ray_source=0|swift
+cosmic_ray_source_unknown|cosmic_ray_source|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_source: columns|!must be constant, per_particle or fire2|swift
+cosmic_ray_source_cosmic_rays_off|cosmic_ray_source||cosmic_ray_source: per_particle|!cosmic_rays is off|swift
+cosmic_ray_source_per_particle_input|cosmic_ray_source|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_source: per_particle;cosmic_ray_input: ionisation_rate|!must be energy_density|swift
+cosmic_ray_fire2_energy_density|cosmic_ray_fire2_energy_density|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16;cosmic_ray_source: fire2;cosmic_ray_fire2_energy_density: 1|cosmic_ray_fire2_energy_density: 4|=MOD cosmic_ray_fire2_energy_density=4|swift
+cosmic_ray_fire2_energy_density_required|cosmic_ray_fire2_energy_density|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16;cosmic_ray_source: fire2;cosmic_ray_fire2_energy_density: 1|-cosmic_ray_fire2_energy_density|!cosmic_ray_fire2_energy_density is required|swift
+cosmic_ray_fire2_energy_density_not_read|cosmic_ray_fire2_energy_density|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_fire2_energy_density: 1|!cosmic_ray_source is not fire2|swift
+cosmic_ray_initial_value_per_particle|cosmic_ray_initial_value|cosmic_rays: reduced;cosmic_ray_input: energy_density;cosmic_ray_initial_value: 1e-3;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16|cosmic_ray_source: per_particle|!cosmic_ray_source is not constant|swift
+deuterium_unset_di_message|an unset initial_di_to_h_ratio with another D ratio set names the missing key||initial_hdi_to_h_ratio: 1e-6|!set initial_di_to_h_ratio too, so that 2 x (sum of all D ratios) equals the key|refuse
+attenuation_alone_linear|per_band attenuation alone with linear: the library holds linear|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1|dust_background_attenuation: per_band;dust_to_gas_model: linear|=MOD dust_background_attenuation=1&&=MOD dust_to_gas_model=0&&=LIB dust_to_gas_model=0|swift
+attenuation_alone_remy_ruyer|per_band attenuation alone with remy_ruyer_2014: the module keeps the law, the library gets linear|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1|dust_background_attenuation: per_band;dust_to_gas_model: remy_ruyer_2014|=MOD dust_background_attenuation=1&&=MOD dust_to_gas_model=1&&=LIB dust_to_gas_model=0&&~MOD attenuation_dust_ratio_at_z0.001|swift
+attenuation_dust_model_remy_ruyer|per_band attenuation with dust_model basic and remy_ruyer_2014: the library gets the law unchanged|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;dust_model: basic|dust_background_attenuation: per_band;dust_to_gas_model: remy_ruyer_2014|=MOD dust_to_gas_model=1&&=LIB dust_to_gas_model=1&&~MOD attenuation_dust_ratio_at_z0.001|swift
+attenuation_h2_on_dust_remy_ruyer|per_band attenuation with h2_formation_on_dust and remy_ruyer_2014: the library gets the law unchanged|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;h2_formation_on_dust: enabled|dust_background_attenuation: per_band;dust_to_gas_model: remy_ruyer_2014|=MOD dust_to_gas_model=1&&=LIB dust_to_gas_model=1&&~MOD attenuation_dust_ratio_at_z0.001|swift
+attenuation_dust_model_linear|per_band attenuation with dust_model basic and linear: the library gets linear|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;dust_model: basic|dust_background_attenuation: per_band;dust_to_gas_model: linear|=MOD dust_to_gas_model=0&&=LIB dust_to_gas_model=0|swift
+attenuation_key_absent_remy_baseline|per_band attenuation without the dust_to_gas_model key is refused|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;-dust_to_gas_model|dust_background_attenuation: per_band|!GeajayCooling:dust_to_gas_model is required|refuse
+dust_off_remy_ruyer_no_attenuation|remy_ruyer_2014 with every dust switch off and no attenuation is still refused|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1|dust_to_gas_model: remy_ruyer_2014|!has no effect: no dust switch is on|refuse
+dust_off_linear_no_attenuation|linear with every dust switch off and no attenuation starts|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1|dust_to_gas_model: linear|=MOD dust_background_attenuation=0&&=LIB dust_to_gas_model=0|swift
+with_radiative_cooling_off|with_radiative_cooling||with_radiative_cooling: 0|LIB radiative_cooling=0&&~MOD with_radiative_cooling|lib
+with_radiative_cooling_on|with_radiative_cooling||with_radiative_cooling: 1|=LIB radiative_cooling=1&&=MOD with_radiative_cooling=1|lib
+with_radiative_cooling_absent|with_radiative_cooling (default 1)||redshift: 0|=LIB radiative_cooling=1&&=MOD with_radiative_cooling=1|lib
+with_radiative_cooling_two|with_radiative_cooling 2 is refused||with_radiative_cooling: 2|!GeajayCooling:with_radiative_cooling must be 0 or 1, got 2|swift
+per_band_g0_constant_dust|per_band constant G_0 with dust on and no isrf_habing starts|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1.7;dust_model: basic|isrf_background_habing: 2|LIB isrf_background_habing=2|lib
+per_band_g0_uv_table_dust|per_band uv_table G_0 with dust on and no isrf_habing starts|background_mode: per_band;h2_shielding_length_method: given_length;with_uv_background: 1;isrf_background_model: uv_table;isrf_rates_file: g0file.h5;dust_model: basic|isrf_rates_file: g0file2.h5|LIB isrf_rates_file=g0file2.h5|lib
+per_band_g0_none_dust|per_band G_0 none with dust on and no isrf_habing starts|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;dust_model: basic|isrf_background_model: none;-isrf_background_habing|LIB isrf_background_model=0|lib
+per_band_g0_unset_dust|per_band with the G_0 model unset and dust on is still refused|background_mode: per_band;h2_shielding_length_method: given_length;dust_model: basic;isrf_background_model: constant;isrf_background_habing: 1.7|-isrf_background_model;-isrf_background_habing|!isrf_background_model is unset|refuse
+initial_hydrogen_over_one|initial_h2i_to_h_ratio||initial_h2i_to_h_ratio: 0.6|!hold more hydrogen than the gas has|refuse
+initial_hydrogen_hii_h2_over_one|initial_hii_to_h_ratio||initial_hii_to_h_ratio: 0.5;initial_h2i_to_h_ratio: 0.3|!which is 1.10000002 > 1|refuse
+initial_hydrogen_all_molecular|initial_h2i_to_h_ratio||initial_h2i_to_h_ratio: 0.5|=MOD initial_h2i_to_h_ratio=0.5|swift

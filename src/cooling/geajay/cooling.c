@@ -89,6 +89,37 @@ static int cooling_geajay_table_edge_warned = 0;
  * Grackle default local_dust_to_gas_ratio). */
 #define COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO 0.009387
 
+/*! 1 when a dust switch reads the dust-to-gas ratio, for the snapshot field. */
+static int cooling_geajay_dust_to_gas_ratio_on = 0;
+
+/**
+ * @brief Does the snapshot hold the dust-to-gas ratio?
+ *
+ * @return 1 when a dust switch or the per_band dust attenuation is on, 0
+ * otherwise.
+ */
+int cooling_with_dust_to_gas_ratio(void) {
+  return cooling_geajay_dust_to_gas_ratio_on;
+}
+
+/**
+ * @brief Dust-to-gas mass ratio of a particle for the dust law of the run.
+ *
+ * It is computed from the metal mass fraction of the particle, as the dust
+ * attenuation of the backgrounds does. Nothing is stored.
+ *
+ * @param cooling The #cooling_function_data.
+ * @param p The #part.
+ * @return The ratio of dust mass to gas mass, 0 without a dust switch.
+ */
+double cooling_get_dust_to_gas_ratio(
+    const struct cooling_function_data *cooling, const struct part *p) {
+  if (!cooling_geajay_dust_to_gas_ratio_on) return 0.;
+  return cooling_attenuation_dust_to_gas_ratio(
+      cooling,
+      max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f));
+}
+
 /*! 1 when the run has cosmic rays, for the snapshot fields. */
 static int cooling_geajay_cosmic_rays_on = 0;
 
@@ -110,6 +141,100 @@ int cooling_with_cosmic_rays(void) { return cooling_geajay_cosmic_rays_on; }
  */
 int cooling_cosmic_ray_input_is_energy_density(void) {
   return cooling_geajay_cosmic_ray_energy_density;
+}
+
+/*! 1 when the cosmic-ray source is per_particle. */
+static int cooling_geajay_cosmic_ray_per_particle = 0;
+
+/*! 1 when the cosmic-ray source is fire2. */
+static int cooling_geajay_cosmic_ray_fire2 = 0;
+
+/**
+ * @brief Does the run compute the cosmic-ray value from the local n_H?
+ *
+ * @return 1 with GeajayCooling:cosmic_ray_source fire2, 0 otherwise.
+ */
+int cooling_cosmic_ray_source_is_fire2(void) {
+  return cooling_geajay_cosmic_ray_fire2;
+}
+
+/**
+ * @brief Does the run store a cosmic-ray energy density in each particle?
+ *
+ * @return 1 with GeajayCooling:cosmic_ray_source per_particle, 0 otherwise.
+ */
+int cooling_cosmic_ray_source_is_per_particle(void) {
+  return cooling_geajay_cosmic_ray_per_particle;
+}
+
+/**
+ * @brief Set the cosmic-ray energy density stored in a particle.
+ *
+ * For the module that injects cosmic rays, e.g. supernova feedback: it sets
+ * the new density, and takes out of it the energy that the cooling used (see
+ * cooling_get_cosmic_ray_energy_loss_rate()). The cooling reads the value at
+ * its next solve and never changes it. Stops the run when the source is not
+ * per_particle: the value would be ignored.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @param energy_density The energy density, proper, eV cm^-3, finite and >= 0.
+ */
+void cooling_set_cosmic_ray_energy_density(struct xpart *xp,
+                                           const double energy_density) {
+#if COOLING_GEAJAY_MODE >= 1
+  if (!cooling_geajay_cosmic_ray_per_particle)
+    error(
+        "A cosmic-ray energy density is set, but "
+        "GeajayCooling:cosmic_ray_source is not per_particle.");
+  if (!(energy_density >= 0.) || energy_density > FLT_MAX)
+    error(
+        "The cosmic-ray energy density must be >= 0 and fit in a float, got "
+        "%e.",
+        energy_density);
+  xp->cooling_data.cosmic_ray_value = (float)energy_density;
+#else
+  error("GeajayCooling has no cosmic rays without a species network.");
+#endif
+}
+
+/**
+ * @brief Get the cosmic-ray energy density stored in a particle.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @return The energy density, proper, eV cm^-3; 0 until it is set.
+ */
+double cooling_get_cosmic_ray_energy_density(const struct xpart *xp) {
+#if COOLING_GEAJAY_MODE >= 1
+  return xp->cooling_data.cosmic_ray_value;
+#else
+  return 0.;
+#endif
+}
+
+static int cooling_stored_value_is_valid(const float *x, const int positive);
+
+/**
+ * @brief Get the energy loss rate of the cosmic rays in the last solve of a
+ * particle.
+ *
+ * The cooling does not take this energy out of the stored density. The
+ * injector multiplies the rate by its time-step and depletes the density.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @return The rate, proper, eV cm^-3 s^-1, averaged over the step; 0 before
+ * the first solve, with an input other than energy_density and after a failed
+ * solve, which skips the step. The snapshot field keeps the NaN of a failed
+ * solve.
+ */
+double cooling_get_cosmic_ray_energy_loss_rate(const struct xpart *xp) {
+#if COOLING_GEAJAY_MODE >= 1
+  if (!cooling_stored_value_is_valid(
+          &xp->cooling_data.cosmic_ray_energy_loss_rate, /*positive=*/0))
+    return 0.;
+  return xp->cooling_data.cosmic_ray_energy_loss_rate;
+#else
+  return 0.;
+#endif
 }
 
 /**
@@ -282,6 +407,11 @@ void cooling_print_fractions(const struct xpart *restrict xp) {
 #if COOLING_GEAJAY_MODE > 2
   message("DI %g, DII %g, HDI %g", tmp.DI_frac, tmp.DII_frac, tmp.HDI_frac);
 #endif
+
+#if COOLING_GEAJAY_MODE > 3
+  message("DM %g, HDII %g, HeHII %g", tmp.DM_frac, tmp.HDII_frac,
+          tmp.HeHII_frac);
+#endif
   message("Metal: %g", tmp.metal_frac);
 }
 
@@ -332,7 +462,72 @@ int cooling_converged(const struct xpart *restrict xp,
   cooling_check_field(xp, old, HDI_frac, limit);
 #endif
 
+#if COOLING_GEAJAY_MODE > 3
+  cooling_check_field(xp, old, DM_frac, limit);
+  cooling_check_field(xp, old, HDII_frac, limit);
+  cooling_check_field(xp, old, HeHII_frac, limit);
+#endif
+
   return 1;
+}
+
+/**
+ * @brief Number of H nuclei per H nucleus of the gas that the initial ratios
+ * place in the species other than HI and HII.
+ *
+ * The initial ratios are number ratios to the H nuclei: H2 and H2+ hold two,
+ * H-, HD, HD+ and HeH+ one each.
+ *
+ * @param cooling The cooling properties.
+ */
+static double cooling_initial_h_in_other_species(
+    const struct cooling_function_data *cooling) {
+
+  double h = 0.;
+#if COOLING_GEAJAY_MODE >= 2
+  if (cooling->initial_hm_to_h_ratio >= 0.f)
+    h += cooling->initial_hm_to_h_ratio;
+  if (cooling->initial_h2i_to_h_ratio >= 0.f)
+    h += 2. * cooling->initial_h2i_to_h_ratio;
+  if (cooling->initial_h2ii_to_h_ratio >= 0.f)
+    h += 2. * cooling->initial_h2ii_to_h_ratio;
+#endif
+#if COOLING_GEAJAY_MODE >= 3
+  if (cooling->initial_hdi_to_h_ratio >= 0.f)
+    h += cooling->initial_hdi_to_h_ratio;
+#endif
+#if COOLING_GEAJAY_MODE >= 4
+  if (cooling->initial_hdii_to_h_ratio >= 0.f)
+    h += cooling->initial_hdii_to_h_ratio;
+  if (cooling->initial_hehii_to_h_ratio >= 0.f)
+    h += cooling->initial_hehii_to_h_ratio;
+#endif
+  return h;
+}
+
+/**
+ * @brief Stop if the initial species hold more H nuclei than the gas has.
+ *
+ * @param cooling The cooling properties.
+ */
+static void cooling_check_initial_hydrogen(
+    const struct cooling_function_data *cooling) {
+
+  const double h_in_hii = cooling->initial_hii_to_h_ratio >= 0.f
+                              ? cooling->initial_hii_to_h_ratio
+                              : 0.;
+  const double h_in_other = cooling_initial_h_in_other_species(cooling);
+  if (h_in_hii + h_in_other <= 1. + 1e-6) return;
+
+  error(
+      "The initial species ratios hold more hydrogen than the gas has. The "
+      "ratios are numbers per H nucleus: HII holds %.9g of the H nuclei, and "
+      "H-, H2 (counted twice), H2+, HD, HD+ and HeH+ together %.9g, which is "
+      "%.9g > 1. Lower initial_hii_to_h_ratio, initial_hm_to_h_ratio, "
+      "initial_h2i_to_h_ratio, initial_h2ii_to_h_ratio, "
+      "initial_hdi_to_h_ratio, "
+      "initial_hdii_to_h_ratio or initial_hehii_to_h_ratio (GeajayCooling:).",
+      h_in_hii, h_in_other, h_in_hii + h_in_other);
 }
 
 /**
@@ -406,11 +601,17 @@ void cooling_first_init_part(const struct phys_const *phys_const,
 
   /* primordial chemistry >= 1 */
 
-  /* Hydrogen I */
-  if (cooling->initial_hii_to_h_ratio >= 0.f)
-    xp->cooling_data.HI_frac = nH * (1.f - cooling->initial_hii_to_h_ratio);
-  else
-    xp->cooling_data.HI_frac = nH;
+  /* Hydrogen I: the hydrogen that HII and the other species do not hold */
+  double HI_frac = cooling->initial_hii_to_h_ratio >= 0.f
+                       ? nH * (1.f - cooling->initial_hii_to_h_ratio)
+                       : nH;
+  const double h_in_other_species = cooling_initial_h_in_other_species(cooling);
+  if (h_in_other_species > 0.) {
+    HI_frac -= nH * h_in_other_species;
+    /* Round-off only: cooling_check_initial_hydrogen refuses a negative HI */
+    if (HI_frac < 0.) HI_frac = 0.;
+  }
+  xp->cooling_data.HI_frac = HI_frac;
 
   Xtot += xp->cooling_data.HI_frac;
 
@@ -537,6 +738,45 @@ void cooling_first_init_part(const struct phys_const *phys_const,
 
 #endif  // MODE >= 3
 
+#if COOLING_GEAJAY_MODE >= 4
+  /* primordial chemistry >= 4 */
+
+  /* Deuterium- */
+  if (cooling->initial_dm_to_h_ratio >= 0.f) {
+    double nDM = nH * cooling->initial_dm_to_h_ratio;
+    xp->cooling_data.DM_frac = nDM * 2.f;
+    ne -= nDM;
+  } else
+    xp->cooling_data.DM_frac = zero;
+
+  Xtot += xp->cooling_data.DM_frac;
+
+  /* HD+ */
+  if (cooling->initial_hdii_to_h_ratio >= 0.f) {
+    double nHDII = nH * cooling->initial_hdii_to_h_ratio;
+    xp->cooling_data.HDII_frac = nHDII * 3.f;
+    ne += nHDII;
+  } else
+    xp->cooling_data.HDII_frac = zero;
+
+  Xtot += xp->cooling_data.HDII_frac;
+
+  /* HeH+ */
+  if (cooling->initial_hehii_to_h_ratio >= 0.f) {
+    double nHeHII = nH * cooling->initial_hehii_to_h_ratio;
+    xp->cooling_data.HeHII_frac = nHeHII * 5.f;
+    ne += nHeHII;
+  } else
+    xp->cooling_data.HeHII_frac = zero;
+
+  Xtot += xp->cooling_data.HeHII_frac;
+
+  /* electron mass fraction (multiplied by the proton mass (Grackle convention)
+   */
+  xp->cooling_data.e_frac = ne;
+
+#endif  // MODE >= 4
+
 #if COOLING_GEAJAY_MODE >= 1
   /* Consistency check: the species mass fractions accumulated above
      (whichever tiers are compiled in for this COOLING_GEAJAY_MODE) must
@@ -544,7 +784,7 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   if (fabs(Xtot - 1.0) > 1e-3)
     error("Got total mass fraction of gas = %.6g", Xtot);
 
-  xp->cooling_data.cosmic_ray_value = cooling->cosmic_ray_initial_value;
+  xp->cooling_data.cosmic_ray_value = 0.f;
   xp->cooling_data.cosmic_ray_energy_loss_rate = 0.f;
 #endif  // MODE >= 1
 }
@@ -665,6 +905,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->energy_change_limit);
   message("geajay cheap energy update = %d (0 explicit, 1 second order)",
           cooling->chemistry_data.cheap_energy_update);
+  message("geajay radiative cooling = %d (0: the energy is not updated)",
+          cooling->with_radiative_cooling);
   message("geajay solver = %d (0 cheap, 1 accurate)",
           cooling->chemistry_data.solver);
   message("geajay accurate tolerances: relative %g, absolute %g",
@@ -683,6 +925,13 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
                   GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND
               ? "per_band"
               : "none");
+  if (cooling->isrf_habing >= 0.)
+    message("G_0 of every particle (isrf_habing) = %g Habing",
+            cooling->isrf_habing);
+  else if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+    message("G_0 of every particle (isrf_habing) = not read (per_band)");
+  else
+    message("G_0 of every particle (isrf_habing) = unset");
   if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
     message(
         "Background models (-1: default): ionising %d, LW %d, G_0 %d (G_0 = "
@@ -711,6 +960,11 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
             geajay_cosmic_ray_choice_name("cosmic_ray_input", cr->input),
             cooling->cosmic_ray_initial_value,
             geajay_cosmic_ray_choice_name("cosmic_ray_heating", cr->heating));
+    message("Cosmic-ray source = %d (0 constant, 1 per_particle, 2 fire2)",
+            (int)cooling->cosmic_ray_source);
+    if (cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2)
+      message("Cosmic-ray FIRE-2 energy density e_cr = %g eV cm^-3",
+              cooling->cosmic_ray_fire2_energy_density);
     if (cr->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
       message("Cosmic-ray constant rate = %g s^-1", cr->constant_rate);
     if (cr->input == GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY)
@@ -811,15 +1065,28 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("chemistry_data.HydrogenFractionByMass = %.3g",
           cooling->chemistry_data.HydrogenFractionByMass);
   message("chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
+  message("chemistry_data.UVbackground_redshift_on, _fullon, _drop, _off = %g, "
+          "%g, %g, %g",
+          cooling->chemistry_data.UVbackground_redshift_on,
+          cooling->chemistry_data.UVbackground_redshift_fullon,
+          cooling->chemistry_data.UVbackground_redshift_drop,
+          cooling->chemistry_data.UVbackground_redshift_off);
+  message("chemistry_data.LWbackground_sawtooth_suppression = %d",
+          cooling->chemistry_data.LWbackground_sawtooth_suppression);
+  message("chemistry_data.DeuteriumToHydrogenRatio = %.6g",
+          cooling->chemistry_data.DeuteriumToHydrogenRatio);
   message("chemistry_data.h2_on_dust = %d", cooling->chemistry_data.h2_on_dust);
   message("chemistry_data.dust_to_gas_model = %d",
           cooling->chemistry_data.dust_to_gas_model);
+  message("dust_to_gas_model of the user = %d", cooling->dust_to_gas_model);
   message("chemistry_data.photoelectric_heating = %d",
           cooling->chemistry_data.photoelectric_heating);
   message("chemistry_data.dust_recombination_cooling = %d",
           cooling->chemistry_data.dust_recombination_cooling);
   message("chemistry_data.photoelectric_heating_rate = %.3g",
           cooling->chemistry_data.photoelectric_heating_rate);
+  message("chemistry_data.interstellar_radiation_field = %g",
+          cooling->chemistry_data.interstellar_radiation_field);
   message("chemistry_data.local_dust_to_gas_ratio = %.3g",
           cooling->chemistry_data.local_dust_to_gas_ratio);
 }
@@ -946,17 +1213,16 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
 
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
-     ratio of the library, as the heating uses. */
+     ratio of the dust_to_gas_model key. */
   if (cooling->dust_background_attenuation ==
       GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
     const double path = inputs->H2_self_shielding_length;
     /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
     const double dust_ratio =
-        geajay_dust_to_gas_ratio(
-            &cooling->chemistry_data,
-            max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f),
-            1.) /
+        cooling_attenuation_dust_to_gas_ratio(
+            cooling,
+            max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f)) /
         COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO;
     inputs->lw_background_attenuation =
         exp(-cooling->dust_cross_section_lw_cgs * dust_ratio * column);
@@ -992,14 +1258,36 @@ static double cooling_stored_nan(void) {
  * @brief Cosmic-ray value passed to geajay for a particle.
  *
  * @param cooling The #cooling_function_data used in the run.
+ * @param cosmo The #cosmology.
  * @param xp Pointer to the particle extra data.
- * @return The stored value, or 0 with the input "constant".
+ * @param inputs The inputs of the solve (density in internal units).
+ * @return The value of the source: the constant of the run, the stored energy
+ * density, or e_cr n_H / (0.01 + n_H) with n_H the local hydrogen number
+ * density in cm^-3, and 0 in a cosmological run when the gas density is not
+ * above 1000 times the mean baryonic density (Hopkins et al. 2018, eq. B25).
+ * 0 with the input "constant".
  */
 static double cooling_cosmic_ray_value(
-    const struct cooling_function_data *cooling, const struct xpart *xp) {
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct xpart *xp, const geajay_particle_inputs *inputs) {
 #if COOLING_GEAJAY_MODE >= 1
-  if (cooling->cosmic_ray_settings.input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
-    return xp->cooling_data.cosmic_ray_value;
+  switch (cooling->cosmic_ray_source) {
+    case cooling_cosmic_ray_source_per_particle:
+      return xp->cooling_data.cosmic_ray_value;
+    case cooling_cosmic_ray_source_fire2: {
+      /* mean_density_Omega_b is 0 without cosmology: no cut */
+      if (!(inputs->density > 1000. * cosmo->mean_density_Omega_b)) return 0.;
+      const double n_H =
+          cooling->HydrogenFractionByMass * (inputs->density - inputs->metal) *
+          cooling->units.density_units / cooling->proton_mass_cgs;
+      return cooling->cosmic_ray_fire2_energy_density *
+             geajay_cosmic_ray_density_factor_fire2(n_H);
+    }
+    case cooling_cosmic_ray_source_constant:
+      if (cooling->cosmic_ray_settings.input !=
+          GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+        return cooling->cosmic_ray_initial_value;
+  }
 #endif
   return 0.;
 }
@@ -1026,6 +1314,7 @@ static void cooling_set_cosmic_ray_loss(struct xpart *xp, const double loss) {
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param cosmo The #cosmology.
  * @param xp Pointer to the particle extra data.
  * @param inputs The inputs of the solve.
  * @param dt The time-step of this particle.
@@ -1036,16 +1325,17 @@ static void cooling_set_cosmic_ray_loss(struct xpart *xp, const double loss) {
  */
 static double cooling_new_energy_cosmic_rays(
     const struct cooling_function_data *cooling, const struct part *p,
-    struct xpart *xp, const geajay_particle_inputs *inputs, const double dt,
-    const double energy, geajay_particle_status *status,
-    int *kept_previous_state) {
+    const struct cosmology *cosmo, struct xpart *xp,
+    const geajay_particle_inputs *inputs, const double dt, const double energy,
+    geajay_particle_status *status, int *kept_previous_state) {
 
   geajay_cosmic_ray_output output = {.size = sizeof(output)};
 
-  const int solved = geajay_particle_solve_cosmic_ray_reduced(
-                         cooling->cosmic_ray_context, &cooling->layout, xp,
-                         inputs, cooling_cosmic_ray_value(cooling, xp), dt,
-                         /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
+  const int solved =
+      geajay_particle_solve_cosmic_ray_reduced(
+          cooling->cosmic_ray_context, &cooling->layout, xp, inputs,
+          cooling_cosmic_ray_value(cooling, cosmo, xp, inputs), dt,
+          /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
 
   if (status->reason == GEAJAY_PARTICLE_BAD_ARGUMENT) {
     cooling_print_fractions(xp);
@@ -1053,11 +1343,11 @@ static double cooling_new_energy_cosmic_rays(
         "Particle %lld: geajay refused the arguments of the cosmic-ray solve: "
         "a value is not finite or out of range (cosmic-ray value %e, "
         "density %e, energy %e, metal density %e, H2 shielding length %e, "
-        "LW attenuation %e, PE attenuation %e; species above).",
-        p->id, cooling_cosmic_ray_value(cooling, xp), inputs->density,
-        inputs->internal_energy, inputs->metal,
+        "LW attenuation %e, PE attenuation %e; species above). geajay: %s",
+        p->id, cooling_cosmic_ray_value(cooling, cosmo, xp, inputs),
+        inputs->density, inputs->internal_energy, inputs->metal,
         inputs->H2_self_shielding_length, inputs->lw_background_attenuation,
-        inputs->pe_background_attenuation);
+        inputs->pe_background_attenuation, geajay_last_error_message());
   }
 
   if (!solved) {
@@ -1234,8 +1524,9 @@ static geajay_float cooling_new_energy_or_keep_previous(
   geajay_particle_status status = {.size = sizeof(status)};
 
   if (cooling->cosmic_ray_context != NULL) {
-    const double u_cr = cooling_new_energy_cosmic_rays(
-        cooling, p, xp, &inputs, dt, energy, &status, kept_previous_state);
+    const double u_cr =
+        cooling_new_energy_cosmic_rays(cooling, p, cosmo, xp, &inputs, dt,
+                                       energy, &status, kept_previous_state);
     cooling_finish_hii_after_solve(phys_const, us, cosmo, hydro_props, cooling,
                                    p, xp, time, !*kept_previous_state, u_cr);
     return u_cr;
@@ -1253,10 +1544,10 @@ static geajay_float cooling_new_energy_or_keep_previous(
         "Particle %lld: geajay refused the arguments of the solve: a value "
         "is not finite or out of range (density %e, energy %e, metal "
         "density %e, H2 shielding length %e, LW attenuation %e, PE "
-        "attenuation %e; species above).",
+        "attenuation %e; species above). geajay: %s",
         p->id, inputs.density, inputs.internal_energy, inputs.metal,
         inputs.H2_self_shielding_length, inputs.lw_background_attenuation,
-        inputs.pe_background_attenuation);
+        inputs.pe_background_attenuation, geajay_last_error_message());
   }
 
   if (!solved) {
@@ -1362,7 +1653,8 @@ double cooling_time(const struct phys_const *phys_const,
       cooling->cosmic_ray_context != NULL
           ? geajay_particle_cooling_time_cosmic_ray_reduced(
                 cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
-                cooling_cosmic_ray_value(cooling, xp), &cooling_time)
+                cooling_cosmic_ray_value(cooling, cosmo, xp, &inputs),
+                &cooling_time)
           : geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
                                          &inputs, &cooling_time);
   if (ok != GEAJAY_SUCCESS) return cooling_stored_nan();
@@ -1409,7 +1701,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
       (cooling->cosmic_ray_context != NULL
            ? geajay_particle_energy_rates_cosmic_ray_reduced(
                  cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
-                 cooling_cosmic_ray_value(cooling, xp), &result)
+                 cooling_cosmic_ray_value(cooling, cosmo, xp, &inputs), &result)
            : geajay_particle_energy_rates(cooling->context, &cooling->layout,
                                           xp, &inputs, &result)) ==
       GEAJAY_SUCCESS;
@@ -1876,6 +2168,13 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
   layout->offset[GEAJAY_DII] = offsetof(struct xpart, cooling_data.DII_frac);
   layout->offset[GEAJAY_HDI] = offsetof(struct xpart, cooling_data.HDI_frac);
 #endif
+
+#if COOLING_GEAJAY_MODE >= 4
+  layout->offset[GEAJAY_DM] = offsetof(struct xpart, cooling_data.DM_frac);
+  layout->offset[GEAJAY_HDII] = offsetof(struct xpart, cooling_data.HDII_frac);
+  layout->offset[GEAJAY_HeHII] =
+      offsetof(struct xpart, cooling_data.HeHII_frac);
+#endif
 }
 
 /**
@@ -1931,6 +2230,58 @@ static geajay_context *cooling_create_options_context(
 }
 
 /**
+ * @brief Stop if the initial deuterium species hold a total other than the
+ * deuterium_to_hydrogen_mass_ratio of geajay.
+ *
+ * geajay rescales the species holding deuterium to that total at every call:
+ * D, D+ and HD, and with network 4 also D- and HD+ (one D atom each; HeH+
+ * holds none). The initial ratios are number ratios to H and a D atom weighs 2
+ * H atoms, so the total by mass is 2 (n_DI + n_DII + n_HDI + n_DM + n_HDII) /
+ * n_H. An unset initial_di_to_h_ratio starts at the library total.
+ *
+ * @param cooling The cooling properties.
+ */
+static void cooling_check_initial_deuterium(
+    const struct cooling_function_data *cooling) {
+
+  const double wanted = cooling->chemistry_data.DeuteriumToHydrogenRatio;
+  const double initial_ratios[5] = {
+      cooling->initial_di_to_h_ratio, cooling->initial_dii_to_h_ratio,
+      cooling->initial_hdi_to_h_ratio, cooling->initial_dm_to_h_ratio,
+      cooling->initial_hdii_to_h_ratio};
+  const int n_ratios = cooling->primordial_chemistry >= 4 ? 5 : 3;
+  double total = initial_ratios[0] >= 0. ? 2. * initial_ratios[0] : wanted;
+  for (int i = 1; i < n_ratios; i++)
+    if (initial_ratios[i] >= 0.) total += 2. * initial_ratios[i];
+
+  if (fabs(total - wanted) <= 1e-6 * wanted) return;
+
+  /* An unset DI counts as the whole total, so no key value can match. */
+  int other_ratio_set = 0;
+  for (int i = 1; i < n_ratios; i++)
+    if (initial_ratios[i] >= 0.) other_ratio_set = 1;
+  if (initial_ratios[0] < 0. && other_ratio_set)
+    error(
+        "GeajayCooling:initial_di_to_h_ratio is not set, but another initial "
+        "D ratio is. An unset initial_di_to_h_ratio counts as the whole "
+        "deuterium total of geajay (%.9g), so the D ratios give %.9g, and "
+        "geajay rescales the deuterium to its total at the first call. Please "
+        "set initial_di_to_h_ratio too, so that 2 x (sum of all D ratios) "
+        "equals the key GeajayCooling:deuterium_to_hydrogen_mass_ratio.",
+        wanted, total);
+
+  error(
+      "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio, "
+      "initial_hdi_to_h_ratio and, with the network H_He_H2_D_ions, "
+      "initial_dm_to_h_ratio and initial_hdii_to_h_ratio (number ratios to "
+      "H) give a deuterium to hydrogen mass ratio of %.9g, but the total of "
+      "geajay is %.9g and it rescales the deuterium to it at the first "
+      "call. Set GeajayCooling:deuterium_to_hydrogen_mass_ratio to %.9g, or "
+      "change the initial ratios so that 2 x their sum is %.9g.",
+      total, wanted, total, wanted);
+}
+
+/**
  * @brief Initialises geajay.
  *
  * @param cooling The cooling properties to initialize
@@ -1944,9 +2295,17 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
     error("Error in geajay_global_set_default_chemistry_parameters.");
   }
 
+  /* -1 is the library value for an unset G_0 */
+  if (chemistry->interstellar_radiation_field != -1.)
+    error(
+        "The geajay library is too old: it still has a default G_0 "
+        "(interstellar_radiation_field = %g instead of -1, unset). Rebuild "
+        "with the geajay library branch that removes the default.",
+        chemistry->interstellar_radiation_field);
+
   // Set parameter values for chemistry.
   chemistry->use_grackle = 1;
-  chemistry->with_radiative_cooling = 1;
+  chemistry->with_radiative_cooling = cooling->with_radiative_cooling;
 
   /* molecular network with H, He, D
    From Cloudy table */
@@ -1958,6 +2317,14 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->cie_cooling = cooling->H2_cie_cooling;
   chemistry->dust_chemistry = cooling->dust_model;
   chemistry->dust_to_gas_model = cooling->dust_to_gas_model;
+  /* The library refuses remy_ruyer_2014 when no dust switch is on. The
+   * attenuation of the background then needs the user's law only for its own
+   * column, which the module computes, so the library gets linear. */
+  if (!cooling_dust_switch_is_on(cooling) &&
+      cooling->dust_background_attenuation ==
+          GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND &&
+      cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
+    chemistry->dust_to_gas_model = GEAJAY_DUST_TO_GAS_LINEAR;
   chemistry->photoelectric_heating = cooling->photoelectric_heating_model;
   if (cooling->photoelectric_heating_rate >= 0.)
     chemistry->photoelectric_heating_rate = cooling->photoelectric_heating_rate;
@@ -2018,8 +2385,19 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   /* hydrogen fraction by mass */
   chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;
 
-  /* use the Case B recombination rates */
-  chemistry->CaseBRecombination = 1;
+  if (cooling->deuterium_to_hydrogen_mass_ratio >= 0.)
+    chemistry->DeuteriumToHydrogenRatio =
+        cooling->deuterium_to_hydrogen_mass_ratio;
+  if (cooling->primordial_chemistry >= 3)
+    cooling_check_initial_deuterium(cooling);
+  cooling_check_initial_hydrogen(cooling);
+
+  chemistry->CaseBRecombination = cooling->case_b_recombination;
+
+  /* hydro_gamma is a float: at 5/3 the library value keeps its double bits */
+  const double adiabatic_index = hydro_gamma;
+  if (fabs(adiabatic_index / chemistry->Gamma - 1.) > 1e-6)
+    chemistry->Gamma = adiabatic_index;
 
   if (cooling->specific_heating_rates > 0 &&
       cooling->volumetric_heating_rates > 0)
@@ -2058,8 +2436,26 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   if (cooling->lw_background_j21 >= 0.)
     chemistry->LWbackground_intensity = cooling->lw_background_j21;
+  chemistry->LWbackground_sawtooth_suppression =
+      cooling->lw_background_sawtooth_suppression;
+  if (cooling->uv_background_redshift_on > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_on = cooling->uv_background_redshift_on;
+  if (cooling->uv_background_redshift_full_on > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_fullon =
+        cooling->uv_background_redshift_full_on;
+  if (cooling->uv_background_redshift_drop > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_drop =
+        cooling->uv_background_redshift_drop;
+  if (cooling->uv_background_redshift_off > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_off = cooling->uv_background_redshift_off;
   if (cooling->isrf_from_field || cooling->with_ISRF)
     chemistry->use_isrf_field = 1;
+  if (cooling->isrf_habing >= 0.)
+    chemistry->interstellar_radiation_field = cooling->isrf_habing;
+  else if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+    /* The init refuses -1 when a term reads G_0; under per_band the background
+       is added to this local field later by the library */
+    chemistry->interstellar_radiation_field = 0.;
 
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of
      a state integrated over only part of the time-step. */
@@ -2181,9 +2577,17 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
                                   sizeof(struct xpart)) == GEAJAY_FAIL)
     error("The species layout of the xpart does not fit the geajay context.");
 
+  cooling_geajay_dust_to_gas_ratio_on = cooling_dust_is_used(cooling);
+
   cooling->cosmic_ray_context = NULL;
   cooling_geajay_cosmic_rays_on =
       cooling->cosmic_ray_settings.network != GEAJAY_COSMIC_RAYS_OFF;
+  cooling_geajay_cosmic_ray_per_particle =
+      cooling_geajay_cosmic_rays_on &&
+      cooling->cosmic_ray_source == cooling_cosmic_ray_source_per_particle;
+  cooling_geajay_cosmic_ray_fire2 =
+      cooling_geajay_cosmic_rays_on &&
+      cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2;
   cooling_geajay_cosmic_ray_energy_density =
       cooling_geajay_cosmic_rays_on &&
       cooling->cosmic_ray_settings.input ==
@@ -2272,16 +2676,72 @@ void cooling_clean(struct cooling_function_data *cooling) {
                              &cooling->chemistry_rates);
 }
 
+/*! Version of the restart layout record of the cooling. Restart files
+ * written before the record existed (network H_He_H2_D_ions) are refused. 2:
+ * the cosmic-ray source mode and its fixed energy density are in the struct.
+ * 3: with_radiative_cooling is in the struct. 4: isrf_habing is in the
+ * struct. */
+#define COOLING_GEAJAY_RESTART_FORMAT 4
+
+/*! Record written before the cooling struct in a restart file. */
+struct cooling_restart_layout {
+
+  /*! Tag, to recognise the record */
+  char magic[8];
+
+  /*! Version of this record */
+  int format;
+
+  /*! COOLING_GEAJAY_MODE of the writer */
+  int mode;
+
+  /*! Number of species stored per particle by the writer */
+  int n_species;
+
+  /*! sizeof(struct cooling_function_data) of the writer */
+  size_t cooling_size;
+
+  /*! sizeof(struct cooling_xpart_data) of the writer */
+  size_t xpart_size;
+};
+
+/**
+ * @brief The layout record of this build.
+ *
+ * @param layout (return) The record.
+ */
+static void cooling_get_restart_layout(struct cooling_restart_layout *layout) {
+
+  memset(layout, 0, sizeof(*layout));
+  memcpy(layout->magic, "GEAJAYC", 8);
+  layout->format = COOLING_GEAJAY_RESTART_FORMAT;
+  layout->mode = COOLING_GEAJAY_MODE;
+#if COOLING_GEAJAY_MODE > 4
+#error \
+    "The species count formula and the output list of the geajay cooling hold up to COOLING_GEAJAY_MODE 4."
+#endif
+  layout->n_species =
+      COOLING_GEAJAY_MODE <= 0 ? 0 : 6 + 3 * (COOLING_GEAJAY_MODE - 1);
+  layout->cooling_size = sizeof(struct cooling_function_data);
+  layout->xpart_size = sizeof(struct cooling_xpart_data);
+}
+
 /**
  * @brief Write a cooling struct to the given FILE as a stream of bytes.
  *
- * Nothing to do beyond writing the structure from the stream.
+ * A record of the layout (network, number of species, struct sizes) comes
+ * first, so that a restart of another layout stops with a clear message.
  *
  * @param cooling the struct
  * @param stream the file stream
  */
 void cooling_struct_dump(const struct cooling_function_data *cooling,
                          FILE *stream) {
+  struct cooling_restart_layout layout;
+  cooling_get_restart_layout(&layout);
+  restart_write_blocks(&layout, sizeof(layout), 1, stream, "cooling layout",
+                       "cooling layout");
+
   restart_write_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                        stream, "cooling", "cooling function");
 }
@@ -2290,7 +2750,9 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  * @brief Restore a hydro_props struct from the given FILE as a stream of
  * bytes.
  *
- * Nothing to do beyond reading the structure from the stream.
+ * Stops if the layout record is missing, damaged or differs from this build.
+ * A file written before the record existed starts with the cooling struct:
+ * the length in the header of its first block differs from the record size.
  *
  * @param cooling the struct
  * @param stream the file stream
@@ -2298,6 +2760,43 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  */
 void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
                             const struct cosmology *cosmo) {
+  struct cooling_restart_layout stored, mine;
+  cooling_get_restart_layout(&mine);
+
+  /* The first member of a restart block header is the data length. */
+  const long start = ftell(stream);
+  size_t first_len = 0;
+  if (start >= 0 && fread(&first_len, sizeof(first_len), 1, stream) == 1 &&
+      first_len != sizeof(stored))
+    error(
+        "The restart file has no geajay layout record: it was written by a "
+        "SWIFT before the geajay layout record (network H_He_H2_D_ions) and "
+        "SWIFT refuses it. Start again from a snapshot or from the initial "
+        "conditions.");
+  if (start >= 0) fseek(stream, start, SEEK_SET);
+
+  restart_read_blocks(&stored, sizeof(stored), 1, stream, NULL,
+                      "cooling layout record: the file has no record or a "
+                      "damaged one");
+  if (memcmp(stored.magic, mine.magic, sizeof(mine.magic)) != 0)
+    error(
+        "The cooling layout record of the restart file is not a geajay "
+        "record: the restart file is corrupt or not from this cooling.");
+  if (stored.format != mine.format || stored.mode != mine.mode ||
+      stored.n_species != mine.n_species ||
+      stored.cooling_size != mine.cooling_size ||
+      stored.xpart_size != mine.xpart_size)
+    error(
+        "The restart file was written with another geajay cooling layout "
+        "(record format %d, network %d, %d species per particle, cooling "
+        "struct %zu bytes, particle cooling data %zu bytes). This SWIFT has "
+        "record format %d, network %d, %d species, %zu bytes, %zu bytes. "
+        "SWIFT refuses it. Start again from a snapshot or from the initial "
+        "conditions.",
+        stored.format, stored.mode, stored.n_species, stored.cooling_size,
+        stored.xpart_size, mine.format, mine.mode, mine.n_species,
+        mine.cooling_size, mine.xpart_size);
+
   restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
 

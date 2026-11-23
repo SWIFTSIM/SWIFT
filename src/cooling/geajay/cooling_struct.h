@@ -56,17 +56,28 @@ struct cooling_xpart_data {
   float DI_frac;
   float DII_frac;
   float HDI_frac;
+
+#if COOLING_GEAJAY_MODE >= 4
+  /* primordial chemistry >= 4 */
+  float DM_frac;
+  float HDII_frac;
+  float HeHII_frac;
+#endif  // MODE >= 4
+
 #endif  // MODE >= 3
 
 #endif  // MODE >= 2
 
-  /*! Cosmic-ray value, proper: ionisation rate per H (s^-1) or energy
-   * density (eV cm^-3), as GeajayCooling:cosmic_ray_input says. The cooling
-   * only reads it; a cosmic-ray source (e.g. supernova injection) writes it. */
+  /*! Cosmic-ray energy density, proper, eV cm^-3. Used only with
+   * GeajayCooling:cosmic_ray_source: per_particle; 0 at the start. The cooling
+   * only reads it. The module that injects writes it with
+   * cooling_set_cosmic_ray_energy_density() and depletes it. */
   float cosmic_ray_value;
 
   /*! Cosmic-ray energy loss rate of the last solve, eV cm^-3 s^-1, proper:
-   * NaN after a failed solve; not subtracted from cosmic_ray_value. */
+   * NaN after a failed solve; not subtracted from cosmic_ray_value. Read it
+   * with cooling_get_cosmic_ray_energy_loss_rate(), which returns 0 after a
+   * failed solve. */
   float cosmic_ray_energy_loss_rate;
 
 #endif  // MODE >= 1

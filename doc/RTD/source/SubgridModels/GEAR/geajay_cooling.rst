@@ -49,8 +49,10 @@ Table, background and metals
    * - ``cloudy_table_file``
      - Name of the Cloudy table.
    * - ``primordial_chemistry_network``
-     - (optional) Primordial chemistry network: ``tabulated``, ``H_He``, ``H_He_H2`` or ``H_He_H2_D``
-       (or 0 to 3), not above the network selected at configure time (default: that network).
+     - (optional) Primordial chemistry network: ``tabulated``, ``H_He``, ``H_He_H2``, ``H_He_H2_D`` or
+       ``H_He_H2_D_ions`` (or 0 to 4), not above the network selected at configure time (default: that
+       network). ``H_He_H2_D_ions`` adds D-, HD+ and HeH+ (15 species per particle, snapshot fields
+       ``DM``, ``HDII`` and ``HeHII``) and needs ``--with-cooling=geajay_4``.
    * - ``with_uv_background``
      - Enable or not the UV background.
    * - ``redshift``
@@ -72,7 +74,7 @@ Table, background and metals
        the value of ``GrackleCooling:maximal_density_Hpcm3``. Zero or negative: no cap (default: -1).
    * - ``hydrogen_mass_fraction``
      - (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's:
-       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table: the tables of the
+       0.76 in networks 1 to 4. In network 0 it is X of ``/Composition`` of the table: the tables of the
        geajay tools are built at X = 0.7614 (He/H 0.0789). Other tables, for example the SWIFT example
        table ``CloudyData_UVB=HM2012.h5``, carry their own composition, and network 0 takes the X of the
        table (0.715768 for a table without a ``/Composition`` group). Network 0 refuses any other value
@@ -88,7 +90,7 @@ Solver
    * - Key
      - Meaning
    * - ``solver``
-     - (optional) Solver of networks 1 to 3: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the
+     - (optional) Solver of networks 1 to 4: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the
        geajay default).
    * - ``max_substeps``
      - (optional) Maximal number of sub-steps of one solve, or 0 for the geajay default: 10000 x 0.1 /
@@ -104,6 +106,12 @@ Solver
    * - ``cheap_energy_update``
      - (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order
        (default: the geajay default, 1).
+   * - ``with_radiative_cooling``
+     - (optional) 1 or 0. With 0 the chemistry network still evolves, but the library does not change
+       the energy: the cheap solver skips its energy update and the accurate solver zeroes the energy
+       rate. The key holds the internal energy, not exactly the temperature: the mean molecular weight
+       changes with the H\ :sub:`2` formation. The SWIFT floors (minimal temperature, CMB floor) still act.
+       Other values stop the run (default: 1).
    * - ``accurate_relative_tolerance``
      - (optional) Relative tolerance of the accurate solver, in [1e-12, 1e-2] (default: the geajay
        default, 1e-6).
@@ -190,9 +198,21 @@ attenuation, the same length also sets the dust column of the backgrounds.
 Backgrounds
 -----------
 
-With ``background_mode`` ``grackle`` the cooling passes the library value of
-``interstellar_radiation_field`` (1.7 Habing) for every particle. With ``per_band`` it passes 0, the
-local field only, to which the background G\ :sub:`0` is added.
+There is no default far-UV field G\ :sub:`0`. With ``background_mode`` ``grackle`` the key
+``isrf_habing`` gives one constant G\ :sub:`0` [Habing] for every particle. If it is unset and a term
+reads G\ :sub:`0` (``photoelectric_heating_model`` above ``none``, ``dust_recombination_cooling``,
+``dust_model`` ``basic`` or ``h2_formation_on_dust``), the run stops at start-up. Set 1.7 for the
+solar neighbourhood, or 0 for no field. Unset with no such term is 0. With ``per_band`` the cooling
+passes 0, the local field only, to which the background G\ :sub:`0` is added, and ``isrf_habing`` must
+stay unset.
+
+With ``GEARFeedback:with_interstellar_radiation_field`` on, the cooling solve reads the G\ :sub:`0` of
+each particle from the ISRF module, not ``isrf_habing``. The ISRF turns ``dust_model`` ``basic`` on, so
+with ``background_mode`` ``grackle`` the key ``isrf_habing`` is still required, but the solve does not
+read it.
+
+A constant G\ :sub:`0` and a constant Lyman-Werner background (``lw_background_j21``) are independent
+settings: the cooling does not tie one to the other, so choose consistent values.
 
 .. list-table::
    :header-rows: 1
@@ -214,6 +234,15 @@ local field only, to which the background G\ :sub:`0` is added.
      - (optional) Constant Lyman-Werner background J21 (Grackle ``LWbackground_intensity``); negative:
        the library default. Above 0 it replaces the table k31 and adds to
        ``rt_h2_dissociation_rate_per_s`` (default: -1).
+   * - ``lw_background_sawtooth_suppression``
+     - (optional) 0 or 1. Lowers the Lyman-Werner background of the table before reionisation, as in
+       Grackle. Needs ``with_uv_background`` 1 and the table k31 (``lw_background_model``
+       ``uv_table``); the library stops the run otherwise (default: 0).
+   * - ``uv_background_redshift_on``, ``uv_background_redshift_full_on``,
+       ``uv_background_redshift_drop``, ``uv_background_redshift_off``
+     - (optional) Redshifts where the UV background switches on, is fully on, starts to drop and
+       switches off. Read only when a UV table is loaded: ``with_uv_background`` 1, or a ``uv_table`` model under ``background_mode`` ``per_band``. Unset (-99999): the redshift range of the
+       Cloudy table, the last redshift for the first two and the first for the others (default: unset).
    * - ``isrf_background_model``
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0`: ``default``,
        ``none``, ``constant`` or ``uv_table`` (``G0_habing`` of a UV rates file, log-linear in 1 + z;
@@ -222,8 +251,16 @@ local field only, to which the background G\ :sub:`0` is added.
    * - ``isrf_background_habing``
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0` of the model
        ``constant`` [Habing] (default: -1, unset).
+   * - ``isrf_habing``
+     - (optional) Constant G\ :sub:`0` of every particle [Habing], 0 or above. Unset (default): the run
+       stops at start-up if a term reads G\ :sub:`0`, else G\ :sub:`0` is 0. Not read with
+       ``background_mode`` ``per_band`` (setting it there stops the run).
    * - ``isrf_from_field``
-     - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``) (default: 0).
+     - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``). The module does
+       not fill that field yet (it stays 0): with ``background_mode`` ``grackle`` the value 1 stops the
+       run, use ``isrf_habing``. With ``per_band``, ``dust_background_attenuation`` ``per_band`` and a
+       G\ :sub:`0` background, the value must be 1: the library applies the dust attenuation of the
+       photoelectric heating only on the field path, and refuses 0 (default: 0).
    * - ``uv_rates_file``
      - (optional) Read only with ``background_mode`` ``per_band``. HDF5 file whose ``/UVBRates`` is the
        UV background, for example an FG20 file; the metal table always comes from ``cloudy_table_file``.
@@ -315,9 +352,11 @@ Heating and rates from the parameter file
    * - ``rt_h2_dissociation_rate_per_s``
      - (optional) H\ :sub:`2` dissociation rate [1/s].
    * - ``volumetric_heating_rates_cgs``
-     - (optional) Volumetric heating rate in cgs [erg/s/cm\ :sup:`3`].
+     - (optional) Volumetric heating rate in cgs [erg/s/cm\ :sup:`3`]. A finite number of 0 or more;
+       a negative rate (extra cooling) stops the run. Not together with ``specific_heating_rates_cgs``.
    * - ``specific_heating_rates_cgs``
-     - (optional) Specific heating rate in cgs [erg/s/g].
+     - (optional) Specific heating rate in cgs [erg/s/g]. A finite number of 0 or more; a negative rate
+       stops the run.
 
 Molecules and dust
 ------------------
@@ -341,20 +380,24 @@ Molecules and dust
        recombination cooling on grains. It reads the metal mass fraction of each particle to compute
        the dust-to-gas ratio (default: ``none``).
    * - ``dust_to_gas_model``
-     - (required, no default) Dust-to-gas ratio as a function of the metallicity: ``linear`` (D =
-       ``reference_dust_to_gas_ratio`` Z / Z\ :sub:`sun`) or ``remy_ruyer_2014`` (broken power law of
-       Remy-Ruyer et al. 2014, linear above its transition). Needs a dust switch
-       (``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled``, ``dust_recombination_cooling``
-       ``enabled`` or a ``photoelectric_heating_model`` above ``none``): without one,
-       ``remy_ruyer_2014`` stops the run. The library has a third value, ``from_field`` (2), that takes
+     - (required with a dust switch, no default) Dust-to-gas ratio as a function of the metallicity:
+       ``linear`` (D = ``reference_dust_to_gas_ratio`` Z / Z\ :sub:`sun`) or ``remy_ruyer_2014``
+       (broken power law of Remy-Ruyer et al. 2014, linear above its transition). A dust switch is
+       ``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled``, ``dust_recombination_cooling``
+       ``enabled``, a ``photoelectric_heating_model`` above ``none`` or ``dust_background_attenuation``
+       ``per_band``. The run stops if a dust switch is on and the key is absent. With no dust switch
+       the key may be absent, and ``remy_ruyer_2014`` stops the run. The library does not count the
+       attenuation as a dust switch. With the attenuation as the only switch, the module computes the
+       attenuation column with the law of the key, ``linear`` or ``remy_ruyer_2014``, and gives
+       ``linear`` to the library, which reads no dust density in that case.
+       The library has a third value, ``from_field`` (2), that takes
        the dust density from a particle field. SWIFT has no such field and refuses it.
-       The run stops if the key is absent.
    * - ``reference_dust_to_gas_ratio``
      - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run).
    * - ``photoelectric_heating_model``
      - (optional) Photoelectric heating of the dust: ``default`` (-1, ``constant_efficiency`` with
        ``dust_model`` ``basic``, else ``none``), ``none`` (0), ``fixed_rate`` (1, the constant
-       ``photoelectric_heating_rate``), ``constant_efficiency`` (2, 0.05 G\ :sub:`0` x 1e-24 erg/s per
+       ``photoelectric_heating_rate``, scaled by G\ :sub:`0` / 1.7), ``constant_efficiency`` (2, 0.05 G\ :sub:`0` x 1e-24 erg/s per
        H atom, Wolfire et al. 1995 eq. 1), ``grain_charge_epsilon`` (3, an efficiency set by the grain
        charge, Bakes and Tielens 1994 eq. 43 with the coefficients of Wolfire et al. 2003 eq. 24) or
        ``density_epsilon`` (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and
@@ -363,7 +406,7 @@ Molecules and dust
        ``none``, because SWIFT passes the metal mass fraction of every particle (default: ``default``).
    * - ``photoelectric_heating_rate``
      - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
-       ratio [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
+       ratio and G\ :sub:`0` = 1.7 [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
        8.5e-26. The heating per volume is this rate times n\ :sub:`H` times D / D\ :sub:`ref`, where D
        is the dust-to-gas ratio from the metal mass fraction of each particle and
        D\ :sub:`ref` the reference ratio (default: -1).
@@ -374,9 +417,9 @@ Molecules and dust
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
        and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works
-       with ``dust_model`` ``none`` and with the network ``tabulated``. At the network ``H_He``
-       (``primordial_chemistry`` 1) the library refuses it with a start-up error, whatever
-       ``dust_model`` is. SWIFT does not check this itself (default: ``default``).
+       with ``dust_model`` ``none``. The networks ``tabulated`` (``primordial_chemistry`` 0) and ``H_He``
+       (``primordial_chemistry`` 1) have no H\ :sub:`2`: the library refuses the switch there with a
+       start-up error, whatever ``dust_model`` is. SWIFT does not check this itself (default: ``default``).
    * - ``h2_photodissociation_heating``
      - (optional) Enable/disable the heating by H\ :sub:`2` photodissociation (default: 0).
    * - ``compton_xray_heating``
@@ -384,6 +427,12 @@ Molecules and dust
        k\ :sub:`X` (T\ :sub:`x` - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
        ``Compton_xray_heating``, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3
        (default: 0).
+   * - ``case_b_recombination``
+     - (optional) Recombination case of the H and He recombination rates: ``A`` (0) or ``B`` (1)
+       (default: ``B``, which is not the library default ``A``).
+
+The adiabatic index that SWIFT was built with (``--with-adiabatic-index``) goes to geajay as
+``adiabatic_index``. At 5/3 the library value stays, so a default build changes no bit.
 
 Initial species
 ---------------
@@ -392,13 +441,42 @@ Each key is (optional): the initial number density ratio of one species to H. Th
 it is -1 (default: -1). The keys are ``initial_hii_to_h_ratio``, ``initial_hei_to_h_ratio``,
 ``initial_heii_to_h_ratio``, ``initial_heiii_to_h_ratio``, ``initial_di_to_h_ratio``,
 ``initial_dii_to_h_ratio``, ``initial_hm_to_h_ratio``, ``initial_h2i_to_h_ratio``,
-``initial_h2ii_to_h_ratio`` and ``initial_hdi_to_h_ratio``.
+``initial_h2ii_to_h_ratio``, ``initial_hdi_to_h_ratio``, ``initial_dm_to_h_ratio``,
+``initial_hdii_to_h_ratio`` and ``initial_hehii_to_h_ratio``. The last three need the network
+``H_He_H2_D_ions``. A species without a ratio starts at the mass fraction 1e-20.
+Each ratio is a number of that species per H nucleus of the gas, so H\ :sub:`2` holds two of them. HI takes the
+H nuclei that HII, H\ :sub:`-`, H\ :sub:`2`, H\ :sub:`2+`, HD, HD\ :sub:`+` and HeH\ :sub:`+` do not hold:
+that is 1 - (HII + HM + 2 H2I + 2 H2II + HDI + HDII + HeHII) of the ratios. The run stops at start-up if that is below 0.
+
+Restart files
+-------------
+
+A restart file starts with a record of the geajay layout: the network, the number of species per
+particle and the sizes of the cooling structures. SWIFT stops with a message if the record differs
+from the running build, or if the file has no record. Restart files written before the record
+existed (before the network ``H_He_H2_D_ions``) are refused in every network: start again from a
+snapshot or from the initial conditions.
+
+With the network ``H_He_H2_D`` (``primordial_chemistry_network`` 3) geajay holds the total deuterium
+at a constant D to H mass ratio and rescales D, D\ :sub:`+` and HD to it at every call. With the
+network ``H_He_H2_D_ions`` (4) it rescales D\ :sup:`-` and HD\ :sub:`+` too, because each holds one
+D atom (HeH\ :sub:`+` holds none). The key
+``deuterium_to_hydrogen_mass_ratio`` (optional) sets that ratio. The value -1 is the library value,
+6.8e-5 by mass, which is 3.4e-5 by number. A D atom weighs 2 H atoms, so the initial ratios, which are
+number ratios to H, give the mass ratio 2 (``initial_di_to_h_ratio`` + ``initial_dii_to_h_ratio`` +
+``initial_hdi_to_h_ratio``), plus ``initial_dm_to_h_ratio`` + ``initial_hdii_to_h_ratio`` inside the
+bracket with the network 4. An unset ``initial_di_to_h_ratio`` counts as the library total, so when only
+another initial D ratio is set the run stops and asks for ``initial_di_to_h_ratio`` too. The run
+stops at start-up if that mass ratio differs from ``deuterium_to_hydrogen_mass_ratio`` by more than a
+relative 1e-6. For example, ``initial_di_to_h_ratio: 4e-5`` alone needs
+``deuterium_to_hydrogen_mass_ratio: 8e-5``. With a network below 3 a value other than -1 stops the run.
 
 Cosmic rays
 -----------
 
 With ``cosmic_rays`` ``reduced`` the fields ``CosmicRayValues`` and ``CosmicRayEnergyLossRates`` join
-the snapshot, but ``swift -o`` does not list them.
+the snapshot, but ``swift -o`` does not list them. ``CosmicRayValues`` is not written with
+``cosmic_ray_source`` ``fire2``.
 
 .. list-table::
    :header-rows: 1
@@ -409,13 +487,22 @@ the snapshot, but ``swift -o`` does not list them.
    * - ``cosmic_rays``
      - (optional) Cosmic-ray network: ``off`` or ``reduced`` (needs ``primordial_chemistry_network``
        ``H_He`` or above) (default: ``off``).
+   * - ``cosmic_ray_source``
+     - (optional) Read only with ``cosmic_rays`` ``reduced``. Where the cosmic-ray value of a particle
+       comes from: ``constant``, ``per_particle`` or ``fire2`` (default: ``constant``). The three modes
+       exclude each other; see below.
    * - ``cosmic_ray_input``
-     - (optional) Read only with ``cosmic_rays`` ``reduced``. Meaning of the per-particle value:
-       ``ionisation_rate`` (s\ :sup:`-1` per H), ``energy_density`` (eV cm\ :sup:`-3`) or ``constant``
-       (default: ``ionisation_rate``).
+     - (optional) Read only with ``cosmic_rays`` ``reduced``. Meaning of the value with the source
+       ``constant``: ``ionisation_rate`` (s\ :sup:`-1` per H), ``energy_density`` (eV cm\ :sup:`-3`) or
+       ``constant`` (default: ``ionisation_rate``). The sources ``per_particle`` and ``fire2`` use
+       ``energy_density``: the key may be absent or ``energy_density``, any other value stops the run.
    * - ``cosmic_ray_initial_value``
-     - Read only with ``cosmic_rays`` ``reduced`` and a per-particle input (``ionisation_rate`` or
-       ``energy_density``), then required. Start value of every particle.
+     - Read only with ``cosmic_rays`` ``reduced``, the source ``constant`` and a value input
+       (``ionisation_rate`` or ``energy_density``), then required. The value of every particle for the
+       whole run, in the unit of the input.
+   * - ``cosmic_ray_fire2_energy_density``
+     - Read only with the source ``fire2``, then required, no default. The fixed cosmic-ray energy
+       density e\ :sub:`cr` [eV cm\ :sup:`-3`], finite and above 0.
    * - ``cosmic_ray_constant_rate``
      - Read only with ``cosmic_ray_input`` ``constant``, then required. Primary ionisation rate per H
        [s\ :sup:`-1`].
@@ -436,9 +523,115 @@ the snapshot, but ``swift -o`` does not list them.
      - (optional) Read only with ``cosmic_ray_heating`` ``fixed_energy``. Heat per ionisation [eV]
        (default: 20).
 
+Source of the cosmic-ray value
+++++++++++++++++++++++++++++++
+
+``cosmic_ray_source`` chooses one of three modes.
+
+``constant``
+   One value for the whole run, ``cosmic_ray_initial_value`` (or ``cosmic_ray_constant_rate`` with the
+   input ``constant``). Nothing is stored in the particles; ``CosmicRayValues`` holds the value of the run.
+
+``per_particle``
+   Each particle stores a cosmic-ray energy density [eV cm\ :sup:`-3`, proper]. It is 0 at the start:
+   no parameter sets it. The cooling only reads it. It never changes the stored value and does not
+   subtract the energy that the cosmic rays lose in the cooling. The module that injects the cosmic
+   rays (for example supernova feedback) writes the value and depletes it. The module has no decay and
+   no transport of the stored value. The value is written to the snapshots as ``CosmicRayValues``.
+
+``fire2``
+   The value is computed at each call from the local hydrogen number density,
+   e\ :sub:`cr` n\ :sub:`H` / (0.01 + n\ :sub:`H`), with e\ :sub:`cr` from
+   ``cosmic_ray_fire2_energy_density`` and the factor of ``geajay_cosmic_ray_density_factor_fire2()``
+   (Hopkins et al. 2018, eq. B25). It is the energy density passed to the library, so the input is
+   ``energy_density``. Here n\ :sub:`H` = X (:math:`\rho` - :math:`\rho_Z`) / m\ :sub:`p` [cm\ :sup:`-3`], with
+   X the hydrogen mass fraction of the metal-free gas, :math:`\rho` the physical density and :math:`\rho_Z` the
+   metal density. In a cosmological run the density is the physical one, not the comoving one, and
+   e\ :sub:`cr` is a proper energy density in eV cm\ :sup:`-3`. In a cosmological run the value is 0
+   unless the gas density :math:`\rho` is above 1000 times the mean baryonic density of the Universe at the
+   current redshift (Hopkins et al. 2018, appendix B, eq. B25; the same comparison of mass densities as the
+   FIRE-2 code). The cut is always applied and has no key: it moves with (1+z)\ :sup:`3`, and in n\ :sub:`H`
+   it is about 1.9e-4 cm\ :sup:`-3` at z = 0 for :math:`\rho_b` = 4.2e-31 g cm\ :sup:`-3`. Without cosmology
+   there is no mean density and no cut. Nothing is stored. The value does not depend on the
+   per-particle value and is not multiplied by it.
+
+With ``per_particle`` and ``fire2`` the library needs ``cosmic_ray_rate_per_energy_density``,
+``cosmic_ray_coulomb_loss_coefficient`` and ``cosmic_ray_hadronic_loss_coefficient`` (input
+``energy_density``). ``cosmic_ray_initial_value`` stops the run with these two modes, and
+``cosmic_ray_fire2_energy_density`` stops it with the others. The mode ``constant`` is the default.
+
+Functions for the injecting module
+++++++++++++++++++++++++++++++++++
+
+These functions exist only with ``--with-cooling=geajay_N``: a module that calls them needs
+``#ifdef COOLING_GEAJAY``. They are declared in ``src/cooling/geajay/cooling.h`` and take the
+``struct xpart`` of the particle.
+
+.. code-block:: c
+
+   void cooling_set_cosmic_ray_energy_density(struct xpart *xp, double energy_density);
+   double cooling_get_cosmic_ray_energy_density(const struct xpart *xp);
+   double cooling_get_cosmic_ray_energy_loss_rate(const struct xpart *xp);
+
+``cooling_set_cosmic_ray_energy_density()`` writes the stored energy density [eV cm\ :sup:`-3`, proper].
+The value must be finite, at least 0 and fit in a float. The run stops if the source is not
+``per_particle``: the value would never be read. ``cooling_cosmic_ray_source_is_per_particle()`` tells
+which source the run has. The cooling reads the value at its next call. The stored value is part of the
+restart files, so a restart keeps it. It is not read from the initial conditions: ``CosmicRayValues`` is
+only written to the snapshots, so a run started from a snapshot, even one that holds the field, begins at 0.
+
+``cooling_get_cosmic_ray_energy_density()`` returns the stored value.
+
+``cooling_get_cosmic_ray_energy_loss_rate()`` returns the energy that the cosmic rays lost per volume
+and time in the last solve of the particle, Coulomb and hadronic losses, [eV cm\ :sup:`-3` s\ :sup:`-1`,
+proper], averaged over the step. It is 0 before the first solve, with an input other than
+``energy_density`` and after a failed solve, which skips the step. The snapshot field
+``CosmicRayEnergyLossRates`` holds the same number, except NaN after a failed solve. The cooling does not
+subtract it from the stored density.
+
+A feedback module uses them in its own time-step loop. At an injection it adds the new energy density:
+
+.. code-block:: c
+
+   const double e_old = cooling_get_cosmic_ray_energy_density(xp);
+   cooling_set_cosmic_ray_energy_density(xp, e_old + e_injected);
+
+After a cooling step it depletes the density by what was used. The step ``dt_s`` is the one that the
+cooling averaged the loss over, in seconds: the argument ``dt`` of ``cooling_cool_part()``, which is the
+physical step in a cosmological run (not ``dt_therm``), times
+``units_cgs_conversion_factor(us, UNIT_CONV_TIME)``. The setter MUST NOT run while the cooling task of the
+same particle runs: the stored value has no lock. The injector can also apply its own decay or transport:
+
+.. code-block:: c
+
+   if (cooling_cosmic_ray_source_is_per_particle()) {
+     const double loss = cooling_get_cosmic_ray_energy_loss_rate(xp);
+     const double e = cooling_get_cosmic_ray_energy_density(xp);
+     cooling_set_cosmic_ray_energy_density(xp, fmax(0., e - loss * dt_s));
+   }
+
 Output
 ++++++
 
 The snapshots hold ``CoolingTimes`` and ``CoolingRates``. To switch them off, set
 ``Snapshots:select_output_on: 1`` and ``CoolingTimes_Gas: off``, ``CoolingRates_Gas: off`` under
 ``Default:`` in the output selection file.
+
+With a dust switch on (see ``dust_to_gas_model``) the snapshots also hold ``DustToGasRatios``, the
+ratio of dust mass to gas mass of each gas particle for the dust law of ``dust_to_gas_model``. The
+module computes it at the write from the metal mass fraction of the particle, with the library
+function that the cooling uses, so it follows ``reference_dust_to_gas_ratio``. It is 0 for a particle
+without metals. Nothing is stored in the particle and the cooling does not read the field. Without a
+dust switch the field is not written. To switch it off, set ``DustToGasRatios_Gas: off`` under
+``Default:`` in the output selection file. The test ``tests/testGeajayDustToGasRatios.sh`` checks
+both laws against the fit of Remy-Ruyer et al. 2014.
+
+Example with network 4
+++++++++++++++++++++++
+
+``examples/Cooling/Network4Box`` runs a uniform box of primordial gas at n\ :sub:`H` = 464 cm\ :sup:`-3` and
+30 K for one free-fall time, with cosmic rays at 10\ :sup:`-17` s\ :sup:`-1` per H, once with the network
+``H_He_H2_D`` and once with ``H_He_H2_D_ions``. It needs ``--with-cooling=geajay_4``. The script
+``compareNetworks.py`` prints the relative difference of the H2 fraction, the HD to H ratio and the
+temperature. With cosmic rays the ions change the first two by more than 20 percent. Without them
+(``run.sh --no-cosmic-rays``) the change stays below 2 percent.

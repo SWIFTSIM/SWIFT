@@ -3,8 +3,8 @@
 # Test of the GeajayCooling dust and photoelectric keys: which values the
 # start-up accepts or refuses, and the "Dust" cooling rate of the first snapshot.
 #
-# Needs a SWIFT built with --with-cooling=geajay_X and a libgeajay that refuses
-# h2_formation_on_dust at the network H_He (geajay commit 4dc6dd9a), so it is
+# Needs a SWIFT built with --with-cooling=geajay_3 (a network with H2) and a libgeajay that refuses
+# h2_formation_on_dust at the networks tabulated and H_He (geajay commit a1423e46), so it is
 # not part of "make check". Usage:
 #
 #   tests/testGeajayPhotoelectricKey.sh <swift binary> <fixture dir> <work dir>
@@ -23,6 +23,7 @@ unset LD_LIBRARY_PATH
 failures=0
 metallicity=""
 no_dtg_key=0
+no_g0_key=0
 
 # run <name> <extra GeajayCooling lines>: leaves the exit code in $status
 run() {
@@ -33,10 +34,16 @@ run() {
   mkdir -p "$dir"
   cp "$fixture"/coolingBox.hdf5 "$fixture"/*.h5 "$dir"/
   # The new lines go right under the GeajayCooling: header. The key
-  # dust_to_gas_model is required: the fixture value is replaced by the one of
-  # the case, or by linear when the case sets none. A case with $no_dtg_key
-  # set to 1 leaves the key out.
+  # dust_to_gas_model is required with a dust switch on: the fixture value is
+  # replaced by the one of the case, or by linear when the case sets none. A
+  # case with $no_dtg_key set to 1 leaves the key out. The same holds for
+  # isrf_habing (G_0 has no default): grackle cases get 1.7 unless they set it
+  # or $no_g0_key is 1; a per_band case takes G_0 from its background.
   local extra="$*"
+  if [ "$no_g0_key" != 1 ] && [[ "$extra" != *isrf_habing* ]] &&
+    [[ "$extra" != *background_mode:\ per_band* ]]; then
+    extra="isrf_habing: 1.7${extra:+;}$extra"
+  fi
   if [ "$no_dtg_key" != 1 ] && [[ "$extra" != *dust_to_gas_model* ]]; then
     extra="dust_to_gas_model: linear${extra:+;}$extra"
   fi
@@ -90,6 +97,16 @@ expect_ok number_4 photoelectric_heating=4 "$basic;photoelectric_heating_model: 
 expect_ok default_name photoelectric_heating=2 "$basic;photoelectric_heating_model: default"
 expect_ok no_dust_none photoelectric_heating=0 "photoelectric_heating_model: none"
 
+no_g0_key=1
+expect_refused g0_unset_dust "geajay has no default far-UV field" "$basic"
+expect_refused g0_unset_fixed_rate "geajay has no default far-UV field" "photoelectric_heating_model: fixed_rate"
+expect_ok g0_unset_no_reader interstellar_radiation_field=0 ""
+expect_ok g0_zero_dust interstellar_radiation_field=0 "$basic;isrf_habing: 0"
+no_g0_key=0
+expect_ok g0_set interstellar_radiation_field=1.7 "$basic"
+expect_ok g0_value interstellar_radiation_field=5 "$basic;isrf_habing: 5"
+expect_refused g0_negative "isrf_habing must be finite and >= 0" "$basic;isrf_habing: -1"
+
 expect_refused bad_name "photoelectric_heating_model" "$basic;photoelectric_heating_model: bogus"
 expect_refused bad_high "must be default (-1), none (0)" "$basic;photoelectric_heating_model: 5"
 expect_refused bad_low "must be default (-1), none (0)" "$basic;photoelectric_heating_model: -2"
@@ -101,7 +118,7 @@ expect_ok pe_no_dust photoelectric_heating=2 "photoelectric_heating_model: const
 expect_ok pe_fixed_no_dust photoelectric_heating=1 "photoelectric_heating_model: fixed_rate"
 expect_ok pe_density_no_dust photoelectric_heating=4 "photoelectric_heating_model: density_epsilon"
 expect_refused h2dust_network_1 "h2_formation_on_dust is enabled with the network H_He" "primordial_chemistry_network: H_He;h2_formation_on_dust: enabled"
-expect_ok h2dust_network_0 h2_on_dust=1 "primordial_chemistry_network: tabulated;h2_formation_on_dust: enabled"
+expect_refused h2dust_network_0 "h2_formation_on_dust is enabled with the network tabulated" "primordial_chemistry_network: tabulated;h2_formation_on_dust: enabled"
 expect_refused h2dust_network_1_basic "h2_formation_on_dust is enabled with the network H_He" "primordial_chemistry_network: H_He;$basic;h2_formation_on_dust: enabled"
 expect_ok remy_with_pe dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;photoelectric_heating_model: constant_efficiency"
 expect_ok remy_with_h2dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;h2_formation_on_dust: enabled"
@@ -135,8 +152,18 @@ expect_refused ref_ratio_inf "reference_dust_to_gas_ratio must be -1" "reference
 expect_refused rate_nan "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: nan"
 
 no_dtg_key=1
-expect_refused dtg_missing "GeajayCooling:dust_to_gas_model is required" ""
+expect_ok dtg_missing_no_dust dust_to_gas_model=0 ""
+expect_ok dtg_missing_switches_off dust_to_gas_model=0 "dust_model: none;h2_formation_on_dust: disabled;dust_recombination_cooling: disabled;photoelectric_heating_model: none"
+expect_refused dtg_missing "GeajayCooling:dust_to_gas_model is required" "$basic"
+expect_refused dtg_missing_h2dust "GeajayCooling:dust_to_gas_model is required" "h2_formation_on_dust: enabled"
+expect_refused dtg_missing_recomb "GeajayCooling:dust_to_gas_model is required" "dust_recombination_cooling: enabled"
+expect_refused dtg_missing_pe "GeajayCooling:dust_to_gas_model is required" "photoelectric_heating_model: constant_efficiency"
+
+# The per_band dust attenuation counts as a dust switch of the module.
+attenuation_only="background_mode: per_band;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;h2_shielding_length_method: given_length;dust_background_attenuation: per_band"
+expect_refused dtg_missing_attenuation "GeajayCooling:dust_to_gas_model is required" "$attenuation_only"
 no_dtg_key=0
+expect_ok dtg_given_attenuation dust_to_gas_model=0 "$attenuation_only"
 expect_refused from_field_name "SWIFT has no per-particle dust field" "dust_to_gas_model: from_field"
 expect_refused from_field_values "linear (0) or remy_ruyer_2014 (1), got 2" "dust_to_gas_model: from_field"
 
