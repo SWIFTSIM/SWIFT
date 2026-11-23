@@ -1055,6 +1055,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "sets the interval a star's first HII pass issues ahead: <= 0 "
           "silently zeroes every star's first-pass budget.",
           fp->HII_rebuild_floor_Myr);
+    if (fp->HII_rebuild_time > 0.f &&
+        fp->HII_rebuild_floor_Myr > fp->HII_rebuild_time)
+      error(
+          "GEARFeedback:HII_rebuild_floor_Myr (%g) must not exceed "
+          "GEARFeedback:HII_rebuild_time_Myr (%g): the budget of a pass is "
+          "capped at twice the rebuild time, so the photons of a longer "
+          "floor interval are lost.",
+          fp->HII_rebuild_floor_Myr, fp->HII_rebuild_time);
 
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *
