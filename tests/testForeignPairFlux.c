@@ -215,6 +215,11 @@ static void init_particle(struct part *p, struct xpart *xp, const double m,
   for (int k = 0; k < 3; k++) p->v[k] = random_uniform(-1., 1.);
   p->flux.dt = active ? 1e-3f : -1.f;
   p->time_bin = active ? ACTIVE_BIN : INACTIVE_BIN;
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* The FVPM chemistry flux exchange reads a negative flux.dt as inactive */
+  p->chemistry_data.flux.dt = active ? 1e-3f : -1.f;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_drift = TI_CURRENT;
   p->ti_kick = TI_CURRENT;
