@@ -353,8 +353,12 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   if (nr_ranks > 1)
     error(
         "The GEAR FVPM chemistry does not support runs on more than one MPI "
-        "rank yet: a local inactive particle gets no flux from a foreign "
-        "active neighbour, so the metal mass is not conserved.");
+        "rank yet. With SPH (e.g. SPHENIX), a local inactive particle gets no "
+        "flux from a foreign active neighbour, so the metal mass is not "
+        "conserved. "
+        "With the positivity limiter, the flux uses the theta of a foreign "
+        "donor, and no task sends theta between the prep and the apply "
+        "pass.");
 #endif
 
   /***************************************************************************/
