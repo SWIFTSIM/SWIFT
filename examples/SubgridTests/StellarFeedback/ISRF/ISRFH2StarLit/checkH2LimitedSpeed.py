@@ -29,20 +29,38 @@ delay, then has a column between n_min r and n_max r, with n_min and n_max the e
 of the read domain. The pooled transmission is a mean of the shares' transmissions, so it lies
 between the fit at the two columns. The bar of a particle is the larger of the two logarithmic
 distances, plus the float rounding of the fit (as in `checkH2Attenuation.py starlit`), plus the
-change of its own ratio over the last snapshot interval (the light is steady only to that
-change). The delay of the light does not enter the bar. It enters one premise: every read particle
-is lit, and its ratio changes by less than its own column bar over the last two intervals.
+largest change of its own ratio over the last two snapshot intervals (the light is steady only to
+that change). The delay of the light does not enter the bar. It enters one premise: every read
+particle is lit, and its ratio changes by less than its own column bar over the last two intervals.
 
-Bar of `ripple`. A star that steps every 8 gas steps must give the same mean light as one that steps
-every gas step, and no modulation at the star-step period.
-- Energy: the shell mean of the own LW energy, averaged over the last 16 snapshots, in the
-  coarse run over the fine run. Energy conservation makes the ratio 1 over a long time. A mean over
-  a finite window differs from the long-time mean by at most the peak-to-peak range of the
-  series, so
-  the bar of ln(ratio) is the sum of the two runs' peak-to-peak ranges over their window means.
-- Ripple: amplitude of the Fourier component of the coarse series at the star-step period,
-  over two periods. Its bar is the half peak-to-peak range of the fine run in the same shell and
-  window: the fine run has no star-step period, so that variation is what the box shows by itself.
+Bar of `ripple`. This is a differential test: the reference is the same box with a star that steps
+every gas step, run with the same binary. It sees only faults that depend on the star step. A star
+that steps every 8 gas steps must give the same mean light as one that steps every gas step, and
+no modulation at the star-step period. Three lines, each on shell means of the own LW energy over
+the last 16 snapshots (two star steps):
+- Energy: the time mean of the coarse run over that of the fine run must be 1. Energy
+  conservation makes the long-time ratio 1. The bar is the peak-to-peak range of the fine run
+  over its window mean: the fine run shows how far a window mean of this box can lie from the
+  long-time mean. The range of the coarse run is not in the bar, so the run under test cannot
+  widen its own tolerance.
+- Noise: the peak-to-peak range of the coarse run must not exceed that of the fine run. A coarse
+  star adds light at the star-step period only, and the ripple line gates that period. Any further
+  variation in the coarse run is not explained by the star step.
+- Ripple: the amplitude of the Fourier component of the coarse series at the star-step period over
+  two periods must stay under the half peak-to-peak range of the fine run in the same shell.
+The noise and ripple bars are a floor read from the control run, provisional until the operator
+rules on card h2_flimit_coarse_bars_1: no mechanism gives the size of the variation of a correct
+run.
+
+Both legs must come from the same binary: the Revision, the configure line and the geajay
+revision of the two start-up logs are compared and a difference voids the run. `limited` prints
+the revisions it finds and cannot check them against an expected value.
+
+Far-light warning. The start-up log of `cap_coarse` and `cap_half` prints that more than 3 per cent
+of the light was booked in far arrival cells. That limit was chosen for light that crosses a
+smoothing length in 2 to 3 gas steps. At 0.99 c the light needs about 2.8 gas steps, at 0.5 c about
+5.6, and a coarse star books its light over 8 gas steps, so these legs lie outside that range. The
+warning does not change the steady transmission that `limited` reads.
 """
 
 import argparse
@@ -65,13 +83,11 @@ Report = base.Report
 UNIT_PC_CGS = 3.0856775814913673e18
 HYDROGEN_MASS_FRACTION = 0.76
 H2_FLOAT_REL = 2.0**-23
-ENERGY_REL = 1e-6
 PLANT_SIZE = 0.05
 STAR_PERIOD_STEPS = 8
 STAR_STEP_KEY = "Stars:max_timestep_young_Myr"
 WINDOW = 2 * STAR_PERIOD_STEPS
 SHELL_WIDTH_IN_H = 0.5
-REQUIRED_LIT = base.REQUIRED_GAS + base.REQUIRED_OWN
 REQUIRED_SERIES = (
     "ParticleIDs",
     "Coordinates",
@@ -128,6 +144,50 @@ def premise_parameters(params: Dict[str, str], rep: Report, log_path: str) -> No
     )
 
 
+BUILD_LINES = (
+    ("SWIFT revision", r"^\s*Revision:.*$"),
+    ("configure line", r"^\s*Config\. options:.*$"),
+    ("geajay revision", r"geajay version = .*$"),
+)
+
+
+def read_build(log_path: str) -> Dict[str, Optional[str]]:
+    """Return the build lines of a start-up log; a line that the log lacks is None."""
+    try:
+        text = open(log_path).read()
+    except OSError as err:
+        raise GateExit(EXIT_MISSING, f"start-up log {log_path} is missing: {err}")
+    out: Dict[str, Optional[str]] = {}
+    for name, pattern in BUILD_LINES:
+        found = re.search(pattern, text, re.MULTILINE)
+        out[name] = found.group(0).strip() if found else None
+    return out
+
+
+def premise_same_binary(log_a: str, log_b: str, rep: Report) -> None:
+    """Void the run when a build line that both logs hold differs; print what cannot be compared."""
+    a, b = read_build(log_a), read_build(log_b)
+    for name, _ in BUILD_LINES:
+        if a[name] is None or b[name] is None:
+            rep.info("binary", f"{name} is not in both logs: it cannot be checked")
+        elif a[name] != b[name]:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, the two legs differ in the {name}: {a[name]!r} and {b[name]!r}",
+            )
+        else:
+            rep.info("binary", f"{name} equal in both legs: {a[name][:100]}")
+
+
+def print_build(log_path: str, rep: Report) -> None:
+    """Print the build lines of one log; one leg has no expected value to compare with."""
+    for name, line in read_build(log_path).items():
+        shown = line[:100] if line else "not in the log"
+        rep.info(
+            "binary", f"{name}: {shown} (printed only, not checked against a reference)"
+        )
+
+
 def premise_frozen(first: dict, last: dict, h2_ratio: float, rep: Report):
     """Void the run unless H2 and the internal energy are bit-equal and H2 is the start value."""
     if not np.array_equal(first["ParticleIDs"], last["ParticleIDs"]):
@@ -176,7 +236,11 @@ def unsteady_term(
     """Return per particle the largest |ln| change of the own ratio over the given snapshots."""
     ratios = [own_ratio(e, d) for e, d in series]
     if any(np.any(r[lit] <= 0.0) for r in ratios):
-        raise GateExit(EXIT_VOID, "void run, a lit particle has no dissociating energy")
+        raise GateExit(
+            EXIT_VOID,
+            "void run, a read particle has no dissociating energy in one of the last three snapshots "
+            "(not yet lit, or the light is fully absorbed)",
+        )
     out = np.zeros(lit.shape)
     for a, b in zip(ratios[:-1], ratios[1:]):
         out = np.maximum(
@@ -217,9 +281,11 @@ def gate_limited(args: argparse.Namespace) -> int:
     fields = base.REQUIRED_GAS + base.REQUIRED_OWN
     last = base.load_snapshot(snapshot_path(run, last_index), fields)
     base.require_finite("last snapshot", **{k: last[k] for k in fields})
+    base.require_finite("first snapshot", **{k: first[k] for k in base.REQUIRED_GAS})
     base.check_box_faces(first)
     params = base.read_params(os.path.join(run, "used_parameters.yml"))
     premise_parameters(params, rep, os.path.join(run, "output.log"))
+    print_build(os.path.join(run, "output.log"), rep)
     base.calibrate_temperatures(first, last, params, rep)
 
     r, h, mask = base.probe_geometry(last, np.array(fix["star_kpc"]))
@@ -251,14 +317,14 @@ def gate_limited(args: argparse.Namespace) -> int:
     column = n_h2 * r
     exp = base.transmission(column, temp, dens)
     slope = base.log_slope(np.maximum(column, 1.0), temp, dens)
-    n_range = (
-        float(min(n_h2[mask].min(), base.h2_column_density(first)[mask].min())),
-        float(max(n_h2[mask].max(), base.h2_column_density(first)[mask].max())),
-    )
+    n_both = np.concatenate([n_h2[mask], base.h2_column_density(first)[mask]])
+    base.require_finite("n_H2 of the read domain", n_h2=n_both)
+    n_range = (float(np.min(n_both)), float(np.max(n_both)))
     float_term = (
         (r / np.maximum(h, 1e-300) + 2.0) * (2.0 + 2.0 * slope) * base.FLOAT32_EPS
     )
     column_bar = base.column_spread_bar(r, n_h2, mask, temp, dens, n_range) + float_term
+    base.require_finite("column bar", bar=column_bar[lit], unsteady=unsteady[lit])
     too_unsteady = lit & (unsteady > column_bar)
     if too_unsteady.any():
         raise GateExit(
@@ -304,6 +370,9 @@ def load_series(
     """Return the static fields, the own energies (snapshots x particles) and the snapshot times."""
     first = base.load_snapshot(
         snapshot_path(run, indices[0]), REQUIRED_SERIES + ("LWOwnSpecificEnergies",)
+    )
+    base.require_finite(
+        f"{run} static fields", **{k: first[k] for k in REQUIRED_SERIES[1:]}
     )
     energies, times = [], []
     for k in indices:
@@ -396,6 +465,12 @@ def shell_series(
             raise GateExit(
                 EXIT_VOID, f"void run, the shell {lo:.3g} to {hi:.3g} pc holds no gas"
             )
+        if np.any(energies[:, sel] <= 0.0):
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, a particle of the shell {lo:.3g} to {hi:.3g} pc is not lit in "
+                "every snapshot of the window",
+            )
         out[:, j] = (energies[:, sel] * volume[sel]).sum(axis=1) / volume[sel].sum()
     return out, edges
 
@@ -437,10 +512,12 @@ def plant_ripple(
 def gate_ripple(args: argparse.Namespace) -> int:
     """Check the light of a coarse star against the same box with a star that steps every gas step.
 
-    Premises (each a void run): the two legs differ in nothing but the star step (same particles,
-    same snapshot times); every gas particle steps in every step; the star of the coarse leg steps
-    every 8 gas steps and that of the fine leg every step; every particle of the shells is lit
-    during the whole window; the bars are finite.
+    Premises (each a void run): the parameters of the two legs differ in nothing but the star
+    step; the logs show the same SWIFT revision, configure line and geajay revision; H2 and the
+    internal energy of each leg are bit-equal between its first and last snapshot; the snapshots
+    hold the same particles at the same times; every gas particle steps in every step; the star of
+    the coarse leg steps every 8 gas steps and that of the fine leg every step; every particle of
+    the shells is lit in every snapshot of the window; every value read is finite.
     """
     rep = Report()
     coarse_dir, fine_dir = args.coarse, args.fine
@@ -454,6 +531,21 @@ def gate_ripple(args: argparse.Namespace) -> int:
         all_params[d] = base.read_params(os.path.join(d, "used_parameters.yml"))
         premise_parameters(all_params[d], rep, os.path.join(d, "output.log"))
     premise_same_runs(all_params[coarse_dir], all_params[fine_dir], rep)
+    premise_same_binary(
+        os.path.join(coarse_dir, "output.log"),
+        os.path.join(fine_dir, "output.log"),
+        rep,
+    )
+    for d in (coarse_dir, fine_dir):
+        first = base.load_snapshot(snapshot_path(d, 1), base.REQUIRED_GAS)
+        last = base.load_snapshot(snapshot_path(d, n_last), base.REQUIRED_GAS)
+        base.require_finite(
+            f"{d} first snapshot", **{k: first[k] for k in base.REQUIRED_GAS}
+        )
+        base.require_finite(
+            f"{d} last snapshot", **{k: last[k] for k in base.REQUIRED_GAS}
+        )
+        premise_frozen(first, last, float(fix["h2_ratio"]), rep)
     static_c, e_c, t_c = load_series(coarse_dir, indices)
     static_f, e_f, t_f = load_series(fine_dir, indices)
     if not np.allclose(t_c, t_f, rtol=base.TIME_RTOL, atol=0.0):
@@ -490,16 +582,20 @@ def gate_ripple(args: argparse.Namespace) -> int:
     )
 
     ratio = np.log(s_c.mean(axis=0) / s_f.mean(axis=0))
-    bar_energy = peak_to_peak(s_f) + peak_to_peak(s_c)
+    bar_energy = peak_to_peak(s_f)
+    noise_coarse, noise_fine = peak_to_peak(s_c), peak_to_peak(s_f)
     amp = period_amplitude(s_c, STAR_PERIOD_STEPS)
     bar_ripple = 0.5 * peak_to_peak(s_f)
-    base.require_finite("bars", energy=bar_energy, ripple=bar_ripple)
+    base.require_finite(
+        "bars", energy=bar_energy, ripple=bar_ripple, noise=noise_coarse, amp=amp
+    )
     rep.info(
         "smallest detectable",
         f"energy error {float(bar_energy.min()):.3g} in ln "
         f"(largest shell {float(bar_energy.max()):.3g}); "
         f"ripple amplitude {float(bar_ripple.min()):.3g} "
-        f"(largest shell {float(bar_ripple.max()):.3g})",
+        f"(largest shell {float(bar_ripple.max()):.3g}); "
+        "the ripple and noise bars are a floor from the control run, provisional",
     )
     rep.check(
         "time-mean energy, coarse over fine",
@@ -509,7 +605,14 @@ def gate_ripple(args: argparse.Namespace) -> int:
         f"{np.round(ratio, 4).tolist()}",
     )
     rep.check(
-        "no ripple at the star-step period",
+        "coarse leg no noisier than the fine leg (floor from the control run, provisional)",
+        bool(np.all(noise_coarse <= noise_fine)),
+        f"largest range of the coarse leg {float(noise_coarse.max()):.3g}, of the fine leg "
+        f"{float(noise_fine.max()):.3g}; worst ratio "
+        f"{float(np.max(noise_coarse / noise_fine)):.3g}",
+    )
+    rep.check(
+        "no ripple at the star-step period (floor from the control run, provisional)",
         bool(np.all(amp <= bar_ripple)),
         f"largest amplitude {float(amp.max()):.4g}, "
         f"margin {float(np.max(amp / bar_ripple)):.3g} of the bar; fine-run amplitude at the same "
