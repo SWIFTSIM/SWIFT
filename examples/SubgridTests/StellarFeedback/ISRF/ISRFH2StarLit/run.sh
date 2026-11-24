@@ -81,11 +81,12 @@ case "$leg" in
         exit $? ;;
     cap_coarse)
         python3 ../ISRFH2StarLit/checkH2LimitedSpeed.py limited --run "$run_name" || exit $?
-        if [ -d cap_fine ]; then
-            python3 ../ISRFH2StarLit/checkH2LimitedSpeed.py ripple --coarse "$run_name" --fine cap_fine
-        else
-            echo "Run leg=cap_fine first, then: python3 checkH2LimitedSpeed.py ripple --coarse $run_name --fine cap_fine"
+        if [ ! -d cap_fine ]; then
+            echo "The ripple check needs the cap_fine leg and found no cap_fine directory."
+            echo "Run leg=cap_fine ./run.sh, then: python3 checkH2LimitedSpeed.py ripple --coarse $run_name --fine cap_fine"
+            exit 4
         fi
+        python3 ../ISRFH2StarLit/checkH2LimitedSpeed.py ripple --coarse "$run_name" --fine cap_fine
         exit $? ;;
 esac
 python3 ../ISRFH2StarLit/checkH2Attenuation.py starlit \

@@ -58,16 +58,23 @@ of every particle follows the shielding function at its column `n_H2 r`. The gas
 power-of-two time bin of 2.34375e-10 (set through `SPH:CFL_condition`, so that it does not depend on
 the star), and the legs write one snapshot per gas step.
 
-| Leg | Light speed | Star step | Steps |
+| Leg | Light speed | Star step | Last snapshot |
 |---|---|---|---|
-| `cap_fine` | 0.99 c | every gas step | 72 |
-| `cap_coarse` | 0.99 c | every 8 gas steps (`Stars:max_timestep_young_Myr: 1.84e-6`) | 72 |
+| `cap_fine` | 0.99 c | every gas step | 73 |
+| `cap_coarse` | 0.99 c | every 8 gas steps (`Stars:max_timestep_young_Myr: 1.84e-6`) | 73 |
 | `cap_half` | 0.5 c | every gas step | 110 |
 
 Each leg takes about 1.5 to 2.5 minutes on 4 threads. `run.sh` runs `checkH2LimitedSpeed.py limited` on
-every leg, and on `cap_coarse` also `ripple` against `cap_fine`. These legs need the geajay cooling
-module of branch `darwin/geajay_cooling` (the key `GeajayCooling:isrf_habing`) and geajay at commit
-22127025 or newer.
+every leg, and on `cap_coarse` also `ripple` against `cap_fine`. `run.sh` stops with a refusal
+(status 4) when `cap_coarse` finishes and no `cap_fine` directory exists. These legs need a SWIFT
+with the geajay cooling module that reads the key `GeajayCooling:isrf_habing`, and geajay at
+commit 22127025 or newer.
+
+The start-up log of `cap_coarse` and `cap_half` prints a warning that more than 3 per cent of the
+light was booked in far arrival cells. The limit was chosen for light that crosses a smoothing
+length in 2 to 3 gas steps. These legs lie outside that range: the light needs about 2.8 gas steps
+at 0.99 c, 5.6 at 0.5 c, and a coarse star books its light over 8 gas steps. The warning does not
+change the line transmission.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
@@ -122,11 +129,16 @@ error in each case, and prints the exit class of each.
   in the first and last snapshot and H2 is at its start value, every read particle is lit, and the
   transmission of every particle is steady over the last two intervals. The bar of a particle is the
   spread of `n_H2` over the read domain, as in `starlit`, plus the float rounding of the fit and
-  the change of the transmission over the last interval.
-- `ripple` compares the shell means of the own LW energy of the two legs over the last 16 snapshots
-  (two star steps of `cap_coarse`): the time-mean energy ratio must be 1 within the peak-to-peak
-  range of the two series, and the amplitude of the coarse series at the star-step period must stay
-  below the half peak-to-peak range of the fine series in the same shell.
+  the largest change of the transmission over the last two intervals.
+- `ripple` is a differential check: it compares `cap_coarse` with `cap_fine` of the same binary, so
+  it sees only faults that depend on the star step. It reads the shell means of the own LW energy
+  over the last 16 snapshots (two star steps of `cap_coarse`). The time-mean energy ratio must be 1
+  within the peak-to-peak range of the fine series. The coarse series must not vary more than the
+  fine series. The amplitude of the coarse series at the star-step period must stay below the half
+  peak-to-peak range of the fine series in the same shell. The last two bars are a floor read from
+  the fine run and are provisional. The run is void unless the two legs differ only in
+  `Stars:max_timestep_young_Myr`, come from the same SWIFT revision, configure line and geajay
+  revision, and keep H2 and the internal energy bit-equal.
 - `--plant-t-scale F` (`limited`), `--plant-coarse-energy F` and `--plant-ripple A` (`ripple`) apply
   an error to the arrays read from the snapshots, to show that the check fails on it.
 
