@@ -355,6 +355,35 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
          (double)xp.cooling_data.cosmic_ray_energy_loss_rate);
 }
 
+/* Write the cooling to a restart file, damage the file as the kind says and
+ * read it back with the module: "round_trip" (no damage), "no_record" (a file
+ * of the cooling struct only, as before the layout record) or "other_layout"
+ * (another record format). */
+static void run_restore(struct cooling_function_data *c, const char *kind) {
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  FILE *f = tmpfile();
+  if (strcmp(kind, "no_record") == 0)
+    restart_write_blocks(c, sizeof(*c), 1, f, "cooling", "cooling function");
+  else
+    cooling_struct_dump(c, f);
+  if (strcmp(kind, "other_layout") == 0) {
+    /* The format int follows the 8 bytes of the magic of the record */
+    char bytes[256];
+    rewind(f);
+    const size_t n = fread(bytes, 1, sizeof(bytes), f);
+    const char *magic = memmem(bytes, n, "GEAJAYC", 8);
+    const int format = 99;
+    if (magic == NULL) error("The layout record is not in the restart file.");
+    fseek(f, (long)(magic - bytes) + 8, SEEK_SET);
+    fwrite(&format, sizeof(format), 1, f);
+  }
+  rewind(f);
+  cooling_struct_restore(c, f, &cosmo);
+  fclose(f);
+  printf("RESTORE %s ok\n", kind);
+}
+
 /* ---- module state ------------------------------------------------------ */
 #define M_INT(n) printf("MOD %s=%d\n", #n, (int)c.n);
 #define M_DBL(n) printf("MOD %s=%.10g\n", #n, (double)c.n);
@@ -448,6 +477,9 @@ int main(int argc, char **argv) {
   if (argc >= 5 && strcmp(argv[2], "--particle") == 0)
     run_particle(params, &us, &phys_const, &hydro_properties, &c, atof(argv[3]),
                  atof(argv[4]), argc >= 6, argc >= 6 ? atof(argv[5]) : 0.);
+  /* GEAJAY_KEYS_RESTORE=<kind>: see run_restore() */
+  const char *restore_kind = getenv("GEAJAY_KEYS_RESTORE");
+  if (restore_kind != NULL) run_restore(&c, restore_kind);
   printf("KEYPASS_DONE\n");
   return 0;
 }

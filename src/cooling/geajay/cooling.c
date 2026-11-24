@@ -2538,6 +2538,14 @@ void cooling_clean(struct cooling_function_data *cooling) {
  * struct. */
 #define COOLING_GEAJAY_RESTART_FORMAT 4
 
+/*! The advice of the restart refusals: a start from a snapshot sets every
+ * species from the parameter file. */
+#define COOLING_GEAJAY_RESTART_ADVICE                                       \
+  "Start again from the initial conditions. A start from a snapshot is for " \
+  "debugging and optimisation only: it sets every species from the "        \
+  "parameter file, and cosmological initial conditions carry no "           \
+  "abundances, so real physics never restarts from a snapshot."
+
 /*! Record written before the cooling struct in a restart file. */
 struct cooling_restart_layout {
 
@@ -2626,8 +2634,7 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
     error(
         "The restart file has no geajay layout record: it was written by a "
         "SWIFT before the geajay layout record (network H_He_H2_D_ions) and "
-        "SWIFT refuses it. Start again from a snapshot or from the initial "
-        "conditions.");
+        "SWIFT refuses it. " COOLING_GEAJAY_RESTART_ADVICE);
   if (start >= 0) fseek(stream, start, SEEK_SET);
 
   restart_read_blocks(&stored, sizeof(stored), 1, stream, NULL,
@@ -2646,8 +2653,7 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
         "(record format %d, network %d, %d species per particle, cooling "
         "struct %zu bytes, particle cooling data %zu bytes). This SWIFT has "
         "record format %d, network %d, %d species, %zu bytes, %zu bytes. "
-        "SWIFT refuses it. Start again from a snapshot or from the initial "
-        "conditions.",
+        "SWIFT refuses it. " COOLING_GEAJAY_RESTART_ADVICE,
         stored.format, stored.mode, stored.n_species, stored.cooling_size,
         stored.xpart_size, mine.format, mine.mode, mine.n_species,
         mine.cooling_size, mine.xpart_size);

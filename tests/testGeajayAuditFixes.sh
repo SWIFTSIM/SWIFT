@@ -58,5 +58,24 @@ flag_report dust_flag_not_converged 2 1 0
 flag_report dust_flag_metal_above_density 1 0 1
 flag_report dust_flags_both 3 1 1
 
+# The restart refusals do not advise a start from a snapshot, which resets the species.
+restore_case() {
+  local kind=$1 st
+  GEAJAY_KEYS_RESTORE=$kind "$bin" "$here/testGeajayKeys.yml" > "restore_$kind.out" 2>&1
+  st=$?
+  if [ "$kind" = round_trip ]; then
+    [ $st -eq 0 ] && grep -q "RESTORE round_trip ok" "restore_$kind.out"
+    verdict "restart_$kind" $((1 - $?)) "a valid restart file is read back"
+  else
+    [ $st -ne 0 ] && grep -qF "real physics never restarts from a snapshot" "restore_$kind.out" &&
+      ! grep -qF "Start again from a snapshot" "restore_$kind.out"
+    verdict "restart_$kind" $((1 - $?)) "exit $st: $(grep -o 'Start again from [a-z ]*' "restore_$kind.out" | head -n 1)"
+  fi
+}
+
+restore_case round_trip
+restore_case no_record
+restore_case other_layout
+
 echo "failures: $fails"
 [ $fails -eq 0 ]
