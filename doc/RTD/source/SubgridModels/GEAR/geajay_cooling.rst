@@ -15,7 +15,8 @@ Configuring and running
 +++++++++++++++++++++++
 
 Select the module at configure time. ``N`` is the species network that SWIFT stores for each
-particle: 0 (tabulated cooling), 1 (H and He), 2 (with H\ :sub:`2`) or 3 (with HD):
+particle: 0 (tabulated cooling), 1 (H and He), 2 (with H\ :sub:`2`), 3 (with HD) or 4 (with D-, HD+
+and HeH+; not for production, see below). Use ``geajay_3`` for a zoom run:
 
 .. code-block:: bash
 
@@ -28,14 +29,36 @@ SWIFT at start-up when its value differs from its default, or when it is set at 
 default. The message names the key and the reason.
 
 ``primordial_chemistry_network`` may select a network below the one chosen at configure time, not
-above it.
+above it. Leave the key out to run the network chosen at configure time. The template
+``examples/parameter_example.yml`` has the key commented out: a live line overrides the build, and
+``tabulated`` (0) switches off all species, the H\ :sub:`2` and the dust chemistry on any build. The
+start-up line ``Chemical network = N`` shows the network that runs.
+
+Validity and status
++++++++++++++++++++
+
+* Network 4 (``H_He_H2_D_ions``) is not for production. Its electron fraction above 1e10 cm\ :sup:`-3`
+  is not validated: against Cloudy it is 41 to 63 times too high at n\ :sub:`H` = 1.78e10 to
+  2.6e11 cm\ :sup:`-3`. Network 3 is the default for a zoom run.
+* The H\ :sub:`2` self-shielding is off by default (``h2_shielding_length_method`` ``none``).
+* With the cheap solver and the shielding on, each sub-step follows the shielded H\ :sub:`2`
+  dissociation rate to its end state. This correction is tested only for a log slope s of the
+  shielding factor from 0.2 to 0.5. It misses its test bar from s = 0.57, and the range between
+  0.5 and 0.57 is untested. The accurate solver (``solver`` 1) integrates the species and the energy
+  together and does not use this correction. Where s exceeds 1 the cheap solver may stay on a wrong
+  state, and the accurate solver does not.
+* s is neither a key nor an output: no snapshot field or log line shows it. A user cannot check it,
+  so a run that needs the shielding SHOULD use ``solver`` 1.
+* A restart takes the species from its restart files. A start from a snapshot is for debugging and
+  optimisation only (see "Restart files").
 
 The keys
 ++++++++
 
-The tables list the keys of the section ``GeajayCooling`` of ``examples/parameter_example.yml``, with
-the wording of that file. The file lists the defaults and shows how to write each key. A key marked
-"optional" may be left out.
+The tables list the keys of the section ``GeajayCooling`` of ``examples/parameter_example.yml``. The
+file lists the defaults and shows how to write each key; where the two differ, the code decides. A
+key marked "optional" may be left out. For several numerical keys the value -1 (or 0 for
+``energy_change_limit`` and ``max_substeps``) means the geajay default.
 
 Table, background and metals
 ----------------------------
@@ -103,10 +126,12 @@ Solver
    * - ``energy_change_limit``
      - (optional) Largest fraction of the internal energy that one solver sub-step may change, in
        (0, 1], or 0 for the geajay default: 0.03 with ``cheap_energy_update`` 1, 0.1 with 0 (the value
-       Grackle fixes). Smaller values take more sub-steps (default: 0).
+       Grackle fixes). Smaller values take more sub-steps. With ``solver`` 1 a nonzero value stops the
+       run (default: 0).
    * - ``cheap_energy_update``
-     - (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order
-       (default: the geajay default, 1).
+     - (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order. Unset
+       (or -1) is the geajay default, second order. With ``solver`` 1 any other value stops the run,
+       also 1: leave the key out (default: unset).
    * - ``with_radiative_cooling``
      - (optional) 1 or 0. With 0 the chemistry network still evolves, but the library does not change
        the energy: the cheap solver skips its energy update and the accurate solver zeroes the energy
@@ -114,11 +139,13 @@ Solver
        changes with the H\ :sub:`2` formation. The SWIFT floors (minimal temperature, CMB floor) still act.
        Other values stop the run (default: 1).
    * - ``accurate_relative_tolerance``
-     - (optional) Relative tolerance of the accurate solver, in [1e-12, 1e-2] (default: the geajay
-       default, 1e-6).
+     - (optional) Relative tolerance of the accurate solver, in [1e-12, 1e-2], or -1 for the geajay
+       default, 1e-6. Read only with ``solver`` 1: any other value with ``solver`` 0 stops the run
+       (default: -1).
    * - ``accurate_absolute_tolerance``
      - (optional) Absolute tolerance of the accurate solver, as a fraction of the element mass density,
-       in [1e-30, 1e-6] (default: the geajay default, 1e-18).
+       in [1e-30, 1e-6], or -1 for the geajay default, 1e-18. Read only with ``solver`` 1: any other
+       value with ``solver`` 0 stops the run (default: -1).
 
 Self-shielding
 --------------
@@ -194,10 +221,12 @@ settings: the cooling does not tie one to the other, so choose consistent values
    * - ``lw_background_model``
      - (optional) Read only with ``background_mode`` ``per_band``. Lyman-Werner band: ``default``,
        ``none``, ``uv_table``, ``constant_j21``, ``Brown+2025_strong`` or ``Brown+2025_weak``; both Brown
-       models need an FG20 rates file (default: ``default``).
+       models need an FG20 rates file. ``default`` is ``constant_j21`` if ``lw_background_j21`` is above 0,
+       else ``uv_table`` with a UV background, else ``none`` (default: ``default``).
    * - ``lw_background_j21``
-     - (optional) Constant Lyman-Werner background J21 (Grackle ``LWbackground_intensity``); -1: the
-       library default, otherwise 0 or above (another negative value stops the run). Above 0 it
+     - (optional) Constant Lyman-Werner background J21 (Grackle ``LWbackground_intensity``), in
+       1e-21 erg s\ :sup:`-1` cm\ :sup:`-2` Hz\ :sup:`-1` sr\ :sup:`-1`; k31 = 1.38e-12 J21 s\ :sup:`-1`. -1: the
+       library default, 0 (no constant background), otherwise 0 or above (another negative value stops the run). Above 0 it
        replaces the table k31 and adds to ``rt_h2_dissociation_rate_per_s``. Read only with a network
        that has H\ :sub:`2` (default: -1).
    * - ``lw_background_sawtooth_suppression``
@@ -213,7 +242,8 @@ settings: the cooling does not tie one to the other, so choose consistent values
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0`: ``default``,
        ``none``, ``constant`` or ``uv_table`` (``G0_habing`` of a UV rates file, log-linear in 1 + z;
        with ``lw_background_model`` ``Brown+2025_strong`` its 11.2 to 13.6 eV share follows the Brown
-       k31, FG20 files only) (default: ``default``).
+       k31, FG20 files only). ``default`` is unset: the library refuses it when a term reads G\ :sub:`0`
+       (default: ``default``).
    * - ``isrf_background_habing``
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0` of the model
        ``constant`` [Habing] (default: -1, unset).
@@ -260,6 +290,29 @@ of the LW and PE backgrounds, with N\ :sub:`H` the column of the H\ :sub:`2` shi
 dust-to-gas ratio of ``dust_to_gas_model``, the one the heating uses. The cross-sections do not change ``uv_self_shielding``. The defaults are those of Kim et al. 2023, Table 3 (WD01 R\ :sub:`V` =
 3.1, per H nucleon, mu\ :sub:`H` = 1.4). D/D\ :sub:`sun` uses the reference dust-to-gas ratio 0.009387
 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.
+
+Far-UV field from a UV table
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For a cosmological run whose G\ :sub:`0` background follows the redshift, use these keys and no
+``isrf_habing``:
+
+.. code-block:: yaml
+
+   GeajayCooling:
+     redshift: -1
+     background_mode: per_band
+     isrf_background_model: uv_table
+     uv_rates_file: HM12_thin.h5
+
+The UV rates file must hold the dataset ``/UVBRates/G0_habing``. The tables ``HM12_thin.h5``,
+``HM12_shielded.h5``, ``FG20_thin.h5`` and ``FG20_modified_thin.h5`` hold it. They are in the
+directory ``tables/geajay`` of the ``cloudytables`` repository. SWIFT does not ship them. The table
+``CloudyData_UVB=HM2012.h5`` of the examples has no ``G0_habing``. A constant G\ :sub:`0` background
+without a table uses ``isrf_background_model`` ``constant`` and ``isrf_background_habing``. A box with a
+fixed G\ :sub:`0` and no background uses ``background_mode`` ``grackle`` and ``isrf_habing``. G\ :sub:`0`
+has an effect only through a term that reads it (dust, photoelectric heating, H\ :sub:`2` formation on
+dust).
 
 Shielded metals with a column-shielded H and He
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -308,7 +361,7 @@ Heating and rates from the parameter file
    * - ``rt_use_fields``
      - (optional) Arrays of ionization and heating rates are provided (default: 0).
    * - ``rt_heating_rate_cgs``
-     - (optional) Heating rate in units of / nHI_cgs.
+     - (optional) Heating rate per HI atom [erg/s].
    * - ``rt_hi_ionisation_rate_per_s``
      - (optional) HI ionisation rate [1/s].
    * - ``rt_hei_ionisation_rate_per_s``
@@ -419,14 +472,14 @@ Restart files
 
 A restart file starts with a record of the geajay layout: the network, the number of species per
 particle and the sizes of the cooling structures. SWIFT stops with a message if the record differs
-from the running build, or if the file has no record. Restart files written before the record
-existed (before the network ``H_He_H2_D_ions``) are refused in every network: start again from the
-initial conditions.
+from the running build, or if the file has no record. Such a restart file is refused in every
+network: start again from the initial conditions.
 
-A start from a snapshot is for debugging and optimisation only. The module sets the species of every
-particle from the parameter file, as at the first start, and never reads them from the snapshot.
-Cosmological initial conditions carry no abundances, so a run that needs the correct chemistry always
-restarts from its restart files.
+SWIFT neither refuses nor warns when a run starts from a snapshot. A start from a snapshot resets the
+species: the module sets them for every particle from the parameter file, as at the first start, and
+never reads them from the snapshot. It is for debugging and optimisation only. Cosmological initial
+conditions carry no abundances, so a run that needs the correct chemistry always restarts from its
+restart files.
 
 With the network ``H_He_H2_D`` (``primordial_chemistry_network`` 3) geajay holds the total deuterium
 at a constant D to H mass ratio and rescales D, D\ :sub:`+` and HD to it at every call. With the
@@ -604,5 +657,5 @@ Example with network 4
 30 K for one free-fall time, with cosmic rays at 10\ :sup:`-17` s\ :sup:`-1` per H, once with the network
 ``H_He_H2_D`` and once with ``H_He_H2_D_ions``. It needs ``--with-cooling=geajay_4``. The script
 ``compareNetworks.py`` prints the relative difference of the H2 fraction, the HD to H ratio and the
-temperature. With cosmic rays the ions change the first two by more than 20 percent. Without them
+temperature. Network 4 is not for production (see "Validity and status"). With cosmic rays the ions change the first two by more than 20 percent. Without them
 (``run.sh --no-cosmic-rays``) the change stays below 2 percent.
