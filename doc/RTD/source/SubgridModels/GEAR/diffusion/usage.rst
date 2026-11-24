@@ -92,6 +92,13 @@ untracked metals, not the total metallicity: the total is the sum of all
 ``N`` entries. The snapshot field ``MetalMassFractions`` uses another
 convention: its last entry is the total metallicity.
 
+The same convention holds for ``GEARChemistry:initial_metallicity`` when it is
+not negative: each of the ``N - 1`` tracked elements starts with this mass
+fraction and the untracked entry starts at 0. The initial total metallicity is
+therefore ``(N - 1)`` times this value. With
+``GEARChemistry:scale_initial_metallicity``, each tracked element is first
+multiplied by its solar abundance and the untracked entry stays 0.
+
 MPI support
 ~~~~~~~~~~~~
 

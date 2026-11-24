@@ -237,6 +237,25 @@ static INLINE void chemistry_read_elements(struct swift_params *params,
 }
 
 /**
+ * @brief Sets the initial metallicities from the parameter file value.
+ *
+ * Each tracked element gets the mass fraction z. The last entry holds the
+ * untracked metals, so it is 0 for z >= 0. A negative z is kept in every
+ * entry to read the metallicities from the ICs.
+ *
+ * @param data The properties to initialise.
+ * @param z The value of GEARChemistry:initial_metallicity.
+ */
+static INLINE void chemistry_set_initial_metallicities(
+    struct chemistry_global_data *data, const float z) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
+    data->initial_metallicities[i] = z;
+  }
+  data->initial_metallicities[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] =
+      (z < 0.f) ? z : 0.f;
+}
+
+/**
  * @brief Initialises the chemistry properties.
  *
  * Nothing to do here.
@@ -262,9 +281,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   }
 
   /* Set the initial metallicities */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    data->initial_metallicities[i] = initial_metallicity;
-  }
+  chemistry_set_initial_metallicities(data, initial_metallicity);
 
   /* Check if need to scale the initial metallicity */
   const int scale_metallicity = parser_get_opt_param_int(

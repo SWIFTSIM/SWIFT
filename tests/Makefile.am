@@ -43,7 +43,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
 	    testForeignPairFlux testSymmetricMatrixDiagonalisation \
 	    testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
 	    testChemistryPositivityLimiter testChemistryFluxInterval \
-	    testChemistryFluxStamp # testMatrixInversion
+	    testChemistryFluxStamp testChemistryInitialMetallicity # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -62,7 +62,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testForeignPairFlux testSymmetricMatrixDiagonalisation \
 		 testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
 		 testChemistryPositivityLimiter testChemistryFluxInterval \
-		 testChemistryFluxStamp
+		 testChemistryFluxStamp testChemistryInitialMetallicity
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -108,6 +108,8 @@ testChemistryPositivityLimiter_SOURCES = testChemistryPositivityLimiter.c
 testChemistryFluxInterval_SOURCES = testChemistryFluxInterval.c
 
 testChemistryFluxStamp_SOURCES = testChemistryFluxStamp.c
+
+testChemistryInitialMetallicity_SOURCES = testChemistryInitialMetallicity.c
 
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 
