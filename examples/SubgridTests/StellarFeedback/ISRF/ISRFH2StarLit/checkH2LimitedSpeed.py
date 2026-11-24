@@ -42,11 +42,8 @@ the last 16 snapshots (two star steps):
   conservation makes the long-time ratio 1. If each window mean lies within the range of its own
   series of the long-time mean, the two window means differ by at most R_c + R_f, with R the
   peak-to-peak range over the window mean, and R_c <= R_f by the noise line, so by at most 2 R_f.
-  The code uses R_f, not 2 R_f. It is the stricter side, and the derivation does not demand
-  more: the window means of the fine run, slid over 15 starts, differ by 0.2 to 0.5 per cent, under
-  its range of 0.6 per cent or more. The range of the coarse run is not in the bar, so the run under
-  test cannot widen its own tolerance. No mechanism gives the size of R_f: the bar is a floor read
-  from the control run, like the next two.
+  The code uses R_f, not 2 R_f, the stricter side. The range of the coarse run is not in the bar,
+  so the run under test cannot widen its own tolerance.
   Positive control, as in `limited`: the run is void unless the bar could see an energy error of
   ln(1/0.875) in both signs (a star that emits one gas step short), computed on the ratio of the
   legs as run, before any plant. A fine leg so noisy that its range hides that error is void.
@@ -55,8 +52,8 @@ the last 16 snapshots (two star steps):
   variation in the coarse run is not explained by the star step.
 - Ripple: the amplitude of the Fourier component of the coarse series at the star-step period over
   two periods must stay under the half peak-to-peak range of the fine run in the same shell.
-The three bars are a floor read from the control run, provisional until the operator rules on
-card h2_flimit_coarse_bars_1: no mechanism gives the size of the variation of a correct run.
+The three bars are read from the range of the fine run, because no mechanism gives the size of
+the variation of a correct run.
 
 Both legs must come from the same binary: the Revision, the configure line and the geajay
 revision of the two start-up logs are compared. A difference, or a line that one log lacks,
