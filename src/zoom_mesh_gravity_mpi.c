@@ -235,7 +235,7 @@ static void zoom_accumulate_cell_to_local_patches_mapper(void *map_data,
     if (c->grav.count == 0) continue;
 
     /* Skip cells not covered by the zoom mesh */
-    if (!zoom_mesh_cell_is_covered(mesh, c, /*use_max_dx=*/0)) continue;
+    if (!zoom_mesh_cell_is_covered(mesh, c)) continue;
 
     /* Assign this cell's content to the mesh */
     zoom_mesh_accumulate_cell_to_local_patch(mesh, c, &local_patches[i],
@@ -320,7 +320,7 @@ static size_t zoom_count_required_mesh_cells(const struct zoom_pm_mesh *mesh,
     if (cell->grav.count == 0) continue;
 
     /* Skip cells not covered by the zoom mesh */
-    if (!zoom_mesh_cell_is_covered(mesh, cell, /*use_max_dx=*/0)) continue;
+    if (!zoom_mesh_cell_is_covered(mesh, cell)) continue;
 
     /* Determine range of FFT mesh cells we need for particles in this top
      * level cell. The 5 point stencil used for accelerations requires
@@ -395,7 +395,7 @@ static size_t zoom_init_required_mesh_cells(
     if (cell->grav.count == 0) continue;
 
     /* Skip cells not covered by the zoom mesh */
-    if (!zoom_mesh_cell_is_covered(mesh, cell, /*use_max_dx=*/0)) continue;
+    if (!zoom_mesh_cell_is_covered(mesh, cell)) continue;
 
     /* Determine range of FFT mesh cells we need for particles in this top
        level cell. The 5 point stencil used for accelerations requires
@@ -504,7 +504,7 @@ static void zoom_fill_local_patches_from_mesh_cells(
     if (cell->grav.count == 0) continue;
 
     /* Skip cells not covered by the zoom mesh */
-    if (!zoom_mesh_cell_is_covered(mesh, cell, /*use_max_dx=*/0)) continue;
+    if (!zoom_mesh_cell_is_covered(mesh, cell)) continue;
 
     /* The FFTs are performed on the zero-padded mesh */
     patch->N = 2 * mesh->N;
@@ -978,7 +978,7 @@ static void zoom_cell_distributed_mesh_to_gpart_CIC(
   if (gcount == 0) return;
 
   /* Only cells covered by the zoom mesh receive the correction */
-  if (!zoom_mesh_cell_is_covered(mesh, c, /*use_max_dx=*/0)) return;
+  if (!zoom_mesh_cell_is_covered(mesh, c)) return;
 
   /* Get the potential from the mesh patch to the active gparts using CIC */
   for (int i = 0; i < gcount; ++i) {

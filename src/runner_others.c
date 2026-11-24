@@ -916,7 +916,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
       double r_s_inv = e->mesh->r_s_inv;
 
       /* Cells covered by the zoom mesh use its force split */
-      if (zoom_mesh_cell_is_covered(e->zoom_mesh, c, /*use_max_dx=*/0)) {
+      if (zoom_mesh_cell_is_covered(e->zoom_mesh, c)) {
         r_s_inv = e->zoom_mesh->r_s_inv;
       }
 

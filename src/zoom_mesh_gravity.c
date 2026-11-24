@@ -63,7 +63,7 @@
 /* Local function prototypes. */
 static void zoom_mesh_free_kernel(struct zoom_pm_mesh *mesh);
 static int zoom_mesh_cell_is_inside(const struct zoom_pm_mesh *mesh,
-                                    const struct cell *c, const int use_max_dx);
+                                    const struct cell *c);
 
 /**
  * @brief Initialize a zoom mesh structure for the case where it is disabled.
@@ -96,29 +96,28 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
 
   const struct zoom_region_properties *z = s->zoom_props;
 
-  /* The physical domain actually covered by the active zoom mesh. */
+  /* The mesh covers the zoom region plus the shells of background cells
+   * around it, and extends beyond them by the margin needed by the force
+   * interpolation. The five-point force stencil needs two cells on the low
+   * side for i-2 and three on the high side because the i+2 stencil point is
+   * CIC-interpolated and therefore also reads i+3. The N - 5 remaining cells
+   * span the covered region, so that the background shells can use the
+   * mesh. A small tolerance allows for roundoff in the cell construction. */
   for (int i = 0; i < 3; ++i) {
     const double buffer = mesh->buffer_cells * z->bkg_cells_top[0].width[i];
-    mesh->loc[i] = z->region_lower_bounds[i] - buffer;
-    mesh->dim[i] = z->dim[i] + 2. * buffer;
+    const double covered_min = z->region_lower_bounds[i] - buffer;
+    const double covered_dim = z->dim[i] + 2. * buffer;
+    const double cell_width = covered_dim / (mesh->N - 5);
+    mesh->loc[i] = covered_min - 2. * cell_width;
+    mesh->dim[i] = mesh->N * cell_width;
+    const double tol = 1e-6 * mesh->dim[i];
+    mesh->active_min[i] = covered_min - tol;
+    mesh->active_max[i] = covered_min + covered_dim + tol;
   }
   if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2]) {
     error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
   }
   mesh->cell_fac = mesh->N / mesh->dim[0];
-
-  for (int i = 0; i < 3; ++i) {
-
-    /* The region in which forces can be interpolated. The five-point force
-     * stencil needs two cells on the low side for i-2 and three on the high
-     * side because the i+2 stencil point is CIC-interpolated and therefore
-     * also reads i+3. A small tolerance allows for roundoff in the cell
-     * construction. */
-    const double cell_width = 1. / mesh->cell_fac;
-    const double tol = 1e-6 * mesh->dim[i];
-    mesh->active_min[i] = mesh->loc[i] + 2. * cell_width - tol;
-    mesh->active_max[i] = mesh->loc[i] + mesh->dim[i] - 3. * cell_width + tol;
-  }
 
   /* The smoothing scale must track the zoom mesh's own grid resolution
    * (mirroring how the background mesh derives r_s from dim/mesh_size in
@@ -675,7 +674,7 @@ static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
 
     /* Particles in cells the zoom mesh does not cover keep the global PM
      * split. This is the same predicate as used for the tree split. */
-    if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) continue;
+    if (!zoom_mesh_cell_is_covered(data->mesh, c)) continue;
 
     if (data->mesh->use_local_patches) {
 
@@ -883,7 +882,7 @@ static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
     const struct cell *c = &cells[local_cells[i]];
 
     /* Only cells covered by the zoom mesh receive the correction */
-    if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) continue;
+    if (!zoom_mesh_cell_is_covered(data->mesh, c)) continue;
 
     /* Interpolate the correction onto this cell's content */
     zoom_mesh_cell_mesh_to_gpart_CIC(c, data->potential, data->mesh,
@@ -1634,7 +1633,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
     for (int type = 0; type < 2; ++type) {
       for (int i = 0; i < counts[type]; ++i) {
         const struct cell *c = &s->cells_top[lists[type][i]];
-        if (!zoom_mesh_cell_is_covered(mesh, c, /*use_max_dx=*/0)) continue;
+        if (!zoom_mesh_cell_is_covered(mesh, c)) continue;
         if (c->grav.count == 0) continue;
         max_softening =
             max(max_softening, (double)c->grav.multipole->m_pole.max_softening);
@@ -1664,20 +1663,15 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
  *
  * @param mesh The #zoom_pm_mesh.
  * @param c The #cell.
- * @param use_max_dx Should we include the maximal particle displacement since
- * rebuild?
  * @return 1 if the full cell is inside the mesh, 0 otherwise.
  */
 __attribute__((nonnull)) static int zoom_mesh_cell_is_inside(
-    const struct zoom_pm_mesh *mesh, const struct cell *c,
-    const int use_max_dx) {
+    const struct zoom_pm_mesh *mesh, const struct cell *c) {
 
   /* Check containment independently along each axis. */
   for (int i = 0; i < 3; ++i) {
-    /* Inflate the cell by the maximal particle displacement if requested. */
-    const double dx_max = use_max_dx ? c->grav.multipole->dx_max[i] : 0.;
-    const double cell_min = c->loc[i] - dx_max;
-    const double cell_max = c->loc[i] + c->width[i] + dx_max;
+    const double cell_min = c->loc[i];
+    const double cell_max = c->loc[i] + c->width[i];
 
     /* Any excursion outside the mesh bounds disqualifies the cell. */
     if (cell_min < mesh->active_min[i]) return 0;
@@ -1727,7 +1721,8 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           "(zoom cell width= %.4f, zoom mesh cell width= %.4f along axis %d). "
           "Gravity:zoom_mesh_side_length should be at least %d (currently: "
           "%d).",
-          z->width[i], cell_width, i, (int)ceil(mesh->dim[i] / z->width[i]),
+          z->width[i], cell_width, i,
+          (int)ceil((mesh->dim[i] - 5. * cell_width) / z->width[i]) + 5,
           mesh->N);
     }
 
@@ -1754,12 +1749,10 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
  *
  * @param mesh The #zoom_pm_mesh.
  * @param c The #cell.
- * @param use_max_dx Should we include the maximal particle displacement since
- * rebuild?
  * @return 1 if the cell is fully covered by the zoom mesh, 0 otherwise.
  */
 int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
-                              const struct cell *c, const int use_max_dx) {
+                              const struct cell *c) {
 
   /* Disabled or absent meshes cannot cover any cell. */
   if (mesh == NULL) return 0;
@@ -1768,8 +1761,8 @@ int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
   /* Long-range gravity can interact at the top-cell level. Do not apply a
    * fine-mesh correction to a covered leaf if its parent top cell still uses
    * the coarse tree split. */
-  return zoom_mesh_cell_is_inside(mesh, c->top, use_max_dx) &&
-         zoom_mesh_cell_is_inside(mesh, c, use_max_dx);
+  return zoom_mesh_cell_is_inside(mesh, c->top) &&
+         zoom_mesh_cell_is_inside(mesh, c);
 }
 
 /**
@@ -1778,17 +1771,14 @@ int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
  * @param mesh The #zoom_pm_mesh.
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param use_max_dx Should we include the maximal particle displacement since
- * rebuild?
  * @return 1 if both cells are fully covered by the zoom mesh, 0 otherwise.
  */
 int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
-                                const struct cell *ci, const struct cell *cj,
-                                const int use_max_dx) {
+                                const struct cell *ci, const struct cell *cj) {
 
   /* Both cells must be fully contained before the zoom mesh is applicable. */
-  return zoom_mesh_cell_is_covered(mesh, ci, use_max_dx) &&
-         zoom_mesh_cell_is_covered(mesh, cj, use_max_dx);
+  return zoom_mesh_cell_is_covered(mesh, ci) &&
+         zoom_mesh_cell_is_covered(mesh, cj);
 }
 
 /**
@@ -1813,7 +1803,7 @@ int zoom_mesh_can_use_mesh(const struct zoom_pm_mesh *mesh,
   if (!mesh->enabled) return 0;
 
   /* Both cells must be fully covered by the high-resolution mesh. */
-  if (!zoom_mesh_cells_are_covered(mesh, ci, cj, /*use_max_dx=*/0)) return 0;
+  if (!zoom_mesh_cells_are_covered(mesh, ci, cj)) return 0;
 
   /* Check whether the cells are safely beyond the zoom mesh cutoff. */
   const double max_distance2 = mesh->r_cut_max * mesh->r_cut_max;
@@ -1843,8 +1833,8 @@ int zoom_mesh_can_use_mesh_between_rebuilds(const struct zoom_pm_mesh *mesh,
   if (mesh == NULL) return 0;
   if (!mesh->enabled) return 0;
 
-  /* Include particle motion since rebuild when checking mesh coverage. */
-  if (!zoom_mesh_cells_are_covered(mesh, ci, cj, /*use_max_dx=*/1)) return 0;
+  /* Both cells must be fully covered by the high-resolution mesh. */
+  if (!zoom_mesh_cells_are_covered(mesh, ci, cj)) return 0;
 
   /* Check whether the cells remain safely beyond the cutoff after drift. */
   const double max_distance2 = mesh->r_cut_max * mesh->r_cut_max;

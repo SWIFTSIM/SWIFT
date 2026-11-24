@@ -111,10 +111,9 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                                  const struct space *s, struct threadpool *tp,
                                  int verbose);
 int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
-                              const struct cell *c, const int use_max_dx);
+                              const struct cell *c);
 int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
-                                const struct cell *ci, const struct cell *cj,
-                                const int use_max_dx);
+                                const struct cell *ci, const struct cell *cj);
 double zoom_mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
                                    const int N);
 void zoom_mesh_struct_dump(const struct zoom_pm_mesh *mesh, FILE *stream);

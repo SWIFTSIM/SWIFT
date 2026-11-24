@@ -498,7 +498,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
   float r_s_inv = grav_props->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
   }
 
@@ -1461,7 +1461,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   double min_trunc = e->mesh->r_cut_min;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
     r_s_inv_MAC = e->zoom_mesh->r_s_inv;
     min_trunc = e->zoom_mesh->r_cut_min;
@@ -2063,7 +2063,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   double min_trunc = e->mesh->r_cut_min;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cell_is_covered(e->zoom_mesh, c, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cell_is_covered(e->zoom_mesh, c)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
     min_trunc = e->zoom_mesh->r_cut_min;
   }
@@ -2197,7 +2197,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   float r_s_inv_MAC = e->gravity_properties->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
     r_s_inv_MAC = e->zoom_mesh->r_s_inv;
   }
@@ -2314,7 +2314,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   float r_s_inv_MAC = e->gravity_properties->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     max_distance = e->zoom_mesh->r_cut_max;
     r_s_inv_MAC = e->zoom_mesh->r_s_inv;
   }

@@ -1752,7 +1752,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 
   /* Cells covered by the zoom mesh use its force split */
   float r_s_inv = props->r_s_inv;
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
   }
 
@@ -1811,7 +1811,7 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     return zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
   }
 
@@ -1850,7 +1850,7 @@ int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
     return zoom_mesh_can_use_mesh_between_rebuilds(e->zoom_mesh, s, ci, cj);
   }
 
@@ -1916,7 +1916,7 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
     double max_distance = e->mesh->r_cut_max;
 
     /* Cells covered by the zoom mesh use its force split */
-    if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+    if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
       max_distance = e->zoom_mesh->r_cut_max;
     }
     const double max_distance2 = max_distance * max_distance;

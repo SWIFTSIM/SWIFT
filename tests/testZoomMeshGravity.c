@@ -248,10 +248,10 @@ int main(int argc, char *argv[]) {
   cell_make_multipoles(&ci, /*ti_current=*/0, &props);
   cell_make_multipoles(&cj, /*ti_current=*/0, &props);
 
-  if (!zoom_mesh_cell_is_covered(&zoom_mesh, &ci, /*use_max_dx=*/0)) {
+  if (!zoom_mesh_cell_is_covered(&zoom_mesh, &ci)) {
     error("ci should be covered by the zoom mesh");
   }
-  if (!zoom_mesh_cell_is_covered(&zoom_mesh, &cj, /*use_max_dx=*/0)) {
+  if (!zoom_mesh_cell_is_covered(&zoom_mesh, &cj)) {
     error("cj should be covered by the zoom mesh");
   }
 
@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
     straddling_top.width[axis] = 6.;
   }
   ci.top = &straddling_top;
-  if (zoom_mesh_cell_is_covered(&zoom_mesh, &ci, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cell_is_covered(&zoom_mesh, &ci)) {
     error("Leaf in a partially covered top cell used the zoom mesh");
   }
   ci.top = &ci;
@@ -279,25 +279,11 @@ int main(int argc, char *argv[]) {
   /* Move cj outside the zoom mesh and check the predicate rejects it. */
   cj.loc[0] = 39.5;
   cell_make_multipoles(&cj, /*ti_current=*/1, &props);
-  if (zoom_mesh_cell_is_covered(&zoom_mesh, &cj, /*use_max_dx=*/0)) {
+  if (zoom_mesh_cell_is_covered(&zoom_mesh, &cj)) {
     error("cj should not be covered by the zoom mesh");
   }
   if (zoom_mesh_can_use_mesh(&zoom_mesh, &s, &ci, &cj)) {
     error("Cells should not use the zoom mesh when one cell is outside");
-  }
-
-  /* Restore cj inside the mesh and use dx_max to make it unsafe between
-   * rebuilds. */
-  cj.loc[0] = loc_j[0];
-  cell_make_multipoles(&cj, /*ti_current=*/2, &props);
-  ci.grav.multipole->dx_max[0] = 2.5f;
-  cj.grav.multipole->dx_max[0] = 2.5f;
-
-  if (!zoom_mesh_can_use_mesh(&zoom_mesh, &s, &ci, &cj)) {
-    error("Cells should use the zoom mesh at rebuild before dx_max inflation");
-  }
-  if (zoom_mesh_can_use_mesh_between_rebuilds(&zoom_mesh, &s, &ci, &cj)) {
-    error("dx_max should make the zoom mesh unsafe between rebuilds");
   }
 
 #ifdef HAVE_FFTW
@@ -439,8 +425,14 @@ int main(int argc, char *argv[]) {
     error("Zoom mesh kernel should have been cached before regrid");
   }
   zoom_mesh_regrid(&zoom_mesh, &s);
-  if (zoom_mesh.loc[0] != 11. || zoom_mesh.dim[0] != 32. ||
-      fabs(zoom_mesh.r_s - props.a_smooth * 2.) > 1e-12 ||
+  /* The 32 wide covered region spans N - 5 = 11 mesh cells, with two more
+   * below it and three above. */
+  const double regrid_width = 32. / 11.;
+  if (fabs(zoom_mesh.loc[0] - (11. - 2. * regrid_width)) > 1e-12 ||
+      fabs(zoom_mesh.dim[0] - 16. * regrid_width) > 1e-12 ||
+      fabs(zoom_mesh.active_min[0] - 11.) > 1e-4 ||
+      fabs(zoom_mesh.active_max[0] - 43.) > 1e-4 ||
+      fabs(zoom_mesh.r_s - props.a_smooth * regrid_width) > 1e-12 ||
       zoom_mesh.kernel_fft != NULL) {
     error("Zoom mesh regrid did not update geometry and discard cached kernel");
   }
