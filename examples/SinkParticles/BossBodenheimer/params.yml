@@ -88,7 +88,11 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 GEARSink:
-  use_fixed_cut_off_radius: 1                    # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  use_fixed_cut_off_radius: 1                    # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff
+                                                 # radius is fixed at the value specified below, and the sink smoothing
+                                                 # length is fixed at this value divided by kernel_gamma. If not, the
+                                                 # cutoff radius varies with the sink smoothing length as r_cut =
+                                                 # h*kernel_gamma.
   cut_off_radius: 30                             # Cut off radius of all the sinks in internal units (AU). r_acc = 2*lambda_J ~= 30 au; must stay coupled to density_threshold_Hpcm3 below (see note).
   f_acc: 0.33
   temperature_threshold_K: 100                   # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3. Isothermal T~12.0K everywhere, so this rarely binds.
@@ -119,4 +123,7 @@ GEARSink:
   CFL_condition:                        0.5      # Courant-Friedrich-Levy condition for time integration.
 
 EoS:
-  isothermal_internal_energy: 6.469937e-02       # Thermal energy per unit mass for the isothermal equation of state (in internal units). Equals alpha*|E_pot|/M_tot from makeIC.py, i.e. T~12.0K for mu=2.3, which is the classic Boss & Bodenheimer (1979) value (alpha=0.26). Update if you change -N/R_s/M_tot/alpha.
+  isothermal_internal_energy: 6.469937e-02       # Thermal energy per unit mass for the isothermal equation of state (in
+                                                 # internal units). Equals alpha*|E_pot|/M_tot from makeIC.py, i.e.
+                                                 # T~12.0K for mu=2.3, which is the classic Boss & Bodenheimer (1979)
+                                                 # value (alpha=0.26). Update if you change -N/R_s/M_tot/alpha.
