@@ -70,7 +70,7 @@ GeajayCooling:
   thermal_time_myr: 0                          # No adiabatic-cooling time after a feedback event
   h2_shielding_length_method: Jeans            # Inert in the dark box
   solver: 1                                    # Accurate (BDF) solver
-  with_radiative_cooling: 0                    # The chemistry evolves, the library leaves the internal energy alone: the temperature stays at 100 K
+  with_radiative_cooling: 0                    # The chemistry evolves, the library leaves the internal energy alone: the gas stays at about 99 K
   initial_h2i_to_h_ratio: 1e-8                 # Initial nH2 / nH
   initial_hii_to_h_ratio: 1e-8                 # Initial nHII / nH, run.sh sets 1e-5 for the H- arm
 

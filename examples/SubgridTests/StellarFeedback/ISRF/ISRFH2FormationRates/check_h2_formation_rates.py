@@ -35,26 +35,38 @@ ln(F_meas / F_ref) per interval.
 
 Bar. Per interval it is the sum of terms, each computed from the data:
 
-* the trapezoid error: the larger second difference of F_ref over the three
-  snapshots that touch the interval, divided by 12 F, the error of the
-  trapezoid rule for a smooth rate;
-* H- not in steady state: t_H- / dt, with t_H- the relaxation time of H-;
+* the trapezoid error, dt^2 |F''| / (12 F), with F'' from the divided differences of the
+  reference rate over the snapshot times that touch the interval (they are not evenly
+  spaced);
+* the fast species: the relaxation time of H- and of H2+ over the interval length, because
+  the reference takes them in balance;
 * float32 rounding of x2: 2^-24 (x2_a + x2_b) / |x2_b - x2_a|;
-* the temperature: 1e-4 |d ln F / d ln T|. T comes from u with the heat capacity of
-  the library, 3/2 k_B per particle and 5/2 k_B per H2 molecule;
-* the solver tolerance: 2 times the relative tolerance 1e-6 of the accurate
-  solver times the number of steps of the interval;
-* the dust temperature: |d ln R_d / d ln T_d| times the shift of T_d for a
-  CMB temperature that is 0.005 K higher.
+* the temperature and density conversion: the check uses CODATA k_B and m_H, the library uses
+  its own (phys_constants.h). That shifts T by 1.1e-6 and n by 1.3e-7. T comes from u and the
+  species, which are float32: three roundings of 2^-24. The rate follows T with its local
+  slope |d ln F / d ln T|. T uses the library's particle count (no deuterium, metals at mass
+  16) and heat capacity (3/2 k_B per particle, 5/2 k_B per H2);
+* the solver: the accurate solver keeps the local error of each step below
+  atol + rtol |y| per species (error weights, bdf_network.h). The errors of the steps add, so
+  the term is n_steps (atol + rtol x2) / |x2_b - x2_a|;
+* the dust temperature: |d ln R_d / d ln T_d| times the shift of T_d for a CMB
+  temperature that is 0.005 K higher.
 
 The species of a snapshot are not drifted: they hold the state of the last step that
 ended at or before the snapshot time. The elapsed time between two snapshots is the
-difference of those step ends, read from timesteps.txt. The first interval starts from
-the start-up state, whose species do not yet sum to 1 (the library renormalises them at
-its first solve): it is printed and not gated.
+difference of those step ends, read from timesteps.txt.
 
-A particle with F_meas <= 0 fails the interval: a flipped sign or a missing
-channel has no ln. A value that is not finite fails before any comparison.
+The first snapshot holds the start values, not a state that the library wrote. The library
+renormalises the species to the sum it keeps afterwards (the metals take their share, in the
+dust arm 0.2 per cent), and H2+ starts at 1e-20 although it reaches its balance within one
+step. In the H- arm that start value makes the rate of the first snapshot too low by
+8e-4 and the first interval fails by 4.3e-4 against its bar. The reference therefore
+renormalises the first snapshot to the sum of the second, and takes its H2+ from the balance
+of the second snapshot, scaled with n_HII. The first interval is then gated like the others.
+
+A particle with F_meas <= 0 fails the interval: a flipped sign or a missing channel has no
+ln. So does a particle whose reference rate is 0. A value that is not finite fails before
+any comparison.
 
 What a PASS proves: in every interval the median measured formation rate
 equals the rate of the published channel formulas at the gas state, within the
@@ -99,6 +111,11 @@ Z_SOLAR = 0.01295
 HABING_FLUX = 1.6e-3
 C_LIGHT = 2.99792458e10
 SOLVER_REL_TOL = 1e-6
+SOLVER_ABS_TOL = 1e-18
+# Constants of the library (phys_constants.h, kernel_base.h)
+KB_LIB = 1.3806504e-16
+MH_LIB = 1.67262171e-24
+MU_METAL = 16.0
 FLOAT32_EPS = 2.0**-24
 
 SPECIES = ["HI", "HII", "HM", "H2I", "H2II", "HeI", "HeII", "HeIII", "DI", "DII", "HDI"]
@@ -250,15 +267,27 @@ def read_snapshot(path: Path) -> dict[str, Arr]:
         out["time_code"] = np.array([float(f["Header"].attrs["Time"][0])])
         n_star = int(f["Header"].attrs["NumPart_Total"][4])
         out["n_star"] = np.array([float(n_star)])
-        raw = f["Parameters"].attrs.get("GeajayCooling:solver", None)
-        out["solver"] = np.array([float(raw) if raw is not None else np.nan])
+        par = f["Parameters"].attrs
+        solver = par.get("GeajayCooling:solver", None)
+        out["solver"] = np.array([float(solver) if solver is not None else np.nan])
+        for key, name, default in (
+            ("GeajayCooling:accurate_relative_tolerance", "rtol", SOLVER_REL_TOL),
+            ("GeajayCooling:accurate_absolute_tolerance", "atol", SOLVER_ABS_TOL),
+        ):
+            raw = par.get(key, None)
+            value = float(raw) if raw is not None else -1.0
+            out[name] = np.array([value if value > 0.0 else default])
     return out
 
 
 def hydrogen(s: dict[str, Arr]) -> dict[str, Arr]:
-    """Return the number densities and the temperature of a snapshot state."""
+    """Return the number densities and the temperature of a snapshot state.
+
+    The temperature follows the library: the particles that carry the energy are H, H+, H-,
+    H2, H2+, He and the electrons, plus the metals at mass 16; deuterium species do not
+    count. H2 has the heat capacity 5/2 k_B per molecule, everything else 3/2 k_B.
+    """
     rho = s["rho"]
-    n_part = sum(s[k] / a for k, a in zip(SPECIES, [1, 1, 1, 2, 2, 4, 4, 4, 2, 2, 3]))
     n_elec = (
         s["HII"]
         - s["HM"]
@@ -266,19 +295,27 @@ def hydrogen(s: dict[str, Arr]) -> dict[str, Arr]:
         + s["H2II"] / 2.0
         + s["DII"] / 2.0
     )
-    n_tot = n_part + n_elec
-    mu = 1.0 / n_tot
     h2 = 0.5 * s["H2I"]
-    # heat capacity per particle in units of k_B: 3/2 for atoms, ions and electrons, 5/2 for H2 (h2.h)
+    n_tot = (
+        (s["HeI"] + s["HeII"] + s["HeIII"]) / 4.0
+        + s["HI"]
+        + s["HII"]
+        + s["HM"]
+        + h2
+        + 0.5 * s["H2II"]
+        + n_elec
+        + s["z"] / MU_METAL
+    )
     heat_capacity = (2.5 * h2 + 1.5 * (n_tot - h2)) / n_tot
-    temp = s["u"] * mu * MH / (KB * heat_capacity)
+    temp = s["u"] * MH / (n_tot * KB * heat_capacity)
+    h_sum = s["HI"] + s["HII"] + s["HM"] + s["H2I"] + s["H2II"]
     return {
         "n_hi": s["HI"] * rho / MH,
         "n_hii": s["HII"] * rho / MH,
         "n_h2ii": s["H2II"] * rho / (2.0 * MH),
         "n_e": np.maximum(n_elec * rho / MH, 0.0),
-        "n_h": (s["HI"] + s["HII"] + s["HM"] + s["H2I"] + s["H2II"]) * rho / MH,
-        "x2": 0.5 * s["H2I"] / (s["HI"] + s["HII"] + s["HM"] + s["H2I"] + s["H2II"]),
+        "n_h": h_sum * rho / MH,
+        "x2": 0.5 * s["H2I"] / h_sum,
         "temp": temp,
     }
 
@@ -351,104 +388,166 @@ def plant_hminus_sign(snaps: list[dict[str, Arr]]) -> None:
     plant_formation_scale(snaps, -1.0)
 
 
+def start_up_state(first: dict[str, Arr], second: dict[str, Arr]) -> dict[str, Arr]:
+    """Return the first snapshot with the species the library holds after its first solve.
+
+    The first snapshot holds the start values. The library renormalises the species to
+    the sum it keeps afterwards (hydrogen, helium and deuterium plus the metals), and H2+
+    starts at 1e-20 although its balance is reached within a step. The reference takes the
+    renormalised species and H2+ from the balance of the second snapshot, scaled with n_HII,
+    which is what its production follows.
+    """
+    state = {k: v.copy() for k, v in first.items()}
+    total_first = sum(first[k] for k in SPECIES) + first["z"]
+    total_second = sum(second[k] for k in SPECIES) + second["z"]
+    for k in SPECIES:
+        state[k] = first[k] * total_second / total_first
+    state["H2II"] = second["H2II"] * state["HII"] / second["HII"]
+    return state
+
+
 def median_ln(ratio: Arr) -> float:
     """Return the median of ln(ratio) over the positive finite entries."""
     good = ratio[np.isfinite(ratio) & (ratio > 0.0)]
     return float(np.median(np.log(good))) if good.size else float("nan")
 
 
+def term_trapezoid(f_ref: list[Arr], t_s: list[float], j: int, f_mean: Arr) -> float:
+    """Return the relative error of the trapezoid rule over interval j.
+
+    It is dt^2 |F''| / (12 F), with F'' from the divided differences of the reference
+    rate over the three snapshot times that touch the interval, which are not evenly spaced.
+    """
+    dt = t_s[j + 1] - t_s[j]
+    curvature = []
+    for i in (j - 1, j):
+        if i < 0 or i + 2 >= len(f_ref):
+            continue
+        slope_up = (f_ref[i + 2] - f_ref[i + 1]) / (t_s[i + 2] - t_s[i + 1])
+        slope_down = (f_ref[i + 1] - f_ref[i]) / (t_s[i + 1] - t_s[i])
+        curvature.append(np.abs(2.0 * (slope_up - slope_down) / (t_s[i + 2] - t_s[i])))
+    if not curvature:
+        return 0.0
+    return float(np.median(dt**2 * np.max(curvature, axis=0) / (12.0 * f_mean)))
+
+
+def term_fast_species(a: dict[str, Arr], dt: float) -> float:
+    """Return the relaxation time of the slowest fast species, H- or H2+, over the interval."""
+    t_hminus = 1.0 / hminus_loss(a, a["temp"])
+    t_h2ii = 1.0 / (6.0e-10 * a["n_hi"])
+    return float(np.median(np.maximum(t_hminus, t_h2ii) / dt))
+
+
+def term_float32(a: dict[str, Arr], b: dict[str, Arr]) -> float:
+    """Return the float32 rounding of the two x2 values over their change."""
+    change = np.maximum(np.abs(b["x2"] - a["x2"]), 1e-300)
+    return float(np.median(FLOAT32_EPS * (a["x2"] + b["x2"]) / change))
+
+
+def term_temperature(s: dict[str, Arr], a: dict[str, Arr], d_ref: float) -> float:
+    """Return the error of the rate from the temperature and density conversion.
+
+    The check uses CODATA k_B and m_H. The library uses its own values (phys_constants.h),
+    which shifts T by (m_H,lib / m_H) (k_B / k_B,lib) - 1 and n by m_H / m_H,lib - 1.
+    The temperature comes from u and the species, float32 in the snapshot: three roundings.
+    The rate follows T with the local slope d ln F / d ln T.
+    """
+    slope = np.log(
+        formation_rate(s, a, a["temp"] * 1.001, d_ref)
+        / formation_rate(s, a, a["temp"] / 1.001, d_ref)
+    ) / np.log(1.001**2)
+    shift_t = abs((MH_LIB / MH) * (KB / KB_LIB) - 1.0) + 3.0 * FLOAT32_EPS
+    shift_n = abs(MH_LIB / MH - 1.0) + FLOAT32_EPS
+    return float(np.median(np.abs(slope) * shift_t + shift_n))
+
+
+def term_solver(
+    a: dict[str, Arr], b: dict[str, Arr], s: dict[str, Arr], n_steps: float
+) -> float:
+    """Return the accumulated error weight of the solver over the increment of x2.
+
+    The accurate solver keeps the local error of each step below atol + rtol |y| per
+    species (bdf_network.h, error weights). The errors of the steps add.
+    """
+    weight = float(s["atol"][0]) + float(s["rtol"][0]) * 0.5 * (
+        np.abs(a["x2"]) + np.abs(b["x2"])
+    )
+    change = np.maximum(np.abs(b["x2"] - a["x2"]), 1e-300)
+    return float(np.median(n_steps * weight / change))
+
+
+def term_dust_temperature(a: dict[str, Arr], t_mid: Arr, d_ref: float) -> float:
+    """Return the error of the dust term from a CMB temperature 0.005 K higher."""
+    zero = np.zeros_like(a["temp"])
+    t_shift = dust_temperature(a["temp"], a["n_h"], zero, d_ref, T_CMB + T_CMB_SHIFT)
+    t_base = dust_temperature(a["temp"], a["n_h"], zero, d_ref)
+    return float(
+        np.median(
+            np.abs(np.log(h2dust_rate(t_mid, t_shift) / h2dust_rate(t_mid, t_base)))
+        )
+    )
+
+
+def interval_row(
+    j: int,
+    snaps: list[dict[str, Arr]],
+    states: list[dict[str, Arr]],
+    f_ref: list[Arr],
+    t_upd: list[float],
+    steps: Arr,
+    t_unit: float,
+    d_ref: float,
+    arm: str,
+) -> dict:
+    """Return the statistic, the bar terms and the counts of interval j."""
+    a, b = states[j], states[j + 1]
+    dt = (t_upd[j + 1] - t_upd[j]) * t_unit
+    f_meas = (b["x2"] - a["x2"]) / dt
+    f_mean = 0.5 * (f_ref[j] + f_ref[j + 1])
+    n_steps = float(
+        np.sum(
+            (steps > t_upd[j] + 1e-6 * steps[-1])
+            & (steps <= t_upd[j + 1] + 1e-6 * steps[-1])
+        )
+    )
+    terms = {
+        "trapezoid": term_trapezoid(f_ref, [t * t_unit for t in t_upd], j, f_mean),
+        "fast_species": term_fast_species(a, dt),
+        "float32": term_float32(a, b),
+        "temperature": term_temperature(snaps[j], a, d_ref),
+        "solver": term_solver(a, b, snaps[j], n_steps),
+        "dust_temperature": (
+            term_dust_temperature(a, 0.5 * (a["temp"] + b["temp"]), d_ref)
+            if arm == "dust"
+            else 0.0
+        ),
+    }
+    return {
+        "interval": j,
+        "t_mid_Myr": float(0.5 * (t_upd[j] + t_upd[j + 1]) * t_unit / 3.15576e13),
+        "dt_s": dt,
+        "statistic": median_ln(f_meas / f_mean),
+        "n_nonpositive": int(np.sum(~(f_meas > 0.0))),
+        "n_zero_reference": int(np.sum(~(f_mean > 0.0))),
+        "n_particles": int(f_meas.size),
+        "bar": float(sum(terms.values())),
+        "terms": terms,
+        "f_ref_median": float(np.median(f_mean)),
+        "f_meas_median": float(np.median(f_meas)),
+    }
+
+
 def evaluate(snaps: list[dict[str, Arr]], steps: Arr, d_ref: float, arm: str) -> dict:
     """Return the per-interval statistic, bar terms and verdict of the arm."""
+    snaps = [start_up_state(snaps[0], snaps[1])] + snaps[1:]
     states = [hydrogen(s) for s in snaps]
-    t_unit = (
-        float(snaps[0]["time"][0] / snaps[0]["time_code"][0])
-        if snaps[0]["time_code"][0]
-        else float(snaps[1]["time"][0] / snaps[1]["time_code"][0])
-    )
+    t_unit = float(snaps[1]["time"][0] / snaps[1]["time_code"][0])
     t_upd = [last_update_time(steps, float(s["time_code"][0])) for s in snaps]
     f_ref = [formation_rate(s, h, h["temp"], d_ref) for s, h in zip(snaps, states)]
-    n_int = len(snaps) - 1
-    rows = []
-    for j in range(n_int):
-        # the library renormalises the species at its first solve: only a state it wrote can start an interval
-        total = np.median(sum(snaps[j][k] for k in SPECIES) + snaps[j]["z"])
-        started = j > 0 or abs(total - 1.0) < 1e-6
-        a, b = states[j], states[j + 1]
-        dt = (t_upd[j + 1] - t_upd[j]) * t_unit
-        f_meas = (b["x2"] - a["x2"]) / dt
-        f_mean = 0.5 * (f_ref[j] + f_ref[j + 1])
-        ratio = f_meas / f_mean
-        n_nonpos = int(np.sum(~(f_meas > 0.0)))
-        # terms of the bar
-        second = []
-        if j >= 1:
-            second.append(np.abs(f_ref[j - 1] - 2.0 * f_ref[j] + f_ref[j + 1]))
-        if j + 2 <= n_int:
-            second.append(np.abs(f_ref[j] - 2.0 * f_ref[j + 1] + f_ref[j + 2]))
-        trapezoid = (
-            float(np.median(np.max(second, axis=0) / (12.0 * f_mean)))
-            if second
-            else 0.0
-        )
-        t_mid = 0.5 * (a["temp"] + b["temp"])
-        loss = hminus_loss(a, a["temp"])
-        hm_steady = float(np.median(1.0 / (loss * dt)))
-        rounding = float(
-            np.median(
-                FLOAT32_EPS
-                * (a["x2"] + b["x2"])
-                / np.maximum(np.abs(b["x2"] - a["x2"]), 1e-300)
-            )
-        )
-        d_ln_t = np.log(
-            formation_rate(snaps[j], a, a["temp"] * 1.001, d_ref)
-            / formation_rate(snaps[j], a, a["temp"] / 1.001, d_ref)
-        ) / np.log(1.001**2)
-        temperature = float(np.median(1e-4 * np.abs(d_ln_t)))
-        n_steps = float(
-            np.sum(
-                (steps > t_upd[j] + 1e-6 * steps[-1])
-                & (steps <= t_upd[j + 1] + 1e-6 * steps[-1])
-            )
-        )
-        solver = 2.0 * SOLVER_REL_TOL * n_steps
-        t_dust_1 = dust_temperature(
-            a["temp"], a["n_h"], np.zeros_like(a["temp"]), d_ref, T_CMB + T_CMB_SHIFT
-        )
-        t_dust_0 = dust_temperature(
-            a["temp"], a["n_h"], np.zeros_like(a["temp"]), d_ref
-        )
-        r_1 = h2dust_rate(t_mid, t_dust_1)
-        r_0 = h2dust_rate(t_mid, t_dust_0)
-        dust_t = float(np.median(np.abs(np.log(r_1 / r_0)))) if arm == "dust" else 0.0
-        terms = {
-            "trapezoid": trapezoid,
-            "hminus_steady": hm_steady,
-            "float32": rounding,
-            "temperature": temperature,
-            "solver": solver,
-            "dust_temperature": dust_t,
-        }
-        bar = float(sum(terms.values()))
-        rows.append(
-            {
-                "interval": j,
-                "gated": bool(started),
-                "species_sum_at_start": float(total),
-                "t_mid_Myr": float(
-                    0.5 * (t_upd[j] + t_upd[j + 1]) * t_unit / 3.15576e13
-                ),
-                "dt_s": dt,
-                "dt_snapshot_s": float((snaps[j + 1]["time"][0] - snaps[j]["time"][0])),
-                "statistic": median_ln(ratio),
-                "n_nonpositive": n_nonpos,
-                "n_particles": int(ratio.size),
-                "bar": bar,
-                "terms": terms,
-                "f_ref_median": float(np.median(f_mean)),
-                "f_meas_median": float(np.median(f_meas)),
-            }
-        )
+    rows = [
+        interval_row(j, snaps, states, f_ref, t_upd, steps, t_unit, d_ref, arm)
+        for j in range(len(snaps) - 1)
+    ]
     return {"intervals": rows}
 
 
@@ -486,6 +585,15 @@ def void_reasons(snaps: list[dict[str, Arr]], arm: str) -> list[str]:
     if arm == "dust" and z <= 0.0:
         out.append("the dust arm needs a nonzero metallicity")
     return out
+
+
+def interval_verdict(r: dict) -> bool:
+    """Return True if the interval meets its bar with a positive rate for every particle."""
+    return (
+        r["n_nonpositive"] == 0
+        and r["n_zero_reference"] == 0
+        and abs(r["statistic"]) <= r["bar"]
+    )
 
 
 def main() -> int:
@@ -569,22 +677,14 @@ def main() -> int:
         if not all(np.isfinite(inputs)):
             print(f"NON-FINITE bar or reference in interval {r['interval']}")
             return EXIT_NONFINITE
-        # a particle with no growth has no ln: that is a failed bar (sign or missing channel), not a bad input
-        ok = r["n_nonpositive"] == 0 and abs(r["statistic"]) <= r["bar"]
-        if r["gated"] and not ok:
+        ok = interval_verdict(r)
+        if not ok:
             status = EXIT_FAIL
-        verdict = (
-            ("ok" if ok else "FAIL") if r["gated"] else "not gated (start-up state)"
-        )
         print(
             f"{r['interval']:>3} {r['t_mid_Myr']:>7.4f} {r['statistic']:>24.3e} {r['bar']:>10.2e} "
-            f"{r['n_nonpositive']:>5}  {verdict}"
+            f"{r['n_nonpositive'] + r['n_zero_reference']:>5}  {'ok' if ok else 'FAIL'}"
         )
-    gated = [r for r in res["intervals"] if r["gated"]]
-    if not gated:
-        print("VOID: no interval starts from a state that the library wrote")
-        return EXIT_VOID
-    finite = [r for r in gated if np.isfinite(r["statistic"])]
+    finite = [r for r in res["intervals"] if np.isfinite(r["statistic"])]
     if finite:
         worst = max(finite, key=lambda r: abs(r["statistic"]) / r["bar"])
         print(

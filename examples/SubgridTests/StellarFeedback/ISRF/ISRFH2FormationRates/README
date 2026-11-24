@@ -1,5 +1,5 @@
 # Intro
-A uniform, periodic box of 1000 H nuclei per cm^3 at 100 K, with no star and no light, run
+A uniform, periodic box of 1000 H nuclei per cm^3 at about 99 K, with no star and no light, run
 with geajay cooling and the ISRF switched on. H2 forms on dust and through H-, and nothing
 else acts. The box therefore has an exact answer: the rate at which the H2 abundance
 `x2 = n_H2 / n_H` grows follows from the gas state alone, through the formation coefficients
@@ -12,23 +12,26 @@ Two arms isolate the two channels:
 | Arm | Metallicity | `n_HII / n_H` | Channel that forms H2 |
 |---|---|---|---|
 | `hminus` | 0 | 1e-5 | H- only: `HI + e- -> H-`, then `H- + HI -> H2 + e-` |
-| `dust` | 0.1 solar | 1e-8 | dust grains only |
+| `dust` | 0.1 in GEAR solar units, 0.154 of the library solar value 0.01295 | 1e-8 | dust grains only |
 
 Both arms start at `x2 = 1e-8`. In the H- arm `x2` grows by 1.6e-6 in 0.05 Myr, in the dust arm
 by 5e-3.
 
 `with_radiative_cooling: 0` keeps the internal energy of the gas fixed while the chemistry
-runs, so the temperature stays at 100 K, apart from the change of the mean molecular weight.
+runs. The temperature stays at about 99 K: `initial_temperature: 100` gives that value
+with the mean molecular weight of the start species, and it changes only through the
+mean molecular weight as H2 forms.
 
 # Configure
 ```
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
 make -j
 ```
-The geajay library must have no default for the far-UV field G_0 (SWIFT stops at start-up
-otherwise) and must provide `with_radiative_cooling`. The ISRF reads the radiation table
-`PopII_parsec_spectral.hdf5`, which `run.sh` fetches. The box has no star, so the table
-only has to load.
+This example needs geajay cooling, not Grackle: official Grackle has other formation rates, and
+the check is written for the geajay ones. Use geajay at commit 22127025 or newer, which has no
+default for the far-UV field G_0 (SWIFT stops at start-up with an older library) and provides
+`with_radiative_cooling`. The ISRF reads the radiation table `PopII_parsec_spectral.hdf5`, which
+`run.sh` fetches. The box has no star, so the table only has to load.
 
 # Run
 ```
@@ -54,8 +57,9 @@ the grain energy balance), H- with the H- abundance in steady state, H2+ and thr
 formation. The bar of each interval is the sum of the numerical terms listed in the script
 docstring: the trapezoid rule, the H- relaxation, float32 storage, the temperature and the
 solver tolerance. The species of a snapshot hold the state of the last step that ended before
-its time, so the check takes the elapsed time from `timesteps.txt`. The first interval starts
-from the start-up state and is printed but not gated.
+its time, so the check takes the elapsed time from `timesteps.txt`. The first snapshot holds the
+start values: the check renormalises its species to the sum of the second snapshot and takes its
+H2+ from the balance of the second snapshot.
 
 Exit status: 0 pass, 1 a failed bar (also a particle with no positive growth), 2 a missing
 file, 3 a value that is not finite, 4 a run that does not meet the premises of the check (a star
@@ -68,7 +72,3 @@ box with twice that ratio; it fails the default check and passes with
 and `--plant-hm-sign` mirrors it, as a flipped H- term would. `--plant-nan` puts a NaN in the
 last snapshot. These options plant a known error in the data read from the snapshots, to
 confirm that the check fails when it should.
-
-The check does not see errors that appear only in the light (H- photodetachment, the dust
-temperature in a transported field), a wrong `k8` (H- turns into H2 with a share of 0.999 in
-the H- arm), or three-body formation (it needs `n_H` above 1e8 cm^-3).
