@@ -86,16 +86,7 @@ summed over the zone with the clump, over the same sum without it. `expected`
 is the same ratio for an exact shadow: the analytic transmission of the clump
 along each line of sight, weighted by the field of the run without the clump.
 An exact shadow keeps a depth of 1. The check passes at 0.90 or more, and a
-deeper shadow passes. It fails when a value is not finite, when the zone holds
-fewer than 100 particles, or when the field has not settled in the zone (the
-light front has not arrived). The no-clump field is compared with the exact
-free-streaming field of the star, which has the ambient extinction and no image.
-The check prints a warning when that ratio is outside [0.95, 1.05]; the warning
-does not affect the verdict.
-
-`python3 testCheckShadow.py <run_dir>` runs the check on synthetic fields built
-from the gas of `<run_dir>/ICs_isrf_shadow.hdf5` and exits 0 when the check
-gives the expected verdict on each.
+deeper shadow passes. The check prints `RESULT PASS` or `RESULT FAIL`.
 
 # Plot
 `run.sh` calls `plotShadow.py` from the run directory. It reads
