@@ -13,12 +13,12 @@ level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
 gas_density=${gas_density:=1e3}   # Gas density in atom/cm^3
 gas_mass=${gas_mass:=0.1}   # Gas particle mass in Msun
 h2_ratio=${h2_ratio:=3e-4}   # Initial nH2 / nH
-steps=${steps:=7}   # Last step of each swift run (swift -n): no final snapshot at time_end
+n_steps=${n_steps:=8}   # Steps to the end time; swift -n stops after the last, so no extra final snapshot
 run_name=${run_name:=$leg}
 ic_file=ICs_isrf_h2_two_sources.hdf5
 params=params.yml
 extra_ic_args="${contrast:+--contrast $contrast}"
-extra_swift_args="-n $steps"
+extra_swift_args="-n $((n_steps - 1))"
 stale_key_arg=""
 
 case "$leg" in
