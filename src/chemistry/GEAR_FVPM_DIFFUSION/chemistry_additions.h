@@ -83,14 +83,13 @@ chemistry_kick_extra_mass_flux(struct part *p, float dt_therm, float dt_grav,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* The last entry holds the untracked metals: the total is the sum of all
-     * entries. The fluxes carry float rounding in each entry, hence the
-     * tolerance of one float epsilon per entry. */
+    /* The last entry holds untracked metals: the total sums all entries. */
     double total_metal_mass = 0.;
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       total_metal_mass += p->chemistry_data.metal_mass[i];
     }
     const double new_mass = p->conserved.mass + p->flux.mass;
+    /* The tolerance is the float rounding of each entry. */
     if (total_metal_mass >
         new_mass * (1. + GEAR_CHEMISTRY_ELEMENT_COUNT * FLT_EPSILON))
       error("Total metal mass grew larger than the particle mass!");
