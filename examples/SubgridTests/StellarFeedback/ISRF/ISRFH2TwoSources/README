@@ -22,7 +22,10 @@ alone again, and both stars. Each run is kept in its own directory (`only_a`, `o
 `only_a2`, `main`). A star keeps its particle ID in the one-star runs, because the ID seeds the
 random frame of the emission pixels. `run.sh` reads the number of reception slots from
 `config.h` next to the `swift` executable. `contrast` (default 300), `level`, `gas_density`,
-`gas_mass`, `h2_ratio` and `n_threads` override the defaults.
+`gas_mass`, `h2_ratio`, `steps` and `n_threads` override the defaults. `steps` (default 7) is
+passed to `swift -n`: swift stops after that step and writes no final
+snapshot at `time_end`. That snapshot holds one more hop of light, which would reach a particle
+through two periodic images of one star, and the check cannot judge that.
 
 # Checking
 `checkH2Attenuation.py twosource` reads the first and last snapshot of the two-star run,
