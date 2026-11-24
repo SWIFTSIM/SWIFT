@@ -122,8 +122,7 @@ struct cell_hydro {
     float dx_max_sort;
 
     /*! Upper bound on the particle shift at the time sort directions were
-     * added to this (leaf) cell without resetting the shifts. Added to
-     * dx_max_sort so that it bounds the motion since every sort. */
+     * added to this (leaf) cell without resetting the shifts. */
     float dx_max_sort_offset;
 
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
