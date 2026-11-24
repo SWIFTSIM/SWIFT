@@ -943,8 +943,8 @@ cooling, ever observes it.
 The donor-side sums of Eq.~\eqref{eq:fct-sum} are purely local: a
 particle's neighbours across a rank boundary do not currently contribute
 to its $\Sigma_{\rm out}$. Rather than silently drop this correction on
-multi-rank runs, the code raises a hard error at task-graph construction
-time when configured with more than one MPI rank; distributed
+multi-rank runs, the code raises a hard error at start-up when run on
+more than one MPI rank; distributed
 accumulation is not yet implemented.
 
 \section{Time Integration}
