@@ -12,7 +12,7 @@ velocity=${velocity:=0} #Bulk velocity of gas and star along x (km/s)
 gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
-radiation_table=${radiation_table:=PopII_parsec_spectral_with_pe_photon_energy.hdf5} #Table with MeanPhotonEnergyPE
+radiation_table=${radiation_table:=PopII_parsec_spectral.hdf5} #Table with MeanPhotonEnergyPE
 swift_exe=${swift_exe:="$PWD/../../../../../swift"} #swift binary
 run_dir=${run_dir:=run_${ic}_v${velocity}} #Isolated directory of the run
 extra_args=${extra_args:=""} #Further swift arguments, e.g. "-P TimeIntegration:time_end:2.5e-5"
@@ -30,13 +30,8 @@ then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
-# The table is not downloadable: build it with the pychem table generator.
-if [ ! -f "$radiation_table" ]
-then
-    echo "Radiation table '$radiation_table' not found. Set radiation_table=/path/to/table.hdf5." >&2
-    echo "It must carry MeanPhotonEnergyPE and Integrated_MeanPhotonEnergyPE in Data/Radiation (see README)." >&2
-    exit 1
-fi
+# The published table is fetched on first use. radiation_table=/path/to/table.hdf5 overrides it.
+"$scripts_location"/getRadiationTable.sh "$radiation_table" || exit 1
 radiation_path=$(realpath "$radiation_table")
 radiation_table=$(basename "$radiation_path")
 
