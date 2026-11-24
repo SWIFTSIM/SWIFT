@@ -726,20 +726,29 @@ static void zoom_get_geometry(struct space *s) {
                             s->zoom_props->region_lower_bounds[i];
   }
 
-  /* Derive the zoom depth from the requested cdim if supplied. */
+  /* Derive the zoom depth from the requested cdim if supplied. The depth is
+   * shared by all axes, so the axis spanning the fewest background cells sets
+   * it to ensure every axis reaches the requested minimum. */
   if (s->zoom_props->zoom_cell_min_cdim > 0) {
-    s->zoom_props->zoom_cell_depth =
-        zoom_get_depth_for_cdim(s->zoom_props->dim[0], s->width[0],
-                                s->zoom_props->zoom_cell_min_cdim, NULL);
+    int shortest = 0;
+    for (int i = 1; i < 3; i++) {
+      if (zoom_get_void_cdim(s->zoom_props->dim[i], s->width[i]) <
+          zoom_get_void_cdim(s->zoom_props->dim[shortest],
+                             s->width[shortest])) {
+        shortest = i;
+      }
+    }
+    s->zoom_props->zoom_cell_depth = zoom_get_depth_for_cdim(
+        s->zoom_props->dim[shortest], s->width[shortest],
+        s->zoom_props->zoom_cell_min_cdim, NULL);
   }
 
-  /* Compute the number of zoom cells in the void region. */
-  int cdim = zoom_get_cdim_at_depth(s->zoom_props->dim[0], s->width[0],
-                                    s->zoom_props->zoom_cell_depth);
-
-  /* Compute the zoom cdim and cell width. */
+  /* Compute the zoom cdim and cell width. Each axis has its own number of zoom
+   * cells since the region need not span the same number of background cells
+   * along each axis. */
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->cdim[i] = cdim;
+    s->zoom_props->cdim[i] = zoom_get_cdim_at_depth(
+        s->zoom_props->dim[i], s->width[i], s->zoom_props->zoom_cell_depth);
     s->zoom_props->width[i] =
         s->dim[i] /
         (s->cdim[i] * integer_pow(2, s->zoom_props->zoom_cell_depth));
