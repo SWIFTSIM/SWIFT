@@ -257,7 +257,7 @@ static void make_split_cell(struct cell *c, struct cell *progeny,
     for (int i = 0; i < n; i++) {
       struct part *p = &c->hydro.parts[offset + i];
       p->h = H_LATTICE;
-      p->mass = 1.f;
+      hydro_set_mass(p, 1.f);
       p->time_bin = 1;
 #ifdef SWIFT_DEBUG_CHECKS
       p->ti_drift = TI_CURRENT;
@@ -757,7 +757,7 @@ static void make_deep_cell(struct cell *cells, const double loc_x,
       for (int i = 0; i < n; i++) {
         struct part *p = &parts[offset + i];
         p->h = H_LATTICE;
-        p->mass = 1.f;
+        hydro_set_mass(p, 1.f);
         p->time_bin = 1;
 #ifdef SWIFT_DEBUG_CHECKS
         p->ti_drift = TI_CURRENT;
@@ -989,6 +989,8 @@ static int check_deep_stars(struct runner *r, struct space *s,
 
   /* The gas planted on the sort axis drifted towards the star: a sorted
    * sweep without the drift of its leaf misses it. */
+  /* A naive build never reads the sort: the control cannot mismatch there. */
+#ifndef SWIFT_USE_NAIVE_INTERACTIONS
   struct cell *leaf_sorted = NULL;
   for (int i = 9; i < N_DEEP; i++)
     if (cell_distance_outside_box(&gas[i], x_new[0]) == 0.f)
@@ -1002,6 +1004,7 @@ static int check_deep_stars(struct runner *r, struct space *s,
     n_fail++;
   }
   leaf_sorted->hydro.dx_max_sort = dx_sort_save;
+#endif
 
   /* The drift margin keeps the rerun of a larger star above the leaves. */
   if (!run_deep_stars(r, star, gas, r_margin, /*ntasks=*/0,
