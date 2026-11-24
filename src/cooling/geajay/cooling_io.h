@@ -1257,6 +1257,10 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "%i.",
         cooling->primordial_chemistry);
 
+  if (cooling->primordial_chemistry > GEAJAY_NETWORK_H_HE_H2_D_IONS)
+    error("GeajayCooling:primordial_chemistry_network must be 0 to %i, got %i.",
+          GEAJAY_NETWORK_H_HE_H2_D_IONS, cooling->primordial_chemistry);
+
   if (cooling->primordial_chemistry > COOLING_GEAJAY_MODE)
     error(
         "GeajayCooling:primordial_chemistry_network is %i, but this SWIFT is "

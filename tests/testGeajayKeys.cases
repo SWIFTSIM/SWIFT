@@ -2,7 +2,7 @@
 cloudy_table_file|cloudy_table_file||cloudy_table_file: alt_table.h5|LIB cloudy_table_file=alt_table.h5|lib
 primordial_chemistry_network|primordial_chemistry_network||primordial_chemistry_network: H_He|LIB species_network=1|lib
 with_uv_background|with_uv_background||with_uv_background: 1|LIB uv_background=1|lib
-primordial_chemistry_network_above_build|primordial_chemistry_network above the configured network is refused||primordial_chemistry_network: 5|!reconfigure with --with-cooling=geajay_5|refuse
+primordial_chemistry_network_above_max|primordial_chemistry_network above the highest network is refused||primordial_chemistry_network: 5|!GeajayCooling:primordial_chemistry_network must be 0 to 4, got 5|refuse
 primordial_chemistry_network_negative|primordial_chemistry_network below 0 is refused||primordial_chemistry_network: -1|!GeajayCooling:primordial_chemistry_network must be 0 or above|refuse
 with_metal_cooling|with_metal_cooling||with_metal_cooling: 0|LIB metal_line_cooling=0|lib
 redshift|redshift||redshift: 2.5|LIBCALL set_redshift=2.5|lib
