@@ -47,6 +47,18 @@
  * the particles whose kernel support stays inside the box are checked. The
  * test runs in the configured dimension and does nothing for the other hydro
  * schemes.
+ *
+ * With MAGMA the force loop then runs on the same fields (limiter cut-off
+ * off, so that the reconstruction is the full linear one) and is checked
+ * against the answer rather than against another implementation: the
+ * velocities reconstructed to the pair mid-points agree, so the viscosity
+ * sees no velocity jump (mu~ = 0) although the flow converges; the
+ * reconstructed energies agree, so the conduction is off and the heating is
+ * the P dV term, -(P / rho) tr A, exact on any particle distribution for
+ * the MI3 formulation (each particle's own gradient function, eq. 18) and
+ * on the lattice for MI1 and MI2; the acceleration is -grad P / rho and the
+ * smoothing-length rate h tr A / d on the lattice (on the jittered lattice
+ * the zeroth-order error of the pressure sum is reported).
  */
 
 #if !defined(MAGMA_SPH) && !defined(SPHENIX_SPH)
@@ -86,9 +98,12 @@ static int run_configuration(const int n, const double jitter, const double eta,
   const float H = kernel_gamma * h;
   const double mass = rho0 * pow(dx, hydro_dimension);
 
-  /* The linear fields: v = A x + b, u = c . x + d (u stays positive) */
+  /* The linear fields: v = A x + b, u = c . x + d (u stays positive). The
+   * symmetric part of A is negative definite: every pair approaches, so the
+   * viscosity of the force loop is live and must be switched off by the
+   * reconstruction alone. */
   const double A[3][3] = {
-      {0.7, -0.3, 0.2}, {0.4, 1.1, -0.5}, {-0.6, 0.25, 0.9}};
+      {-0.5, -0.3, 0.2}, {0.4, -0.5, -0.5}, {-0.6, 0.25, -0.5}};
   const double b[3] = {0.1, -0.2, 0.05};
   const double c[3] = {0.8, -0.35, 0.5};
   const double d = 3.0;
@@ -187,6 +202,24 @@ static int run_configuration(const int n, const double jitter, const double eta,
     }
   }
 
+#if defined(MAGMA_SPH)
+  /* Force loop: every unordered pair within the kernel support (equal h) */
+  for (int i = 0; i < N; ++i) hydro_reset_acceleration(&parts[i]);
+  for (int i = 0; i < N; ++i) {
+    struct part *pi = &parts[i];
+    for (int j = i + 1; j < N; ++j) {
+      struct part *pj = &parts[j];
+      const float dxv[3] = {(float)(pi->x[0] - pj->x[0]),
+                            (float)(pi->x[1] - pj->x[1]),
+                            (float)(pi->x[2] - pj->x[2])};
+      const float r2 = dxv[0] * dxv[0] + dxv[1] * dxv[1] + dxv[2] * dxv[2];
+      if (r2 < hig2)
+        runner_iact_force(r2, dxv, pi->h, pj->h, pi, pj, 1.f, 0.f);
+    }
+  }
+  for (int i = 0; i < N; ++i) hydro_end_force(&parts[i], cosmo);
+#endif
+
   /* Check the interior particles */
   const double margin = 2.0 * H;
 #if defined(MAGMA_SPH)
@@ -276,6 +309,116 @@ static int run_configuration(const int n, const double jitter, const double eta,
     failed += fallbacks;
   }
 
+#if defined(MAGMA_SPH)
+  /* The force loop against the exact answers. The heating is exact on any
+   * distribution for MI3 only (MI1 weights the neighbours' terms by 1 /
+   * rho_i^2 instead of 1 / (rho_i rho_j), MI2 uses the average gradient
+   * function); the acceleration and the smoothing-length rate on the
+   * lattice only (the pressure sum has a zeroth-order error off it). */
+#if defined(MAGMA_MI3_FORMULATION)
+  const int heating_exact = 1;
+#else
+  const int heating_exact = (jitter == 0.);
+#endif
+  const int lattice = (jitter == 0.);
+  const double tol_force = 1e-3;
+  /* A particle's acceleration reads its neighbours' gradient functions,
+   * built from their neighbours' densities: three kernel supports from the
+   * boundary */
+  const double margin_force = 3.0 * H;
+  double worst_mu = 0., worst_udt = 0., worst_a = 0., worst_hdt = 0.,
+         worst_hdt_cont = 0.;
+  int force_failed = 0, force_checked = 0;
+  long pair_fallbacks = 0;
+  for (int i = 0; i < N; ++i) {
+    const struct part *p = &parts[i];
+    int interior = 1;
+    for (int k = 0; k < (int)hydro_dimension; ++k)
+      if (p->x[k] < margin_force || p->x[k] > L - margin_force) interior = 0;
+    if (!interior || (p->fallback_flags & magma_fallback_base_sph_mask))
+      continue;
+    ++force_checked;
+    pair_fallbacks += p->force.n_pair_fallbacks;
+
+    /* No velocity jump seen by the viscosity */
+    const double err_mu = p->force.mu_tilde / (norm_A * h);
+
+    /* Heating: the P dV term of the exact divergence */
+    const double u_dt_exact = -(p->force.pressure / p->rho) * trace_A;
+    const double err_udt = fabs(p->u_dt - u_dt_exact) / fabs(u_dt_exact);
+
+    /* Acceleration: -grad P / rho with P = (gamma - 1) rho u and uniform
+     * rho, relative to the exact value on the lattice and to the scale of
+     * the zeroth-order error of the pressure sum, P / (rho h), off it */
+    double err_a = 0.;
+    for (int k = 0; k < (int)hydro_dimension; ++k)
+      err_a = fmax(err_a, fabs(p->a_hydro[k] + hydro_gamma_minus_one * c[k]));
+    err_a /= lattice ? hydro_gamma_minus_one * norm_c
+                     : p->force.pressure / (p->rho * h);
+
+    /* Smoothing-length rate: (h / d) times the kernel-gradient divergence of
+     * the exact field, -sum_j (m_j / rho_j) (A dx) . grad W, summed in
+     * double; the continuum value h tr A / d is off by the discreteness of
+     * the kernel sum on the lattice (about a per cent at this resolution)
+     * and reported only */
+    double div_kernel = 0.;
+    for (int j = 0; j < N; ++j) {
+      if (j == i) continue;
+      const struct part *pj = &parts[j];
+      const double dxv[3] = {p->x[0] - pj->x[0], p->x[1] - pj->x[1],
+                             p->x[2] - pj->x[2]};
+      const double r2 = dxv[0] * dxv[0] + dxv[1] * dxv[1] + dxv[2] * dxv[2];
+      if (r2 >= hig2) continue;
+      const double r = sqrt(r2);
+      float w, w_dx;
+      kernel_deval((float)(r / h), &w, &w_dx);
+      double A_dx_dot_dx = 0.;
+      for (int k = 0; k < (int)hydro_dimension; ++k)
+        for (int l = 0; l < (int)hydro_dimension; ++l)
+          A_dx_dot_dx += A[k][l] * dxv[l] * dxv[k];
+      div_kernel -= (pj->mass / pj->rho) * A_dx_dot_dx / r * w_dx /
+                    pow(h, hydro_dimension + 1);
+    }
+    const double h_dt_kernel = h * div_kernel / hydro_dimension;
+    const double h_dt_cont = h * trace_A / hydro_dimension;
+    const double err_hdt =
+        fabs(p->force.h_dt - h_dt_kernel) / fabs(h_dt_kernel);
+    const double err_hdt_cont =
+        fabs(p->force.h_dt - h_dt_cont) / fabs(h_dt_cont);
+
+    worst_mu = fmax(worst_mu, err_mu);
+    worst_udt = fmax(worst_udt, err_udt);
+    worst_a = fmax(worst_a, err_a);
+    worst_hdt = fmax(worst_hdt, err_hdt);
+    worst_hdt_cont = fmax(worst_hdt_cont, err_hdt_cont);
+
+    if (err_mu > tol_force || (heating_exact && err_udt > tol_force) ||
+        err_hdt > tol_force || (lattice && err_a > tol_force)) {
+      if (force_failed < 5)
+        message(
+            "%s: particle %lld: mu~ err %.2e, u_dt err %.2e, a err %.2e, "
+            "h_dt err %.2e",
+            label, p->id, err_mu, err_udt, err_a, err_hdt);
+      ++force_failed;
+    }
+  }
+  message(
+      "%s: force loop: %d checked, %d failed, %ld pair fallbacks; worst "
+      "errors: mu~ %.2e, u_dt %.2e%s, a %.2e%s, h_dt %.2e (%.2e from the "
+      "continuum value, reported)",
+      label, force_checked, force_failed, pair_fallbacks, worst_mu, worst_udt,
+      heating_exact ? "" : " (reported)", worst_a,
+      lattice ? "" : " of P / (rho h), reported", worst_hdt, worst_hdt_cont);
+  if (force_checked == 0)
+    error("%s: no interior particle for the force checks", label);
+  failed += force_failed;
+  if (pair_fallbacks > 0) {
+    message("%s: %ld pairs fell back to kernel gradients", label,
+            pair_fallbacks);
+    ++failed;
+  }
+#endif
+
   free(parts);
   free(xparts);
   return failed;
@@ -286,6 +429,12 @@ int main(int argc, char *argv[]) {
   /* Initialise the hydro properties, cosmology and floors */
   struct hydro_props hp;
   hydro_props_init_no_hydro(&hp);
+#if defined(MAGMA_SPH)
+  /* No distance cut-off of the slope limiter: the force loop then
+   * reconstructs every pair with the full linear term (the gradient checks
+   * do not read it) */
+  hp.viscosity.eta_crit = 0.f;
+#endif
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   struct pressure_floor_props floor;
