@@ -59,7 +59,7 @@ ic=glass velocity=300 ./run.sh
 
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run_<ic>_v<velocity>`, which it empties first. Override a setting with an environment
-variable: `radiation_table`, `n_threads`, `ic`, `velocity` (km/s), `gas_density` (atom/cm^3),
+variable: `radiation_table`, `scripts_location` (folder of the table scripts), `n_threads`, `ic`, `velocity` (km/s), `gas_density` (atom/cm^3),
 `gas_mass` (Msun), `star_mass` (Msun), `swift_exe`, `run_dir` and `extra_args`
 (further swift arguments).
 

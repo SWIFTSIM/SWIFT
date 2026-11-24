@@ -62,7 +62,7 @@ n_threads=1 bins=two energy_scale=1e-3 ./run.sh
 
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run_<bins>_scale<energy_scale>`, which it empties first. Override a setting
-with an environment variable: `radiation_table`, `n_threads`, `bins`, `energy_scale`, `light_speed`
+with an environment variable: `radiation_table`, `scripts_location` (folder of the table scripts), `n_threads`, `bins`, `energy_scale`, `light_speed`
 (cap, fixed or unlimited), `speed_fraction` (the fraction of c), `margin`,
 `n_steps`, `snapshot_every` (base steps), `gas_density` (atom/cm^3),
 `gas_mass` (Msun), `swift_exe`, `run_dir` and `extra_args` (further swift

@@ -66,7 +66,7 @@ leg=static ./run.sh
 
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run_<leg>`, which it empties first. Override a setting with an environment
-variable: `radiation_table`, `n_threads`, `leg`, `redshift` (starting redshift of the expanding box),
+variable: `radiation_table`, `scripts_location` (folder of the table scripts), `n_threads`, `leg`, `redshift` (starting redshift of the expanding box),
 `gas_density` (atom/cm^3, physical), `gas_mass` (Msun), `temperature` (K),
 `star_mass` (Msun), `duration` (proper time in internal units, 0.184 is 180 Myr),
 `n_steps`, `n_snapshots`, `swift_exe`, `run_dir` and `extra_args` (further swift

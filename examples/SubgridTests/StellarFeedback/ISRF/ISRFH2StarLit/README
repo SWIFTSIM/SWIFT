@@ -38,7 +38,8 @@ transport needs a radiation table whose `Data/Radiation` group carries
 ```
 ./run.sh                      # the run, then the check
 ```
-`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`), `n_threads` and `ranks`
+(MPI ranks; more than 1 needs an MPI build named `swift_mpi`)
 override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
 about 2e18 cm^-2 over the box.
 
