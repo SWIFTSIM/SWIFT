@@ -28,6 +28,11 @@ Current examples:
   Uses a standalone DM-only IC layout tuned for EAGLE-like mass scales, then
   generates gas in SWIFT and evolves with the EAGLE model stack in zoom mode.
 
+- NonCubicUniDMGravity:
+  Same as UniformDMGravity but with the high-resolution region twice as long
+  along the z axis, giving a non-cubic zoom region spanning 2x2x4 background
+  top-level cells.
+
 - OffsetUniDMGravity:
   Same as UniformDMGravity but with the high-resolution IC region offset by
   +1/4 box in each axis, testing startup recentring without boundary wrapping.

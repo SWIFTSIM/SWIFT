@@ -1,0 +1,15 @@
+Non-cubic uniform dark-matter zoom example.
+
+This example is identical to UniformDMGravity except the high-resolution
+particle region is twice as long along the z axis as it is along x and y. The
+zoom region is padded independently along each axis, so it is not a cube: it
+spans 2x2x4 background top-level cells.
+
+The setup has been tuned for a zoom-region with:
+
+- ZoomRegion:bkg_top_level_cells = 8,
+- ZoomRegion:zoom_top_level_depth = 2,
+- a zoom extent that spans the central 2x2x4 background cells, giving 8x8x16
+  zoom top-level cells.
+
+Run with the --zoom runtime option.
