@@ -138,3 +138,6 @@ python3 isrf_photoelectric_heating_check.py \
     --pe-model grackle-wolfire1995 \
     --steps-per-window 1 --cooling-response 4.2436e-4
 ```
+The value 4.2436e-4 holds for this fixture only: `time_end=4e-9`, `dt_max=6e-10`, the shipped
+output lists and the official Grackle build. Another fixture, cadence or build needs its own
+value, from a one-zone call of the cooling library at the start of the window.

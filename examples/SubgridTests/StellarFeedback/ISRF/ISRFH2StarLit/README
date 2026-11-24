@@ -19,6 +19,7 @@ parameters therefore switch off photoionization, stellar winds and supernovae, a
 light speed to `unlimited`. The light crosses one hop per step, so it needs several steps to
 reach the whole box. The steps are short so that the H2 stays frozen while the light
 arrives; the run stops after 8 steps and the check reads the last snapshot.
+The check refuses a run that departs from these settings.
 Only particles at `r < L/2 - 2h` are read, so that the nearest periodic
 image of the star is the right one.
 

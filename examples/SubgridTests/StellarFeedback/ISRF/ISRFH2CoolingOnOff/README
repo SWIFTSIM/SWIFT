@@ -51,4 +51,4 @@ with the change that the written line transmission predicts, with the library fo
 rates. A density bin with too few particles, or with a noise bar above ln 2, is printed as
 INDETERMINATE and decides nothing.
 
-The check exits with a non-zero status when it fails.
+The check exits with a non-zero status when it fails or cannot decide.
