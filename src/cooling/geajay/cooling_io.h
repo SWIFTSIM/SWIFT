@@ -578,6 +578,27 @@ INLINE static void cooling_refuse_unread_cosmic_ray_option(
 }
 
 /**
+ * @brief Stop if a key that the chosen options do not read was set to a value
+ * other than its default.
+ *
+ * For a key that the module has already read with its default value, so that
+ * the other cooling_refuse_unread_ functions cannot read it again.
+ *
+ * @param key The parameter.
+ * @param differs Whether the value read differs from the default.
+ * @param reason Why the key is not read.
+ */
+INLINE static void cooling_refuse_unread_setting(const char *key,
+                                                 const int differs,
+                                                 const char *reason) {
+  if (differs)
+    error(
+        "%s is set to a value other than its default, but it is not read: "
+        "%s.",
+        key, reason);
+}
+
+/**
  * @brief Pass one cosmic-ray option to geajay, if the parameter file has it.
  *
  * @param parameter_file The parser parameter file.
@@ -777,6 +798,13 @@ INLINE static void cooling_read_background_parameters(
 
   cooling->lw_background_j21 = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:lw_background_j21", -1.);
+  if (!cooling_double_is_finite(&cooling->lw_background_j21) ||
+      (cooling->lw_background_j21 != -1. &&
+       !(cooling->lw_background_j21 >= 0.)))
+    error(
+        "GeajayCooling:lw_background_j21 must be -1 (the library value) or a "
+        "finite number >= 0, got %g.",
+        cooling->lw_background_j21);
   cooling->isrf_from_field = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:isrf_from_field", 0);
   if (cooling->isrf_from_field != 0 &&
@@ -1098,6 +1126,109 @@ INLINE static void cooling_refuse_retired_keys(
     if (parser_does_param_exist(parameter_file, key))
       error("%s was removed, no replacement.", key);
   }
+}
+
+/**
+ * @brief Does a band of the per_band background read the UV table?
+ *
+ * @param cooling The cooling properties, read up to the background options.
+ * @return 1 when background_mode is per_band and the ionising, LW or ISRF
+ * model is uv_table, 0 otherwise.
+ */
+INLINE static int cooling_band_reads_uv_table(
+    const struct cooling_function_data *cooling) {
+  return cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND &&
+         (cooling->ionising_background_model ==
+              GEAJAY_IONISING_BACKGROUND_UV_TABLE ||
+          cooling->lw_background_model == GEAJAY_LW_BACKGROUND_UV_TABLE ||
+          cooling->isrf_background_model == GEAJAY_ISRF_BACKGROUND_UV_TABLE);
+}
+
+/**
+ * @brief Stop if a key that the chosen options do not use is in the file with
+ * a value other than its default.
+ *
+ * The keys are read with a default before this function runs, so the read
+ * values are compared with the defaults. A key set to its default is
+ * accepted. The cosmic-ray, per_band and column shielding keys refuse their
+ * own inert keys in their readers.
+ *
+ * @param cooling The cooling properties, all read.
+ */
+INLINE static void cooling_refuse_inert_keys(
+    const struct cooling_function_data *cooling) {
+
+  cooling_refuse_unread_setting(
+      "GeajayCooling:metal_cooling_cmb_floor",
+      !cooling->with_metal_cooling && cooling->cmb_temperature_floor != 1,
+      "GeajayCooling:with_metal_cooling is 0");
+
+  cooling_refuse_unread_setting(
+      "GeajayCooling:reference_dust_to_gas_ratio",
+      !cooling_dust_is_used(cooling) &&
+          cooling->reference_dust_to_gas_ratio != -1.,
+      "no dust switch and no per_band dust attenuation reads the dust-to-gas "
+      "ratio");
+
+  cooling_refuse_unread_setting(
+      "GeajayCooling:photoelectric_heating_rate",
+      cooling->photoelectric_heating_model != GEAJAY_PHOTOELECTRIC_FIXED_RATE &&
+          cooling->photoelectric_heating_rate != -1.,
+      "GeajayCooling:photoelectric_heating_model is not fixed_rate");
+
+  cooling_refuse_unread_setting(
+      "GeajayCooling:case_b_recombination",
+      cooling->primordial_chemistry < 1 &&
+          cooling->case_b_recombination != GEAJAY_RECOMBINATION_CASE_B,
+      "GeajayCooling:primordial_chemistry_network is 0");
+
+  const char *no_h2 =
+      "the species network GeajayCooling:primordial_chemistry_network has no "
+      "H2";
+  cooling_refuse_unread_setting("GeajayCooling:lw_background_j21",
+                                cooling->primordial_chemistry < 2 &&
+                                    cooling->lw_background_j21 != -1.,
+                                no_h2);
+
+  /* The dust column of per_band attenuation uses the H2 shielding path */
+  cooling_refuse_unread_setting(
+      "GeajayCooling:h2_shielding_length_method",
+      cooling->primordial_chemistry < 2 &&
+          cooling->dust_background_attenuation !=
+              GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND &&
+          cooling->h2_shielding_length_method !=
+              cooling_h2_shielding_length_none,
+      "the species network GeajayCooling:primordial_chemistry_network has no "
+      "H2 and GeajayCooling:dust_background_attenuation is not per_band");
+
+  if (cooling->uv_self_shielding ==
+          cooling_uv_self_shielding_density_threshold &&
+      !cooling->with_uv_background && cooling_band_reads_uv_table(cooling))
+    error(
+        "GeajayCooling:uv_self_shielding: density_threshold has no effect "
+        "with GeajayCooling:with_uv_background: 0. The threshold switches off "
+        "that UV background only, and the bands of per_band that read the UV "
+        "table do not use it. Set GeajayCooling:with_uv_background: 1 or use "
+        "another uv_self_shielding.");
+
+  /* The default solver of geajay is the cheap one */
+  const int accurate = cooling->solver == GEAJAY_SOLVER_ACCURATE;
+  cooling_refuse_unread_setting(
+      "GeajayCooling:energy_change_limit",
+      accurate && cooling->energy_change_limit != 0.,
+      "GeajayCooling:solver is accurate");
+  cooling_refuse_unread_setting(
+      "GeajayCooling:cheap_energy_update",
+      accurate && cooling->cheap_energy_update != -1,
+      "GeajayCooling:solver is accurate");
+  cooling_refuse_unread_setting(
+      "GeajayCooling:accurate_relative_tolerance",
+      !accurate && cooling->accurate_relative_tolerance != -1.,
+      "GeajayCooling:solver is not accurate");
+  cooling_refuse_unread_setting(
+      "GeajayCooling:accurate_absolute_tolerance",
+      !accurate && cooling->accurate_absolute_tolerance != -1.,
+      "GeajayCooling:solver is not accurate");
 }
 
 /**
@@ -1589,12 +1720,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   /* The redshifts are used by the UV table, which a model of per_band can load
    * with with_uv_background 0 */
   const int uv_table_loaded =
-      cooling->with_uv_background ||
-      (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND &&
-       (cooling->ionising_background_model ==
-            GEAJAY_IONISING_BACKGROUND_UV_TABLE ||
-        cooling->lw_background_model == GEAJAY_LW_BACKGROUND_UV_TABLE ||
-        cooling->isrf_background_model == GEAJAY_ISRF_BACKGROUND_UV_TABLE));
+      cooling->with_uv_background || cooling_band_reads_uv_table(cooling);
   const double uvb_redshift_values[4] = {
       cooling->uv_background_redshift_on,
       cooling->uv_background_redshift_full_on,
@@ -1608,6 +1734,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           "(GeajayCooling:with_uv_background is 0 and no model of per_band is "
           "uv_table).",
           uvb_redshift_keys[i]);
+
+  cooling_refuse_inert_keys(cooling);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */
