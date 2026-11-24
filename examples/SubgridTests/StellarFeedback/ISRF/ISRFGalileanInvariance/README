@@ -34,14 +34,7 @@ The example needs a radiation table whose `Data/Radiation` group carries
 `MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
 of the ISRF (section "The Data/Radiation group" of the stellar evolution
 table documentation). The published table `PopII_parsec_spectral.hdf5` has
-them. Fetch it into this directory and name it in the shell, so that every
-`./run.sh` command below uses it:
-```
-../../../../GEAR_ICs_and_SCRIPTS/getRadiationTable.sh PopII_parsec_spectral.hdf5
-export radiation_table=PopII_parsec_spectral.hdf5
-```
-Without `radiation_table`, `run.sh` looks for
-`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory. To build
+them, and `run.sh` fetches it into this directory on first use. To build
 your own table with the pychem table generator, see the section "Where each
 Radiation field comes from" of the pychem page "How to generate a Chemistry
 Table for GEAR" (parameter file
