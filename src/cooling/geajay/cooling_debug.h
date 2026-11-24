@@ -44,6 +44,11 @@ __attribute__((always_inline)) INLINE static void cooling_debug_particle(
     warning("[PID%lld] DI_frac = %.3e, DII_frac = %.3e, HDI_frac = %.3e", p->id,
             xp->cooling_data.DI_frac, xp->cooling_data.DII_frac,
             xp->cooling_data.HDI_frac);
+#if COOLING_GEAJAY_MODE >= 4
+    warning("[PID%lld] DM_frac = %.3e, HDII_frac = %.3e, HeHII_frac = %.3e",
+            p->id, xp->cooling_data.DM_frac, xp->cooling_data.HDII_frac,
+            xp->cooling_data.HeHII_frac);
+#endif
 #endif
 #endif
 #endif

@@ -66,6 +66,9 @@ case "$field" in
                     -P GeajayCooling:isrf_background_model:constant \
                     -P GeajayCooling:isrf_background_habing:$g0 \
                     -P GeajayCooling:dust_model:basic"
+        # per_band takes G_0 from isrf_background_habing and refuses isrf_habing
+        grep -v '^  isrf_habing:' "$params_file" > params_geajay_per_band.yml
+        params_file=params_geajay_per_band.yml
         ;;
     *) echo "field must be seeded, none or background." >&2; exit 1 ;;
 esac
