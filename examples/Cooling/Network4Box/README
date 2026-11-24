@@ -1,0 +1,32 @@
+Cold primordial gas at n_H = 464 cm^-3 and 30 K, with cosmic rays at a primary
+ionisation rate of 1e-17 s^-1 per H, followed for one free-fall time (2.1 Myr)
+at constant density, with redshift 20 for the CMB. No metals, no UV background.
+The example compares two networks of geajay:
+  network3.yml  primordial_chemistry_network H_He_H2_D (D and HD);
+  network4.yml  primordial_chemistry_network H_He_H2_D_ions (adds D-, HD+ and
+                HeH+).
+Both use the accurate solver and start from the same state: x(HII) = 2e-4,
+x(H2) = 5e-7, D/H = 3.4e-5 by number, neutral helium.
+
+The particles sit on a lattice, so every particle has the same state and the
+box behaves as one zone. The parameter files take 1024 steps per run: with
+fewer steps the temperature in the snapshot lags (about 0.3 percent at 64
+steps), while the abundances do not change. SWIFT applies the cooling rate of
+a step half in that step and half in the next, so the snapshot misses half of
+the energy change of the last step. For a constant rate the snapshot holds the
+fraction (N - 1/2) / N of the total gain after N steps; 1024 steps make the
+lag negligible.
+
+compareNetworks.py reads the last snapshot of each run and prints the H2
+fraction, the HD to H ratio and the temperature, with the relative difference
+of network 4 against network 3. With cosmic rays the ions change the H2
+fraction and the HD to H ratio by more than 20 percent. Without cosmic rays the
+change is below 2 percent: run ./run.sh --no-cosmic-rays to see it. The
+difference depends on the density, the temperature and the ionisation rate.
+
+Configure SWIFT with the network 4 library:
+  ./configure --with-cooling=geajay_4 --with-geajay=$GEAJAY_ROOT
+
+Run with ./run.sh. The comparison needs pygeajay (in the geajay source tree,
+src/python) and GEAJAY_LIBRARY_PATH set to the same libgeajay. The two runs take
+about two minutes on 4 threads.
