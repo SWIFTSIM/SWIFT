@@ -162,9 +162,10 @@ Self-shielding
        N\ :sub:`H2` = n\ :sub:`H2` * path), ``Jeans`` (local Jeans length) or ``hybrid_chimes``
        (length of each particle from its density and temperature, see below), or 0, 2, 3, 4
        (default: ``none``). Sobolev (1) is not supported. The shielding is off by default (key unset
-       reads 0). With it on and the cheap solver, each sub-step follows the shielded H\ :sub:`2`
-       dissociation rate to its end state; that correction is validated up to a log slope s = 0.49
-       of the shielding factor only.
+       reads 0). With it on and the cheap solver, a correction of the lagged shielding acts: each
+       sub-step follows the shielded H\ :sub:`2` dissociation rate to its end state. The test of this
+       fix covers s from 0.2 to 0.5; its bar is missed from s = 0.57; the range between has no test
+       (s is the log slope of the shielding factor).
    * - ``h2_hybrid_chimes_factor``
      - (optional) Read only with ``hybrid_chimes``. Dimensionless factor applied to the length, above 0
        (default: 0.5).

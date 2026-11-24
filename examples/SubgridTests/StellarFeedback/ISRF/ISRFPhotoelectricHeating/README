@@ -83,9 +83,9 @@ with_pe_heating=0 run_name=rate_off time_end=4e-9 dt_max=6e-10 extra_args="$list
 `rate_output_list.txt` opens the measuring window one step after the field
 first reaches the gas, so that the two runs start the window with the same
 energy. Its times hold for these `time_end` and `dt_max` values only.
-`fixed_rate` heats without the field, from the second step, so it uses
-`rate_output_list_fixed_rate.txt`, which opens the window one step after
-that heating starts.
+`fixed_rate` scales with the local G_0 / 1.7, so it heats only where the
+field has reached the gas. It uses `rate_output_list_fixed_rate.txt`, whose
+window opens at 1e-9 instead of 2e-9.
 The ISRF also adds a small dust cooling, so the reference run should carry
 the ISRF too. With geajay, run the reference as `with_pe_heating=1
 pe_model=none`, so that both runs carry the same ISRF, and the difference is

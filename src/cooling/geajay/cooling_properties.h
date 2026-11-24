@@ -290,10 +290,12 @@ struct cooling_function_data {
    * nothing to the background. */
   int isrf_from_field;
 
-  /*! Constant G_0 of every particle [Habing] (GeajayCooling:isrf_habing,
-   * chemistry_data.interstellar_radiation_field). Negative: unset. With
-   * background_mode grackle the library refuses it when a term reads G_0; with
-   * per_band SWIFT passes 0 and G_0 comes from the background. */
+  /*! Constant G_0 [Habing] (GeajayCooling:isrf_habing,
+   * chemistry_data.interstellar_radiation_field), used by every particle
+   * without the ISRF; with it the solve reads the ISRF G_0 of each particle.
+   * Negative: unset. With background_mode grackle the library refuses an unset
+   * value when a term reads G_0; with per_band SWIFT passes 0 and G_0 comes
+   * from the background. */
   double isrf_habing;
 
   /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and PE

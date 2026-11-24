@@ -90,6 +90,11 @@ int main(int argc, char **argv) {
   c->max_iterations = 10000;
   c->exit_after_iterations_exceeded = 1;
   c->grackle_data_file = argv[9];
+#ifdef USE_GEAJAY
+  /* geajay has no default for these; linear is the model of params_geajay.yml */
+  c->dust_to_gas_model = GEAJAY_DUST_TO_GAS_LINEAR;
+  c->interstellar_radiation_field = G0;
+#endif
   rates_t r;
   if (!init_chem(c, &r, &u)) return 4;
 
