@@ -237,7 +237,12 @@ SPINJETAGN:
   AGN_feedback_model:                 MinimumDistance  
   minimum_timestep_yr:                100000.0    
   include_jets:                       1
-  turn_off_radiative_feedback:        1                         # If set to '1', thermal feedback will not be used at high accretion rates (above 0.01 Eddington fraction). Instead, jets will always be used, and all subgrid accretion disks will be considered thick (advection-dominated, the ones where jets are thought to be present).
+  turn_off_radiative_feedback:        1                         # If set to '1', thermal feedback will not be used at
+                                                                # high accretion rates (above 0.01 Eddington fraction).
+                                                                # Instead, jets will always be used, and all subgrid
+                                                                # accretion disks will be considered thick
+                                                                # (advection-dominated, the ones where jets are thought
+                                                                # to be present).
   alpha_acc:                          0.2
   AGN_jet_velocity_model:             Constant                  # 'Constant' will use a single jet velocity for all jet kicks. 'BlackHoleMass' will lead to the jet velocities scaling with black hole masses.
   v_jet_km_p_s:                       836.152745299                   # The jet velocity if 'AGN_jet_velocity_model' is 'Constant'
