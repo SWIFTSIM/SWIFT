@@ -616,24 +616,24 @@ def gate_ripple(args: argparse.Namespace) -> int:
         f"energy error in ln: +{up:.4g} up or -{down:.4g} down (from the ratio as run); "
         f"ripple amplitude {float(bar_ripple.min()):.3g} "
         f"(largest shell {float(bar_ripple.max()):.3g}); "
-        "the three bars are a floor from the control run, provisional",
+        "the three bars are a floor from the control run",
     )
     rep.check(
-        "time-mean energy, coarse over fine (floor from the control run, provisional)",
+        "time-mean energy, coarse over fine (floor from the control run)",
         bool(np.all(np.abs(ratio) <= bar_energy)),
         f"largest |ln ratio| {float(np.max(np.abs(ratio))):.4g}, margin "
         f"{float(np.max(np.abs(ratio) / bar_energy)):.3g} of the bar; ln ratio by shell "
         f"{np.round(ratio, 4).tolist()}",
     )
     rep.check(
-        "coarse leg no noisier than the fine leg (floor from the control run, provisional)",
+        "coarse leg no noisier than the fine leg (floor from the control run)",
         bool(np.all(noise_coarse <= noise_fine)),
         f"largest range of the coarse leg {float(noise_coarse.max()):.3g}, of the fine leg "
         f"{float(noise_fine.max()):.3g}; worst ratio "
         f"{float(np.max(noise_coarse / noise_fine)):.3g}",
     )
     rep.check(
-        "no ripple at the star-step period (floor from the control run, provisional)",
+        "no ripple at the star-step period (floor from the control run)",
         bool(np.all(amp <= bar_ripple)),
         f"largest amplitude {float(amp.max()):.4g}, "
         f"margin {float(np.max(amp / bar_ripple)):.3g} of the bar; fine-run amplitude at the same "
