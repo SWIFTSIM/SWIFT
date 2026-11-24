@@ -27,7 +27,7 @@ The time step is set by `n_steps`: SWIFT rounds the step down to a power of two
 fraction of the run, so 2000 steps give 2048 steps (2049 rows in `timesteps.txt`) and every
 step updates all the gas (one time bin). `Stars:max_timestep_young_Myr: 10` leaves the step of the star to the gas.
 `GEARFeedback:ISRF_packet_light_speed` keeps its default (`cap`: 0.99 c is only a ceiling, the gas step sets the speed). With
-the default 2000 steps, a leg takes roughly an hour on 8 threads (an estimate). Set `n_steps` and
+the default 2000 steps, a run takes roughly an hour on 8 threads (an estimate). Set `n_steps` and
 `duration` smaller for a quick run, for example `n_steps=100 duration=0.0092`.
 
 # Configure
@@ -43,12 +43,19 @@ receives) is the default of `--with-isrf-packet-slots` (12).
 The example needs a radiation table whose `Data/Radiation` group carries
 `MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
 of the ISRF (section "The Data/Radiation group" of the stellar evolution
-table documentation). The pychem table generator produces such a table from
-its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
-(see the section "Where each Radiation field comes from" of the pychem page
-"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
-the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
-`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+table documentation). The published table `PopII_parsec_spectral.hdf5` has
+them. Fetch it into this directory and name it in the shell, so that every
+`./run.sh` command below uses it:
+```
+../../../../GEAR_ICs_and_SCRIPTS/getRadiationTable.sh PopII_parsec_spectral.hdf5
+export radiation_table=PopII_parsec_spectral.hdf5
+```
+Without `radiation_table`, `run.sh` looks for
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory. To build
+your own table with the pychem table generator, see the section "Where each
+Radiation field comes from" of the pychem page "How to generate a Chemistry
+Table for GEAR" (parameter file
+`params/chimieparam_radiation_parsec_spectral_popII.py`).
 
 # Run
 ```
@@ -59,7 +66,7 @@ leg=static ./run.sh
 
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run_<leg>`, which it empties first. Override a setting with an environment
-variable: `n_threads`, `leg`, `redshift` (starting redshift of the expanding box),
+variable: `radiation_table`, `n_threads`, `leg`, `redshift` (starting redshift of the expanding box),
 `gas_density` (atom/cm^3, physical), `gas_mass` (Msun), `temperature` (K),
 `star_mass` (Msun), `duration` (proper time in internal units, 0.184 is 180 Myr),
 `n_steps`, `n_snapshots`, `swift_exe`, `run_dir` and `extra_args` (further swift

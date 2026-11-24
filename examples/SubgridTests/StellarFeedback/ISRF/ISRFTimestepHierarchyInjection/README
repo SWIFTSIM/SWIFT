@@ -40,12 +40,19 @@ receives) is the default of `--with-isrf-packet-slots` (12).
 The example needs a radiation table whose `Data/Radiation` group carries
 `MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
 of the ISRF (section "The Data/Radiation group" of the stellar evolution
-table documentation). The pychem table generator produces such a table from
-its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
-(see the section "Where each Radiation field comes from" of the pychem page
-"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
-the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
-`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+table documentation). The published table `PopII_parsec_spectral.hdf5` has
+them. Fetch it into this directory and name it in the shell, so that every
+`./run.sh` command below uses it:
+```
+../../../../GEAR_ICs_and_SCRIPTS/getRadiationTable.sh PopII_parsec_spectral.hdf5
+export radiation_table=PopII_parsec_spectral.hdf5
+```
+Without `radiation_table`, `run.sh` looks for
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory. To build
+your own table with the pychem table generator, see the section "Where each
+Radiation field comes from" of the pychem page "How to generate a Chemistry
+Table for GEAR" (parameter file
+`params/chimieparam_radiation_parsec_spectral_popII.py`).
 
 # Run
 ```
@@ -55,7 +62,7 @@ n_threads=1 bins=two energy_scale=1e-3 ./run.sh
 
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run_<bins>_scale<energy_scale>`, which it empties first. Override a setting
-with an environment variable: `n_threads`, `bins`, `energy_scale`, `light_speed`
+with an environment variable: `radiation_table`, `n_threads`, `bins`, `energy_scale`, `light_speed`
 (cap, fixed or unlimited), `speed_fraction` (the fraction of c), `margin`,
 `n_steps`, `snapshot_every` (base steps), `gas_density` (atom/cm^3),
 `gas_mass` (Msun), `swift_exe`, `run_dir` and `extra_args` (further swift

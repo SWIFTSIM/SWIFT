@@ -6,8 +6,8 @@ from it. Light that crosses gas moving by more than three line widths
 fresh absorption: the transport resets the carried column. The check reads particles
 inside the cloud and compares their line transmission with the bar of the reset (the
 column of the cloud alone) or of no reset (the column of all the gas from the star). Read
-the README of `ISRFH2StarLit` for the build, the table, the parameters that the run holds
-fixed and the exit classes.
+the README of `ISRFH2StarLit` for the build, the table and the parameters that the run holds
+fixed.
 
 # Run
 ```
@@ -26,4 +26,4 @@ For each particle in the cloud away from the box edge, the check compares the ow
 transmission of the LW light with the shielding function at the column expected for the
 reset or for no reset, within a bar set by the hop of the transport. The speed of 1 width
 is the control: a run that shows a reset there fails. `run.sh` calls
-`checkH2Attenuation.py velocity`; the exit classes are those of `ISRFH2StarLit`.
+`checkH2Attenuation.py velocity`, which exits with a non-zero status when it fails.
