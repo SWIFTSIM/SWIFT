@@ -3547,8 +3547,10 @@ case "$with_star_formation" in
       if test "$with_stars" != "GEAR"; then
          AC_MSG_ERROR([--with-star-formation=GEAR requires --with-stars=GEAR])
       fi
-      if test "$with_chemistry" != "GEAR" && test "$with_chemistry" != "AGORA"; then
-         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-chemistry=GEAR_N or AGORA])
+      if test "$with_chemistry" != "GEAR" && test "$with_chemistry" != "AGORA" &&
+         test "$with_chemistry" != "GEAR FVPM DIFFUSION" &&
+         test "$with_chemistry" != "GEAR FVPM HYPERBOLIC DIFFUSION"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-chemistry=GEAR_N, GEAR-FVPM-DIFFUSION_N, GEAR-FVPM-HYPERBOLIC-DIFFUSION_N or AGORA])
       fi
       AC_DEFINE([STAR_FORMATION_GEAR], [1], [GEAR star formation model (Revaz and Jablonka (2018))])
    ;;

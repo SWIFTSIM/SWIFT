@@ -101,11 +101,49 @@
 #define _FIND_SUB(f) PASTE(runner_find_sub, f)
 #define FIND_SUB _FIND_SUB(FUNCTION)
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_CHEMISTRY_FLUX_PREP)
+
+/* The chemistry flux prep loop only calls the chemistry flux exchange. The
+   arguments are marked as used, as some loop variables only feed IACT. */
+#define IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H) \
+  {                                               \
+    (void)(r2);                                   \
+    (void)(dx);                                   \
+    (void)(hi);                                   \
+    (void)(hj);                                   \
+    (void)(pi);                                   \
+    (void)(pj);                                   \
+    (void)(a);                                    \
+    (void)(H);                                    \
+  }
+#define IACT(r2, dx, hi, hj, pi, pj, a, H) \
+  IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H)
+#define CHEMISTRY_FLUX_PASS chemistry_flux_pass_prep
+
+#else
+
 #define _IACT_NONSYM(f) PASTE(runner_iact_nonsym, f)
 #define IACT_NONSYM _IACT_NONSYM(FUNCTION)
 
 #define _IACT(f) PASTE(runner_iact, f)
 #define IACT _IACT(FUNCTION)
+
+#define CHEMISTRY_FLUX_PASS chemistry_flux_pass_apply
+#endif
+
+/* Loops that call the chemistry flux exchange */
+#define CHEMISTRY_FLUX_LOOP                   \
+  ((FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || \
+   (FUNCTION_TASK_LOOP == TASK_LOOP_CHEMISTRY_FLUX_PREP))
+
+/* The chemistry flux exchange of a pair. The other arguments are the loop
+   constants that every caller declares. */
+#define IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, both_updatable_here,           \
+                            local_first, local_second)                         \
+  runner_iact_chemistry_flux_exchange(                                         \
+      r2, dx, hi, hj, pi, pj, both_updatable_here, local_first, local_second,  \
+      a, H, time_base, t_current, cosmo, with_cosmology, chemistry_properties, \
+      CHEMISTRY_FLUX_PASS, e->max_active_bin)
 
 #if ((FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) ||  \
      (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT) || \
@@ -153,8 +191,10 @@
 #define DO_DRIFT_DEBUG_CHECKS 1
 #endif
 
-/* Does the non-symmetric interaction of this loop also write an inactive pj? */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+/* Does the non-symmetric interaction of this loop also write an inactive pj?
+   The chemistry flux prep loop must visit the same pairs as the force loop. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_CHEMISTRY_FLUX_PREP)
 #if hydro_force_updates_inactive_neighbours && \
     !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
 #error \

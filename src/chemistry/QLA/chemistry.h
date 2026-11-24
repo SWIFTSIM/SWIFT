@@ -65,6 +65,26 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
                                           struct chemistry_global_data *data) {}
 
 /**
+ * @brief Does this chemistry scheme need the flux prep loop before the
+ * force loop?
+ *
+ * @param cd The global chemistry information.
+ */
+static INLINE int chemistry_need_flux_prep_loop(
+    const struct chemistry_global_data *cd) {
+  return 0;
+}
+
+/**
+ * @brief Finish the flux prep loop for a particle.
+ *
+ * @param p The #part.
+ * @param cd The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
+    struct part *restrict p, const struct chemistry_global_data *cd) {}
+
+/**
  * @brief Prints the properties of the chemistry model to stdout.
  *
  * Nothing to do here.
@@ -110,12 +130,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param ti_current The current integer time.
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data *cd) {}
+    const integertime_t ti_current, const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Prepare a particle for the force calculation.

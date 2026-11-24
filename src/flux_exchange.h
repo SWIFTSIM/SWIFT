@@ -26,10 +26,9 @@
 
 /**
  * @file flux_exchange.h
- * @brief Primitives for picking, deterministically and without shared
- * state, which of two independent visits to an active pair applies a
- * symmetric flux exactly once. Used by any module needing that guarantee
- * (see chemistry_iact.h's flux-exchange dispatcher for a worked example).
+ * @brief A position order that two independent evaluations of a pair agree
+ * on without shared state (see the cross-rank arm of chemistry_iact.h's
+ * flux-exchange dispatcher).
  */
 
 /**
@@ -49,21 +48,6 @@ __attribute__((always_inline)) INLINE static int flux_exchange_precedes(
   if (xa[0] != xb[0]) return xa[0] < xb[0];
   if (xa[1] != xb[1]) return xa[1] < xb[1];
   return xa[2] < xb[2];
-}
-
-/**
- * @brief Designate the owner of a mixed-depth-band pair: the larger-h
- * particle, with flux_exchange_precedes() as an h-tie fallback.
- *
- * A pair interacts only if r2 < gamma^2 * max(ha, hb)^2, so the partner
- * always lies inside the larger-h particle's own kernel. SWIFT's neighbour
- * search therefore guarantees the larger-h particle visits this pair,
- * which a position-only tie-break cannot guarantee.
- */
-__attribute__((always_inline)) INLINE static int flux_exchange_is_owner(
-    const float ha, const float hb, const double xa[3], const double xb[3]) {
-  if (ha != hb) return ha > hb;
-  return flux_exchange_precedes(xa, xb);
 }
 
 #endif /* SWIFT_FLUX_EXCHANGE_H */

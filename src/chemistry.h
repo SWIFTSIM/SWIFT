@@ -42,6 +42,7 @@
 #include "./chemistry/GEAR_DIFFUSION/chemistry_iact.h"
 #elif defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
     defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+#define EXTRA_CHEMISTRY_LOOP
 #include "./chemistry/GEAR_FVPM_DIFFUSION/chemistry.h"
 #include "./chemistry/GEAR_FVPM_DIFFUSION/chemistry_iact.h"
 #elif defined(CHEMISTRY_AGORA)

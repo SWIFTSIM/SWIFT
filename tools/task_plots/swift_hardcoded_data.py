@@ -98,7 +98,7 @@ TASKTYPES = [
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
-    "chemistry_fct_ghost",
+    "chemistry_flux_ghost",
     #  "count",
 ]
 
@@ -143,7 +143,7 @@ SUBTYPES = [
     "rt_transport",
     "stars_radiation_in",
     "stars_radiation_out",
-    "chemistry_fct_prep",
+    "chemistry_flux_prep",
     "part_hii_tag",
     "part_hii_state",
     #  "count",

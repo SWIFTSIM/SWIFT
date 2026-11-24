@@ -87,7 +87,7 @@ void runner_dosub_self1_rt_gradient(struct runner *r, struct cell *c,
 #define TI_CURRENT 8
 #define ACTIVE_BIN 1
 #define INACTIVE_BIN 4
-#define MAX_ACTIVE_BIN 3
+#define MAX_ACTIVE_BIN 2
 
 /* Gas particles per leaf cell. */
 #define N_LEAF 27
@@ -215,6 +215,12 @@ static void init_particle(struct part *p, struct xpart *xp, const double m,
   for (int k = 0; k < 3; k++) p->v[k] = random_uniform(-1., 1.);
   p->flux.dt = active ? 1e-3f : -1.f;
   p->time_bin = active ? ACTIVE_BIN : INACTIVE_BIN;
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* FVPM chemistry: the fluxes were last applied at the start of the step */
+  p->chemistry_data.flux.ti_flux_last =
+      get_integer_time_begin(TI_CURRENT, active ? ACTIVE_BIN : INACTIVE_BIN);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_drift = TI_CURRENT;
   p->ti_kick = TI_CURRENT;

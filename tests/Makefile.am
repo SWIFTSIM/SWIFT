@@ -47,7 +47,10 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testNeutrinoFermiDirac \
         testCoolingSplit \
         testLog testDistance testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
-        testForeignPairFlux testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
+        testForeignPairFlux testSymmetricMatrixDiagonalisation \
+        testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
+        testChemistryPositivityLimiter testChemistryFluxInterval \
+        testChemistryFluxStamp # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -68,7 +71,10 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
-		 testForeignPairFlux testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry
+		 testForeignPairFlux testSymmetricMatrixDiagonalisation \
+		 testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
+		 testChemistryPositivityLimiter testChemistryFluxInterval \
+		 testChemistryFluxStamp
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -124,6 +130,14 @@ testSymmetry_SOURCES = testSymmetry.c
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
 
 testChemistryFluxAntisymmetry_SOURCES = testChemistryFluxAntisymmetry.c
+
+testChemistryFluxExchangeOnce_SOURCES = testChemistryFluxExchangeOnce.c
+
+testChemistryPositivityLimiter_SOURCES = testChemistryPositivityLimiter.c
+
+testChemistryFluxInterval_SOURCES = testChemistryFluxInterval.c
+
+testChemistryFluxStamp_SOURCES = testChemistryFluxStamp.c
 
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 

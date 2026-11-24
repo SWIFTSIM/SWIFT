@@ -1196,11 +1196,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 2;
 #endif
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-    /* chemistry FCT prep: 1 self + 26/2 pairs, 1 fct ghost | 15 */
-    n1 += 15;
-#endif
+    /* chemistry flux prep: 1 self + 26/2 pairs, 1 flux ghost | 15 */
+    if (chemistry_need_flux_prep_loop(e->chemistry)) n1 += 15;
 #endif
   }
   if (e->policy & engine_policy_timestep_limiter) {
@@ -1947,8 +1944,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->type == task_type_chemistry_fct_ghost ||
-        t->subtype == task_subtype_chemistry_fct_prep ||
+        t->type == task_type_chemistry_flux_ghost ||
+        t->subtype == task_subtype_chemistry_flux_prep ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||

@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
   /* Compute the diffusion matrix K. Use its largest eigenvalue, not its
      Frobenius norm: lambda_max(K) is the tight bound on n^T K n over
      every interface direction n (exact for isotropic K), whereas
-     ||K||_F overestimates it by up to sqrt(3) -- same reasoning as the
+     ||K||_F overestimates it by up to sqrt(3): same reasoning as the
      hyperbolic soundspeed getter, see the theory document. */
   double K[3][3];
   chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);

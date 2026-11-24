@@ -45,11 +45,26 @@
 #include "physical_constants.h"
 #include "units.h"
 
+#ifndef EXTRA_HYDRO_LOOP
+#error "The GEAR FVPM chemistry needs a hydro scheme with a gradient loop."
+#endif
+
 /* Some constants */
 #define GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR 0.8
 #define GEAR_FVPM_DIFFUSION_NORMALISATION_DEFAULT 1.0
 #define GEAR_FVPM_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT 0.1
 #define GEAR_FVPM_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT 0.0
+
+/**
+ * @brief Does this chemistry scheme need the flux prep loop before the
+ * force loop?
+ *
+ * @param cd The global chemistry information.
+ */
+static INLINE int chemistry_need_flux_prep_loop(
+    const struct chemistry_global_data *cd) {
+  return cd->use_positivity_limiter;
+}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -329,6 +344,23 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
       parameter_file, "GEARChemistry:flux_limiter_startup",
       GEAR_FVPM_DIFF_LIMITER_STARTUP_DEFAULT);
 
+  data->use_positivity_limiter = parser_get_opt_param_int(
+      parameter_file, "GEARChemistry:use_positivity_limiter", 1);
+
+#ifdef WITH_MPI
+  int nr_ranks = 1;
+  MPI_Comm_size(MPI_COMM_WORLD, &nr_ranks);
+  if (nr_ranks > 1)
+    error(
+        "The GEAR FVPM chemistry does not support runs on more than one MPI "
+        "rank yet. With SPH (e.g. SPHENIX), a local inactive particle gets no "
+        "flux from a foreign active neighbour, so the metal mass is not "
+        "conserved. "
+        "With the positivity limiter, the flux uses the theta of a foreign "
+        "donor, and no task sends theta between the prep and the apply "
+        "pass.");
+#endif
+
   /***************************************************************************/
   /* Make it mandatory for parabolic diffusion */
   data->C_CFL_chemistry =
@@ -388,19 +420,13 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("Flux limiter sink stability: %e",
             data->flux_limiter_sink_stability);
     message("Flux limiter startup:       %e", data->flux_limiter_startup);
+    message("Positivity limiter:         %d", data->use_positivity_limiter);
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
     message("Relaxation time (constant_mode): %e", data->tau);
     message("Hyperbolic limiter scope:   %u", data->hyperbolic_limiter_scope);
 #endif
   }
-
-#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
-  /* Step-1 instrumentation (see chemistry_iact.h): print the mixed-band
-     tie-break arm's ACTED/SKIPPED totals once, at process exit, so a short
-     diagnostic run reports them without touching swift.c. */
-  atexit(chemistry_fvpm_print_visit_counts);
-#endif
 }
 
 /**
@@ -517,7 +543,6 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const float dt_alpha, const float dt_therm,
     const struct chemistry_global_data *cd) {
-  p->chemistry_data.flux.dt = dt_therm * cosmo->a * cosmo->a;
 
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa = chemistry_get_diffusion_coefficient(p, cd, cosmo);
@@ -530,7 +555,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 /**
  * @brief Computes the FCT positivity limiter factor theta of a particle.
  *
- * Called by the chemistry_fct_ghost task, after the chemistry_fct_prep loop
+ * Called by the chemistry_flux_ghost task, after the chemistry_flux_prep loop
  * accumulated the prospective outflow of the current flux exchange and before
  * the force loop applies the (theta-scaled) fluxes. Must be called for every
  * particle touched by the prep loop, including inactive donors, so theta is
@@ -551,9 +576,10 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  * far larger traffic could still land marginally negative.
  *
  * @param p The particle to act upon.
+ * @param cd The global chemistry information.
  */
-__attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
+    struct part *restrict p, const struct chemistry_global_data *cd) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -566,10 +592,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
          ~1e-10 of avail. Only binds on a particle draining completely. */
       const double cap = avail * (1.0 - 1e-6);
       chd->fct_theta[i] = (sum_out > cap) ? cap / sum_out : 1.0;
-      if (GEAR_FVPM_DIFF_FCT_VERBOSITY > 0 && chd->fct_theta[i] < 1.0) {
-        message("[%lld, %d] FCT engaged, theta = %e, sum_out = %e, avail = %e",
-                p->id, i, chd->fct_theta[i], sum_out, avail);
-      }
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      if (chd->fct_theta[i] < 1.0) chd->positivity_limiter_engagements++;
+#endif
     } else {
       chd->fct_theta[i] = 1.0;
     }
@@ -585,12 +610,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param ti_current The current integer time.
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data *cd) {
+    const integertime_t ti_current, const struct chemistry_global_data *cd) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -625,6 +651,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   /* Reset the metal mass fluxes now that they have been applied */
   chemistry_part_reset_fluxes(p);
+
+  /* The next flux exchange of each pair starts from here. This is the only
+     place that moves the stamp: the limiter and the sync must not. */
+  chd->flux.ti_flux_last = ti_current;
 
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 2);
@@ -725,6 +755,17 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     p->chemistry_data.fct_sum_out[i] = 0.0;
     p->chemistry_data.fct_theta[i] = 1.0;
   }
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  p->chemistry_data.positivity_limiter_engagements = 0;
+  p->chemistry_data.flux_exchange_count[0] = 0;
+  p->chemistry_data.flux_exchange_count[1] = 0;
+  p->chemistry_data.flux_coverage_ticks = 0;
+  p->chemistry_data.flux_catch_up_count = 0;
+#endif
+
+  /* Runs start at ti = 0. */
+  p->chemistry_data.flux.ti_flux_last = 0;
 
   /* Init the part chemistry data */
   chemistry_init_part(p, cd);

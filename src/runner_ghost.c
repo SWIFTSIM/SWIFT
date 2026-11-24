@@ -1012,25 +1012,23 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 }
 
 /**
- * @brief Intermediate task between the chemistry FCT prep loop and the flux
- * (force) loop: computes the donor-side positivity limiter factor theta from
- * the prospective outflow sums.
+ * @brief Intermediate task between the chemistry flux prep loop and the force
+ * loop: the chemistry module finalises the per-particle state of the prep
+ * loop.
  *
  * Note that this task processes ALL particles of the cell, active or not: an
- * inactive particle can be a flux donor towards its active neighbours and its
- * theta must be current-step too. The cell itself can also be inactive (only
+ * inactive particle takes part in the flux exchange of its active neighbours,
+ * so its state must be final too. The cell itself can also be inactive (only
  * reached through a pair prep task of an active neighbouring cell).
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
-                                   int timer) {
+void runner_do_chemistry_flux_ghost(struct runner *r, struct cell *c,
+                                    int timer) {
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-
+  const struct chemistry_global_data *chemistry = r->e->chemistry;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -1040,20 +1038,16 @@ void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        runner_do_chemistry_fct_ghost(r, c->progeny[k], 0);
+        runner_do_chemistry_flux_ghost(r, c->progeny[k], 0);
   } else {
 
     /* Loop over ALL the parts in this cell (see note above). */
     for (int i = 0; i < count; i++) {
-      chemistry_end_fct_prep(&parts[i]);
+      chemistry_end_flux_prep(&parts[i], chemistry);
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_chemistry_fct_ghost);
-
-#else
-  error("SWIFT was not compiled with the GEAR FVPM diffusion chemistry.");
-#endif
+  if (timer) TIMER_TOC(timer_do_chemistry_flux_ghost);
 }
 
 /**

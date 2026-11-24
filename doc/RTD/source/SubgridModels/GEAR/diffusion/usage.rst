@@ -73,13 +73,15 @@ ones that affect the physics or numerics a user might notice:
   default): can be turned on for extra per-interaction diagnostic
   printouts.
 
-Two further, commented-out ``#define`` toggles in
-``chemistry_properties.h`` exist purely for development use:
-``GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE`` forces one-sided
-pair updates for serial/thread symmetry testing (not MPI-compatible),
-and ``GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT`` counts how often a
-mixed-band interaction's tie-break logic takes each branch, printed at
-exit.
+With ``CFLAGS=-DSWIFT_CHEMISTRY_DEBUG_CHECKS``, the snapshots also hold
+``PositivityLimiterEngagementCounts``: for each particle, the number of
+(step, element) cases in which the positivity limiter scaled down its
+outflow. They also hold ``DiffusionFluxCoverageTicks``, the integer time
+covered by the flux exchanges of each particle summed over its pairs, and
+``DiffusionFluxCatchUpCounts``, the number of its exchanges over an
+interval longer than the current step of the active particles of the
+pair. Such an exchange catches up the time since the pair last exchanged,
+after the time-step limiter or a synchronisation shortened a step.
 
 MPI support
 ~~~~~~~~~~~~
@@ -87,7 +89,13 @@ MPI support
 .. warning::
    Running with more than one MPI rank is **not currently supported** for
    either the parabolic or the hyperbolic FVPM diffusion scheme, and this
-   is enforced by an explicit, unconditional error.
+   is enforced by an explicit, unconditional error at start-up, whatever
+   the value of ``GEARChemistry:use_positivity_limiter``. Two parts of the
+   exchange across ranks are missing. With an SPH hydro scheme (e.g.
+   SPHENIX), a local inactive particle gets no flux from an active
+   neighbour on another rank, so the metal mass is not conserved. With the
+   positivity limiter, the flux uses the limiter factor of a donor on
+   another rank, and no task sends this factor between ranks.
 
    In short: **configure and run single-node/single-rank** (e.g. with
    ``--disable-mpi``, or by launching ``swift`` rather than ``swift_mpi``,

@@ -131,7 +131,7 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
-  task_type_chemistry_fct_ghost,
+  task_type_chemistry_flux_ghost,
   task_type_count
 } __attribute__((packed));
 
@@ -183,7 +183,7 @@ enum task_subtypes {
   task_subtype_rt_transport,
   task_subtype_stars_radiation_in,  /* Implicit */
   task_subtype_stars_radiation_out, /* Implicit */
-  task_subtype_chemistry_fct_prep,
+  task_subtype_chemistry_flux_prep,
   task_subtype_part_hii_tag,
   task_subtype_part_hii_state,
   task_subtype_count

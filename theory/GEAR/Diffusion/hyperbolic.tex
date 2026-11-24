@@ -1087,8 +1087,8 @@ apart the two particles actually are. Read as a diffusivity, this hands
 mass across $r_{ij}$ at rate $O(\chyp r_{ij})$, but the system's only
 physical signal speed is $\chyp$ (Proposition~\ref{prop:main}): a
 disturbance at one particle cannot have reached the other unless
-$\chyp\dt_{ij}\gtrsim r_{ij}$, with $\dt_{ij}$ the pair's flux timestep
-(the same pairwise minimum, $\min(\dt_i,\dt_j)$, entering the
+$\chyp\dt_{ij}\gtrsim r_{ij}$, with $\dt_{ij}$ the pair interval
+(Section~\ref{sec:time-integration}; it also enters the
 half-timestep predictor of Section~\ref{sec:predictor}). Whenever
 $\chyp\dt_{ij}<r_{ij}$, the HLL dissipation is therefore transporting
 mass beyond the causal front the Cattaneo system allows: an $O(\chyp
@@ -1303,7 +1303,17 @@ rescaling this solver applies to $F_{\rm diss}$.
 builds the left/right states handed to the Riemann solver by
 extrapolating both the conserved density $U_0=\rhoZ$ and the flux
 $\Fdiff$ from a particle's own position to the interparticle interface,
-over a half-timestep $\dth=\tfrac12\min(\dt_i,\dt_j)$. The two extrapolations
+over a half-timestep $\dth=\tfrac12\dt_{ij}$, with $\dt_{ij}$ the pair
+interval of Section~\ref{sec:time-integration}. For a pair that has just
+entered the kernel, $\dt_{ij}$ can be longer than the time the pair has
+existed; the predictor and the causal bound then use this longer
+interval, the first-order error stated in
+Section~\ref{sec:time-integration}. The same holds for a catch-up exchange
+after a shortened step. For a long interval the causal factor of
+Section~\ref{sec:causal-bound} saturates at 1, so the dissipation of a
+catch-up is not reduced, and the error of a catch-up is not bounded by the
+stability limit of the current step (Section~\ref{sec:time-integration}).
+The two extrapolations
 differ in kind. $U_0$'s evolution equation, $\partial_tU_0=-\div\Fdiff$,
 carries no source term, so the code uses the ordinary first-order
 MUSCL-Hancock form, additive in space and time:
