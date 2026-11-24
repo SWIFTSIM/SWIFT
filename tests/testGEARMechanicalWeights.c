@@ -26,150 +26,237 @@
 #include <string.h>
 
 /* Local headers. */
+#include "feedback_iact.h"
 #include "swift.h"
 
 /*
  * Vector weights of the GEAR mechanical feedback (Hopkins et al. 2018, Appendix
- * E). For a star with gas on both sides of every axis, the normalized weights
- * w_j_bar of its neighbours obey sum_j |w_j_bar| = 1 (they share the star's
- * budget) and sum_j w_j_bar = 0 (the momenta they carry cancel). Both hold up
- * to rounding. The normalization sum_j |w_j| is stored in single precision
- * (#feedback_spart_data.enrichment_weight), so sum_j |w_j_bar| = 1 holds to
- * the float epsilon times the number of terms. The vector sum divides every
- * term by the same normalization, so it holds to the double epsilon.
+ * E), computed by the module's own prep loops. Gas on the six half axes at one
+ * distance and smoothing length must get w_j_bar = +/- e_k / 6 by symmetry, and
+ * gas on three positive half axes e_k / 3. Gas on the star, beyond the maximal
+ * radius or outside both kernels gets nothing and leaves the other weights
+ * unchanged. For random gas, sum_j |w_j_bar| = 1 and sum_j w_j_bar = 0.
  */
 
 #ifdef FEEDBACK_GEAR_MECHANICAL
 
-#define N_GAS 200
-
-/* Rounding bar of sum_j |w_j_bar| - 1: N_GAS float roundings. */
-static const double norm_sum_bar = N_GAS * FLT_EPSILON;
-
-/* Rounding bar of |sum_j w_j_bar|: N_GAS double roundings of terms up to 1. */
-static const double vector_sum_bar = 64. * N_GAS * DBL_EPSILON;
+#define N_MAX 200
 
 /**
- * @brief Check the two sums of a set of normalized weights.
- *
- * @param w The normalized weights, n x 3.
- * @param n The number of weights.
- * @param norm_err (return) |sum_j |w_j| - 1|.
- * @param vec_err (return) |sum_j w_j|.
- * @return 1 if a sum is not finite or above the bar, 0 otherwise.
+ * @brief Gas neighbours of one star.
  */
-static int check_weight_sums(const double (*w)[3], const int n,
-                             double *norm_err, double *vec_err) {
-  double norm_sum = 0.;
-  double vec_sum[3] = {0., 0., 0.};
-  for (int j = 0; j < n; j++) {
-    norm_sum += sqrt(w[j][0] * w[j][0] + w[j][1] * w[j][1] + w[j][2] * w[j][2]);
-    for (int k = 0; k < 3; k++) vec_sum[k] += w[j][k];
+struct neighbours {
+  int n;
+  float dx[N_MAX][3];
+  struct part parts[N_MAX];
+};
+
+static struct feedback_props props;
+static struct cosmology cosmo;
+
+/**
+ * @brief Add a gas neighbour at the given position relative to the star.
+ */
+static void add_gas(struct neighbours *ng, const float x, const float y,
+                    const float z, const float h) {
+  const int j = ng->n++;
+  memset(&ng->parts[j], 0, sizeof(struct part));
+  ng->dx[j][0] = -x;
+  ng->dx[j][1] = -y;
+  ng->dx[j][2] = -z;
+  ng->parts[j].h = h;
+  ng->parts[j].feedback_data.density.wcount = 30.f;
+}
+
+/**
+ * @brief Run the prep loops 2 and 3 of the module over the neighbours, then
+ * the normalized weights as the feedback loop computes them (zero for gas the
+ * feedback loop skips).
+ */
+static void compute_weights(struct spart *si, struct neighbours *ng,
+                            double (*w_bar)[3]) {
+  memset(si->feedback_data.f_sum_plus_term, 0, 3 * sizeof(double));
+  memset(si->feedback_data.f_sum_minus_term, 0, 3 * sizeof(double));
+  si->feedback_data.enrichment_weight = 0.f;
+
+  for (int j = 0; j < ng->n; j++) {
+    const float *dx = ng->dx[j];
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    runner_iact_nonsym_feedback_prep2(r2, dx, si->h, ng->parts[j].h, si,
+                                      &ng->parts[j], NULL, &cosmo, &props, 0);
   }
-  *norm_err = fabs(norm_sum - 1.);
-  *vec_err = sqrt(vec_sum[0] * vec_sum[0] + vec_sum[1] * vec_sum[1] +
-                  vec_sum[2] * vec_sum[2]);
-  /* A NaN fails every comparison, so test finiteness first. */
-  if (!(*norm_err <= DBL_MAX) || !(*vec_err <= DBL_MAX)) return 1;
-  return *norm_err > norm_sum_bar || *vec_err > vector_sum_bar;
+  for (int j = 0; j < ng->n; j++) {
+    const float *dx = ng->dx[j];
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    runner_iact_nonsym_feedback_prep3(r2, dx, si->h, ng->parts[j].h, si,
+                                      &ng->parts[j], NULL, &cosmo, &props, 0);
+  }
+  for (int j = 0; j < ng->n; j++) {
+    const float *dx = ng->dx[j];
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    w_bar[j][0] = w_bar[j][1] = w_bar[j][2] = 0.;
+    if (r2 > props.r_max * props.r_max) continue;
+    if (si->feedback_data.enrichment_weight <= 0.f) continue;
+    feedback_compute_vector_weight_normalized(r2, dx, si->h, ng->parts[j].h, si,
+                                              &ng->parts[j], w_bar[j]);
+  }
+}
+
+/**
+ * @brief Compare the weights with a reference, component by component.
+ *
+ * @return The number of components further than @p bar from the reference,
+ * or not finite.
+ */
+static int check_reference(const char *name, const double (*w)[3],
+                           const double (*ref)[3], const int n,
+                           const double bar) {
+  int bad = 0;
+  double worst = 0.;
+  for (int j = 0; j < n; j++)
+    for (int k = 0; k < 3; k++) {
+      const double d = fabs(w[j][k] - ref[j][k]);
+      /* A NaN fails every comparison, so test finiteness first. */
+      if (!(d <= DBL_MAX) || d > bar) bad++;
+      if (d > worst) worst = d;
+    }
+  printf("%s: largest difference to the reference %.3e (bar %.3e)%s\n", name,
+         worst, bar, bad ? " FAILED" : "");
+  return bad;
 }
 
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
-  unsigned int seed = 12345;
-  const float h_star = 1.f;
+  memset(&props, 0, sizeof(props));
+  memset(&cosmo, 0, sizeof(cosmo));
+  props.r_max = 10.f;
 
-  static struct part parts[N_GAS];
   struct spart star;
-  memset(parts, 0, sizeof(parts));
   memset(&star, 0, sizeof(star));
-  star.h = h_star;
+  star.h = 1.f;
   star.density.wcount = 30.f;
+  star.feedback_data.supernovae.energy_ejected = 1.f;
+  star.feedback_data.supernovae.mass_ejected = 1.f;
 
-  /* Gas inside the kernel of the star, on both sides of every axis. */
-  float dx[N_GAS][3];
-  for (int j = 0; j < N_GAS; j++) {
-    float r2;
-    do {
-      for (int k = 0; k < 3; k++)
-        dx[j][k] = (2.f * rand_r(&seed) / (float)RAND_MAX - 1.f) * h_star *
-                   kernel_gamma;
-      r2 = dx[j][0] * dx[j][0] + dx[j][1] * dx[j][1] + dx[j][2] * dx[j][2];
-    } while (r2 >= h_star * h_star * kernel_gamma2 || r2 < 1e-4f);
-    parts[j].h = 0.5f + rand_r(&seed) / (float)RAND_MAX;
-    parts[j].feedback_data.density.wcount =
+  static struct neighbours ng;
+  static double w[N_MAX][3], ref[N_MAX][3];
+  int fail = 0;
+
+  /* The normalization sum_j |w_j| is a float: up to N roundings of
+     FLT_EPSILON relative, twice for margin, times the weight 1/N. */
+  const double six_bar = 2. * 6. * FLT_EPSILON / 6.;
+  const double three_bar = 2. * 3. * FLT_EPSILON / 3.;
+
+  /* Six half axes. */
+  ng.n = 0;
+  const float d = 0.5f;
+  for (int k = 0; k < 3; k++) {
+    float x[3] = {0.f, 0.f, 0.f};
+    x[k] = d;
+    add_gas(&ng, x[0], x[1], x[2], 1.f);
+    x[k] = -d;
+    add_gas(&ng, x[0], x[1], x[2], 1.f);
+  }
+  memset(ref, 0, sizeof(ref));
+  for (int k = 0; k < 3; k++) {
+    ref[2 * k][k] = 1. / 6.;
+    ref[2 * k + 1][k] = -1. / 6.;
+  }
+  compute_weights(&star, &ng, w);
+  fail += check_reference("six half axes", (const double (*)[3])w,
+                          (const double (*)[3])ref, ng.n, six_bar);
+
+  /* The same, plus gas on the star, beyond the maximal radius and outside
+     both kernels: these get nothing and change nothing. */
+  add_gas(&ng, 0.f, 0.f, 0.f, 1.f);
+  add_gas(&ng, 11.f, 0.f, 0.f, 1.f);
+  add_gas(&ng, 0.f, 3.f, 0.f, 1.f);
+  compute_weights(&star, &ng, w);
+  fail += check_reference("six half axes and three empty neighbours",
+                          (const double (*)[3])w, (const double (*)[3])ref,
+                          ng.n, six_bar);
+
+  /* One-sided gas: three positive half axes. */
+  ng.n = 0;
+  memset(ref, 0, sizeof(ref));
+  for (int k = 0; k < 3; k++) {
+    float x[3] = {0.f, 0.f, 0.f};
+    x[k] = d;
+    add_gas(&ng, x[0], x[1], x[2], 1.f);
+    ref[k][k] = 1. / 3.;
+  }
+  compute_weights(&star, &ng, w);
+  fail += check_reference("three positive half axes", (const double (*)[3])w,
+                          (const double (*)[3])ref, ng.n, three_bar);
+
+  /* Random gas inside the kernel of the star. */
+  ng.n = 0;
+  unsigned int seed = 12345;
+  while (ng.n < N_MAX) {
+    float x[3];
+    for (int k = 0; k < 3; k++)
+      x[k] = (2.f * rand_r(&seed) / (float)RAND_MAX - 1.f) * kernel_gamma;
+    const float r2 = x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+    if (r2 >= kernel_gamma2 || r2 < 1e-4f) continue;
+    add_gas(&ng, x[0], x[1], x[2], 0.5f + rand_r(&seed) / (float)RAND_MAX);
+    ng.parts[ng.n - 1].feedback_data.density.wcount =
         20.f + 20.f * rand_r(&seed) / (float)RAND_MAX;
   }
-
-  /* Loop 2 of the module: the sums of the f_plus and f_minus factors. */
-  for (int j = 0; j < N_GAS; j++) {
-    const float r2 =
-        dx[j][0] * dx[j][0] + dx[j][1] * dx[j][1] + dx[j][2] * dx[j][2];
-    double plus[3], minus[3], omega;
-    feedback_compute_scalar_weight(r2, dx[j], h_star, parts[j].h, &star,
-                                   &parts[j], plus, minus, &omega);
-    for (int k = 0; k < 3; k++) {
-      star.feedback_data.f_sum_plus_term[k] += omega * fabs(plus[k]);
-      star.feedback_data.f_sum_minus_term[k] += omega * fabs(minus[k]);
-    }
+  compute_weights(&star, &ng, w);
+  double norm_sum = 0., vec[3] = {0., 0., 0.};
+  for (int j = 0; j < ng.n; j++) {
+    norm_sum += sqrt(w[j][0] * w[j][0] + w[j][1] * w[j][1] + w[j][2] * w[j][2]);
+    for (int k = 0; k < 3; k++) vec[k] += w[j][k];
   }
-
-  /* Loop 3: the normalization, sum_j |w_j|. */
-  for (int j = 0; j < N_GAS; j++) {
-    const float r2 =
-        dx[j][0] * dx[j][0] + dx[j][1] * dx[j][1] + dx[j][2] * dx[j][2];
-    double f_plus[3], f_minus[3], w[3];
-    feedback_compute_vector_weight_non_normalized(
-        r2, dx[j], h_star, parts[j].h, &star, &parts[j], f_plus, f_minus, w);
-    star.feedback_data.enrichment_weight +=
-        sqrt(w[0] * w[0] + w[1] * w[1] + w[2] * w[2]);
-  }
-
-  /* Feedback loop: the normalized weights. */
-  static double w_bar[N_GAS][3];
-  for (int j = 0; j < N_GAS; j++) {
-    const float r2 =
-        dx[j][0] * dx[j][0] + dx[j][1] * dx[j][1] + dx[j][2] * dx[j][2];
-    feedback_compute_vector_weight_normalized(r2, dx[j], h_star, parts[j].h,
-                                              &star, &parts[j], w_bar[j]);
-  }
-
-  int fail = 0;
-  double norm_err, vec_err;
-  const int bad =
-      check_weight_sums((const double (*)[3])w_bar, N_GAS, &norm_err, &vec_err);
+  const double norm_err = fabs(norm_sum - 1.);
+  const double vec_err =
+      sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+  /* The normalization is a float: N roundings of FLT_EPSILON. */
+  const double norm_bar = N_MAX * FLT_EPSILON;
+  /* Per axis, f+ S+ and f- S- agree to about 8 double roundings (products and
+     square roots of the f factors); the sum of N terms of total size at most
+     sum_j |w_j_bar| = 1 adds N roundings; sqrt(3) for the norm. */
+  const double vec_bar = sqrt(3.) * (N_MAX + 8) * DBL_EPSILON;
   printf(
-      "weights: |sum |w_bar| - 1| = %.3e (bar %.3e), |sum w_bar| = %.3e "
+      "random gas: |sum |w_bar| - 1| = %.3e (bar %.3e), |sum w_bar| = %.3e "
       "(bar %.3e)\n",
-      norm_err, norm_sum_bar, vec_err, vector_sum_bar);
-  if (bad) {
-    printf("FAILED: the weight sums exceed the rounding bar\n");
-    fail = 1;
+      norm_err, norm_bar, vec_err, vec_bar);
+  if (!(norm_err <= norm_bar) || !(vec_err <= vec_bar)) {
+    printf("FAILED: random gas\n");
+    fail++;
   }
 
-  /* Control: one weight changed by 1e-6 of its size must fail the check. */
-  static double w_bad[N_GAS][3];
-  memcpy(w_bad, w_bar, sizeof(w_bar));
-  for (int k = 0; k < 3; k++) w_bad[7][k] *= 1. + 1e-6;
-  if (!check_weight_sums((const double (*)[3])w_bad, N_GAS, &norm_err,
-                         &vec_err)) {
-    printf("FAILED: the check passes a weight changed by 1e-6\n");
-    fail = 1;
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
+  /* A star with a supernova whose normalization is zero: loop 4 must leave its
+     accumulators exactly zero, without a 1/0 before its zero tests. */
+  ng.n = 0;
+  add_gas(&ng, d, 0.f, 0.f, 1.f);
+  hydro_set_mass(&ng.parts[0], 1.f);
+  ng.parts[0].v[0] = 1.f;
+  compute_weights(&star, &ng, w);
+  star.feedback_data.enrichment_weight = 0.f;
+  memset(&star.feedback_data.accumulator_sn, 0,
+         sizeof(star.feedback_data.accumulator_sn));
+  memset(&star.feedback_data.accumulator_winds, 0,
+         sizeof(star.feedback_data.accumulator_winds));
+  runner_iact_nonsym_feedback_prep4(d * d, ng.dx[0], star.h, ng.parts[0].h,
+                                    &star, &ng.parts[0], NULL, &cosmo, &props,
+                                    0);
+  static const char zeros[sizeof(star.feedback_data.accumulator_sn)];
+  if (memcmp(&star.feedback_data.accumulator_sn, zeros, sizeof(zeros)) ||
+      memcmp(&star.feedback_data.accumulator_winds, zeros, sizeof(zeros))) {
+    printf(
+        "FAILED: loop 4 changed the accumulators of a star with no weight\n");
+    fail++;
+  } else {
+    printf("loop 4 with no weight: accumulators unchanged\n");
   }
-
-  /* Control: all weights scaled by 1 + 1e-3 must fail the norm check. */
-  for (int j = 0; j < N_GAS; j++)
-    for (int k = 0; k < 3; k++) w_bad[j][k] = w_bar[j][k] * (1. + 1e-3);
-  if (!check_weight_sums((const double (*)[3])w_bad, N_GAS, &norm_err,
-                         &vec_err)) {
-    printf("FAILED: the check passes weights scaled by 1 + 1e-3\n");
-    fail = 1;
-  }
+#endif
 
   if (!fail) printf("PASSED\n");
-  return fail;
+  return fail ? 1 : 0;
 }
 
 #else
