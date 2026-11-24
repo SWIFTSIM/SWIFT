@@ -143,3 +143,8 @@ per_band_g0_unset_dust|per_band with the G_0 model unset and dust on is still re
 initial_hydrogen_over_one|initial_h2i_to_h_ratio||initial_h2i_to_h_ratio: 0.6|!hold more hydrogen than the gas has|refuse
 initial_hydrogen_hii_h2_over_one|initial_hii_to_h_ratio||initial_hii_to_h_ratio: 0.5;initial_h2i_to_h_ratio: 0.3|!which is 1.10000002 > 1|refuse
 initial_hydrogen_all_molecular|initial_h2i_to_h_ratio||initial_h2i_to_h_ratio: 0.5|=MOD initial_h2i_to_h_ratio=0.5|swift
+redshift_cosmology_fixed|redshift with cosmology|redshift: -1|redshift: 0|!but the run has cosmology|refuse|GEAJAY_KEYS_COSMOLOGY=0.25
+redshift_cosmology_follows|redshift -1 with cosmology follows the scale factor|redshift: -1|redshift: -1|=PART update_a_value=0.25|swift|GEAJAY_KEYS_COSMOLOGY=0.25
+redshift_below_limit|redshift below -0.99||redshift: -0.995|!a finite redshift of at least -0.99, got -0.995|refuse
+redshift_at_limit|redshift -0.99 is accepted||redshift: -0.99|=LIBCALL set_redshift=-0.99|lib
+redshift_not_finite|redshift not finite||redshift: nan|!a finite redshift of at least -0.99, got nan|refuse

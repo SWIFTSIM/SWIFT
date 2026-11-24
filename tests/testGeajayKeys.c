@@ -383,6 +383,19 @@ int main(int argc, char **argv) {
   cooling_init(params, &us, &phys_const, &hydro_properties, &c);
   fflush(stdout);
 
+  /* GEAJAY_KEYS_COSMOLOGY=<a>: update the module as at the start of a
+   * cosmological run with this scale factor. */
+  const char *cosmology_a = getenv("GEAJAY_KEYS_COSMOLOGY");
+  if (cosmology_a != NULL) {
+    struct cosmology cosmo;
+    cosmology_init_no_cosmo(&cosmo);
+    cosmo.a = atof(cosmology_a);
+    cosmo.z = 1. / cosmo.a - 1.;
+    cosmo.H0 = 1.;
+    cooling_update(&phys_const, &cosmo, NULL, &c, NULL, 0.);
+    printf("PART update_a_value=%.10g\n", c.units.a_value);
+  }
+
   /* The chemistry_data after geajay_initialize_chemistry_data(), as module
      fields. The options of the context are above. */
   printf("LIBPATH done\n");

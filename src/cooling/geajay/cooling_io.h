@@ -1294,6 +1294,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->redshift =
       parser_get_param_double(parameter_file, "GeajayCooling:redshift");
+  if (!cooling_double_is_finite(&cooling->redshift) ||
+      (cooling->redshift != -1. && !(cooling->redshift >= -0.99)))
+    error(
+        "GeajayCooling:redshift must be -1 (follow the scale factor of the "
+        "run) or a finite redshift of at least -0.99, got %g.",
+        cooling->redshift);
 
   cooling->with_metal_cooling =
       parser_get_param_int(parameter_file, "GeajayCooling:with_metal_cooling");

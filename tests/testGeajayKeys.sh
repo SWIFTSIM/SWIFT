@@ -19,7 +19,9 @@
 # valid tables.
 #
 # Each line of the cases file is one test:
-#   id|key|base lines|test lines|expected|hint
+#   id|key|base lines|test lines|expected|hint[|VAR=value ...]
+# The optional last field sets environment variables of the program for the case,
+# e.g. GEAJAY_KEYS_COSMOLOGY=0.25 (see tests/testGeajayKeys.c).
 # The program reads a baseline file and a test file that differs by the test
 # lines. The test passes when every expected line is in the output of the test
 # file and not in the output of the baseline file. An expected "~MOD name" line
@@ -72,6 +74,8 @@ mk() {
 fails=0
 n=0
 while IFS='|' read -r id key base test expected hint; do
+  envs=""
+  [[ "$hint" == *"|"* ]] && envs=${hint#*|}
   [[ "$id" == \#* || -z "$id" ]] && continue
   n=$((n + 1))
   d="$out/$id"
@@ -79,9 +83,9 @@ while IFS='|' read -r id key base test expected hint; do
   base="$base${BASE_EXTRA:+;$BASE_EXTRA}"
   mk "$d/base.yml" "$base"
   mk "$d/test.yml" "$base;$test"
-  "$bin" "$d/base.yml" > "$d/base.out" 2>&1
+  env $envs "$bin" "$d/base.yml" > "$d/base.out" 2>&1
   sb=$?
-  "$bin" "$d/test.yml" > "$d/test.out" 2>&1
+  env $envs "$bin" "$d/test.yml" > "$d/test.out" 2>&1
   st=$?
   verdict=PASS
   evid=""
@@ -103,7 +107,7 @@ while IFS='|' read -r id key base test expected hint; do
       verdict="FAIL(no suggested value for $name; exit $st)"
     else
       mk "$d/fed.yml" "$base;$test;$name: $value"
-      "$bin" "$d/fed.yml" > "$d/fed.out" 2>&1
+      env $envs "$bin" "$d/fed.yml" > "$d/fed.out" 2>&1
       sf=$?
       if [ $sf -eq 0 ] && grep -q KEYPASS_DONE "$d/fed.out"; then
         evid=" [suggested $name: $value starts]"

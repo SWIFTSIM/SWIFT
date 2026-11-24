@@ -389,6 +389,14 @@ void cooling_update(const struct phys_const *phys_const,
                     const struct pressure_floor_props *pressure_floor,
                     struct cooling_function_data *cooling, struct space *s,
                     const double time) {
+  /* cosmology_init_no_cosmo sets H0 to 0, cosmology_init sets it above 0 */
+  if (cosmo->H0 > 0. && cooling->redshift != -1)
+    error(
+        "GeajayCooling:redshift is %g, but the run has cosmology. A fixed "
+        "redshift replaces the scale factor, so the UV background and the CMB "
+        "would not follow the expansion. Set GeajayCooling:redshift to -1.",
+        cooling->redshift);
+
   /* set current time */
   if (cooling->redshift == -1)
     cooling->units.a_value = cosmo->a;
