@@ -39,7 +39,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline  # testMatrixInversion
+        testLog testDistance testTimeline testSortShiftBound  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -54,7 +54,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline
+		 testNeutrinoFermiDirac testLog testTimeline testSortShiftBound
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -98,6 +98,8 @@ testNeutrinoFermiDirac_SOURCES = testNeutrinoFermiDirac.c
 testTimeIntegration_SOURCES = testTimeIntegration.c
 
 testActivePair_SOURCES = testActivePair.c
+
+testSortShiftBound_SOURCES = testSortShiftBound.c
 
 test27cells_SOURCES = test27cells.c
 
