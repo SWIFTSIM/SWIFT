@@ -4,7 +4,7 @@ with geajay cooling and the ISRF switched on. H2 forms on dust and through H-, a
 else acts. The box therefore has an exact answer: the rate at which the H2 abundance
 `x2 = n_H2 / n_H` grows follows from the gas state alone, through the formation coefficients
 of the published chemistry fits. The check compares the measured growth of every gas particle
-with that rate. It tests the size and the sign of each formation channel, which a comparison
+with that rate. It tests the size and the sign of the dust and H- formation, which a comparison
 of two runs of the same code cannot do.
 
 Two arms isolate the two channels:

@@ -48,7 +48,9 @@ Bar. Per interval it is the sum of terms, each computed from the data:
   16) and heat capacity (3/2 k_B per particle, 5/2 k_B per H2);
 * the solver: the accurate solver keeps the local error of each step below
   atol + rtol |y| per species (error weights, bdf_network.h). The errors of the steps add, so
-  the term is n_steps (atol + rtol x2) / |x2_b - x2_a|;
+  the term is n_steps (atol + rtol x2) / |x2_b - x2_a|, with n_steps the SWIFT steps of the
+  interval. The solver may take several internal steps per SWIFT step, which the check
+  cannot see: the term is an allowance of this form, not a proven bound;
 * the dust temperature: |d ln R_d / d ln T_d| times the shift of T_d for a CMB
   temperature that is 0.005 K higher.
 
@@ -56,13 +58,10 @@ The species of a snapshot are not drifted: they hold the state of the last step 
 ended at or before the snapshot time. The elapsed time between two snapshots is the
 difference of those step ends, read from timesteps.txt.
 
-The first snapshot holds the start values, not a state that the library wrote. The library
-renormalises the species to the sum it keeps afterwards (the metals take their share, in the
-dust arm 0.2 per cent), and H2+ starts at 1e-20 although it reaches its balance within one
-step. In the H- arm that start value makes the rate of the first snapshot too low by
-8e-4 and the first interval fails by 4.3e-4 against its bar. The reference therefore
-renormalises the first snapshot to the sum of the second, and takes its H2+ from the balance
-of the second snapshot, scaled with n_HII. The first interval is then gated like the others.
+The first snapshot holds the start values, not a state that the library wrote. The
+reference renormalises its species to the sum of the second snapshot and takes its H2+ from
+the balance of the second snapshot, scaled with n_HII. The first interval is gated like the
+others.
 
 A particle with F_meas <= 0 fails the interval: a flipped sign or a missing channel has no
 ln. So does a particle whose reference rate is 0. A value that is not finite fails before
@@ -321,7 +320,7 @@ def hydrogen(s: dict[str, Arr]) -> dict[str, Arr]:
 
 
 def hminus_loss(h: dict[str, Arr], t: Arr) -> Arr:
-    """Return the destruction rate of H- [s^-1]: charge, collisional detachment and neutralization."""
+    """Return the destruction rate of H- [s^-1]."""
     return (
         k8_rate(t) * h["n_hi"]
         + k14_rate(t) * h["n_e"]
@@ -687,9 +686,8 @@ def main() -> int:
     finite = [r for r in res["intervals"] if np.isfinite(r["statistic"])]
     if finite:
         worst = max(finite, key=lambda r: abs(r["statistic"]) / r["bar"])
-        print(
-            f"largest |statistic| / bar = {abs(worst['statistic']) / worst['bar']:.3g} (interval {worst['interval']})"
-        )
+        ratio = abs(worst["statistic"]) / worst["bar"]
+        print(f"largest |statistic| / bar = {ratio:.3g} (interval {worst['interval']})")
     else:
         print("no interval has a positive measured rate for any particle")
     print("RESULT:", "PASS" if status == EXIT_PASS else "FAIL")
