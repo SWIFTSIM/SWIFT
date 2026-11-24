@@ -1,7 +1,9 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
-if [ ! -e glassCube_64.hdf5 ]
+if [ ! -e glassCube_64.hdf5 ] || [ ! -e glassCube_32.hdf5 ]
 then
     echo "Fetching initial glass file for the Sod shock example..."
     ./getGlass.sh

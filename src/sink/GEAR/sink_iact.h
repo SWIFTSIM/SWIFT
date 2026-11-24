@@ -278,10 +278,10 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
-  const int si_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  const double si_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
   char si_is_dead = si_age > sink_properties->age_threshold_unlimited;
 
-  const int sj_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
+  const double sj_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
   char sj_is_dead = sj_age > sink_properties->age_threshold_unlimited;
 
   /* Collect the properties for 2-body interactions if one is sink is alive. If
@@ -496,7 +496,7 @@ runner_iact_nonsym_sinks_gas_swallow(
 
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
-  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  const double sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
   char is_dead = sink_age > sink_properties->age_threshold_unlimited;
 
   /* If si is dead, do not swallow pj. */

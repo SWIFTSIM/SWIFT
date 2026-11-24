@@ -661,4 +661,26 @@ __attribute__((always_inline)) INLINE static float sink_get_softening(
   return grav_props->epsilon_baryon_cur;
 }
 
+/**
+ * @brief Return the current instantaneous accretion rate of the sink.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_accretion_rate(
+    const struct sink *sink) {
+  return sink->accretion_rate;
+}
+
+/**
+ * @brief Return the star formation rate of a particle.
+ *
+ * The Basic sink model does not track a star formation rate.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_SFR(
+    const struct sink *sink) {
+  return 0.f;
+}
+
 #endif /* SWIFT_BASIC_SINK_H */

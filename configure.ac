@@ -2567,7 +2567,7 @@ esac
 #  Adiabatic index
 AC_ARG_WITH([adiabatic-index],
    [AS_HELP_STRING([--with-adiabatic-index=<gamma>],
-      [adiabatic index @<:@5/3, 7/5, 4/3, 2 default: 5/3@:>@]
+      [adiabatic index @<:@5/3, 7/5, 4/3, 2, 1.001 default: 5/3@:>@]
    )],
    [with_gamma="$withval"],
    [with_gamma="5/3"]
@@ -2584,6 +2584,9 @@ case "$with_gamma" in
    ;;
    2)
       AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
+   ;;
+   1.001)
+      AC_DEFINE([HYDRO_GAMMA_1_001], [1.001], [Adiabatic index is 1.001 (nearly isothermal)])
    ;;
    *)
       AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
@@ -3040,6 +3043,12 @@ case "$with_sink" in
     AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
     ;;
    GEAR)
+    if test "$with_feedback" != "GEAR"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR])
+    fi
+    if test "$with_cooling" != "grackle"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_N])
+    fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
     *)
@@ -3076,6 +3085,9 @@ case "$with_forcing" in
    ;;
    idealized-agn-jet)
       AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
+   ;;
+   driven-turbulence)
+      AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence following updating the forces])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
@@ -3223,6 +3235,12 @@ case "$with_star_formation" in
       AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
    ;;
    GEAR)
+      if test "$with_stars" != "GEAR"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-stars=GEAR])
+      fi
+      if test "$with_chemistry" != "GEAR" && test "$with_chemistry" != "AGORA"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-chemistry=GEAR_N or AGORA])
+      fi
       AC_DEFINE([STAR_FORMATION_GEAR], [1], [GEAR star formation model (Revaz and Jablonka (2018))])
    ;;
    *)

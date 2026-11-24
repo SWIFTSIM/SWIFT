@@ -147,6 +147,7 @@ tests/testSPHStep
 tests/testExp
 tests/testErfc
 tests/testKernel
+tests/testKernelAccuracy
 tests/testKernelGrav
 tests/testKernelLongGrav
 tests/testFFT
@@ -200,7 +201,7 @@ tests/testEOS
 tests/testEOS*.txt
 tests/testEOS*.png
 tests/testUtilities
-tests/testCosmology
+tests/testCosmologyAccuracy
 tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh

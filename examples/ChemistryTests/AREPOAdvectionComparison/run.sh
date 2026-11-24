@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 if [ ! -e SWIFT_IC_TurbBox_N32.hdf5 ]
 then

@@ -17,11 +17,13 @@
 #
 ##############################################################################
 
-# Generates a distorted 1D grid with a density profile that balances out the
+# Generates a distorted 3D grid with a density profile that balances out the
 # external sine wave potential if run with an isothermal equation of state.
 
 import numpy as np
 import h5py
+import unyt
+import swiftsimio as sw
 
 # constant thermal energy
 # the definition below assumes the same thermal energy is defined in const.h,
@@ -32,7 +34,6 @@ A = 10.0
 
 fileName = "sineWavePotential.hdf5"
 numPart_1D = 20
-boxSize = [1.0, 1.0]
 numPart = numPart_1D**3
 
 coords = np.zeros((numPart, 3))
@@ -40,7 +41,7 @@ v = np.zeros((numPart, 3))
 m = np.zeros(numPart) + 1.0
 h = np.zeros(numPart) + 2.0 / numPart
 u = np.zeros(numPart) + uconst
-ids = np.arange(numPart, dtype="L")
+ids = np.arange(1, numPart + 1, dtype="L")
 rho = np.zeros(numPart)
 
 # first set the positions, as we try to do a reasonable volume estimate to
@@ -69,36 +70,23 @@ for i in range(numPart):
     m[i] = rho[i] * V
 
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [1.0, 1.0, 1.0], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
+w.gas.coordinates = coords * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.write(fileName)
 
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=coords, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("Density", data=rho, dtype="f")
-
-file.close()
+# Extra fields not handled by the Writer
+with h5py.File(fileName, "r+") as f:
+    f["PartType0"].create_dataset("Density", data=rho, dtype="f")

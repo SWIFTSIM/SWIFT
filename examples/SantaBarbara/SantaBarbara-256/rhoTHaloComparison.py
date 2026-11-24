@@ -10,7 +10,6 @@ Josh Borrow (2019) joshua.borrow@durham.ac.uk
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 
 mH = 1.6733e-24  # g
 kB = 1.38e-16  # erg/K

@@ -18,7 +18,10 @@ kinds of particles present in the run). This is done using the parameter
 ``0.2``. Users can optionally overwrite the linking length by imposing an
 absolute value using the parameter ``absolute_linking_length``. This is
 expressed in internal units. This value will be ignored (and the ratio of
-the mean inter-particle separation will be used) when set to ``-1``.
+the mean inter-particle separation will be used) when set to ``-1``. Apart
+from this special value, both parameters must be strictly positive (``> 0``)
+and at least one of them must be specified; the code stops with an error
+otherwise.
 
 The categories of particles are specified using the ``linking_types`` and
 ``attaching_types`` arrays. They are of the length of the number of particle
@@ -86,9 +89,10 @@ There are two additional optional parameters that can be used to modify
 details of the stand-alone FOF code. The ``GroupID`` of the particles that
 do not belong to any groups is by default set to 2147483647
 (i.e. :math:`2^{31}-1`). A different value can be specified by changing the
-optional parameter ``group_id_default``. Similarly, the first group in the
-catalogue (i.e. the largest group) carries the ``GroupID`` 1. This can be
-changed by tweaking the optional parameter ``group_id_offset``.
+optional parameter ``group_id_default``. It must not be negative and must not
+be the ID of a group: use either 0 or a value larger than the number of groups.
+The first group in the catalogue (i.e. the largest group) always carries the
+``GroupID`` 1.
 
 
 ------------------------
@@ -106,10 +110,9 @@ A full FOF section of the YAML parameter file looks like:
        min_group_size:                  256         # The minimum no. of particles required for a group.
        linking_types:                   [0, 1, 0, 0, 0, 0, 0]  # Which particle types to consider for linking    (here only DM)
        attaching_types:                 [1, 0, 0, 0, 1, 1, 0]  # Which particle types to consider for attaching  (here gas, stars, and BHs)
-       linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
+       linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation (must be > 0).
        seed_black_holes_enabled:        0           # Do not seed black holes when running FOF
        black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
        dump_catalogue_when_seeding:     0           # (Optional) Write a FOF catalogue when seeding black holes. Defaults to 0 if unspecified.
-       absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units).
+       absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units, must be > 0).
        group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size.
-       group_id_offset:                 1           # (Optional) Sets the offset of group ID labelling. Defaults to 1 if unspecified.

@@ -296,6 +296,12 @@ AC_DEFUN([AX_EXT],
   ;;
   esac
 
+  # SWIFT modification: -mavx2 does not imply -mfma (unlike -mavx512f), so
+  # keep the FMA flag when AVX2 is the most specific extension found.
+  if test x"$SIMD_FLAGS" = x"-mavx2" -a x"$ax_cv_support_fma3_ext" = x"yes"; then
+    SIMD_FLAGS="$SIMD_FLAGS -mfma"
+  fi
+
   AH_TEMPLATE([HAVE_RDRND],[Define to 1 to support Digital Random Number Generator])
   AH_TEMPLATE([HAVE_BMI1],[Define to 1 to support Bit Manipulation Instruction Set 1])
   AH_TEMPLATE([HAVE_BMI2],[Define to 1 to support Bit Manipulation Instruction Set 2])

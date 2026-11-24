@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This example requires SWIFT to be configured with:
+#   --with-hydro-dimension=1
+
+set -eo pipefail
+
  # Generate the initial conditions if they are not present.
 if [ ! -e sedov.hdf5 ]
 then

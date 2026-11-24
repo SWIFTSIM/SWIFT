@@ -24,6 +24,8 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
+#include "engine.h"
+#include "runner.h"
 #include "runner_doiact_hydro.h"
 
 /**
