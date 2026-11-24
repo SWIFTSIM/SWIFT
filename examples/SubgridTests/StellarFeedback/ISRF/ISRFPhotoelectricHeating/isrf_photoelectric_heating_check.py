@@ -210,10 +210,10 @@ scales by that ratio over the default, while the heating does not.
 
 ``--reference-scale`` and ``--inject-nan`` are positive controls: a scaled
 reference and a NaN in a measured value must each fail, and so must the
-reference of another model, except for the pair ``fixed_rate`` and
-``constant_efficiency``. Their reference rates are equal (8.5e-26 / 1.7 equals
-0.05 x 1e-24, both library constants), so the check cannot tell these two
-models apart.
+reference of another model, except among ``grackle-constant``,
+``geajay-constant-efficiency`` and ``geajay-fixed-rate``. Their reference rates
+are equal (8.5e-26 / 1.7 equals 0.05 x 1e-24, both library constants), so the
+check cannot tell these three models apart.
 """
 
 import argparse
