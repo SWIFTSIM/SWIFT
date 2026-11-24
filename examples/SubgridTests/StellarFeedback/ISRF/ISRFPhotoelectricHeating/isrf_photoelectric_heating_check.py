@@ -209,8 +209,11 @@ of ``GrackleCooling:local_dust_to_gas_ratio`` the Hollenbach & McKee term
 scales by that ratio over the default, while the heating does not.
 
 ``--reference-scale`` and ``--inject-nan`` are positive controls: a scaled
-reference, a reference of another model and a NaN in a measured value must
-each fail.
+reference and a NaN in a measured value must each fail, and so must the
+reference of another model, except among ``grackle-constant``,
+``geajay-constant-efficiency`` and ``geajay-fixed-rate``. Their reference rates
+are equal (8.5e-26 / 1.7 equals 0.05 x 1e-24, both library constants), so the
+check cannot tell these three models apart.
 """
 
 import argparse
@@ -276,7 +279,7 @@ PE_MODELS = (
     "geajay-density-epsilon",
 )
 GEAJAY_FIXED_RATE_CGS = 8.5e-26  # erg/s per H atom at the reference dust-to-gas ratio
-GEAJAY_FIXED_RATE_HABING = 1.7  # G0 at which the fixed rate is defined
+GEAJAY_FIXED_RATE_G0 = 1.7  # G0 at which the fixed rate is defined
 FLOAT32_EPS = 2.0**-24  # relative spacing of the snapshot floats, half ulp
 RESOLVABLE_BAR_MAX = 0.5  # a bar this large cannot tell a model from its absence
 
@@ -678,9 +681,7 @@ def pe_rate_over_rho_predicted(
     if model in ("grackle-constant", "geajay-constant-efficiency"):
         heating = GRACKLE_GAMMA_HA_CGS * GRACKLE_EPSILON * g0 * n_h * z_prime
     elif model == "geajay-fixed-rate":
-        heating = (
-            GEAJAY_FIXED_RATE_CGS * (g0 / GEAJAY_FIXED_RATE_HABING) * n_h * z_prime
-        )
+        heating = GEAJAY_FIXED_RATE_CGS * (g0 / GEAJAY_FIXED_RATE_G0) * n_h * z_prime
     elif model == "geajay-density-epsilon":
         epsilon = np.minimum(0.07, 0.0149 * n_h**0.235)
         heating = 1.3e-24 * epsilon * g0 * n_h * z_prime

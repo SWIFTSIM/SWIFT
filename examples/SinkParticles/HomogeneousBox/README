@@ -16,7 +16,9 @@ To run this example with GEAR model,
 
 or, with geajay instead of Grackle:
 
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=geajay_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-geajay=path/to/geajay
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=geajay_3 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-geajay=path/to/geajay
+
+This example needs a geajay build of mode 3 or above (the key `GeajayCooling:primordial_chemistry_network` set to 3 or more), e.g. `--with-cooling=geajay_3`.
 
 and then
 
