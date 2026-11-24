@@ -85,6 +85,14 @@ echo "------------------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
 do_run bash run.sh
 
+echo
+echo "------------------------------------------------------"
+echo "Zoom check: NonCubicUniDMGravity, 16 steps"
+echo "------------------------------------------------------"
+# Expected runtime: ~30 seconds
+cd "${WORKDIR}/examples/ZoomSimulations/NonCubicUniDMGravity"
+do_run bash run.sh
+
 # ============================================================================
 
 cd "${WORKDIR}"
@@ -181,6 +189,29 @@ do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
     --param="DomainDecomposition:repartition_type:none" \
     --param="DomainDecomposition:trigger:0.1" \
     boundary_offset_uni_dm_grav.yml
+
+echo "----------------------------------"
+echo "NonCubicUniDMGravity MPI run"
+echo "----------------------------------"
+# Expected runtime: ~20 seconds
+cd "${WORKDIR}/examples/ZoomSimulations/NonCubicUniDMGravity"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:grid" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_non_cubic_uni_dm_grav.yml
+
+echo "----------------------------------------"
+echo "NonCubicUniDMGravity wedge MPI run"
+echo "----------------------------------------"
+# Expected runtime: ~20 seconds
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:wedge" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_non_cubic_uni_dm_grav.yml
 
 # ============================================================================
 
