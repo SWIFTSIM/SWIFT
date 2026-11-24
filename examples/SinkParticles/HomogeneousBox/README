@@ -15,7 +15,9 @@ To run this example with GEAR model,
 
 or, with geajay instead of Grackle:
 
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=geajay_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-geajay=path/to/geajay
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=geajay_3 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-geajay=path/to/geajay
+
+geajay_3 is the lowest network that holds all the initial species of params.yml (HII, HeI to HeIII, H-, H2, H2+, D, D+, HD) and the D to H mass ratio. With geajay_0, 1 or 2 the run stops at start-up: the key set but not read names the species the network does not have. To run a lower network, delete those keys.
 
 and then
 
