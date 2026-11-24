@@ -13,3 +13,13 @@ set -e
 ./testZoomInit @srcdir@/zoom_params_small.yml 20 20 150 16 16 32 3
 ./testZoomInit @srcdir@/zoom_params_small.yml 150 20 20 32 16 16 3
 ./testZoomInit @srcdir@/zoom_params_cells.yml 20 20 150 16 16 32 3
+
+# A slab, i.e. two long axes and one short one.
+./testZoomInit @srcdir@/zoom_params_small.yml 150 150 20 32 32 16 3
+
+# Automatic background cells: an elongated region that fits in one background
+# cell stays cubic, while one long enough to hit the minimum of 8 background
+# cells spans several of them along its long axis and is non-cubic.
+./testZoomInit @srcdir@/zoom_params_auto.yml 20 20 80 4 4 4 2
+./testZoomInit @srcdir@/zoom_params_auto.yml 20 20 300 8 8 16 2
+./testZoomInit @srcdir@/zoom_params_auto.yml 300 20 20 16 8 8 2
