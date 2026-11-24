@@ -2,7 +2,8 @@
 #
 # Initial species of the geajay cooling module: the H nuclei of the gas are
 # shared between HI, HII, H-, H2, H2+ and HD, and a ratio set above the
-# available hydrogen stops the run at start-up.
+# available hydrogen stops the run at start-up. The He nuclei are shared
+# between HeI, HeII, HeIII and HeH+ in the same way when the HeI ratio is unset.
 #
 # Needs a SWIFT built with --with-cooling=geajay_3 and the program
 # testGeajayKeys built from tests/testGeajayKeys.c. Not part of "make check".
@@ -92,6 +93,58 @@ mk too_much.yml "initial_hii_to_h_ratio: 0.5;initial_h2i_to_h_ratio: 0.3"
 st=$?
 grep -qF "hold more hydrogen than the gas has" too_much.out && [ $st -ne 0 ]
 verdict too_much $((1 - $?)) "exit $st: $(grep -o 'which is [^ ]* > 1' too_much.out)"
+
+# check_he <name> <HeI> <He total>: HeI as expected, He species sum to the helium of the gas
+check_he() {
+  local hei sum
+  hei=$(sp "$1" HeI_frac)
+  sum=$(awk -v a="$hei" -v b="$(sp "$1" HeII_frac)" -v c="$(sp "$1" HeIII_frac)" 'BEGIN { printf "%.9g", a + b + c }')
+  awk -v hei="$hei" -v ehei="$2" -v sum="$sum" -v esum="$3" 'BEGIN {
+    ok = (hei - ehei < 1e-6 * esum && ehei - hei < 1e-6 * esum && sum - esum < 1e-6 * esum && esum - sum < 1e-6 * esum)
+    exit !ok }'
+  verdict "$1" $((1 - $?)) "HeI=$hei (expect $2) He species sum=$sum (expect $3)"
+}
+
+# The helium mass fraction of the gas, with the hydrogen mass fraction of the default start
+HE=$(awk -v nh="$NH" 'BEGIN { printf "%.9g", 1 - nh }')
+HE_PER_H=$(awk -v nh="$NH" 'BEGIN { printf "%.9g", (1 - nh) / (4 * nh) }')
+
+run "$bin" he_default ""
+check_he he_default "$HE" "$HE"
+
+run "$bin" he_heii "initial_heii_to_h_ratio: 0.01"
+check_he he_heii "$(awk -v nh="$NH" -v he="$HE" 'BEGIN { printf "%.9g", he - 4 * nh * 0.01 }')" "$HE"
+
+run "$bin" he_heii_heiii "initial_heii_to_h_ratio: 0.01;initial_heiii_to_h_ratio: 0.02"
+check_he he_heii_heiii "$(awk -v nh="$NH" -v he="$HE" 'BEGIN { printf "%.9g", he - 4 * nh * 0.03 }')" "$HE"
+
+# Refusal: HeII and HeIII hold more helium than the gas has
+mk he_too_much.yml "initial_heii_to_h_ratio: 0.05;initial_heiii_to_h_ratio: 0.05"
+"$bin" he_too_much.yml > he_too_much.out 2>&1
+st=$?
+grep -qF "hold more helium than the gas has" he_too_much.out && [ $st -ne 0 ]
+verdict he_too_much $((1 - $?)) "exit $st: $(grep -o 'together hold [^ ]* He nuclei per H nucleus' he_too_much.out) (gas has $HE_PER_H)"
+
+# An explicit HeI ratio is not reduced
+run "$bin" he_explicit "initial_hei_to_h_ratio: 0.0689473687;initial_heii_to_h_ratio: 0.01"
+check_he he_explicit "$(awk -v nh="$NH" 'BEGIN { printf "%.9g", 4 * nh * 0.0689473687 }')" "$HE"
+
+# Without a helium ratio, or with an explicit HeI ratio, the species are those of the reference program
+if [ -n "$ref" ]; then
+  for c in "he_default|" "he_hei_explicit|initial_hei_to_h_ratio: 0.0789473687" \
+    "he_hei_heii_explicit|initial_hei_to_h_ratio: 0.0689473687;initial_heii_to_h_ratio: 0.01"; do
+    n=${c%%|*}
+    run "$bin" "new_$n" "${c#*|}"
+    run "$ref" "ref_$n" "${c#*|}"
+    [ -s "ref_$n.species" ] && cmp -s "new_$n.species" "ref_$n.species"
+    verdict "same_as_reference_$n" $((1 - $?)) "$(wc -l < "new_$n.species") species lines compared"
+  done
+  # A small HeII ratio: the reference program starts with the helium counted twice, below its 1e-3 sum check
+  run "$ref" ref_he_small "initial_heii_to_h_ratio: 2e-4"
+  run "$bin" new_he_small "initial_heii_to_h_ratio: 2e-4"
+  [ -s ref_he_small.species ] && [ "$(sp ref_he_small HeI_frac)" = "$(sp he_default HeI_frac)" ] && [ "$(sp new_he_small HeI_frac)" != "$(sp he_default HeI_frac)" ]
+  verdict reference_double_counts_helium $((1 - $?)) "HeI is $(sp ref_he_small HeI_frac) in the reference program and $(sp new_he_small HeI_frac) in the new one"
+fi
 
 # Without a molecular ratio the species are those of the reference program
 if [ -n "$ref" ]; then

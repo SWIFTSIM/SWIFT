@@ -584,6 +584,58 @@ static void cooling_check_initial_hydrogen(
 }
 
 /**
+ * @brief Number of He nuclei per H nucleus of the gas that the initial ratios
+ * place in the species other than HeI.
+ *
+ * HeII, HeIII and HeH+ hold one He nucleus each.
+ *
+ * @param cooling The cooling properties.
+ */
+static double cooling_initial_he_in_other_species(
+    const struct cooling_function_data *cooling) {
+
+  double he = 0.;
+  if (cooling->initial_heii_to_h_ratio >= 0.f)
+    he += cooling->initial_heii_to_h_ratio;
+  if (cooling->initial_heiii_to_h_ratio >= 0.f)
+    he += cooling->initial_heiii_to_h_ratio;
+#if COOLING_GEAJAY_MODE >= 4
+  if (cooling->initial_hehii_to_h_ratio >= 0.f)
+    he += cooling->initial_hehii_to_h_ratio;
+#endif
+  return he;
+}
+
+/**
+ * @brief Stop if the initial species hold more He nuclei than the gas has,
+ * with the helium I ratio unset.
+ *
+ * An unset initial_hei_to_h_ratio makes HeI take the He nuclei that the other
+ * species do not hold. Needs the hydrogen mass fraction that geajay resolved.
+ *
+ * @param cooling The cooling properties.
+ */
+static void cooling_check_initial_helium(
+    const struct cooling_function_data *cooling) {
+
+  if (cooling->initial_hei_to_h_ratio >= 0.f) return;
+
+  const double he_in_other = cooling_initial_he_in_other_species(cooling);
+  const double X = cooling->HydrogenFractionByMass;
+  const double he_per_h = (1. - X) / (4. * X);
+  if (he_in_other <= he_per_h * (1. + 1e-6)) return;
+
+  error(
+      "The initial helium ratios hold more helium than the gas has. The "
+      "ratios are numbers per H nucleus: HeII, HeIII and HeH+ together hold "
+      "%.9g He nuclei per H nucleus, and the gas has %.9g with the hydrogen "
+      "mass fraction %.9g. Lower initial_heii_to_h_ratio, "
+      "initial_heiii_to_h_ratio or initial_hehii_to_h_ratio (GeajayCooling:), "
+      "or set initial_hei_to_h_ratio.",
+      he_in_other, he_per_h, X);
+}
+
+/**
  * @brief Compute equilibrium fraction
  *
  * @param phys_const The #phys_const.
@@ -682,8 +734,18 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   if (cooling->initial_hei_to_h_ratio >= 0.f) {
     double nHeI = nH * cooling->initial_hei_to_h_ratio;
     xp->cooling_data.HeI_frac = nHeI * 4.f;
-  } else
-    xp->cooling_data.HeI_frac = nHe * 4.f;
+  } else {
+    /* The He nuclei that HeII, HeIII and HeH+ do not hold */
+    double nHeI = nHe;
+    const double he_in_other_species =
+        cooling_initial_he_in_other_species(cooling);
+    if (he_in_other_species > 0.) {
+      nHeI -= nH * he_in_other_species;
+      /* Round-off only: cooling_check_initial_helium refuses a negative HeI */
+      if (nHeI < 0.) nHeI = 0.;
+    }
+    xp->cooling_data.HeI_frac = nHeI * 4.f;
+  }
 
   Xtot += xp->cooling_data.HeI_frac;
 
@@ -2323,6 +2385,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   /* geajay resolves a negative hydrogen mass fraction to its own value */
   cooling->HydrogenFractionByMass =
       cooling->chemistry_data.HydrogenFractionByMass;
+  cooling_check_initial_helium(cooling);
 
   /* Here, so that a restart pads the reloaded tables again */
   if (geajay_set_table_density_edge(&cooling->chemistry_rates,
