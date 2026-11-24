@@ -125,6 +125,15 @@ st=$?
 grep -qF "hold more helium than the gas has" he_too_much.out && [ $st -ne 0 ]
 verdict he_too_much $((1 - $?)) "exit $st: $(grep -o 'together hold [^ ]* He nuclei per H nucleus' he_too_much.out) (gas has $HE_PER_H)"
 
+# HeH+ holds one He nucleus; the key exists with the network H_He_H2_D_ions only
+run "$bin" he_hehii "initial_hehii_to_h_ratio: 0.01"
+if [ -s he_hehii.species ]; then
+  check_he he_hehii "$(awk -v nh="$NH" -v he="$HE" 'BEGIN { printf "%.9g", he - 4 * nh * 0.01 }')" \
+    "$(awk -v nh="$NH" -v he="$HE" 'BEGIN { printf "%.9g", he - 4 * nh * 0.01 }')"
+else
+  printf 'he_hehii\tSKIP\tthis build has no HeH+ species\n'
+fi
+
 # An explicit HeI ratio is not reduced
 run "$bin" he_explicit "initial_hei_to_h_ratio: 0.0689473687;initial_heii_to_h_ratio: 0.01"
 check_he he_explicit "$(awk -v nh="$NH" 'BEGIN { printf "%.9g", 4 * nh * 0.0689473687 }')" "$HE"
