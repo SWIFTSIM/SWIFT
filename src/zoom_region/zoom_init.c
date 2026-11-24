@@ -1017,17 +1017,28 @@ void zoom_region_init(struct space *s, const int regridding,
   /* Construct the zoom region geometry. */
   zoom_get_geometry(s);
 
-  /* Store what the true boost factor ended up being */
-  s->zoom_props->region_pad_factor = s->zoom_props->dim[0] / ini_dim;
+  /* Store what the true boost factor ended up being. This is measured along
+   * the longest axis of the particle distribution, the shorter axes can be
+   * padded by more since each axis is rounded up to whole background cells. */
+  int longest = 0;
+  for (int i = 1; i < 3; i++) {
+    if (s->zoom_props->part_dim[i] > s->zoom_props->part_dim[longest]) {
+      longest = i;
+    }
+  }
+  s->zoom_props->region_pad_factor =
+      s->zoom_props->dim[longest] / s->zoom_props->part_dim[longest];
 
   /* Ensure we haven't got a zoom region smaller than the high resolution
-   * particle distribution. */
-  if (s->zoom_props->dim[0] < ini_dim) {
-    error(
-        "Found a zoom region smaller than the high resolution particle "
-        "distribution! Adjust the cell structure "
-        "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_depth, "
-        "ZoomRegion:zoom_min_top_level_cells)");
+   * particle distribution along any axis. */
+  for (int i = 0; i < 3; i++) {
+    if (s->zoom_props->dim[i] < s->zoom_props->part_dim[i]) {
+      error(
+          "Found a zoom region smaller than the high resolution particle "
+          "distribution! Adjust the cell structure "
+          "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_depth, "
+          "ZoomRegion:zoom_min_top_level_cells)");
+    }
   }
 
   /* Let's be safe and warn if we have drastically changed the size of the
@@ -1059,9 +1070,9 @@ void zoom_region_init(struct space *s, const int regridding,
   }
 
   /* Set the minimum allowed zoom cell width. */
-  const double zoom_dmax =
-      max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
-  s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
+  s->zoom_props->cell_min =
+      0.99 * min3(s->zoom_props->width[0], s->zoom_props->width[1],
+                  s->zoom_props->width[2]);
 
   /* Set the minimum background cell size. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
