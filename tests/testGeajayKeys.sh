@@ -20,6 +20,9 @@
 #
 # Each line of the cases file is one test:
 #   id|key|base lines|test lines|expected|hint[|VAR=value ...]
+# After the cases, the script starts the program on the GeajayCooling block of
+# examples/parameter_example.yml (case example_template): the block must start
+# as it is. The variable TEMPLATE names another file for that check.
 # The optional last field sets environment variables of the program for the case,
 # e.g. GEAJAY_KEYS_COSMOLOGY=0.25 (see tests/testGeajayKeys.c).
 # The program reads a baseline file and a test file that differs by the test
@@ -150,5 +153,24 @@ while IFS='|' read -r id key base test expected hint; do
   [[ "$verdict" == PASS ]] || fails=$((fails + 1))
   printf '%s\t%s\t%s\t%s\n' "$id" "$key" "$verdict" "$evid"
 done < "$cases"
+
+# The GeajayCooling block of the example parameter file must start as it is.
+# TEMPLATE names another file to check.
+template=$(realpath "${TEMPLATE:-$here/../examples/parameter_example.yml}")
+d="$out/example_template"
+mkdir -p "$d"
+awk '/^GeajayCooling:/ { exit } { print }' "$head" > "$d/test.yml"
+awk '/^GeajayCooling:/ { f = 1 } /^[A-Za-z]/ && !/^GeajayCooling:/ { f = 0 } f' "$template" >> "$d/test.yml"
+n=$((n + 1))
+"$bin" "$d/test.yml" > "$d/test.out" 2>&1
+st=$?
+if [ $st -eq 0 ] && grep -q KEYPASS_DONE "$d/test.out"; then
+  verdict=PASS
+else
+  verdict="FAIL(example block exit $st: $(tail -n 2 "$d/test.out" | tr '\n' ' ' | cut -c1-300))"
+  fails=$((fails + 1))
+fi
+printf '%s\t%s\t%s\t\n' example_template GeajayCooling "$verdict"
+
 echo "cases: $n failures: $fails"
 [ $fails -eq 0 ]

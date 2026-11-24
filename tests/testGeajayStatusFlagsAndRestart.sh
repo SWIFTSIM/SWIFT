@@ -1,14 +1,14 @@
 #!/bin/bash
 #
-# Start-up and report fixes of the geajay cooling module after the weakness
-# audit: the count of the dust warnings of the library, the helium of the
-# default start and the text of the restart refusals.
+# Status flags and restart of the geajay cooling module: the count of the
+# warnings that the library returns in the status of a solve, and the text of
+# the restart refusals.
 #
 # Needs a SWIFT built with --with-cooling=geajay_3 and the program
 # testGeajayKeys built from tests/testGeajayKeys.c. Not part of "make check".
 # Usage:
 #
-#   tests/testGeajayAuditFixes.sh <testGeajayKeys> <fixture dir> <work dir>
+#   tests/testGeajayStatusFlagsAndRestart.sh <testGeajayKeys> <fixture dir> <work dir>
 #
 # The fixture dir holds CloudyData_UVB=HM2012.h5. Exit code 0: every check
 # passes.

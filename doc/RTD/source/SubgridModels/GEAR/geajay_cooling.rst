@@ -196,9 +196,10 @@ settings: the cooling does not tie one to the other, so choose consistent values
        ``none``, ``uv_table``, ``constant_j21``, ``Brown+2025_strong`` or ``Brown+2025_weak``; both Brown
        models need an FG20 rates file (default: ``default``).
    * - ``lw_background_j21``
-     - (optional) Constant Lyman-Werner background J21 (Grackle ``LWbackground_intensity``); negative:
-       the library default. Above 0 it replaces the table k31 and adds to
-       ``rt_h2_dissociation_rate_per_s`` (default: -1).
+     - (optional) Constant Lyman-Werner background J21 (Grackle ``LWbackground_intensity``); -1: the
+       library default, otherwise 0 or above (another negative value stops the run). Above 0 it
+       replaces the table k31 and adds to ``rt_h2_dissociation_rate_per_s``. Read only with a network
+       that has H\ :sub:`2` (default: -1).
    * - ``lw_background_sawtooth_suppression``
      - (optional) 0 or 1. Lowers the Lyman-Werner background of the table before reionisation, as in
        Grackle. Needs ``with_uv_background`` 1 and the table k31 (``lw_background_model``
