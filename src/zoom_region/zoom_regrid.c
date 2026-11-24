@@ -258,10 +258,12 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
 
     /* If the geometry was originally driven by a requested cdim, update that
      * target too, otherwise zoom_region_init() will derive the old depth again.
-     */
+     * The target applies to the axis with the fewest zoom cells. */
     if (s->zoom_props->zoom_cell_min_cdim > 0) {
       const int parent_cdim =
-          s->zoom_props->cdim[0] / (1 << old_zoom_cell_depth);
+          min3(s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+               s->zoom_props->cdim[2]) /
+          (1 << old_zoom_cell_depth);
       s->zoom_props->zoom_cell_min_cdim =
           parent_cdim * (1 << s->zoom_props->zoom_cell_depth);
     }
