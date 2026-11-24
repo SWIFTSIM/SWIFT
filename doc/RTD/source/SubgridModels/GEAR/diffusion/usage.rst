@@ -83,6 +83,18 @@ interval longer than the current step of the active particles of the
 pair. Such an exchange catches up the time since the pair last exchanged,
 after the time-step limiter or a synchronisation shortened a step.
 
+Initial conditions: the last metal entry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``MetalMassFraction`` array of the initial conditions has one entry per
+element. In the FVPM schemes the last entry is the mass fraction of the
+untracked metals, not the total metallicity: the total is the sum of all
+``N`` entries. The snapshots differ: ``MetalMassFractions`` writes the
+total metallicity in the last entry, so a snapshot read back as initial
+conditions counts the tracked metals twice. The parameter
+``initial_metallicity`` follows the initial-conditions convention: it sets
+every entry, the last included, as an untracked metal fraction.
+
 MPI support
 ~~~~~~~~~~~~
 
