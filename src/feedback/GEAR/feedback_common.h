@@ -120,6 +120,8 @@ void feedback_set_star_HII_last_attempt(struct spart *sp,
 double feedback_get_star_HII_photons_issued_age(const struct spart *sp);
 void feedback_set_star_HII_photons_issued_age(struct spart *sp,
                                               double star_age);
+double feedback_get_star_HII_issue_until_age(double issued_age, double star_age,
+                                             double dt_floor, int is_emitting);
 #else
 /* Without the part: the star carries no HII state. */
 __attribute__((always_inline)) INLINE static void

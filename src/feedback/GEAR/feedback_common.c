@@ -1211,6 +1211,33 @@ double feedback_get_star_HII_photons_issued_age(const struct spart *sp) {
 }
 
 /**
+ * @brief The star age up to which a pass issues the photons of a star.
+ *
+ * Each pass issues the photons of [issued age, returned age], so every instant
+ * of the star's life is issued once. While the star is younger than the floor
+ * interval, the first pass issues the floor interval ahead and a later pass
+ * inside it issues nothing. The age is compared to the floor, not to 0,
+ * because a rounding residue above 0 (every-step mode, cosmology) would
+ * otherwise pass for an emitted interval.
+ *
+ * @param issued_age The star age up to which the photons were already issued.
+ * @param star_age The star age at the start of its step, floored at 0.
+ * @param dt_floor The interval the first pass issues ahead.
+ * @param is_emitting Whether the star has a non-zero ionizing photon rate.
+ * @return The star age up to which this pass issues the photons.
+ */
+double feedback_get_star_HII_issue_until_age(const double issued_age,
+                                             const double star_age,
+                                             const double dt_floor,
+                                             const int is_emitting) {
+
+  double issue_until_age = max(issued_age, star_age);
+  if (is_emitting && star_age < dt_floor)
+    issue_until_age = max(issue_until_age, dt_floor);
+  return issue_until_age;
+}
+
+/**
  * @brief The HII rebuild cadence currently in force for this star, i.e. the
  * interval one scheduled pass is expected to cover.
  *

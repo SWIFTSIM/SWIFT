@@ -748,16 +748,14 @@ static int runner_hii_open_star_pass(const struct engine *e,
   feedback_set_star_HII_last_attempt(si, star_age_safe);
   const int64_t pass_index = feedback_count_star_HII_pass(si);
 
-  /* Each pass issues the photons of [issued age, star age], so every instant
-     of the star's life is issued once. At age 0 nothing has been emitted yet:
-     the first pass issues the floor interval ahead. Only a star of the ICs
-     and every star in "rebuild every step" mode reach this: with a positive
-     rebuild time a newborn star first passes at about one cadence of age. */
+  /* Only a star of the ICs and every star in "rebuild every step" mode reach
+     the floor interval: with a positive rebuild time a newborn star first
+     passes at about one cadence of age. */
   const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
   const double issued_age = feedback_get_star_HII_photons_issued_age(si);
   const int is_emitting = feedback_get_star_ionization_rate(si, 0) > 0.0;
-  double issue_until_age = max(issued_age, star_age_safe);
-  if (is_emitting && issue_until_age == 0.0) issue_until_age = dt_floor;
+  const double issue_until_age = feedback_get_star_HII_issue_until_age(
+      issued_age, star_age_safe, dt_floor, is_emitting);
   feedback_set_star_HII_photons_issued_age(si, issue_until_age);
   const double dt_issued = issue_until_age - issued_age;
 
