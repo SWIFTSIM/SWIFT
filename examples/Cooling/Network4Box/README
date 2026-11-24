@@ -24,6 +24,10 @@ fraction and the HD to H ratio by more than 20 percent. Without cosmic rays the
 change is below 2 percent: run ./run.sh --no-cosmic-rays to see it. The
 difference depends on the density, the temperature and the ionisation rate.
 
+Network 4 is not for production. Its electron fraction above 1e10 cm^-3 is not validated
+(41 to 63 times too high against Cloudy at 1.78e10 to 2.6e11 cm^-3), and the H2 self-shielding fix is tested only for a log
+slope s of the shielding factor from 0.2 to 0.5. Use network 3 for a zoom run.
+
 Configure SWIFT with the network 4 library:
   ./configure --with-cooling=geajay_4 --with-geajay=$GEAJAY_ROOT
 

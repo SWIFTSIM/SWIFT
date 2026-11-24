@@ -1209,11 +1209,22 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       "species_network", COOLING_GEAJAY_MODE, NULL, 0);
 
   if (cooling->primordial_chemistry < 0)
-    error("Primordial chemistry cannot be below 0");
+    error(
+        "GeajayCooling:primordial_chemistry_network must be 0 or above, got "
+        "%i.",
+        cooling->primordial_chemistry);
+
+  if (cooling->primordial_chemistry > GEAJAY_NETWORK_H_HE_H2_D_IONS)
+    error("GeajayCooling:primordial_chemistry_network must be 0 to %i, got %i.",
+          GEAJAY_NETWORK_H_HE_H2_D_IONS, cooling->primordial_chemistry);
 
   if (cooling->primordial_chemistry > COOLING_GEAJAY_MODE)
-    error("Cannot run primordial chemistry %i when compiled with %i",
-          cooling->primordial_chemistry, COOLING_GEAJAY_MODE);
+    error(
+        "GeajayCooling:primordial_chemistry_network is %i, but this SWIFT is "
+        "configured with --with-cooling=geajay_%i. Lower the key to %i or "
+        "below, or reconfigure with --with-cooling=geajay_%i.",
+        cooling->primordial_chemistry, COOLING_GEAJAY_MODE, COOLING_GEAJAY_MODE,
+        cooling->primordial_chemistry);
 
   cooling->HII_couple_ionization_rate = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:HII_couple_ionization_rate",

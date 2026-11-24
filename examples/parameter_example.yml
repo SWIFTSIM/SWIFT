@@ -747,15 +747,17 @@ GrackleCooling:
 # The snapshots hold CoolingTimes and CoolingRates; to switch them off, set Snapshots:select_output_on: 1 and CoolingTimes_Gas: off, CoolingRates_Gas: off under Default: in the output selection file
 GeajayCooling:
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
-  primordial_chemistry_network: tabulated      # (optional) Primordial chemistry network: tabulated, H_He, H_He_H2, H_He_H2_D or H_He_H2_D_ions (or 0 to 4), not above the mode selected at configure time (default: that mode)
+  # primordial_chemistry_network: H_He_H2_D     # (optional) Primordial chemistry network: tabulated, H_He, H_He_H2, H_He_H2_D or H_He_H2_D_ions (or 0 to 4), not above the one selected at configure time (--with-cooling=geajay_N).
+                                               # Leave the line out to run the configured network. A live line overrides it: tabulated (0) switches off all species, the H2 and the dust chemistry (default: the configured network)
   with_uv_background: 1                        # Enable or not the UV background
-  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  redshift: 0                                  # Redshift to use (-1 means time based redshift). Use -1 in a cosmological run: any other value stops it
   with_metal_cooling: 1                        # Enable or not the metal cooling
   max_substeps: 0                              # (optional) Maximal number of sub-steps of one solve, or 0 for the geajay default: 10000 x 0.1 / energy_change_limit, so 33333 at the limit 0.03, or the BDF default with solver 1 (default: 0)
   subcycle_on_failure: 2                       # (optional) Number of retries with a time-step split in smaller pieces after a failed solve (0 to 20, default: 2)
   energy_change_limit: 0                       # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1], or 0 for the geajay default: 0.03 with
                                                # cheap_energy_update 1, 0.1 with 0 (the value Grackle fixes). The accurate solver (solver 1) does not read it. Smaller values take more sub-steps (default: 0)
-  cheap_energy_update: 1                       # (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order (default: the geajay default, 1)
+  # cheap_energy_update: 1                     # (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order.
+                                               # Leave the line out (or -1) for the geajay default, second order. With solver 1 any other value stops the run (default: unset)
   with_radiative_cooling: 1                    # (optional) 1 or 0. With 0 the chemistry evolves but the library does not change the internal energy (not exactly the temperature: the mean molecular weight changes with H2;
                                                # SWIFT floors still act) (default: 1)
   solver: 0                                    # (optional) Solver of networks 1 to 4: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the geajay default)
@@ -858,13 +860,15 @@ GeajayCooling:
   # cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Read only with cosmic_ray_input: energy_density, then required. Hadronic loss coefficient [cm^3 s^-1]
   cosmic_ray_heating: atomic_molecular_fit     # (optional) Read only with cosmic_rays: reduced. Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
   cosmic_ray_heat_per_ionisation: 20           # (optional) Read only with cosmic_ray_heating: fixed_energy. Heat per ionisation [eV] (default: 20)
-  lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); -1: the library default, otherwise 0 or above (another negative value stops the run).
+  lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); -1: the library default, 0 (no constant background),
+                                               # otherwise 0 or above (another negative value stops the run). Unit of J21: 1e-21 erg s^-1 cm^-2 Hz^-1 sr^-1, k31 = 1.38e-12 J21 s^-1.
                                                # Above 0 it replaces the table k31 and adds to rt_h2_dissociation_rate_per_s. Read only with a network that has H2 (default: -1)
   lw_background_sawtooth_suppression: 0        # (optional) 0 or 1. Lowers the Lyman-Werner background of the table before reionisation, as in Grackle. Needs with_uv_background: 1 and the table k31 (default: 0)
   uv_background_redshift_on: -99999            # (optional) Redshift where the UV background switches on. Needs a UV table: with_uv_background: 1, or a uv_table model of per_band. -99999 is unset: the last redshift of the table (default: unset)
   uv_background_redshift_full_on: -99999       # (optional) Redshift where the UV background is fully on. -99999 is unset: the last redshift of the Cloudy table (default: unset)
   uv_background_redshift_drop: -99999          # (optional) Redshift where the UV background starts to drop. -99999 is unset: the first redshift of the Cloudy table (default: unset)
   uv_background_redshift_off: -99999           # (optional) Redshift where the UV background switches off. -99999 is unset: the first redshift of the Cloudy table (default: unset)
+  # G_0 has no default. Set isrf_habing with background_mode: grackle (1.7 is the solar neighbourhood value, 0 is no field). With background_mode: per_band the key stops the run: delete the line.
   isrf_habing: 1.7                             # (optional) Constant G_0 of every particle [Habing], 0 or above. There is no default: unset, the run stops if a term reads G_0 (dust_model: basic, h2_formation_on_dust,
                                                # dust_recombination_cooling, photoelectric_heating_model above none), else G_0 is 0. Not read with per_band (default: unset)
                                                # With GEARFeedback:with_interstellar_radiation_field on, the solve reads the ISRF G_0 of each particle instead
@@ -876,10 +880,12 @@ GeajayCooling:
   background_mode: grackle                     # (optional) Background rules: grackle (Grackle's) or per_band (one switch per band; the options below) (default: grackle)
   ionising_background_model: default           # (optional) Read only with background_mode: per_band. Ionising band: default (follows with_uv_background), none or uv_table (default: default)
   lw_background_model: default                 # (optional) Read only with background_mode: per_band. Lyman-Werner band: default, none, uv_table, constant_j21, Brown+2025_strong or Brown+2025_weak;
-                                               # both Brown models need an FG20 rates file (default: default)
+                                               # both Brown models need an FG20 rates file. default is constant_j21 if lw_background_j21 is above 0, else uv_table with a UV background, else none (default: default)
   isrf_background_model: default               # (optional) Read only with background_mode: per_band. Background G_0: default, none, constant or uv_table (G0_habing of a UV rates file, log-linear in 1
-                                               # + z; with lw_background_model: Brown+2025_strong its 11.2 to 13.6 eV share follows the Brown k31, FG20 files only) (default: default)
+                                               # + z; with lw_background_model: Brown+2025_strong its 11.2 to 13.6 eV share follows the Brown k31, FG20 files only). default is unset: the library refuses it when a term reads G_0 (default: default)
   isrf_background_habing: -1                   # (optional) Read only with background_mode: per_band. Background G_0 of the model constant [Habing] (default: -1, unset)
+  # G_0 from a UV table (isrf_background_model: uv_table) needs a rates file with /UVBRates/G0_habing: HM12_thin.h5, HM12_shielded.h5 or FG20_thin.h5, in the directory tables/geajay of the cloudytables repository.
+  # SWIFT does not ship them. The table CloudyData_UVB=HM2012.h5 has no G0_habing.
   # uv_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file whose /UVBRates is the UV background, e.g. an FG20 file; the metal table always comes
                                                # from cloudy_table_file. Leave the line out (an empty value is invalid) to use cloudy_table_file (default: cloudy_table_file)
   # Shielded metals with a column-shielded H and He: set background_mode: per_band, cloudy_table_file: HM12_shielded.h5, uv_rates_file: HM12_thin.h5, uv_self_shielding: HI_HeI_HeII_column,

@@ -18,7 +18,7 @@ or, with geajay instead of Grackle:
 
 ./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=geajay_3 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-geajay=path/to/geajay
 
-This example needs a geajay build of mode 3 or above (the key `GeajayCooling:primordial_chemistry_network` set to 3 or more), e.g. `--with-cooling=geajay_3`.
+This example needs a geajay build of mode 3 or above, e.g. `--with-cooling=geajay_3`. geajay_3 is the lowest network that holds all the initial species of params.yml (HII, HeI to HeIII, H-, H2, H2+, D, D+, HD) and the D to H mass ratio. With geajay_0, 1 or 2 the run stops at start-up: a key that is set but not read is refused. To run a lower network, delete the `GeajayCooling:initial_*_to_h_ratio` keys of the species it lacks, and `GeajayCooling:deuterium_to_hydrogen_mass_ratio` when it has no deuterium. With geajay_0 or 1 also set `GeajayCooling:h2_shielding_length_method: none`, because these networks have no H2.
 
 and then
 
