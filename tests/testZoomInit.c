@@ -31,7 +31,7 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
-void make_mock_space(struct space *s, const double zoom_width) {
+void make_mock_space(struct space *s, const double zoom_width[3]) {
 
   /* Define the members we need for the test. */
   s->dim[0] = 1000;
@@ -47,17 +47,6 @@ void make_mock_space(struct space *s, const double zoom_width) {
       (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
 
-  /* Define the corners of the region */
-  double cube_corners[8][3] = {
-      {500 - (zoom_width / 2), 500 - (zoom_width / 2), 500 - (zoom_width / 2)},
-      {500 - (zoom_width / 2), 500 + (zoom_width / 2), 500 - (zoom_width / 2)},
-      {500 + (zoom_width / 2), 500 - (zoom_width / 2), 500 - (zoom_width / 2)},
-      {500 + (zoom_width / 2), 500 + (zoom_width / 2), 500 - (zoom_width / 2)},
-      {500 - (zoom_width / 2), 500 - (zoom_width / 2), 500 + (zoom_width / 2)},
-      {500 - (zoom_width / 2), 500 + (zoom_width / 2), 500 + (zoom_width / 2)},
-      {500 + (zoom_width / 2), 500 - (zoom_width / 2), 500 + (zoom_width / 2)},
-      {500 + (zoom_width / 2), 500 + (zoom_width / 2), 500 + (zoom_width / 2)}};
-
   /* Loop over the gparts and set up baxckground and zoom particles. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].mass = 1.0;
@@ -71,10 +60,13 @@ void make_mock_space(struct space *s, const double zoom_width) {
       gparts[i].type = swift_type_dark_matter_background;
 
     } else {
-      /* Set zoom region particles to be at the corners of the region. */
-      gparts[i].x[0] = cube_corners[i - 10][0];
-      gparts[i].x[1] = cube_corners[i - 10][1];
-      gparts[i].x[2] = cube_corners[i - 10][2];
+      /* Set zoom region particles to be at the corners of the region (each
+       * bit of the corner index picks the lower or upper face of an axis). */
+      const int corner = i - 10;
+      for (int k = 0; k < 3; k++) {
+        const double sign = ((corner >> k) & 1) ? 1.0 : -1.0;
+        gparts[i].x[k] = 500 + sign * (zoom_width[k] / 2);
+      }
       gparts[i].type = swift_type_dark_matter;
     }
   }
@@ -93,10 +85,20 @@ int main(int argc, char *argv[]) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
+  /* Unpack the arguments: the parameter file, the width of the high
+   * resolution particle distribution along each axis, the expected zoom cdim
+   * along each axis and the expected zoom depth. */
+  if (argc != 9) {
+    error(
+        "Usage: %s <params> <width_x> <width_y> <width_z> <cdim_x> <cdim_y> "
+        "<cdim_z> <depth>",
+        argv[0]);
+  }
   const char *input_file = argv[1];
-  const double zoom_width = atof(argv[2]);
-  const int expected_zoom_cdim = argc > 3 ? atoi(argv[3]) : -1;
-  const int expected_zoom_depth = argc > 4 ? atoi(argv[4]) : -1;
+  const double zoom_width[3] = {atof(argv[2]), atof(argv[3]), atof(argv[4])};
+  const int expected_zoom_cdim[3] = {atoi(argv[5]), atoi(argv[6]),
+                                     atoi(argv[7])};
+  const int expected_zoom_depth = atoi(argv[8]);
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
@@ -126,15 +128,11 @@ int main(int argc, char *argv[]) {
   assert(s->zoom_props->region_lower_bounds[2] + (s->zoom_props->dim[2] / 2) ==
          500);
 
-  if (expected_zoom_cdim > 0) {
-    assert(s->zoom_props->cdim[0] == expected_zoom_cdim);
-    assert(s->zoom_props->cdim[1] == expected_zoom_cdim);
-    assert(s->zoom_props->cdim[2] == expected_zoom_cdim);
-  }
-
-  if (expected_zoom_depth >= 0) {
-    assert(s->zoom_props->zoom_cell_depth == expected_zoom_depth);
-  }
+  /* Ensure we got the expected cell grid. */
+  assert(s->zoom_props->cdim[0] == expected_zoom_cdim[0]);
+  assert(s->zoom_props->cdim[1] == expected_zoom_cdim[1]);
+  assert(s->zoom_props->cdim[2] == expected_zoom_cdim[2]);
+  assert(s->zoom_props->zoom_cell_depth == expected_zoom_depth);
 
   /* Ensure the cell boundaries line up. */
   {
