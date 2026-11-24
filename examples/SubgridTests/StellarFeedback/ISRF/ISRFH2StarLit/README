@@ -18,9 +18,9 @@ The check reads the end of a short run in which H2 and the temperature stay froz
 parameters therefore switch off photoionization, stellar winds and supernovae, and set the
 light speed to `unlimited`. The light crosses one hop per step, so it needs several steps to
 reach the whole box. The steps are short so that the H2 stays frozen while the light
-arrives; the run stops after 8 steps and the check reads the last snapshot. The check
-refuses a run that departs from these settings. Only particles at `r < L/2 - 2h` are read,
-so that the nearest periodic image of the star is the right one.
+arrives; the run stops after 8 steps and the check reads the last snapshot.
+Only particles at `r < L/2 - 2h` are read, so that the nearest periodic
+image of the star is the right one.
 
 # Configure
 ```
@@ -35,11 +35,7 @@ transport needs a radiation table whose `Data/Radiation` group carries
 
 # Run
 ```
-./run.sh                      # main leg, then the check
-leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
-leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
-ranks=2 run_name=two_ranks ./run.sh
-leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
+./run.sh                      # the run, then the check
 ```
 `level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
 override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
@@ -68,20 +64,4 @@ own LW light with the shielding function at the column `n_H2 r`, the kernel mean
 transmission and of the LW energies that the cooling reads, the number and extent of the lit
 probes, and the carried H2 column.
 
-The exit class of the check is 0 for a pass, 1 for a failed bar, 2 for a missing file,
-field or key, 3 for a non-finite value and 4 for a void run (a premise or a positive
-control is not met). A void run never passes. `parity` alone also returns 5 for a pass
-without a counters file.
-
-Two runs are compared particle by particle with `parity`, on `LWSpecificEnergies`,
-`LWDissociatingSpecificEnergies` and `LWLineH2ColumnDensities`:
-```
-python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5
-python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --first one/snap/snapshot_0001.hdf5 --params one/used_parameters.yml
-```
-- `restart`: every `LW` and `Packet` field must be equal bit for bit (same binary, same
-  rank count, one thread).
-- `ranks`: the float sums run in another order, so the fields agree within a round-off bar.
-
-`testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
-error in each case, and prints the exit class of each.
+The check exits with a non-zero status when it fails.
