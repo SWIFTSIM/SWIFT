@@ -68,6 +68,7 @@ H2_FLOAT_REL = 2.0**-23
 ENERGY_REL = 1e-6
 PLANT_SIZE = 0.05
 STAR_PERIOD_STEPS = 8
+STAR_STEP_KEY = "Stars:max_timestep_young_Myr"
 WINDOW = 2 * STAR_PERIOD_STEPS
 SHELL_WIDTH_IN_H = 0.5
 REQUIRED_LIT = base.REQUIRED_GAS + base.REQUIRED_OWN
@@ -336,6 +337,21 @@ def read_updates(path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return a[:, 0], a[:, 1].astype(int), a[:, 2].astype(int)
 
 
+def premise_same_runs(
+    coarse: Dict[str, str], fine: Dict[str, str], rep: Report
+) -> None:
+    """Void the run unless the parameters of the two legs differ only in the star step."""
+    differing = sorted(
+        k for k in set(coarse) | set(fine) if coarse.get(k) != fine.get(k)
+    )
+    if differing != [STAR_STEP_KEY]:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, the two legs differ in {differing}, not only in {STAR_STEP_KEY}",
+        )
+    rep.info("parameters", f"the legs differ only in {STAR_STEP_KEY}")
+
+
 def premise_steps(
     run: str, n_gas: int, star_every: int, indices: List[int], rep: Report
 ) -> None:
@@ -424,7 +440,7 @@ def gate_ripple(args: argparse.Namespace) -> int:
     Premises (each a void run): the two legs differ in nothing but the star step (same particles,
     same snapshot times); every gas particle steps in every step; the star of the coarse leg steps
     every 8 gas steps and that of the fine leg every step; every particle of the shells is lit
-    during the whole window; the bars are finite and above the plant size of each check.
+    during the whole window; the bars are finite.
     """
     rep = Report()
     coarse_dir, fine_dir = args.coarse, args.fine
@@ -433,9 +449,11 @@ def gate_ripple(args: argparse.Namespace) -> int:
         raise GateExit(EXIT_VOID, "void run, the legs end at different snapshots")
     indices = list(range(n_last - WINDOW + 1, n_last + 1))
     fix = base.load_json(os.path.join(coarse_dir, "fixture.json"), "geometry file")
+    all_params = {}
     for d in (coarse_dir, fine_dir):
-        params = base.read_params(os.path.join(d, "used_parameters.yml"))
-        premise_parameters(params, rep, os.path.join(d, "output.log"))
+        all_params[d] = base.read_params(os.path.join(d, "used_parameters.yml"))
+        premise_parameters(all_params[d], rep, os.path.join(d, "output.log"))
+    premise_same_runs(all_params[coarse_dir], all_params[fine_dir], rep)
     static_c, e_c, t_c = load_series(coarse_dir, indices)
     static_f, e_f, t_f = load_series(fine_dir, indices)
     if not np.allclose(t_c, t_f, rtol=base.TIME_RTOL, atol=0.0):
