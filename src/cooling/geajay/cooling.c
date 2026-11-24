@@ -1040,7 +1040,12 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
                   GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND
               ? "per_band"
               : "none");
-  if (cooling->isrf_habing >= 0.)
+  if (cooling->with_ISRF)
+    message(
+        "G_0 of the solve = the ISRF field of each particle (isrf_habing = "
+        "%g Habing)",
+        cooling->isrf_habing);
+  else if (cooling->isrf_habing >= 0.)
     message("G_0 of every particle (isrf_habing) = %g Habing",
             cooling->isrf_habing);
   else if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
@@ -1277,8 +1282,8 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
     }
   }
 
-  /* Local ISRF strength in Habing units, read instead of the scalar G0. Without
-     the ISRF the library default stays. */
+  /* Local ISRF strength in Habing units, read instead of the scalar G0
+     (GeajayCooling:isrf_habing). */
   if (cooling->chemistry_data.use_isrf_field && cooling->with_ISRF &&
       xp != NULL)
     inputs->isrf_habing =

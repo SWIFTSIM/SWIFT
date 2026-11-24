@@ -31,7 +31,7 @@ solver|solver||solver: 1|LIB solver=1|lib
 accurate_relative_tolerance|accurate_relative_tolerance|solver: 1|accurate_relative_tolerance: 1e-5|LIB accurate_relative_tolerance=1e-05|lib
 accurate_absolute_tolerance|accurate_absolute_tolerance|solver: 1|accurate_absolute_tolerance: 1e-15|LIB accurate_absolute_tolerance=1e-15|lib
 lw_background_j21|lw_background_j21||lw_background_j21: 0.5|LIB lw_background_j21=0.5|lib
-isrf_from_field|isrf_from_field refused with background_mode grackle||isrf_from_field: 1|!the module does not fill a per-particle field yet|refuse
+isrf_from_field|isrf_from_field refused with background_mode grackle||isrf_from_field: 1|!module fills the particle field only from the ISRF|refuse
 isrf_habing|isrf_habing||isrf_habing: 1.7|LIB isrf_habing=1.7|lib
 isrf_habing_zero|isrf_habing 0 is allowed with a G_0 reader|dust_model: basic;isrf_habing: 1.7|isrf_habing: 0|LIB isrf_habing=0|lib
 isrf_habing_unset_reader|isrf_habing unset with a G_0 reader is refused|dust_model: basic;isrf_habing: 1.7|-isrf_habing|!geajay has no default far-UV field|refuse

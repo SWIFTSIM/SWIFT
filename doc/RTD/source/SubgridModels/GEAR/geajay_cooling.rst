@@ -161,7 +161,10 @@ Self-shielding
      - (optional) H\ :sub:`2` self-shielding length: ``none``, ``given_length`` (the full path below,
        N\ :sub:`H2` = n\ :sub:`H2` * path), ``Jeans`` (local Jeans length) or ``hybrid_chimes``
        (length of each particle from its density and temperature, see below), or 0, 2, 3, 4
-       (default: ``none``). Sobolev (1) is not supported.
+       (default: ``none``). Sobolev (1) is not supported. The shielding is off by default (key unset
+       reads 0). With it on and the cheap solver, each sub-step follows the shielded H\ :sub:`2`
+       dissociation rate to its end state; that correction is validated up to a log slope s = 0.49
+       of the shielding factor only.
    * - ``h2_hybrid_chimes_factor``
      - (optional) Read only with ``hybrid_chimes``. Dimensionless factor applied to the length, above 0
        (default: 0.5).
@@ -258,9 +261,9 @@ settings: the cooling does not tie one to the other, so choose consistent values
        stops at start-up if a term reads G\ :sub:`0`, else G\ :sub:`0` is 0. Not read with
        ``background_mode`` ``per_band`` (setting it there stops the run).
    * - ``isrf_from_field``
-     - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``). The module does
-       not fill that field yet (it stays 0): with ``background_mode`` ``grackle`` the value 1 stops the
-       run, use ``isrf_habing``. With ``per_band``, ``dust_background_attenuation`` ``per_band`` and a
+     - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``). The module
+       fills that field only from the ISRF (``GEARFeedback:with_interstellar_radiation_field``), which
+       needs no key: with ``background_mode`` ``grackle`` the value 1 stops the run. With ``per_band``, ``dust_background_attenuation`` ``per_band`` and a
        G\ :sub:`0` background, the value must be 1: the library applies the dust attenuation of the
        photoelectric heating only on the field path, and refuses 0 (default: 0).
    * - ``uv_rates_file``
@@ -409,7 +412,8 @@ Molecules and dust
    * - ``photoelectric_heating_rate``
      - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
        ratio and G\ :sub:`0` = 1.7 [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
-       8.5e-26. The heating per volume is this rate times n\ :sub:`H` times D / D\ :sub:`ref`, where D
+       8.5e-26. The heating per volume is this rate times G\ :sub:`0` / 1.7 times n\ :sub:`H` times
+       D / D\ :sub:`ref`, where D
        is the dust-to-gas ratio from the metal mass fraction of each particle and
        D\ :sub:`ref` the reference ratio (default: -1).
    * - ``dust_recombination_cooling``

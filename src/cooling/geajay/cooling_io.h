@@ -812,7 +812,9 @@ INLINE static void cooling_read_background_parameters(
       cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND)
     error(
         "GeajayCooling:isrf_from_field is %d: with background_mode grackle the "
-        "module does not fill a per-particle field yet; use isrf_habing.",
+        "module fills the particle field only from the ISRF "
+        "(GEARFeedback:with_interstellar_radiation_field), which needs no "
+        "key; otherwise use isrf_habing.",
         cooling->isrf_from_field);
 
   /* Unset is -1 in the library; any key value below 0 is refused here */
@@ -1294,20 +1296,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "grain_charge_epsilon (3) or density_epsilon (4), got %d.",
         cooling->photoelectric_heating_model);
 
-  /* Models above fixed_rate read the ISRF field; none and fixed_rate do not. */
+  /* Every model above none scales with the G_0 of the particle. */
   if (cooling->with_ISRF &&
-      (cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_NONE ||
-       cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_FIXED_RATE))
+      cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_NONE)
     warning(
         "GEARFeedback:with_interstellar_radiation_field is on and "
-        "GeajayCooling:photoelectric_heating_model is %s (%d): the "
-        "photoelectric heating does not use the ISRF field. Use "
+        "GeajayCooling:photoelectric_heating_model is none (0): the ISRF "
+        "field gives no photoelectric heating. Use fixed_rate (1), "
         "constant_efficiency (2), grain_charge_epsilon (3) or density_epsilon "
-        "(4) for a photoelectric heating that follows the ISRF.",
-        cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_NONE
-            ? "none"
-            : "fixed_rate",
-        cooling->photoelectric_heating_model);
+        "(4) for a photoelectric heating that follows the ISRF.");
 
   cooling->photoelectric_heating_rate = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:photoelectric_heating_rate", -1.);
