@@ -6,7 +6,7 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # swift's exit status is piped into tee: without pipefail a refused or crashed run looks complete.
 set -eo pipefail
 
-leg=${leg:="main"}   # main, switch_off, stale_key, restart
+leg=${leg:="main"}   # main, switch_off, stale_key, restart, cap_fine, cap_coarse, cap_half
 n_threads=${n_threads:=8}   # Number of threads
 ranks=${ranks:=1}   # MPI ranks, 2 needs an MPI build named swift_mpi
 level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
@@ -19,12 +19,16 @@ params=params.yml
 extra_ic_args=""
 extra_swift_args=""
 stale_key_arg=""
+mode_flag="--cooling"   # the limited-speed legs run --temperature: the species stay at their start values
 
 case "$leg" in
     main) switch=1 ;;
     switch_off) switch=0 ;;   # the line fields are not written: the check must refuse the run
     stale_key) switch=1 ; stale_key_arg="-P GeajayCooling:h2_transported_lw_rate_shielding:shielded_sum" ; extra_swift_args="-n 1" ;;   # the removed key must be ignored
     restart) switch=1 ; params=params_restart.yml ; extra_swift_args="-n 16" ;;   # limited light speed, stops after step 17
+    cap_fine) switch=1 ; params=params_limited.yml ; mode_flag="--temperature" ; extra_swift_args="-n 71" ;;   # cap light speed, the star steps every gas step
+    cap_coarse) switch=1 ; params=params_limited.yml ; mode_flag="--temperature" ; extra_swift_args="-n 71 -P Stars:max_timestep_young_Myr:1.84e-6" ;;   # the star steps every 8 gas steps
+    cap_half) switch=1 ; params=params_limited.yml ; mode_flag="--temperature" ; extra_swift_args="-n 109 -P GEARFeedback:ISRF_packet_light_speed_fraction_of_c:0.5" ;;   # half the light speed, the same steady state
     *) echo "Unknown leg '$leg'." ; exit 1 ;;
 esac
 
@@ -49,7 +53,7 @@ swift_exe=../../../../../swift
 
 # Parameter overrides: the switch of the leg, and for stale_key the removed library key.
 set +e
-$launcher $swift_exe --hydro --stars --external-gravity --feedback --cooling \
+$launcher $swift_exe --hydro --stars --external-gravity --feedback $mode_flag \
     --sync --limiter --verbose=0 --threads=$n_threads \
     -P GEARFeedback:ISRF_H2_line_absorption:$switch \
     $stale_key_arg \
@@ -71,6 +75,19 @@ fi
 mkdir -p "$run_name"
 cp used_parameters.yml output.log timesteps.txt fixture.json "$run_name"/
 mv snap "$run_name"/
+case "$leg" in
+    cap_fine|cap_half)
+        python3 ../ISRFH2StarLit/checkH2LimitedSpeed.py limited --run "$run_name"
+        exit $? ;;
+    cap_coarse)
+        python3 ../ISRFH2StarLit/checkH2LimitedSpeed.py limited --run "$run_name" || exit $?
+        if [ -d cap_fine ]; then
+            python3 ../ISRFH2StarLit/checkH2LimitedSpeed.py ripple --coarse "$run_name" --fine cap_fine
+        else
+            echo "Run leg=cap_fine first, then: python3 checkH2LimitedSpeed.py ripple --coarse $run_name --fine cap_fine"
+        fi
+        exit $? ;;
+esac
 python3 ../ISRFH2StarLit/checkH2Attenuation.py starlit \
     --first "$run_name"/snap/snapshot_0001.hdf5 \
     --last "$(ls "$run_name"/snap/snapshot_*.hdf5 | tail -n 1)" \

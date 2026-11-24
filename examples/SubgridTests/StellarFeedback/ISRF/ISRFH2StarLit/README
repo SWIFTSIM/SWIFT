@@ -1,5 +1,5 @@
 # Intro
-One 29.7 Msun star in a uniform, periodic box of cold (50 K), zero-metallicity
+One 29.7 Msun star in a uniform box (periodic, except in the limited-speed legs) of cold (50 K), zero-metallicity
 molecular gas, with the ISRF transport on (`ISRF_propagation: 1`) and the H2 line
 absorption of the transport on (`ISRF_H2_line_absorption: 1`). The star's
 Lyman-Werner (LW) light is absorbed by the H2 lines along its path. The check compares,
@@ -40,10 +40,34 @@ leg=switch_off ./run.sh       # line absorption off: the check must stop on the 
 leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
 ranks=2 run_name=two_ranks ./run.sh
 leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
+leg=cap_fine ./run.sh         # limited light speed (cap), isolated box, the star steps every gas step
+leg=cap_coarse ./run.sh       # as cap_fine, the star steps every 8 gas steps
+leg=cap_half ./run.sh         # as cap_fine at half the light speed
 ```
 `level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
 override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
 about 2e18 cm^-2 over the box.
+
+# Limited light speed
+The legs `cap_fine`, `cap_coarse` and `cap_half` run the same box with `ISRF_packet_light_speed: cap`
+(`params_limited.yml`). The box is isolated (`InitialConditions:periodic: 0`), so no light of periodic
+images reaches the gas, and the runs use `--temperature` in place of `--cooling`: SWIFT initialises the
+cooling but never calls it, so H2 and the temperature stay at their start values while the light
+arrives. Once the light front has passed, the light is in a steady state and the line transmission
+of every particle follows the shielding function at its column `n_H2 r`. The gas step is the
+power-of-two time bin of 2.34375e-10 (set through `SPH:CFL_condition`, so that it does not depend on
+the star), and the legs write one snapshot per gas step.
+
+| Leg | Light speed | Star step | Steps |
+|---|---|---|---|
+| `cap_fine` | 0.99 c | every gas step | 72 |
+| `cap_coarse` | 0.99 c | every 8 gas steps (`Stars:max_timestep_young_Myr: 1.84e-6`) | 72 |
+| `cap_half` | 0.5 c | every gas step | 110 |
+
+Each leg takes about 1.5 to 2.5 minutes on 4 threads. `run.sh` runs `checkH2LimitedSpeed.py limited` on
+every leg, and on `cap_coarse` also `ripple` against `cap_fine`. These legs need the geajay cooling
+module of branch `darwin/geajay_cooling` (the key `GeajayCooling:isrf_habing`) and geajay at commit
+22127025 or newer.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
@@ -85,3 +109,26 @@ python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf
 
 `testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
 error in each case, and prints the exit class of each.
+
+`checkH2LimitedSpeed.py` reads one leg directory (`snap/`, `used_parameters.yml`, `output.log`,
+`timesteps.txt`, `fixture.json`):
+
+`python3 checkH2LimitedSpeed.py limited --run cap_fine`
+
+`python3 checkH2LimitedSpeed.py ripple --coarse cap_coarse --fine cap_fine`
+
+- `limited` compares the transmission of the own LW light of every particle with the shielding
+  function at the column `n_H2 r`. The run is void unless H2 and the internal energy are bit-equal
+  in the first and last snapshot and H2 is at its start value, every read particle is lit, and the
+  transmission of every particle is steady over the last two intervals. The bar of a particle is the
+  spread of `n_H2` over the read domain, as in `starlit`, plus the float rounding of the fit and
+  the change of the transmission over the last interval.
+- `ripple` compares the shell means of the own LW energy of the two legs over the last 16 snapshots
+  (two star steps of `cap_coarse`): the time-mean energy ratio must be 1 within the peak-to-peak
+  range of the two series, and the amplitude of the coarse series at the star-step period must stay
+  below the half peak-to-peak range of the fine series in the same shell.
+- `--plant-t-scale F` (`limited`), `--plant-coarse-energy F` and `--plant-ripple A` (`ripple`) apply
+  an error to the arrays read from the snapshots, to show that the check fails on it.
+
+The exit class is the one of `checkH2Attenuation.py`: 0 pass, 1 failed bar, 2 missing file or
+field, 3 non-finite value, 4 void run.
