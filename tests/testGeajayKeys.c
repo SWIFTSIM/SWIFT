@@ -137,6 +137,24 @@ geajay_cosmic_ray_reduced_context *geajay_cosmic_ray_reduced_context_create(
   return real(context, s, error);
 }
 
+int geajay_particle_solve(const geajay_context *context,
+                          const geajay_species_layout *layout, void *state,
+                          const geajay_particle_inputs *inputs, double dt,
+                          int n_substeps, geajay_particle_output *output,
+                          geajay_particle_status *status) {
+  static int (*real)(const geajay_context *, const geajay_species_layout *,
+                     void *, const geajay_particle_inputs *, double, int,
+                     geajay_particle_output *, geajay_particle_status *);
+  if (!real) real = dlsym(RTLD_NEXT, "geajay_particle_solve");
+  const int ret =
+      real(context, layout, state, inputs, dt, n_substeps, output, status);
+  /* GEAJAY_KEYS_FORCE_FLAGS=<bits>: add these GEAJAY_FLAG_* bits to the status
+   * of a solve that succeeded, as a library warning would. */
+  const char *bits = getenv("GEAJAY_KEYS_FORCE_FLAGS");
+  if (bits != NULL && ret != GEAJAY_FAIL) status->flags |= (unsigned)atoi(bits);
+  return ret;
+}
+
 /* The per-particle entry points: the value that the module passes. */
 static void print_particle_call(const char *name, double value,
                                 const geajay_particle_inputs *in) {
@@ -317,6 +335,8 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
                        rates);
   cooling_cool_part(phys_const, us, &cosmo, hydro_properties, &floor_props,
                     &pressure_floor, c, &p, &xp, time_step, time_step, 0.);
+  /* The report of the solves of the step that has just ended */
+  cooling_update(phys_const, &cosmo, &pressure_floor, c, NULL, 0.);
 #ifndef NO_CR_MODES
   printf("PART loss_rate_getter=%.9g\n",
          cooling_get_cosmic_ray_energy_loss_rate(&xp));

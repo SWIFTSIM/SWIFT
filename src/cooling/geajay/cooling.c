@@ -82,6 +82,16 @@ static long long cooling_geajay_recovered_solves = 0;
  * succeeded and its result is stored. */
 static long long cooling_geajay_accuracy_bound_solves = 0;
 
+/*! geajay solves on this rank that ended with the dust-temperature solve not
+ * converged (GEAJAY_FLAG_DUST_NOT_CONVERGED) since the last report. The solve
+ * continued with its best estimate of the dust temperature and its result is
+ * stored. */
+static long long cooling_geajay_dust_not_converged_solves = 0;
+
+/*! geajay solves on this rank that ended with the metal density above the gas
+ * density (GEAJAY_FLAG_METAL_ABOVE_DENSITY) since the last report. */
+static long long cooling_geajay_metal_above_density_solves = 0;
+
 /*! Set by the first particle above the density range of the Cloudy table. */
 static int cooling_geajay_table_edge_warned = 0;
 
@@ -271,13 +281,37 @@ long long cooling_pop_geajay_accuracy_bound_count(void) {
 }
 
 /**
- * @brief Count a solve that ended with the accuracy bound exceeded.
+ * @brief Return the numbers of geajay solves on this rank that ended with the
+ * dust-temperature solve not converged and with the metal density above the
+ * gas density since the last call, and reset both to zero.
+ *
+ * @param dust_not_converged (return) Solves whose dust temperature did not
+ * converge.
+ * @param metal_above_density (return) Solves with the metal density above the
+ * gas density.
+ */
+static void cooling_pop_geajay_dust_flag_counts(
+    long long *dust_not_converged, long long *metal_above_density) {
+  *dust_not_converged =
+      atomic_swap(&cooling_geajay_dust_not_converged_solves, 0);
+  *metal_above_density =
+      atomic_swap(&cooling_geajay_metal_above_density_solves, 0);
+}
+
+/**
+ * @brief Count the warnings that a solve reports in its status flags: the
+ * accuracy bound exceeded, the dust temperature not converged and the metal
+ * density above the gas density.
  *
  * @param p The particle.
  * @param status What happened in the solve.
  */
-static void cooling_count_accuracy_bound(const struct part *p,
-                                         const geajay_particle_status *status) {
+static void cooling_count_solve_flags(const struct part *p,
+                                      const geajay_particle_status *status) {
+  if (status->flags & GEAJAY_FLAG_DUST_NOT_CONVERGED)
+    atomic_inc(&cooling_geajay_dust_not_converged_solves);
+  if (status->flags & GEAJAY_FLAG_METAL_ABOVE_DENSITY)
+    atomic_inc(&cooling_geajay_metal_above_density_solves);
   if (!(status->flags & GEAJAY_FLAG_ACCURACY_BOUND_EXCEEDED)) return;
   atomic_inc(&cooling_geajay_accuracy_bound_solves);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -384,6 +418,17 @@ void cooling_update(const struct phys_const *phys_const,
         "geajay solves in the previous step that ended with the accuracy "
         "bound exceeded: %lld (the results are stored).",
         accuracy_bound);
+
+  long long dust_not_converged, metal_above_density;
+  cooling_pop_geajay_dust_flag_counts(&dust_not_converged,
+                                      &metal_above_density);
+  if (dust_not_converged > 0 || metal_above_density > 0)
+    message(
+        "geajay solves in the previous step with a warning in the status: "
+        "%lld with the dust temperature not converged (the best estimate was "
+        "used), %lld with the metal density above the gas density (the "
+        "results are stored).",
+        dust_not_converged, metal_above_density);
 }
 
 /**
@@ -1275,7 +1320,7 @@ static double cooling_new_energy_cosmic_rays(
 
   cooling_set_cosmic_ray_loss(xp, output.cosmic_ray_energy_loss_rate);
   if (status->retries > 0) atomic_inc(&cooling_geajay_recovered_solves);
-  cooling_count_accuracy_bound(p, status);
+  cooling_count_solve_flags(p, status);
 
   return output.internal_energy;
 }
@@ -1405,7 +1450,7 @@ static geajay_float cooling_new_energy_or_keep_previous(
   }
 
   if (status.retries > 0) atomic_inc(&cooling_geajay_recovered_solves);
-  cooling_count_accuracy_bound(p, &status);
+  cooling_count_solve_flags(p, &status);
 
   return output.internal_energy;
 }
