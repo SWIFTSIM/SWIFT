@@ -272,6 +272,11 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
     return;
   }
 
+  /* No neighbour contributes: the normalization would divide by 0. */
+  if (si->feedback_data.enrichment_weight <= 0.f) {
+    return;
+  }
+
   /* Compute w_j_bar. */
   double w_j_bar[3];
   feedback_compute_vector_weight_normalized(r2, dx, hi, hj, si, pj, w_j_bar);
@@ -279,12 +284,12 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
                                 w_j_bar[1] * w_j_bar[1] +
                                 w_j_bar[2] * w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
-  const double w_j_bar_norm_inv = 1.0 / w_j_bar_norm;
 
   /* If p does not contribute, skip the computations to avoid NaN */
   if (w_j_bar_norm == 0.0) {
     return;
   }
+  const double w_j_bar_norm_inv = 1.0 / w_j_bar_norm;
 
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
