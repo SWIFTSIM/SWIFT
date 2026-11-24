@@ -1,0 +1,74 @@
+# Intro
+A uniform, periodic box of 1000 H nuclei per cm^3 at 100 K, with no star and no light, run
+with geajay cooling and the ISRF switched on. H2 forms on dust and through H-, and nothing
+else acts. The box therefore has an exact answer: the rate at which the H2 abundance
+`x2 = n_H2 / n_H` grows follows from the gas state alone, through the formation coefficients
+of the published chemistry fits. The check compares the measured growth of every gas particle
+with that rate. It tests the size and the sign of each formation channel, which a comparison
+of two runs of the same code cannot do.
+
+Two arms isolate the two channels:
+
+| Arm | Metallicity | `n_HII / n_H` | Channel that forms H2 |
+|---|---|---|---|
+| `hminus` | 0 | 1e-5 | H- only: `HI + e- -> H-`, then `H- + HI -> H2 + e-` |
+| `dust` | 0.1 solar | 1e-8 | dust grains only |
+
+Both arms start at `x2 = 1e-8`. In the H- arm `x2` grows by 1.6e-6 in 0.05 Myr, in the dust arm
+by 5e-3.
+
+`with_radiative_cooling: 0` keeps the internal energy of the gas fixed while the chemistry
+runs, so the temperature stays at 100 K, apart from the change of the mean molecular weight.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The geajay library must have no default for the far-UV field G_0 (SWIFT stops at start-up
+otherwise) and must provide `with_radiative_cooling`. The ISRF reads the radiation table
+`PopII_parsec_spectral.hdf5`, which `run.sh` fetches. The box has no star, so the table
+only has to load.
+
+# Run
+```
+arm=dust ./run.sh
+arm=hminus ./run.sh
+```
+Each run takes about 10 s on 4 threads: 4096 gas particles (level 4), 0.05 Myr, one snapshot
+every 0.005 Myr. `run.sh` writes the snapshots, `used_parameters.yml` and `timesteps.txt` into
+a directory named after the arm (`run_name` changes it). `extra="-P Key:value"` passes more
+swift parameters. `run.sh` stops if `snap/` or the run directory exists (`force=1` removes
+them). `level`, `gas_density` (atom/cm^3, `n_H` is 0.76 times it) and `gas_mass` (Msun) set the
+box.
+
+# Checking
+```
+python3 check_h2_formation_rates.py --arm dust dust/snap
+python3 check_h2_formation_rates.py --arm hminus hminus/snap
+```
+For each snapshot interval the check forms the median over particles of
+`ln(measured rate / reference rate)`. The reference is the trapezoid mean of the formation rate
+of the two snapshot states: dust grains (Omukai 2000, with the grain temperature solved from
+the grain energy balance), H- with the H- abundance in steady state, H2+ and three-body
+formation. The bar of each interval is the sum of the numerical terms listed in the script
+docstring: the trapezoid rule, the H- relaxation, float32 storage, the temperature and the
+solver tolerance. The species of a snapshot hold the state of the last step that ended before
+its time, so the check takes the elapsed time from `timesteps.txt`. The first interval starts
+from the start-up state and is printed but not gated.
+
+Exit status: 0 pass, 1 a failed bar (also a particle with no positive growth), 2 a missing
+file, 3 a value that is not finite, 4 a run that does not meet the premises of the check (a star
+or light in the box, a solver other than 1, a temperature that moved).
+
+`--expected-dust-to-gas` gives the reference dust-to-gas ratio of the model (default 0.009387,
+the library value). `extra="-P GeajayCooling:reference_dust_to_gas_ratio:0.018774"` runs a
+box with twice that ratio; it fails the default check and passes with
+`--expected-dust-to-gas 0.018774`. `--plant-formation-scale S` multiplies the H2 growth by S,
+and `--plant-hm-sign` mirrors it, as a flipped H- term would. `--plant-nan` puts a NaN in the
+last snapshot. These options plant a known error in the data read from the snapshots, to
+confirm that the check fails when it should.
+
+The check does not see errors that appear only in the light (H- photodetachment, the dust
+temperature in a transported field), a wrong `k8` (H- turns into H2 with a share of 0.999 in
+the H- arm), or three-body formation (it needs `n_H` above 1e8 cm^-3).
