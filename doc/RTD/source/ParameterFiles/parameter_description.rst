@@ -2025,12 +2025,14 @@ These 5 parameters alone control the construction of the cell hierarchy which en
 
  The extent of the zoom region is defined as the extent of the high resolution particle distribution mutliplied by ``region_pad_factor``. This is independant of any padding applied during initial condition generation and should be selected to be as small as possible while still providing a sufficient padding when running with hydrodynamics (see :doc:`Zoom Hydrodynamics <zoom_hydrodynamics`). If the padding is set too large then the zoom region will be poorly resolved and performance will be sub-optimal.
 
- It's important to note that the value of ``region_pad_factor`` will be modified slightly during cell construction to ensure the zoom region tesselates the parent volume correctly in each cell scenario (:doc:`discussed here <cell_structures>`). The padding factor after tesselation is reported by the code. Should the requested cell geometry lead to a substantial increase in the padding factor then an error will be thrown, at which point you should review the parameters you have set. You probably need to increase the background resolution and/or include buffer cells (more below).
+ It's important to note that the value of ``region_pad_factor`` will be modified slightly during cell construction to ensure the zoom region tesselates the parent volume correctly in each cell scenario (:doc:`discussed here <cell_structures>`). The padding factor after tesselation is reported by the code (measured along the longest axis of the zoom region). Should the requested cell geometry lead to a substantial increase in the padding factor then an error will be thrown, at which point you should review the parameters you have set. You probably need to increase the background resolution and/or include buffer cells (more below).
+
+ The padding is applied to each axis independently, so the zoom region does not need to be cubic. An elongated high resolution particle distribution will produce an elongated zoom region covering a different number of background cells along each axis. The zoom cells themselves are always cubic.
 
 ``zoom_top_level_depth``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-This defines the depth of the zoom top level cells within a single background cell. Zoom cells are constructed by dividing the parent cell in half along each axis, so the number of zoom cells along each axis of the zoom region is given by ``nr_parent_cells * 2^zoom_top_level_depth``.
+This defines the depth of the zoom top level cells within a single background cell. Zoom cells are constructed by dividing the parent cell in half along each axis, so the number of zoom cells along each axis of the zoom region is given by ``nr_parent_cells * 2^zoom_top_level_depth``, where ``nr_parent_cells`` is the number of background cells the zoom region covers along that axis.
 
 Reasonable values for this parameter depend on the exact zoom resolution and the geometry of the region but a good intial guess could be 2 or 3 (depending on the number of void cells above the zoom region). The deeper you push this the more cells will exist within the tree above the zoom region which can eventually begin to harm performance. However, if you have a very high resolution zoom region then pushing this deeper can be beneficial as it allows for more zoom cells and therefore a better zoom cell resolution (which is particularly helpful when running over MPI as it allows for better partitioning).
 
@@ -2039,7 +2041,7 @@ Reasonable values for this parameter depend on the exact zoom resolution and the
 ``zoom_min_top_level_cells``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This optionally replaces ``zoom_top_level_depth`` and defines the minimum target number of zoom cells along each axis of the zoom region. If this is positive, SWIFT derives the required ``zoom_top_level_depth`` and ignores any explicitly provided depth.
+This optionally replaces ``zoom_top_level_depth`` and defines the minimum target number of zoom cells along each axis of the zoom region. If this is positive, SWIFT derives the required ``zoom_top_level_depth`` and ignores any explicitly provided depth. For a non-cubic zoom region the minimum applies to the shortest axis, the longer axes will have more zoom cells.
 
 Only values that can be written as ``nr_parent_cells * 2^zoom_top_level_depth`` are exactly reachable. If the requested value cannot be matched exactly, SWIFT uses the smallest depth that does not undershoot the requested cdim and emits a warning.
 
@@ -2056,7 +2058,7 @@ This value behaves differently in different scenarios:
 - For intermediate zoom regions: This value is ignored entirely and the number of background cells is the number of zoom regions which tesselate the parent volume along each axis.
 - For small zoom regions: This value is respected and never modified.
 
-You can set this to ``-1`` to enable automatic optimization, which will pick the value that minimizes the padding around the zoom region, i.e. the number of background cells which maximises the fraction of the zoom cells filled by the high-resolution region, while accounting for the user specified padding. Note that this deliberately ignores the resulting number of background cells, thus it can lead to large numbers of background cells when the fraction of parent volume occupied by the zoom region is small. Set this parameter explicitly if you need to cap the number of background cells. To diagnose and optimize your zoom setup, see :ref:`zoom-diagnostics`.
+You can set this to ``-1`` to enable automatic optimization, which will pick the value that minimizes the padding around the zoom region, i.e. the number of background cells which maximises the fraction of the zoom cells filled by the high-resolution region, while accounting for the user specified padding. Note that this deliberately ignores the resulting number of background cells, thus it can lead to large numbers of background cells when the fraction of parent volume occupied by the zoom region is small. The optimization is based on the longest axis of the high-resolution region and aims to fit the whole region inside a single background cell, which gives a cubic zoom region. Set this parameter explicitly if you need to cap the number of background cells or want the zoom region to follow an elongated high-resolution region. To diagnose and optimize your zoom setup, see :ref:`zoom-diagnostics`.
 
 
 ``region_buffer_cell_ratio``
