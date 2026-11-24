@@ -165,9 +165,9 @@ def _compute_neighbour_shells(data, void_mask, neighbour_mask):
 
 def _simulate_setup(box_size, part_dim, user_pad, depth, bkg_cdim):
     """Simulate zoom geometry computation for a given bkg_cdim."""
-    # 1. Compute particle extent and requested padding
-    ini_dim = np.max(part_dim)
-    requested_dim = ini_dim * user_pad
+    # 1. Compute the requested padding, applied to each axis independently
+    part_dim = np.asarray(part_dim, dtype=float)
+    requested_dim = part_dim * user_pad
 
     # 2. Simulate void snapping logic
     bkg_width = box_size / bkg_cdim
@@ -177,18 +177,20 @@ def _simulate_setup(box_size, part_dim, user_pad, depth, bkg_cdim):
     upper = (np.floor(((box_size + requested_dim) / 2.0) / bkg_width) + 1) * bkg_width
     actual_dim = upper - lower
 
-    actual_pad = actual_dim / ini_dim
+    # The padding factor is measured along the longest axis of the particle
+    # distribution, as in zoom_region_init
+    longest = np.argmax(part_dim)
+    actual_pad = actual_dim[longest] / part_dim[longest]
 
     # 3. Compute cell counts
-    # Number of zoom regions tessellating void region
-    nr_zoom_regions = int(np.ceil(actual_dim / requested_dim))
-
     # This is a simplification based on zoom_get_geometry
-    # zoom_cdim = nr_parents * 2^depth
+    # zoom_cdim = nr_parents * 2^depth (along each axis)
     # nr_parents = actual_dim / bkg_width
-    cdim = int(np.floor((actual_dim + (0.1 * bkg_width)) / bkg_width) * (2**depth))
+    cdim = np.floor((actual_dim + (0.1 * bkg_width)) / bkg_width).astype(int) * (
+        2**depth
+    )
 
-    nr_zoom_cells = cdim**3
+    nr_zoom_cells = int(np.prod(cdim))
     nr_bkg_cells = bkg_cdim**3
 
     return actual_pad, nr_bkg_cells + nr_zoom_cells
@@ -416,8 +418,8 @@ def print_summary(metadata, data):
         max_part_dim = np.max(part_dim)
 
         # Padding breakdown: particle extent -> user-padded -> actual (cell-aligned)
-        user_padded_dim = max_part_dim * user_pad
-        actual_dim = np.max(zoom_dim)
+        # The padding is applied to each axis independently.
+        user_padded_dim = part_dim * user_pad
 
         # Padding shell thickness on each side.
         padding_each_side = (zoom_dim - part_dim) / 2.0
@@ -429,8 +431,8 @@ def print_summary(metadata, data):
         print(f"  {'Particle extent':<{LBL}} {_fmt_vec(part_dim)}")
         print(f"  {'Max particle extent':<{LBL}} {max_part_dim:.4f}")
         print(f"  {'Requested pad factor':<{LBL}} {user_pad:.4f}")
-        print(f"  {'Padded extent (requested)':<{LBL}} {user_padded_dim:.4f}")
-        print(f"  {'Final region extent':<{LBL}} {actual_dim:.4f}")
+        print(f"  {'Padded extent (requested)':<{LBL}} {_fmt_vec(user_padded_dim)}")
+        print(f"  {'Final region extent':<{LBL}} {_fmt_vec(zoom_dim)}")
         print(f"  {'Actual pad factor':<{LBL}} {actual_pad:.4f}")
         print(f"  {'Pad factor ratio':<{LBL}} {actual_pad / user_pad:.2f}x requested")
         print(f"  {'Padding shell (per side)':<{LBL}} {_fmt_vec(padding_each_side)}")
@@ -882,8 +884,8 @@ def plot_padding_analysis(metadata, data, outdir):
     user_pad = metadata["UserRegionPadFactor"]
     box_size = np.array(metadata["BoxSize"])
 
-    max_part_dim = np.max(part_dim)
-    user_padded_dim = max_part_dim * user_pad
+    # The padding is applied to each axis independently.
+    user_padded_dim = part_dim * user_pad
 
     # Compute centres and extents for concentric rectangles.
     zoom_centre = (zoom_lower + zoom_upper) / 2.0
@@ -892,7 +894,7 @@ def plot_padding_analysis(metadata, data, outdir):
     part_lower = zoom_com - part_dim / 2.0
     part_upper = zoom_com + part_dim / 2.0
 
-    # User-padded rectangle (centred on CoM, isotropic from max extent).
+    # User-padded rectangle (centred on CoM, padded per axis).
     user_pad_lower = zoom_com - user_padded_dim / 2.0
     user_pad_upper = zoom_com + user_padded_dim / 2.0
 
@@ -969,8 +971,8 @@ def plot_padding_analysis(metadata, data, outdir):
         ax.add_patch(
             Rectangle(
                 (user_pad_lower[ix], user_pad_lower[iy]),
-                user_padded_dim,
-                user_padded_dim,
+                user_padded_dim[ix],
+                user_padded_dim[iy],
                 fill=False,
                 edgecolor="#457b9d",
                 linewidth=2.0,
@@ -1066,8 +1068,8 @@ def plot_padding_analysis(metadata, data, outdir):
     # Break the full extent into three concentric shells per axis.
     labels = ["x", "y", "z"]
     particle_extents = part_dim
-    user_pads = np.full(3, user_padded_dim) - part_dim
-    alignment_pads = zoom_dim - np.full(3, user_padded_dim)
+    user_pads = user_padded_dim - part_dim
+    alignment_pads = zoom_dim - user_padded_dim
     # Clamp negative alignment pads (can happen if void snapping shrinks).
     alignment_pads = np.maximum(alignment_pads, 0.0)
 
