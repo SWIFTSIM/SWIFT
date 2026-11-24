@@ -26,8 +26,10 @@
 #include <string.h>
 
 /* Local headers. */
-#include "feedback_iact.h"
 #include "swift.h"
+
+/* After swift.h, which declares the structs the loop functions take. */
+#include "feedback_iact.h"
 
 /*
  * Vector weights of the GEAR mechanical feedback (Hopkins et al. 2018, Appendix
