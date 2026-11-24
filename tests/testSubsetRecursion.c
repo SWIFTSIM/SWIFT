@@ -1076,6 +1076,8 @@ static int check_split_self_stars(struct runner *r, const int sorted) {
     n_fail++;
 
   /* The octant of the drifted gas is a progeny of the top cell. */
+  /* A naive stars build never reads the sort: the control cannot mismatch. */
+#ifndef SWIFT_USE_NAIVE_INTERACTIONS_STARS
   if (sorted) {
     struct cell *octant = &star[1 + 4];
     const float dx_sort_save = octant->hydro.dx_max_sort;
@@ -1088,6 +1090,7 @@ static int check_split_self_stars(struct runner *r, const int sorted) {
     }
     octant->hydro.dx_max_sort = dx_sort_save;
   }
+#endif
 
   for (int i = 0; i < N_DEEP; i++) cell_free_stars_sorts(&star[i]);
   free_deep_cell(star);
