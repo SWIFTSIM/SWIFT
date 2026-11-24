@@ -42,9 +42,9 @@ Validity and status
   2.6e11 cm\ :sup:`-3`. Network 3 is the default for a zoom run.
 * The H\ :sub:`2` self-shielding is off by default (``h2_shielding_length_method`` ``none``).
 * With the cheap solver and the shielding on, each sub-step follows the shielded H\ :sub:`2`
-  dissociation rate to its end state. This correction is tested only for a log slope s of the
-  shielding factor from 0.2 to 0.5 (the cells reach s = 0.491). It misses its test bar from s = 0.57,
-  and the range from 0.49 to 0.57 is untested. The accurate solver (``solver`` 1) integrates the species and the energy
+  dissociation rate to its end state. The test of this fix covers s, the log slope of the
+  shielding factor, from 0.2 to 0.5 (the highest cell tested reaches 0.491); its bar is missed from
+  s = 0.57; the range between has no test. The accurate solver (``solver`` 1) integrates the species and the energy
   together and does not use this correction. Where s exceeds 1 two stable states exist: the cheap
   solver may stay on the state where it starts, and the accurate solver does not.
 * s is neither a key nor an output: no snapshot field shows it, so a user cannot check it.
@@ -471,7 +471,7 @@ Restart files
 
 A restart file starts with a record of the geajay layout: the network, the number of species per
 particle and the sizes of the cooling structures. SWIFT stops with a message if the record differs
-from the running build, or if the file has no record (a file of an older SWIFT). Such a restart file is
+from the running build, or if the file has no record. Such a restart file is
 refused in every network: start again from the initial conditions.
 
 SWIFT neither refuses nor warns when a run starts from a snapshot. A start from a snapshot resets the

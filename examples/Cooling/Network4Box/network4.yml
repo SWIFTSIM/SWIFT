@@ -40,7 +40,7 @@ InitialConditions:
 
 # Cooling with geajay: the network with the ions D-, HD+ and HeH+, and cosmic rays
 GeajayCooling:
-  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required with a dust switch, see the GeajayCooling page): linear or remy_ruyer_2014
+  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required with a dust switch): linear or remy_ruyer_2014
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table (not read here: no metals, no UV background)
   primordial_chemistry_network: H_He_H2_D_ions   # H, He, H2, D, HD and the ions D-, HD+, HeH+ (needs --with-cooling=geajay_4)
   with_uv_background: 0                          # No UV background
