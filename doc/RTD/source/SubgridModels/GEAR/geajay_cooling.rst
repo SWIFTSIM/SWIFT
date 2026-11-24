@@ -43,12 +43,11 @@ Validity and status
 * The H\ :sub:`2` self-shielding is off by default (``h2_shielding_length_method`` ``none``).
 * With the cheap solver and the shielding on, each sub-step follows the shielded H\ :sub:`2`
   dissociation rate to its end state. This correction is tested only for a log slope s of the
-  shielding factor from 0.2 to 0.5. It misses its test bar from s = 0.57, and the range between
-  0.5 and 0.57 is untested. The accurate solver (``solver`` 1) integrates the species and the energy
-  together and does not use this correction. Where s exceeds 1 the cheap solver may stay on a wrong
-  state, and the accurate solver does not.
-* s is neither a key nor an output: no snapshot field or log line shows it. A user cannot check it,
-  so a run that needs the shielding SHOULD use ``solver`` 1.
+  shielding factor from 0.2 to 0.5 (the cells reach s = 0.491). It misses its test bar from s = 0.57,
+  and the range from 0.49 to 0.57 is untested. The accurate solver (``solver`` 1) integrates the species and the energy
+  together and does not use this correction. Where s exceeds 1 two stable states exist: the cheap
+  solver may stay on the state where it starts, and the accurate solver does not.
+* s is neither a key nor an output: no snapshot field shows it, so a user cannot check it.
 * A restart takes the species from its restart files. A start from a snapshot is for debugging and
   optimisation only (see "Restart files").
 
@@ -472,8 +471,8 @@ Restart files
 
 A restart file starts with a record of the geajay layout: the network, the number of species per
 particle and the sizes of the cooling structures. SWIFT stops with a message if the record differs
-from the running build, or if the file has no record. Such a restart file is refused in every
-network: start again from the initial conditions.
+from the running build, or if the file has no record (a file of an older SWIFT). Such a restart file is
+refused in every network: start again from the initial conditions.
 
 SWIFT neither refuses nor warns when a run starts from a snapshot. A start from a snapshot resets the
 species: the module sets them for every particle from the parameter file, as at the first start, and
