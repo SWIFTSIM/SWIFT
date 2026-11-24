@@ -39,22 +39,29 @@ that steps every 8 gas steps must give the same mean light as one that steps eve
 no modulation at the star-step period. Three lines, each on shell means of the own LW energy over
 the last 16 snapshots (two star steps):
 - Energy: the time mean of the coarse run over that of the fine run must be 1. Energy
-  conservation makes the long-time ratio 1. The bar is the peak-to-peak range of the fine run
-  over its window mean: the fine run shows how far a window mean of this box can lie from the
-  long-time mean. The range of the coarse run is not in the bar, so the run under test cannot
-  widen its own tolerance.
+  conservation makes the long-time ratio 1. If each window mean lies within the range of its own
+  series of the long-time mean, the two window means differ by at most R_c + R_f, with R the
+  peak-to-peak range over the window mean, and R_c <= R_f by the noise line, so by at most 2 R_f.
+  The code uses R_f, not 2 R_f. It is the stricter side, and the derivation does not demand
+  more: the window means of the fine run, slid over 15 starts, differ by 0.2 to 0.5 per cent, under
+  its range of 0.6 per cent or more. The range of the coarse run is not in the bar, so the run under
+  test cannot widen its own tolerance. No mechanism gives the size of R_f: the bar is a floor read
+  from the control run, like the next two.
+  Positive control, as in `limited`: the run is void unless the bar could see an energy error of
+  ln(1/0.875) in both signs (a star that emits one gas step short), computed on the ratio of the
+  legs as run, before any plant. A fine leg so noisy that its range hides that error is void.
 - Noise: the peak-to-peak range of the coarse run must not exceed that of the fine run. A coarse
   star adds light at the star-step period only, and the ripple line gates that period. Any further
   variation in the coarse run is not explained by the star step.
 - Ripple: the amplitude of the Fourier component of the coarse series at the star-step period over
   two periods must stay under the half peak-to-peak range of the fine run in the same shell.
-The noise and ripple bars are a floor read from the control run, provisional until the operator
-rules on card h2_flimit_coarse_bars_1: no mechanism gives the size of the variation of a correct
-run.
+The three bars are a floor read from the control run, provisional until the operator rules on
+card h2_flimit_coarse_bars_1: no mechanism gives the size of the variation of a correct run.
 
 Both legs must come from the same binary: the Revision, the configure line and the geajay
-revision of the two start-up logs are compared and a difference voids the run. `limited` prints
-the revisions it finds and cannot check them against an expected value.
+revision of the two start-up logs are compared. A difference, or a line that one log lacks,
+voids the run. `limited` prints the revisions it finds and cannot check them against an expected
+value.
 
 Far-light warning. The start-up log of `cap_coarse` and `cap_half` prints that more than 3 per cent
 of the light was booked in far arrival cells. That limit was chosen for light that crosses a
@@ -84,6 +91,7 @@ UNIT_PC_CGS = 3.0856775814913673e18
 HYDROGEN_MASS_FRACTION = 0.76
 H2_FLOAT_REL = 2.0**-23
 PLANT_SIZE = 0.05
+ENERGY_CONTROL_FACTOR = 0.875
 STAR_PERIOD_STEPS = 8
 STAR_STEP_KEY = "Stars:max_timestep_young_Myr"
 WINDOW = 2 * STAR_PERIOD_STEPS
@@ -165,11 +173,15 @@ def read_build(log_path: str) -> Dict[str, Optional[str]]:
 
 
 def premise_same_binary(log_a: str, log_b: str, rep: Report) -> None:
-    """Void the run when a build line that both logs hold differs; print what cannot be compared."""
+    """Void the run when a build line differs or is missing from either log."""
     a, b = read_build(log_a), read_build(log_b)
     for name, _ in BUILD_LINES:
         if a[name] is None or b[name] is None:
-            rep.info("binary", f"{name} is not in both logs: it cannot be checked")
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, the {name} is missing from the log of "
+                f"{log_a if a[name] is None else log_b}: the two legs cannot be compared",
+            )
         elif a[name] != b[name]:
             raise GateExit(
                 EXIT_VOID,
@@ -555,6 +567,7 @@ def gate_ripple(args: argparse.Namespace) -> int:
     premise_steps(fine_dir, n_gas, 1, indices, rep)
     star = np.array(fix["star_kpc"])
     step_pc = float(args.step_pc)
+    e_c_as_run = e_c
     if args.plant_coarse_energy is not None:
         e_c = (
             (e_c * np.float32(args.plant_coarse_energy))
@@ -570,7 +583,8 @@ def gate_ripple(args: argparse.Namespace) -> int:
             "plant",
             f"coarse own energy modulated by {args.plant_ripple:g} at the star period",
         )
-    s_c, edges = shell_series(static_c, e_c, star)
+    s_c_as_run, edges = shell_series(static_c, e_c_as_run, star)
+    s_c, _ = shell_series(static_c, e_c, star)
     s_f, _ = shell_series(static_f, e_f, star)
     base.require_finite("shell series", coarse=s_c, fine=s_f)
     if np.any(s_c <= 0.0) or np.any(s_f <= 0.0):
@@ -583,6 +597,17 @@ def gate_ripple(args: argparse.Namespace) -> int:
 
     ratio = np.log(s_c.mean(axis=0) / s_f.mean(axis=0))
     bar_energy = peak_to_peak(s_f)
+    ratio_as_run = np.log(s_c_as_run.mean(axis=0) / s_f.mean(axis=0))
+    up = float(np.min(bar_energy - ratio_as_run))
+    down = float(np.min(bar_energy + ratio_as_run))
+    target = -math.log(ENERGY_CONTROL_FACTOR)
+    base.require_finite("energy control", up=np.array([up]), down=np.array([down]))
+    if not (up < target and down < target):
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, the energy bar cannot see an error of ln(1/{ENERGY_CONTROL_FACTOR}) = "
+            f"{target:.4g} in both signs (up {up:.4g}, down {down:.4g}): the fine leg varies too much",
+        )
     noise_coarse, noise_fine = peak_to_peak(s_c), peak_to_peak(s_f)
     amp = period_amplitude(s_c, STAR_PERIOD_STEPS)
     bar_ripple = 0.5 * peak_to_peak(s_f)
@@ -591,14 +616,13 @@ def gate_ripple(args: argparse.Namespace) -> int:
     )
     rep.info(
         "smallest detectable",
-        f"energy error {float(bar_energy.min()):.3g} in ln "
-        f"(largest shell {float(bar_energy.max()):.3g}); "
+        f"energy error in ln: +{up:.4g} up or -{down:.4g} down (from the ratio as run); "
         f"ripple amplitude {float(bar_ripple.min()):.3g} "
         f"(largest shell {float(bar_ripple.max()):.3g}); "
-        "the ripple and noise bars are a floor from the control run, provisional",
+        "the three bars are a floor from the control run, provisional",
     )
     rep.check(
-        "time-mean energy, coarse over fine",
+        "time-mean energy, coarse over fine (floor from the control run, provisional)",
         bool(np.all(np.abs(ratio) <= bar_energy)),
         f"largest |ln ratio| {float(np.max(np.abs(ratio))):.4g}, margin "
         f"{float(np.max(np.abs(ratio) / bar_energy)):.3g} of the bar; ln ratio by shell "

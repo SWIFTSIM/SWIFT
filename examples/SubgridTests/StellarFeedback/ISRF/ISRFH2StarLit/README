@@ -135,8 +135,8 @@ error in each case, and prints the exit class of each.
   over the last 16 snapshots (two star steps of `cap_coarse`). The time-mean energy ratio must be 1
   within the peak-to-peak range of the fine series. The coarse series must not vary more than the
   fine series. The amplitude of the coarse series at the star-step period must stay below the half
-  peak-to-peak range of the fine series in the same shell. The last two bars are a floor read from
-  the fine run and are provisional. The run is void unless the two legs differ only in
+  peak-to-peak range of the fine series in the same shell. No mechanism sets the size of these
+  bars: they are a floor read from the fine run. The run is void unless the two legs differ only in
   `Stars:max_timestep_young_Myr`, come from the same SWIFT revision, configure line and geajay
   revision, and keep H2 and the internal energy bit-equal.
 - `--plant-t-scale F` (`limited`), `--plant-coarse-energy F` and `--plant-ripple A` (`ripple`) apply
