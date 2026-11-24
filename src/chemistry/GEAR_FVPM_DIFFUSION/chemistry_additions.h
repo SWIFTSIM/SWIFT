@@ -83,17 +83,15 @@ chemistry_kick_extra_mass_flux(struct part *p, float dt_therm, float dt_grav,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    double sum = 0.;
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
-      sum += p->chemistry_data.metal_mass[i];
+    /* The last entry holds untracked metals: the total sums all entries. */
+    double total_metal_mass = 0.;
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      total_metal_mass += p->chemistry_data.metal_mass[i];
     }
-    const double total_metal_mass =
-        p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
-    if (sum > total_metal_mass)
-      error(
-          "Sum of element-wise metal masses grew larger than total metal "
-          "mass!");
-    if (total_metal_mass > p->conserved.mass + p->flux.mass)
+    const double new_mass = p->conserved.mass + p->flux.mass;
+    /* The tolerance is the float rounding of each entry. */
+    if (total_metal_mass >
+        new_mass * (1. + GEAR_CHEMISTRY_ELEMENT_COUNT * FLT_EPSILON))
       error("Total metal mass grew larger than the particle mass!");
 #endif
     chemistry_reset_mass_fluxes(p);
@@ -198,9 +196,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props *hydro_props,
     const struct chemistry_global_data *chem_data) {
 
-  struct chemistry_part_data *chd = &p->chemistry_data;
-
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  struct chemistry_part_data *chd = &p->chemistry_data;
   const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
   /* Kick the source term for the timestep */
@@ -215,23 +212,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     chemistry_check_unphysical_diffusion_flux(chd->diffusion_flux[m]);
   }
 #endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
-
-  if (chd->flux.dt > 0.0) {
-    /* Invalidate the particle time-step. It is considered to be inactive until
-         dt is set again in chemistry_prepare_force() */
-    chd->flux.dt = -1.0f;
-
-  } else if (chd->flux.dt == 0.0f) {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in chemistry_prepare_force(). We have to make sure
-       it is properly set to -1 here, so that inactive particles are indeed
-       found to be inactive during the flux loop. */
-    chd->flux.dt = -1.0f;
-  }
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;

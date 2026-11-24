@@ -66,6 +66,7 @@ TASKTYPES = [
     "stars_prep_ghost1",
     "hydro_prep_ghost1",
     "stars_prep_ghost2",
+    "stars_feedback_ghost",
     "stars_sort",
     "stars_resort",
     "stars_hii_ionization_feedback",
@@ -99,7 +100,7 @@ TASKTYPES = [
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
-    "chemistry_fct_ghost",
+    "chemistry_flux_ghost",
     #  "count",
 ]
 
@@ -145,7 +146,9 @@ SUBTYPES = [
     "rt_transport",
     "stars_radiation_in",
     "stars_radiation_out",
-    "chemistry_fct_prep",
+    "chemistry_flux_prep",
+    "part_hii_tag",
+    "part_hii_state",
     #  "count",
 ]
 

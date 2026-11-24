@@ -161,17 +161,14 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
   for (int k = 0; k < 4; k++) fluxes[k] *= factor;
 
   if (GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
-    const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
-    const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
     message(
         "[%lld, %lld | %d] Flux limiting, flux = %e, final_flux = %e, factor = "
         "%e,"
         " | mZi_0 = %e, mZj_0 = %e, kappa = %e, kappa = %e | mZ_source = %e, "
-        " mZ_sink = %e, sink_capacity = %e | interaction_mode = %d | "
-        " i_active = %d, j_active = %d",
+        " mZ_sink = %e, sink_capacity = %e | interaction_mode = %d",
         pi->id, pj->id, metal, flux_init * dt, fluxes[0] * dt, factor, mZi_0,
         mZj_0, chi->kappa, chj->kappa, mZ_source, mZ_sink, capacity,
-        interaction_mode, pi_is_active, pj_is_active);
+        interaction_mode);
   }
 }
 

@@ -26,6 +26,12 @@ confusion) shows up here as a deviation from the control even though the
 underlying physics is unchanged; the analytic formula is not needed to catch
 that.
 
+Scope and limits: the check catches errors of order one, such as a proper-time interval used as an interval of
+ln a. It cannot see a single missing or extra power of a: at a~=1 that changes the result by about 0.135 per cent.
+The tier=highz run tests those factors. The two runs must use the same rebuild cadence: the proper-time and
+d(ln a) integer timelines quantize a star's timestep differently, so a coarser cadence widens the discretization
+offset between the rebuild passes of the two runs.
+
 Both runs are read through read_simulated_r_hii() from
 cosmo_stromgren_analytic_check.py, which always converts comoving snapshot
 fields to physical using each field's own a-scale exponent -- for the

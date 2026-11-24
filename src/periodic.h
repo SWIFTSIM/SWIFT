@@ -25,6 +25,9 @@
 /* Includes. */
 #include "inline.h"
 
+/* Standard headers. */
+#include <math.h>
+
 /**
  * @brief Limits the value of x to be between a and b
  *
@@ -51,6 +54,35 @@ __attribute__((always_inline, const)) INLINE static double box_wrap_multiple(
     x -= (b - a);
   }
   return x;
+}
+
+/**
+ * @brief Keep a wrapped position out of the cell index cdim.
+ *
+ * box_wrap() can return dim minus one ulp, which times the inverse cell width
+ * rounds to cdim. A position at dim goes to 0. A position below dim that
+ * scales to cdim goes to 0 in a periodic box, or down one ulp at a time onto
+ * the last cell otherwise. A position above dim is left alone, so that the
+ * debug checks still see it.
+ *
+ * @param pos The wrapped position.
+ * @param dim The box size along this axis.
+ * @param ih The inverse top-level cell width along this axis.
+ * @param cdim The number of top-level cells along this axis.
+ * @param periodic Whether the box is periodic.
+ */
+__attribute__((always_inline, const)) INLINE static double box_wrap_cell_edge(
+    double pos, const double dim, const double ih, const int cdim,
+    const int periodic) {
+  if (pos == dim) {
+    pos = 0.0;
+  } else if (pos < dim && pos * ih >= cdim) {
+    if (periodic)
+      pos = 0.0;
+    else
+      while (pos * ih >= cdim) pos = nextafter(pos, 0.0);
+  }
+  return pos;
 }
 
 /**

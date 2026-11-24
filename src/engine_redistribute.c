@@ -293,7 +293,8 @@ struct redist_mapper_data {
           parts[k].x[j] += s->dim[j];                                          \
         else if (parts[k].x[j] >= s->dim[j])                                   \
           parts[k].x[j] -= s->dim[j];                                          \
-        if (parts[k].x[j] == s->dim[j]) parts[k].x[j] = 0.0;                   \
+        parts[k].x[j] = box_wrap_cell_edge(                                    \
+            parts[k].x[j], s->dim[j], s->iwidth[j], s->cdim[j], s->periodic);  \
       }                                                                        \
       const int cid =                                                          \
           cell_getid_from_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]); \

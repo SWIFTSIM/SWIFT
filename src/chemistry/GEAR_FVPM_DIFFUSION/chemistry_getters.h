@@ -235,7 +235,7 @@ chemistry_get_physical_matrix_K(const struct part *restrict p,
  *
  * The diffusion driver q used in Fick's law (and in the hyperbolic flux
  * law) is q=rho*Z for isotropic_constant (mu=1, no conversion) and q=Z
- * for the other modes (mu=1/rho) -- see chemistry_compute_flux() and
+ * for the other modes (mu=1/rho): see chemistry_compute_flux() and
  * chemistry_riemann_compute_hyperbolic_blending_factor(), which both
  * branch on this same diffusion_mode check. mu converts K (defined
  * w.r.t. q) into the effective diffusivity D=mu*K (defined w.r.t. the
@@ -603,6 +603,21 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
 }
 
 /**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * sink particle.
+ *
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_metal_mass_fraction(const struct sink *restrict sink) {
+  double Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += sink->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot;
+}
+
+/**
  * @brief Returns the abundances (metal mass fraction) of the star particle to
  * be used in feedback/enrichment related routines.
  *
@@ -698,8 +713,25 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart *restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
-  error("No BH yet in GEAR");
-  return 0.f;
+  float Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += bp->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot * bp->mass;
+}
+
+/**
+ * @brief Returns the integer time from which a pair exchanges its flux: the
+ * later of the last flux applications of its two particles.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
+__attribute__((always_inline)) INLINE static integertime_t
+chemistry_get_pair_ti_flux_start(const struct part *restrict pi,
+                                 const struct part *restrict pj) {
+  return max(pi->chemistry_data.flux.ti_flux_last,
+             pj->chemistry_data.flux.ti_flux_last);
 }
 
 /* Import the right chemistry_part_data definition */

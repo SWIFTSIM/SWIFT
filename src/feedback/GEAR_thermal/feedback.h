@@ -21,6 +21,8 @@
 
 #include "../GEAR/feedback_common.h"
 #include "../GEAR/feedback_radiation.h"
+#include "../GEAR/radiation_hii.h"
+#include "../GEAR/radiation_packet.h"
 #include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
@@ -35,18 +37,6 @@
 
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
-void feedback_end_density(struct part *p, struct xpart *xp,
-                          const struct engine *e);
-void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
-                                     const struct engine *e);
-void feedback_end_gradient(struct part *p, const struct engine *e);
-void feedback_end_force(struct part *p, const struct engine *e);
-float feedback_compute_part_timestep(const struct part *restrict p,
-                                     const struct engine *e);
-void feedback_reset_part(struct part *p, struct xpart *xp,
-                         const struct engine *e);
-void feedback_init_part(struct part *p, const struct engine *e);
-void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_is_star_dead(const struct spart *sp);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
@@ -85,7 +75,20 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                const int with_cosmology);
 
 /**
- * @brief Writes the current model of feedback to the file
+ * @brief Finishes the #part density calculation. Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_end_density(
+    struct part *p, struct xpart *xp, const struct engine *e) {}
+
+/**
+ * @brief Writes the current model of feedback to the file. With
+ * SWIFT_DEBUG_CHECKS_ISRF, also the packet ledgers of the gas, the stars and
+ * the sinks that left the box and of the gas swallowed by black holes, summed
+ * over the ranks, PE then LW, in snapshot units.
  *
  * @param feedback The #feedback_props.
  * @param h_grp The HDF5 group in which to write
@@ -94,157 +97,8 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
+
+  feedback_write_flavour_radiation(h_grp);
 };
-
-/**
- * @brief Pack a #part's HII claim for the gas owner.
- *
- * The pass stamp on @p p is cleared after the pack, so a later pack without a
- * new claim does not report it again. The entry is zeroed first so that its
- * padding is deterministic on the wire.
- *
- * @param p The #part to pack from.
- * @param data The destination entry.
- */
-__attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
-    struct part *restrict p, struct hii_tag_report *restrict data) {
-
-  memset(data, 0, sizeof(struct hii_tag_report));
-#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-  data->is_ionized = p->feedback_data.is_ionized;
-  data->star_id = p->feedback_data.star_id;
-  data->end_time = p->feedback_data.end_time;
-  data->r2 = p->feedback_data.r2;
-  data->cost = p->feedback_data.cost;
-  data->claimed_this_pass = p->feedback_data.claimed_this_pass;
-  p->feedback_data.claimed_this_pass = 0;
-#endif
-}
-
-#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-/**
- * @brief Apply an incoming HII claim onto @p p.
- *
- * Only the claim fields move: the cooling caches belong to this rank's own
- * cooling, and claimed_this_pass to this rank's own next pack.
- *
- * @param p The #part to apply the claim to.
- * @param data The source entry.
- */
-__attribute__((always_inline)) INLINE static void feedback_apply_hii_tag_claim(
-    struct part *restrict p, const struct hii_tag_report *restrict data) {
-  p->feedback_data.is_ionized = data->is_ionized;
-  p->feedback_data.star_id = data->star_id;
-  p->feedback_data.end_time = data->end_time;
-  p->feedback_data.r2 = data->r2;
-  p->feedback_data.cost = data->cost;
-}
-#endif
-
-/**
- * @brief Unpack an HII claim and merge it with the claim @p p already holds.
- *
- * Only a stamped entry is merged. Against a claim of another star, the
- * smallest (r2, star_id) wins; the photons of the loser are lost and only
- * counted. A report from the star that already holds @p p is applied
- * directly and is not a collision.
- *
- * A fresh claim (an untagged @p p, or a won collision) flags @p p for
- * time-step synchronization, as a claim on a local particle does; a renewal
- * by the holding star does not.
- *
- * @param p The #part to unpack into.
- * @param data The source entry.
- * @param collision (return) Set to 1 if the entry met a claim of another
- * star, left untouched otherwise.
- * @param forfeited_cost (return) Photon cost of the losing claim, set only
- * when @p collision is set.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_unpack_hii_tag_report(struct part *restrict p,
-                               const struct hii_tag_report *restrict data,
-                               char *collision, double *forfeited_cost) {
-
-#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-  if (!data->claimed_this_pass) return;
-
-  if (p->feedback_data.is_ionized &&
-      data->star_id != p->feedback_data.star_id) {
-    *collision = 1;
-#ifdef SWIFT_DEBUG_CHECKS
-    if (!data->is_ionized)
-      error("Stamped HII report for part %lld carries no live claim.", p->id);
-#endif
-    const int incoming_wins = (data->r2 < p->feedback_data.r2) ||
-                              (data->r2 == p->feedback_data.r2 &&
-                               data->star_id < p->feedback_data.star_id);
-    if (incoming_wins) {
-      *forfeited_cost = p->feedback_data.cost;
-      feedback_apply_hii_tag_claim(p, data);
-      timestep_sync_part(p);
-    } else {
-      *forfeited_cost = data->cost;
-    }
-    return;
-  }
-
-  const int fresh = !p->feedback_data.is_ionized && data->is_ionized;
-  feedback_apply_hii_tag_claim(p, data);
-  if (fresh) timestep_sync_part(p);
-#endif
-}
-
-/**
- * @brief Pack a #part's post-cooling HII state for the ranks that hold a
- * foreign copy.
- *
- * The entry is zeroed first so that its padding is deterministic on the
- * wire.
- *
- * @param p The #part to pack from.
- * @param data The destination entry.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_pack_hii_state_update(const struct part *restrict p,
-                               struct hii_state_update *restrict data) {
-
-  memset(data, 0, sizeof(struct hii_state_update));
-#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-  data->is_ionized = p->feedback_data.is_ionized;
-  data->star_id = p->feedback_data.star_id;
-  data->end_time = p->feedback_data.end_time;
-  data->r2 = p->feedback_data.r2;
-  data->cost = p->feedback_data.cost;
-  data->T_eligibility = p->feedback_data.T_eligibility;
-  data->mu_eligibility = p->feedback_data.mu_eligibility;
-  data->neutral_H_frac = p->feedback_data.neutral_H_frac;
-#endif
-}
-
-/**
- * @brief Unpack a #part's post-cooling HII state into its foreign copy.
- *
- * Only the HII fields are written. claimed_this_pass is this rank's own
- * bookkeeping and is kept: taking the sender's value would echo a phantom
- * claim back to the owner on the next report.
- *
- * @param p The #part to unpack into.
- * @param data The source entry.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_unpack_hii_state_update(struct part *restrict p,
-                                 const struct hii_state_update *restrict data) {
-
-#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-  p->feedback_data.is_ionized = data->is_ionized;
-  p->feedback_data.star_id = data->star_id;
-  p->feedback_data.end_time = data->end_time;
-  p->feedback_data.r2 = data->r2;
-  p->feedback_data.cost = data->cost;
-  p->feedback_data.T_eligibility = data->T_eligibility;
-  p->feedback_data.mu_eligibility = data->mu_eligibility;
-  p->feedback_data.neutral_H_frac = data->neutral_H_frac;
-#endif
-}
 
 #endif /* SWIFT_FEEDBACK_GEAR_H */

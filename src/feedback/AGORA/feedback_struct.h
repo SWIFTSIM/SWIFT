@@ -84,4 +84,9 @@ struct feedback_spart_data {
   int is_dead;
 };
 
+/**
+ * @brief Feedback fields carried by each sink particle. Empty here.
+ */
+struct feedback_sink_data {};
+
 #endif /* SWIFT_FEEDBACK_STRUCT_AGORA_H */

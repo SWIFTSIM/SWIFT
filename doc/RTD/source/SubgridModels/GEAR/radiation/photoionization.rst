@@ -20,6 +20,8 @@ Optionally, a star's ionizing budget can be split across several independent ang
 
 By default, an ionized particle is simply flagged and held at its floor temperature by the cooling module until its tag expires. Setting ``GEARFeedback:HII_couple_ionization_rate`` instead derives a physically motivated, distance-dependent photoionization rate coefficient (:math:`\Gamma_\mathrm{HI} = \sigma_\mathrm{HI} \times` ionizing flux, with :math:`\sigma_\mathrm{HI} = 6.3 \times 10^{-18}\,\mathrm{cm}^2` at the Lyman limit, Osterbrock and Ferland 2006) and feeds it into Grackle's own radiative-transfer rate fields every step, instead of the instant flag-and-floor scheme. This requires Grackle mode 1 or higher and runs on one MPI rank only: SWIFT stops at start-up on more ranks. The mean photon energy above the Lyman limit is held in erg, since its absolute per-particle value underflows float precision in internal units.
 
+**HII photoionization needs a species network.** With ``GEARFeedback:with_photoionization`` on and ``GrackleCooling:primordial_chemistry`` set to 0 in a build of ``grackle_1`` or higher, SWIFT stops at start-up. The tabulated solve does not write the species back, so the neutral hydrogen of gas that leaves an HII region would stay at zero. Set ``primordial_chemistry`` to 1 or higher, or build ``grackle_0`` to run with the tabulated solve.
+
 ``GEARFeedback:HII_rebuild_time_Myr`` also bounds the timestep of every star still young enough to do photoionization (below ``HII_max_age_Myr``), not just the ionization cadence: a smaller value forces smaller, more numerous steps.
 
 Configuring and compiling
@@ -31,10 +33,10 @@ Model parameters
 ------------------
 
 * ``with_photoionization``: master switch. 1 turns the channel on, 0 (default) leaves it off.
-* ``HII_min_density_Hpcm3``: minimum physical gas density (hydrogen atoms/cm^3) for a particle to be eligible for ionization. Default: 1. The default is tuned for cosmological runs, where it keeps diffuse gas that is not part of a neutral cloud out of the budget; a lower-density idealised box (a uniform test box, for instance) needs a lower value, or nothing is ever ionized. The shipped ``StromgrenSphere``, ``TaskGraphPair`` and ``TaskGraphCluster`` examples set it to 0.01.
+* ``HII_min_density_Hpcm3``: minimum physical gas density (nucleons/cm^3: the density divided by the proton mass) for a particle to be eligible for ionization. Default: 1. The default is tuned for cosmological runs, where it keeps diffuse gas that is not part of a neutral cloud out of the budget; a lower-density idealised box (a uniform test box, for instance) needs a lower value, or nothing is ever ionized. The shipped ``StromgrenSphere``, ``TaskGraphPair`` and ``TaskGraphCluster`` examples set it to 0.01.
 * ``HII_max_age_Myr``: age above which a star stops doing photoionization. Default: 50.
-* ``HII_rebuild_time_Myr``: interval between HII budget rebuilds. A negative value rebuilds every step instead of on a fixed schedule. Default: 0.5.
-* ``HII_rebuild_floor_Myr``: the interval the photon budget of a star's first pass is integrated over, and the star timestep when ``HII_rebuild_time_Myr`` is negative. Must be positive. Default: 1e-4.
+* ``HII_rebuild_time_Myr``: interval between HII budget rebuilds. A negative value rebuilds every step instead of on a fixed schedule. Default: 0.1. A long interval under-fills the region between two rebuilds, so the front comes out too small.
+* ``HII_rebuild_floor_Myr``: the interval whose photons a first pass issues ahead when the star is younger than this interval, in practice at age 0. This holds for a star of the initial conditions and for every star when ``HII_rebuild_time_Myr`` is negative; a newborn star with a positive rebuild time first passes at about one cadence of age and issues the photons since birth (each later pass issues the photons emitted since the age already covered, so every instant is counted once). It is also the star timestep when ``HII_rebuild_time_Myr`` is negative. Must be positive, and at most ``HII_rebuild_time_Myr`` if that is positive: the run stops at start-up otherwise. Default: 1e-4.
 * ``HII_angular_nside``: HEALPix splitting of the ionizing budget. 0 (default) is spherical, one shared budget; N >= 1 gives :math:`12 N^2` angular pixels. N > 0 requires building with ``--with-chealpix``, and the resulting pixel count must fit the build's ``--with-number-of-hii-angular-pixels`` (default 12, i.e. N <= 1).
 * ``HII_random_cone_frame_per_star``: 1 (default) turns the angular pixels of each star by a random rotation fixed by its ID, 0 keeps them on the box axes. This removes the alignment of the pixels between stars; the shape of a single region changes little. Ignored for ``HII_angular_nside`` 0.
 * ``HII_cone_frame_redraw_period``: used only with ``HII_random_cone_frame_per_star`` 1. N > 0 draws a new rotation for each star every N of its own passes; 0 (default) keeps one rotation for the star's life.
@@ -52,9 +54,9 @@ Four further parameters, in the ``Stars`` section, control the search geometry a
 
    GEARFeedback:
      with_photoionization: 0                       # Master switch of the HII photoionization channel
-     HII_min_density_Hpcm3: 1                       # Minimal density to consider a particle eligible for ionization (H atoms/cm^3). Lower this for a low-density idealised box, or nothing is ever ionized
+     HII_min_density_Hpcm3: 1                       # Minimal density to consider a particle eligible for ionization (nucleons/cm^3). Lower this for a low-density idealised box, or nothing is ever ionized
      HII_max_age_Myr: 50                            # Age (Myr) at which stars stop doing photoionization
-     HII_rebuild_time_Myr: 0.5                      # Time (Myr) between HII budget rebuilds; negative rebuilds every step
+     HII_rebuild_time_Myr: 0.1                      # Time (Myr) between HII budget rebuilds; negative rebuilds every step
      HII_rebuild_floor_Myr: 1e-4                    # Budget interval (Myr) of a star's first pass; star timestep when HII_rebuild_time_Myr < 0
      HII_angular_nside: 0                           # HEALPix splitting of the ionizing budget: 0 = spherical, N>=1 = 12*N^2 pixels
      HII_random_cone_frame_per_star: 1              # 1 = random rotation of each star's pixels, 0 = pixels on the box axes

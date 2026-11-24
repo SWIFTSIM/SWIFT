@@ -1844,7 +1844,8 @@ void io_select_hydro_fields(const struct part *const parts,
   *num_fields += tracers_write_particles(parts, xparts, list + *num_fields,
                                          with_cosmology);
   *num_fields += feedback_write_particles(parts, xparts, list + *num_fields,
-                                          with_cosmology);
+                                          with_cosmology,
+                                          e != NULL ? e->feedback_props : NULL);
   *num_fields +=
       star_formation_write_particles(parts, xparts, list + *num_fields);
   if (with_rt) {
@@ -1922,6 +1923,8 @@ void io_select_sink_fields(const struct sink *const sinks,
   *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
   *num_fields +=
       tracers_write_sinkparticles(sinks, list + *num_fields, with_cosmology);
+  *num_fields +=
+      feedback_write_sinkparticles(sinks, list + *num_fields, with_cosmology);
   if (with_fof) {
     *num_fields += fof_write_sinks(sinks, list + *num_fields);
   }

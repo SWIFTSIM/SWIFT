@@ -79,15 +79,13 @@ GrackleCooling:
   # otherwise the Lyman-Werner field reaches Grackle unshielded.
   H2_self_shielding: 0                                 # 0 off, 2 column set by H2_self_shielding_path, 3 local Jeans length (1 is rejected) (Default: 0)
   H2_self_shielding_path: kernel_radius                # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
-  H2_on_dust: 0                                        # H2 formation on dust grains (Default: 0)
-  H2_photodissociation_heating: 0                      # Heating per H2 photodissociation, needs mode >= 2 and a Grackle that provides it (Default: 0)
   H2_three_body_rate: 0                                # H2 three-body formation rate model, 0 to 5 (Grackle documentation) (Default: 0)
   H2_cie_cooling: 0                                    # H2 collision-induced emission cooling (Ripamonti & Abel 2004) (Default: 0)
   self_shielding_method: -1                            # Continuum self-shielding: -1 GEAR, 0 none, 1 to 3 Grackle (Default: 0)
   self_shielding_threshold_atom_per_cm3: 0.007         # Density threshold in H atoms/cm^3, required with self_shielding_method -1
 
   # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
-  photoelectric_heating_efficiency: constant           # constant, wolfire1995 or density_dependent (Default: constant)
+  photoelectric_heating_efficiency: constant           # constant or wolfire1995 (Default: constant)
   local_dust_to_gas_ratio: -1                          # Dust-to-gas mass ratio, -1 keeps Grackle's own default (Default: -1)
 
   # Chemistry network: initial abundances as number ratios to nH, -1 keeps the default.
@@ -117,6 +115,31 @@ GrackleCooling:
   # Debug.
   disable_cooling_for_debugging: 0                     # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
+GeajayCooling:
+  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required): linear or remy_ruyer_2014
+  h2_shielding_length_method: Jeans              # H2 self-shielding length: none, given_length or Jeans. Set Jeans or given_length when the ISRF is on and H2 is tracked
+  cloudy_table_file: CloudyData_UVB=HM2012_high_density.h5    # Name of the Cloudy table
+  with_uv_background: 0                          # Enable or not the UV background
+  redshift: -1                                   # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                          # Enable or not the metal cooling
+  uv_self_shielding: density_threshold           # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
+  uv_shielding_threshold_nucleon_per_cm3: 0.007  # Required only with GEAR's self shielding. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
+  thermal_time_myr: 5
+  initial_hii_to_h_ratio: 2.393761E-004          # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_hei_to_h_ratio: 7.900000E-002          # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_heii_to_h_ratio: 5.692753E-020         # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_heiii_to_h_ratio: 0                    # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_di_to_h_ratio: 2.529538E-005           # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_dii_to_h_ratio: 4.284496E-009          # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_hm_to_h_ratio: 6.509693E-012           # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_h2i_to_h_ratio: 1.891128E-005          # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_h2ii_to_h_ratio: 4.153181E-005         # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_hdi_to_h_ratio: 3.356904E-006          # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  compton_xray_heating: 0  # (optional) Enable/disable the Compton heating by the X-ray background (default: 0)
+  energy_change_limit: 0   # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1], or 0 for the geajay default (0.03 with the second order energy update, 0.1 with the explicit one) (default: 0)
+  table_density_edge: extrapolate # (optional) Cloudy table lookup beyond its n_H range: extrapolate or edge (default: extrapolate). It does not cap the density
+  maximal_density_nucleon_per_cm3: -1 # (optional) Largest density passed to geajay, as the nucleon density rho / m_p [cm^-3], as in GrackleCooling. Zero or negative: no cap (default: -1)
+
 GEARChemistry:
   initial_metallicity: 1e-6
 
@@ -132,24 +155,15 @@ GEARFeedback:
   # Radiation parameters
   with_radiation_pressure: 0                               # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
-  with_interstellar_radiation_field: 0                     # ISRF master switch: photoelectric heating + dust chemistry (any Grackle mode); H2 photodissociation additionally needs COOLING_GRACKLE_MODE > 1 (grackle_2 or grackle_3). 1: on, 0: off. (Default: 0)
-  ISRF_propagation: 0                                       # Run the hyperbolic M1 propagation update on top of injection + receiver-side extinction. Only meaningful when with_interstellar_radiation_field is on. (Default: 0)
+  with_interstellar_radiation_field: 0                     # ISRF master switch: photoelectric heating + dust chemistry (any Grackle mode); H2 photodissociation additionally needs COOLING_GRACKLE_MODE > 1
+                                                           # (grackle_2 or grackle_3). 1: on, 0: off. (Default: 0)
+  ISRF_propagation: 0                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_extinction_path_in_kernel_radii: 1.0                 # Extinction path length, in kernel support radii. Read only when ISRF_extinction_path is constant_kernel_path. (Default: 1.0)
-  ISRF_c_hyp_scheme: kernel_local                           # ISRF hyperbolic propagation scheme: fixed_fraction (fixed fraction of c) or kernel_local (kernel-local speed); see parameter_example.yml. Only meaningful when ISRF_propagation is on. (Default: kernel_local)
-  ISRF_c_hyp_margin: 0.5                                    # Stability-margin coefficient C_hyp in the ISRF_c_hyp_scheme closure. Only meaningful when ISRF_propagation is on. (Default: 0.5)
-  ISRF_c_hyp_fixed_fraction_of_c: 0                         # Uniform c_hyp = f*c, only used when ISRF_c_hyp_scheme is fixed_fraction. (Default: 0)
-  ISRF_c_hyp_timestep_term_off_for_debugging: 0             # Debug/test only: skip the CFL timestep term for the fixed-fraction speed. Never set in a production run. (Default: 0)
-  ISRF_dissipation_alpha_max: 0.5                           # Ceiling of the negativity-triggered artificial-conductivity coefficient. Only meaningful when ISRF_propagation is on. (Default: 0.5)
-  ISRF_dissipation_negativity_threshold: 0.01                # Relative undershoot at which the negativity trigger reaches ISRF_dissipation_alpha_max. (Default: 0.01)
-  ISRF_dissipation_alpha_floor: 0.5                          # Floor under the negativity trigger, for the front the trigger structurally cannot see. 0 disables it. (Default: 0.5)
-  ISRF_dissipation_floor_h_over_lambda: 0.5                  # Screening-length error budget gating the floor's roll-off. (Default: 0.5)
-  ISRF_dissipation_floor_relaxation_residual: 0.4            # Flux-relaxation residual gating the floor. 0 disables the gate. (Default: 0.40)
-  ISRF_dissipation_alpha_pin_for_debugging: 0                # Debug/test only: bypass the negativity trigger and hold the dissipation coefficient fixed. Never set in a production run. (Default: 0)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
-  HII_min_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_min_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in nucleons/cm^3: the density divided by the proton mass)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
-  HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
+  HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.1)
 
 Stars:
   HII_max_search_radius: 0.1  # Max HII search radius (internal units).

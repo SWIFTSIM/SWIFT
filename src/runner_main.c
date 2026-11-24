@@ -31,6 +31,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "chemistry.h"
 #include "engine.h"
 #include "feedback.h"
 #include "scheduler.h"
@@ -66,11 +67,10 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-/* Import the chemistry FCT prep loop functions. */
-#define FUNCTION chemistry_fct_prep
-#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+/* Import the chemistry flux prep loop functions. */
+#ifdef EXTRA_CHEMISTRY_LOOP
+#define FUNCTION chemistry_flux_prep
+#define FUNCTION_TASK_LOOP TASK_LOOP_CHEMISTRY_FLUX_PREP
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 #endif
@@ -309,10 +309,9 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*h_hi=*/FLT_MAX, 1);
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-          else if (t->subtype == task_subtype_chemistry_fct_prep)
-            runner_dosub_self2_chemistry_fct_prep(r, ci, /*h_hi=*/FLT_MAX, 1);
+#ifdef EXTRA_CHEMISTRY_LOOP
+          else if (t->subtype == task_subtype_chemistry_flux_prep)
+            runner_dosub_self2_chemistry_flux_prep(r, ci, /*h_hi=*/FLT_MAX, 1);
 #endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*h_hi=*/FLT_MAX, 1);
@@ -392,11 +391,10 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-          else if (t->subtype == task_subtype_chemistry_fct_prep)
-            runner_dosub_pair2_chemistry_fct_prep(r, ci, cj, /*h_hi=*/FLT_MAX,
-                                                  1);
+#ifdef EXTRA_CHEMISTRY_LOOP
+          else if (t->subtype == task_subtype_chemistry_flux_prep)
+            runner_dosub_pair2_chemistry_flux_prep(r, ci, cj,
+                                                   /*h_hi=*/FLT_MAX, 1);
 #endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
@@ -506,12 +504,9 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-        case task_type_chemistry_fct_ghost:
-          runner_do_chemistry_fct_ghost(r, ci, 1);
+        case task_type_chemistry_flux_ghost:
+          runner_do_chemistry_flux_ghost(r, ci, 1);
           break;
-#endif
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);
           break;

@@ -174,6 +174,7 @@ The machine-accurate conservation means:
 
    \sum \Delta \vec{Y}_j = \vec{0} \; .
 
+The subgrid radiation of the star uses the same weights: the radiation pressure momentum is a vector flux along :math:`\vec{\bar{w}}_j`. With the ISRF packet transport on, the Lyman-Werner and photoelectric light follows the emission cones of the star instead. With it off, this light is shared with :math:`\lVert \vec{\bar{w}}_j \rVert`, which favours the gas-poor side when the gas lies on one side of the star.
 
 Until now, we implicitly worked in the reference frame of the star, i.e. :math:`\vec{x}_s = \vec{0}`, :math:`\vec{v}_s \equiv \frac{d\vec{x}_s}{dt} = \vec{0}`. The distribution of flux is isotropic in the reference frame of the stars. However, we need to consider the star motion and thus boost the fluxes in the laboratory frame to obtain the fluxes :math:`\Delta X_j'`. For the mass, metals and momentum, this is trivial:
 

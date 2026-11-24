@@ -432,7 +432,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
    * unchanged. Tune this up for higher gas mass resolution or denser
    * regions (e.g. cosmological zoom-ins) where a single HII search pass
    * may need several passes to cover all gas within the search radius
-   * (the per-pass buffer capacity, max_HII_ngbs, is a compile-time
+   * (the per-pass buffer capacity, max_ngbs, is a compile-time
    * constant, see runner_radiation_feedback.h). */
   sp->HII_max_retry_full_buffer =
       parser_get_opt_param_int(params, "Stars:HII_max_retry_full_buffer", 10);

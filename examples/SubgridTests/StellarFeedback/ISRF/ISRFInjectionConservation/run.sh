@@ -20,6 +20,8 @@ time_end=${time_end:=3e-5} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 metallicity=${metallicity:=0} #Gas metal mass fraction, absolute (not solar)
+radiation_table=${radiation_table:=PopII_parsec_spectral.hdf5} #Yields table with the Data/Radiation group
+propagation=${propagation:=0} #1: transport the light (checks the light emitted instead of the injection)
 run_name=${run_name:=""}
 
 # Nonzero metallicity switches the check to the dust-extinction identities
@@ -32,6 +34,11 @@ if [ "$(python3 -c "print(int(float('$metallicity') != 0))")" = "1" ]; then
     metallicity_args=(-P GEARChemistry:initial_metallicity:$metallicity
 		      -P GEARChemistry:scale_initial_metallicity:0)
     check_args=(--dusty)
+fi
+
+propagation_args=()
+if [ "$propagation" = "1" ]; then
+    propagation_args=(-P GEARFeedback:ISRF_propagation:1)
 fi
 
 # Remove the ICs
@@ -55,11 +62,11 @@ then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
-"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+"$scripts_location"/getRadiationTable.sh "$radiation_table" || exit 1
 
 # Stop here on a table the radiation reader cannot use, rather than
 # aborting at start-up once the initial conditions are built.
-"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
+"$scripts_location"/checkRadiationTable.sh "$radiation_table" --with-isrf || exit 1
 
 echo "Generating initial conditions to run the example..."
 ic_output=$(python3 makeIC.py --level $level --rho $gas_density \
@@ -92,12 +99,18 @@ printf "Running simulation..."
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P Snapshots:delta_time:$delta_time \
-		   "${metallicity_args[@]}" \
+		   -P GEARFeedback:yields_table:$radiation_table \
+		   -P GEARFeedback:yields_table_first_stars:$radiation_table \
+		   "${metallicity_args[@]}" "${propagation_args[@]}" \
 		   params.yml 2>&1 | tee output.log
 
 # Check that the injected PE/LW energy sums to Delta_t * L_band per star
-# feedback pass (see README).
-python3 isrf_injection_conservation_check.py "${check_args[@]}"
+# feedback pass, or with the transport on that the star emitted L * age (see README).
+if [ "$propagation" = "1" ]; then
+    python3 isrf_emitted_total_check.py .
+else
+    python3 isrf_injection_conservation_check.py "${check_args[@]}"
+fi
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

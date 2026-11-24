@@ -7,14 +7,13 @@ face-adjacent cells.
 This example tests the GEAR subgrid ionization algorithm under many-way
 concurrent execution: the center cell is a task-graph neighbour of all 6
 surrounding cells simultaneously, making its `hii_ionization_feedback` task a
-lock-contention point against up to 6 sibling tasks at once. This is the
-strongest available stress test of the `task_lock`/`task_unlock` rollback path
-for this task type (src/task.c).
+lock-contention point against up to 6 sibling tasks at once. It exercises the
+`task_lock`/`task_unlock` rollback path for this task type (src/task.c).
 
 **Role: software-correctness test.** This checks task-graph lock contention,
   not agreement with any published result. See `../Starbench/`,
-  `../Hu2017/`, and `../ClumpSmith2021/` for the actual validation
-  targets.
+  `../Hu2017/`, and `../ClumpSmith2021/` for examples that reproduce
+  published results.
 
 `gas_mass` defaults to 1.0 Msun, coarser than `../StromgrenSphere/`'s default
 of 0.1. This box holds ~110x more gas at the same density than the single-star
@@ -62,7 +61,7 @@ center star.
 # Plotting
 `plot_gas_density.py` and `rhoTPlot.py` live in the shared
 `examples/GEAR_ICs_and_SCRIPTS/` directory; `plot_projected_qty.py` is copied
-from `../StromgrenSphere/`. `plot_temperature_map.py` is new: a mass-weighted
+from `../StromgrenSphere/`. `plot_temperature_map.py` is a mass-weighted
 gas temperature projection (companion to `plot_gas_density.py`'s mass
 projection), same CLI convention (`-s snap/snapshot -i N`, where
 `-i`/`--initial` is the snapshot index, default 0).

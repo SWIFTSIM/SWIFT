@@ -31,16 +31,162 @@
 #include <math.h>
 #include <string.h>
 
-double radiation_lw_photon_energy_cgs = 0.;
+/*! Sanity tripwires on lambda(b) - 1 (and on lambda_N(LW)). Below the floor is
+    fatal: a units bug (e.g. E_lo^2 folded in twice) gives a tiny positive
+    value. Above the ceiling is a warning only: it is the largest value seen on
+    the PARSEC grid, rounded up, not a physical bound. */
+#define RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR 0.05
+#define RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX 250.0
 
 /**
- * @brief Report the H2 photodissociation coefficient and set
- * #radiation_lw_photon_energy_cgs from the radiation table.
+ * @brief Set #feedback_props.band_edge_weight_pe/lw/photon_weight_lw from the
+ * radiation table.
  *
- * The mean LW photon energy is a diagnostic only: the IMF-integrated
+ * These are the coefficients for photons redshifting through the 6/11.2/13.6
+ * eV band edges. They are evaluated once over the whole IMF (at the reference
+ * metallicity for 2D tables), as for #radiation_set_lw_photon_energy_cgs.
+ * The defaults are kept while radiation is inactive or a denominator
+ * vanishes. Call at start-up only, for the main stellar model.
+ *
+ * @param fb_props (output) The #feedback_props to set.
+ * @param rad The main stellar model's #radiation.
+ * @param sm The main #stellar_model, for its IMF mass range.
+ */
+void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
+                                          const struct radiation *rad,
+                                          const struct stellar_model *sm) {
+
+  fb_props->band_edge_weight_pe = RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT;
+  fb_props->band_edge_weight_lw = RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT;
+  fb_props->band_edge_photon_weight_lw =
+      RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT;
+
+  if (!rad->is_active || !rad->with_ISRF) return;
+
+  const float log_m1 = log10f(sm->imf.mass_min);
+  const float log_m2 = log10f(sm->imf.mass_max);
+  const float log_z =
+      rad->is_2d ? radiation_get_log_metallicity(
+                       RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY)
+                 : 0.f;
+
+  const double l_edge_pe =
+      radiation_get_population_luminosity_edge_pe(rad, log_z, log_m1, log_m2);
+  const double l_pe =
+      radiation_get_population_luminosity_pe(rad, log_z, log_m1, log_m2);
+  const double l_edge_lw =
+      radiation_get_population_luminosity_edge_lw(rad, log_z, log_m1, log_m2);
+  const double l_lw =
+      radiation_get_population_luminosity_lw(rad, log_z, log_m1, log_m2);
+  const double mean_e_lw_cgs =
+      radiation_get_population_mean_photon_energy_lw(rad, log_z, log_m2);
+
+  /* Denominator guard: an IMF entirely below the table's mass floor gives
+   * L_PE = L_LW = 0. Exact comparison, so a legitimately zero numerator is
+   * still reported below. */
+  if (l_pe <= 0. || l_lw <= 0.) return;
+
+  /* E_lo^2 is already folded into l_edge_pe/lw at read time: do not
+   * reapply it. */
+  const double lambda_e_pe_minus_one = l_edge_pe / l_pe;
+  const double lambda_e_lw_minus_one = l_edge_lw / l_lw;
+
+  /* Numerator guard: a nonzero L_b with a zero edge term means the spectral
+   * library does not reach the band edge. The ratio is then grey, which is
+   * correct arithmetic but worth reporting. */
+  if (engine_rank == 0 && lambda_e_pe_minus_one <= 0.)
+    message(
+        "WARNING: Data/Radiation's SpectralPhotonRateAtPEEdge integrates to "
+        "0 over [%.4g, %.4g] Msun at Z=%.4g while Integrated_L_PE does not: "
+        "the PE band-edge weight is GREY (lambda_E(PE)=1) for this run.",
+        (double)sm->imf.mass_min, (double)sm->imf.mass_max,
+        (double)exp10(log_z));
+  if (engine_rank == 0 && lambda_e_lw_minus_one <= 0.)
+    message(
+        "WARNING: Data/Radiation's SpectralPhotonRateAtLWEdge integrates to "
+        "0 over [%.4g, %.4g] Msun at Z=%.4g while Integrated_L_LW does not: "
+        "the LW band-edge weight is GREY (lambda_E(LW)=1) for this run.",
+        (double)sm->imf.mass_min, (double)sm->imf.mass_max,
+        (double)exp10(log_z));
+
+  /* Fatal tripwire for a positive but tiny lambda(b) - 1, the signature of a
+   * units bug. Every rank aborts. */
+  if (lambda_e_pe_minus_one > 0. &&
+      lambda_e_pe_minus_one < RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
+    error(
+        "lambda_E(PE) - 1 = %.6g is below the sanity floor %.3g: this "
+        "looks like a units bug (e.g. E_lo^2 folded in twice), not a "
+        "genuine table value.",
+        lambda_e_pe_minus_one, RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR);
+  if (lambda_e_lw_minus_one > 0. &&
+      lambda_e_lw_minus_one < RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
+    error(
+        "lambda_E(LW) - 1 = %.6g is below the sanity floor %.3g: this "
+        "looks like a units bug (e.g. E_lo^2 folded in twice), not a "
+        "genuine table value.",
+        lambda_e_lw_minus_one, RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR);
+
+  fb_props->band_edge_weight_pe = 1. + lambda_e_pe_minus_one;
+  fb_props->band_edge_weight_lw = 1. + lambda_e_lw_minus_one;
+
+  /* Lambda_LW = (lambda_E(LW) - 1) * <E>_LW / E_lo(LW). */
+  if (mean_e_lw_cgs > 0.)
+    fb_props->band_edge_photon_weight_lw = lambda_e_lw_minus_one *
+                                           mean_e_lw_cgs /
+                                           RADIATION_LW_BAND_LOWER_EDGE_CGS;
+
+  /* No "+1" floor for lambda_N(LW), so the tripwire applies to the value. */
+  if (fb_props->band_edge_photon_weight_lw > 0. &&
+      fb_props->band_edge_photon_weight_lw <
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
+    error(
+        "lambda_N(LW) = %.6g is below the sanity floor %.3g: this looks "
+        "like a units bug (e.g. E_lo^2 folded in twice), not a genuine "
+        "table value.",
+        fb_props->band_edge_photon_weight_lw,
+        RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR);
+
+  if (engine_rank == 0) {
+    message(
+        "Band-edge weights (redshift transfer across the 6/11.2/13.6 eV "
+        "band edges), IMF-integrated over [%.4g, %.4g] Msun at Z=%.4g: "
+        "lambda_E(PE)=%.5g, lambda_E(LW)=%.5g, lambda_N(LW)=%.5g",
+        (double)sm->imf.mass_min, (double)sm->imf.mass_max,
+        (double)exp10(log_z), fb_props->band_edge_weight_pe,
+        fb_props->band_edge_weight_lw, fb_props->band_edge_photon_weight_lw);
+    if (lambda_e_pe_minus_one > RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX)
+      message(
+          "WARNING: lambda_E(PE) - 1 = %.5g exceeds the observed grid "
+          "maximum %.1f; check the table and its unit conversion before "
+          "trusting this run's PE band-edge physics.",
+          lambda_e_pe_minus_one,
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX);
+    if (lambda_e_lw_minus_one > RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX)
+      message(
+          "WARNING: lambda_E(LW) - 1 = %.5g exceeds the observed grid "
+          "maximum %.1f; check the table and its unit conversion before "
+          "trusting this run's LW band-edge physics.",
+          lambda_e_lw_minus_one,
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX);
+    if (fb_props->band_edge_photon_weight_lw >
+        RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX)
+      message(
+          "WARNING: lambda_N(LW) = %.5g exceeds the observed grid maximum "
+          "%.1f; check the table and its unit conversion before trusting "
+          "this run's LW photon-number band-edge physics.",
+          fb_props->band_edge_photon_weight_lw,
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX);
+  }
+}
+
+/**
+ * @brief Report the H2 photodissociation coefficient and the mean
+ * Lyman-Werner photon energy of the radiation table.
+ *
+ * The mean LW photon energy is reported only: the IMF-integrated
  * Integrated_MeanPhotonEnergyLW up to mass_max, at the reference metallicity
- * for 2D tables. Left at 0 while radiation is inactive. Call for the main
- * stellar model only.
+ * for 2D tables. Nothing is reported while radiation is inactive. Call for the
+ * main stellar model only.
  *
  * @param rad The main stellar model's #radiation.
  * @param sm The main #stellar_model, for its IMF mass range.
@@ -48,36 +194,29 @@ double radiation_lw_photon_energy_cgs = 0.;
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                                         const struct stellar_model *sm) {
 
-  radiation_lw_photon_energy_cgs = 0.;
-
   if (!rad->is_active) return;
 
   if (engine_rank == 0)
     message(
         "H2 photodissociation sigma_H2/E_LW = %g cm^2 erg^-1, the "
-        "Sternberg-anchored constant the rate uses",
+        "Draine-field constant the rate uses",
         RADIATION_SIGMA_H2_OVER_E_LW_CGS);
 
   /* Mean over the IMF from mass_min up to mass_max. */
   const float log_m = log10f(sm->imf.mass_max);
-  const double E_LW_cgs =
-      rad->is_2d
-          ? radiation_get_mean_photon_energy_lw_from_integral_2d(
-                rad,
-                radiation_get_log_metallicity(
-                    RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY),
-                log_m)
-          : radiation_get_mean_photon_energy_lw_from_integral(rad, log_m);
+  const double E_LW_cgs = radiation_get_population_mean_photon_energy_lw(
+      rad,
+      radiation_get_log_metallicity(
+          RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY),
+      log_m);
 
   if (E_LW_cgs <= 0.) return;
-
-  radiation_lw_photon_energy_cgs = E_LW_cgs;
 
   if (engine_rank == 0)
     message(
         "Mean Lyman-Werner photon energy from the table = %g erg, reported "
         "only: no rate reads it",
-        radiation_lw_photon_energy_cgs);
+        E_LW_cgs);
 }
 
 /**
@@ -141,6 +280,17 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
   rad->with_ISRF = (char)radiation_selection_get_switch(
       params, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  rad->with_LW_population_dissociation = 0;
+  if (rad->with_ISRF) {
+    const int population = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_LW_population_dissociation", 1);
+    if (population != 0 && population != 1)
+      error(
+          "GEARFeedback:ISRF_LW_population_dissociation must be 0 or 1 (got "
+          "%d).",
+          population);
+    rad->with_LW_population_dissociation = (char)population;
+  }
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
@@ -227,6 +377,29 @@ void radiation_restore(struct radiation *rad, FILE *stream,
   message("Restoring GEAR radiation struct...");
 }
 
+/* The tables that exist in both a raw and an integrated version, in 1D and 2D
+   (the two share a union). Add a new table here when radiation_table_io.c
+   starts reading it. Teff has a raw table only and is freed apart. */
+#define RADIATION_TABLE_FIELDS(X) \
+  X(luminosities)                 \
+  X(dot_N_ion)                    \
+  X(dot_E_excess)                 \
+  X(l_pe)                         \
+  X(l_lw)                         \
+  X(l_lw_dissociating)            \
+  X(l_edge_pe)                    \
+  X(l_edge_lw)                    \
+  X(mean_photon_energy_lw)        \
+  X(mean_photon_energy_pe)
+
+#define RADIATION_FREE_1D(name)        \
+  interpolate_1d_free(&rad->raw.name); \
+  interpolate_1d_free(&rad->integrated.name);
+
+#define RADIATION_FREE_2D(name)             \
+  interpolate_2d_free(&rad->raw.name##_2d); \
+  interpolate_2d_free(&rad->integrated.name##_2d);
+
 /**
  * @brief Free the interpolation tables.
  *
@@ -237,41 +410,11 @@ void radiation_clean(struct radiation *rad) {
   /* is_2d selects the live union member, which must be freed with the
      matching interpolate_*d_free(). */
   if (rad->is_2d) {
-    interpolate_2d_free(&rad->raw.luminosities_2d);
-    interpolate_2d_free(&rad->raw.dot_N_ion_2d);
-    interpolate_2d_free(&rad->raw.dot_E_excess_2d);
+    RADIATION_TABLE_FIELDS(RADIATION_FREE_2D)
     interpolate_2d_free(&rad->raw.teff_2d);
-    interpolate_2d_free(&rad->raw.l_pe_2d);
-    interpolate_2d_free(&rad->raw.l_lw_2d);
-    interpolate_2d_free(&rad->raw.l_edge_pe_2d);
-    interpolate_2d_free(&rad->raw.l_edge_lw_2d);
-    interpolate_2d_free(&rad->raw.mean_photon_energy_lw_2d);
-    interpolate_2d_free(&rad->integrated.luminosities_2d);
-    interpolate_2d_free(&rad->integrated.dot_N_ion_2d);
-    interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
-    interpolate_2d_free(&rad->integrated.l_pe_2d);
-    interpolate_2d_free(&rad->integrated.l_lw_2d);
-    interpolate_2d_free(&rad->integrated.l_edge_pe_2d);
-    interpolate_2d_free(&rad->integrated.l_edge_lw_2d);
-    interpolate_2d_free(&rad->integrated.mean_photon_energy_lw_2d);
   } else {
-    interpolate_1d_free(&rad->raw.luminosities);
-    interpolate_1d_free(&rad->raw.dot_N_ion);
-    interpolate_1d_free(&rad->raw.dot_E_excess);
+    RADIATION_TABLE_FIELDS(RADIATION_FREE_1D)
     interpolate_1d_free(&rad->raw.teff);
-    interpolate_1d_free(&rad->raw.l_pe);
-    interpolate_1d_free(&rad->raw.l_lw);
-    interpolate_1d_free(&rad->raw.l_edge_pe);
-    interpolate_1d_free(&rad->raw.l_edge_lw);
-    interpolate_1d_free(&rad->raw.mean_photon_energy_lw);
-    interpolate_1d_free(&rad->integrated.luminosities);
-    interpolate_1d_free(&rad->integrated.dot_N_ion);
-    interpolate_1d_free(&rad->integrated.dot_E_excess);
-    interpolate_1d_free(&rad->integrated.l_pe);
-    interpolate_1d_free(&rad->integrated.l_lw);
-    interpolate_1d_free(&rad->integrated.l_edge_pe);
-    interpolate_1d_free(&rad->integrated.l_edge_lw);
-    interpolate_1d_free(&rad->integrated.mean_photon_energy_lw);
   }
 
   /* No 1D counterpart: always freed. */
@@ -294,6 +437,10 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->age_max_myr = 0.f;
   rad->with_ISRF = 0;
   rad->has_teff = 0;
+  rad->has_mean_photon_energy_pe = 0;
+  rad->with_LW_population_dissociation = 0;
+  rad->has_l_lw_dissociating = 0;
+  rad->lw_dissociating_factor_max = 1.f;
   for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++)
     rad->table_source[i][0] = '\0';
   rad->table_mass_min = 0.f;

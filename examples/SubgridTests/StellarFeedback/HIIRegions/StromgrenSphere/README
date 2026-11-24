@@ -1,10 +1,9 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle lies at the center.
 
-This example exists to exercise the model's own task-graph/rebuild-cadence behaviour (search-radius expansion,
-rebuild cadence, and their interaction), using the Spitzer curve as a reference shape. 
+A single star ionizes the gas around it and grows an HII region (a Stromgren sphere).
 
-`stromgren_analytic_check.py` compares the simulated HII region growth against the classical Spitzer (1978) D-type formula, which is known to over-predict the true late-phase solution (see `../Starbench/`'s README). `hii_anisotropy_check.py` additionally checks tagging isotropy (no octant of the region left un-ionized) under the `IONIZATION_FEEDBACK_DEBUG_NO_COOLING` build.
+`stromgren_analytic_check.py` compares the simulated HII region growth with the classical Spitzer (1978) D-type formula. It uses only the snapshots where the analytic radius is within the box half-width, and says so when none qualifies. `hii_anisotropy_check.py` additionally checks tagging isotropy (no octant of the region left un-ionized) under the `IONIZATION_FEEDBACK_DEBUG_NO_COOLING` build.
 
 Note `Stars:HII_radius_expansion_factor` and `Stars:HII_max_radius_expansion_tries` bound how fast the search radius can grow: at most a factor `radius_expansion_factor^max_radius_expansion_tries` per rebuild.
 
@@ -29,7 +28,7 @@ The run.sh script calls the `makeIC.py` script with default values. You can expe
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var, e.g. `gas_mass=0.01 ./run.sh` -- see `run.sh` for the full list.
+Override any parameter via the matching env var, e.g. `gas_mass=0.01 ./run.sh`. See `run.sh` for the full list.
 
 # Checking
 ```

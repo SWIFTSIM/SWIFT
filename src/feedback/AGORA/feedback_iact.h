@@ -158,46 +158,20 @@ runner_iact_nonsym_feedback_apply(
   timestep_sync_part(pj);
 }
 
-/**
- * @brief ISRF propagation (symmetric): no-op, this feedback model
- * does not track the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- * @param us Unit system.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct unit_system *us) {}
+struct radiation_packet_constants;
 
 /**
- * @brief ISRF propagation (non-symmetric): no-op, this feedback
- * model does not track the ISRF band fields.
+ * @brief The constants of the ISRF packet transport: none in this feedback
+ * model.
  *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- * @param us Unit system.
+ * @param fp The #feedback_props.
+ * @return NULL, since this model has no packet transport.
  */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct part *restrict pi,
-                                    const struct part *restrict pj,
-                                    const float a, const float H,
-                                    const struct unit_system *us) {}
+__attribute__((
+    always_inline)) INLINE static const struct radiation_packet_constants *
+feedback_get_radiation_packet_constants(const struct feedback_props *fp) {
+  return NULL;
+}
 
 /**
  * @brief `grad(u)` interaction (symmetric): no-op, this
@@ -211,11 +185,12 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param constants The #radiation_packet_constants.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H, const struct radiation_packet_constants *constants) {}
 
 /**
  * @brief `grad(u)` interaction (non-symmetric): no-op, this
@@ -229,18 +204,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param constants The #radiation_packet_constants.
+ * @param pj_active Is j active in this step?
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
-                                 const float hi, const float hj,
-                                 struct part *restrict pi,
-                                 struct part *restrict pj, const float a,
-                                 const float H) {}
+runner_iact_nonsym_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct radiation_packet_constants *constants,
+    const int pj_active) {}
 
 /**
- * @brief Negativity-triggered artificial-dissipation interaction (symmetric):
- * no-op, this feedback model does not track
- * the ISRF band fields.
+ * @brief Force-loop ISRF packet hop between two particles (symmetric).
+ * Nothing to do here.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -250,31 +226,37 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param constants The #radiation_packet_constants.
+ * @param book_i_to_j Book the share of i into j.
+ * @param book_j_to_i Book the share of j into i.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H, const struct radiation_packet_constants *constants,
+    const int book_i_to_j, const int book_j_to_i) {}
 
 /**
- * @brief Negativity-triggered artificial-dissipation interaction
- * (non-symmetric): no-op, this feedback model does not track
- * the ISRF band fields.
+ * @brief Force-loop ISRF packet hop from particle i into j (non-symmetric).
+ * Nothing to do here.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle (not updated).
+ * @param pi Sender.
+ * @param pj Receiver.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param constants The #radiation_packet_constants.
+ * @param book Book the share.
+ * @param reverse Book the outer part of the share of j into i.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct part *restrict pi,
-                                    struct part *restrict pj, const float a,
-                                    const float H) {}
+runner_iact_nonsym_isrf_packet_hop(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct radiation_packet_constants *constants,
+    const int book, const int reverse) {}
 
 #endif /* SWIFT_AGORA_FEEDBACK_IACT_H */

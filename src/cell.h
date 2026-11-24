@@ -1526,6 +1526,21 @@ __attribute__((always_inline)) INLINE static float cell_distance_outside_box(
 }
 
 /**
+ * @brief The distance by which a position may lie outside the box of a #cell
+ * without counting as outside.
+ *
+ * The edge of a cell is a sum of sub-cell widths and can lie beyond a
+ * particle placed on its face by a rounding error. The tolerance is 1e-6 cell
+ * widths. The drift and the debug checks of dx_outside_max share it.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static double cell_face_tolerance(
+    const struct cell *c) {
+  return 1e-6f * c->width[0];
+}
+
+/**
  * @brief The largest distance by which the gas of a #cell lies outside the
  * box of its leaf cell.
  *

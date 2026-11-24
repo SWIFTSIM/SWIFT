@@ -864,22 +864,15 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     gr_float *RT_heating_rate = (gr_float *)malloc(sizeof(gr_float));
     gr_float *RT_HI_ionization_rate = (gr_float *)malloc(sizeof(gr_float));
 
-    double heating_rate_cgs, HI_ionization_rate;
-    if (cooling_get_rate_coupled_RT_fields_subgrid(cooling, p, xp, time_units,
-                                                   &heating_rate_cgs,
-                                                   &HI_ionization_rate)) {
-      *RT_heating_rate = heating_rate_cgs;
-      *RT_HI_ionization_rate = HI_ionization_rate;
-    } else {
-      /* Fall back to a single global scalar from the YAML parameter file.
-         Assumed already normalized per nHI, as provided via the YAML
-         parameter. */
-      *RT_heating_rate = cooling->RT_heating_rate;
-
-      *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
-      /* Grackle wants it in 1/internal_time_units */
-      *RT_HI_ionization_rate /= (1. / time_units);
-    }
+    /* A tagged particle gets its own rates. Any other particle gets the
+       single global scalars from the YAML parameter file, assumed already
+       normalized per nHI. */
+    double heating_rate, HI_ionization_rate;
+    cooling_resolve_RT_rates_subgrid(cooling, p, xp, cooling->RT_heating_rate,
+                                     cooling->RT_HI_ionization_rate, time_units,
+                                     &heating_rate, &HI_ionization_rate);
+    *RT_heating_rate = heating_rate;
+    *RT_HI_ionization_rate = HI_ionization_rate;
     data->RT_heating_rate = RT_heating_rate;
     data->RT_HI_ionization_rate = RT_HI_ionization_rate;
 
@@ -897,22 +890,14 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     *RT_HeII_ionization_rate /= (1. / time_units);
     data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
 
-    /* H2 dissociation rate: local Lyman-Werner/PE feedback's own
-       per-particle rate (cooling_get_LW_dissociation_rate_subgrid,
-       already internal 1/time) takes priority over the single global
-       YAML scalar, mirroring RT_HI_ionization_rate's own local-vs-global
-       fallback above. */
+    /* H2 dissociation rate: the local Lyman-Werner/PE rate
+       (cooling_get_LW_dissociation_rate_subgrid, internal 1/time) when the
+       run has that field, zero included; else the single global YAML
+       scalar. */
     gr_float *RT_H2_dissociation_rate = (gr_float *)malloc(sizeof(gr_float));
-    const double LW_dissociation_rate =
-        cooling_get_LW_dissociation_rate_subgrid(phys_const, us, cosmo, cooling,
-                                                 p);
-    if (LW_dissociation_rate != 0.) {
-      *RT_H2_dissociation_rate = LW_dissociation_rate;
-    } else {
-      *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
-      /* Grackle wants it in 1/internal_time_units */
-      *RT_H2_dissociation_rate /= (1. / time_units);
-    }
+    *RT_H2_dissociation_rate = cooling_resolve_LW_dissociation_rate_subgrid(
+        phys_const, us, cosmo, cooling, p, cooling->RT_H2_dissociation_rate,
+        time_units);
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
 
   } else {
@@ -1098,8 +1083,7 @@ static gr_float cooling_new_energy_or_keep_previous(
   /* Do subgrid physics before feeding grackle with the gas properties. */
   float u_ionized;
   const int ionized_this_step = cooling_update_part_subgrid(
-      phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
-      dt_therm, time, &u_ionized);
+      phys_const, us, cosmo, hydro_props, cooling, p, xp, time, &u_ionized);
 
   /* A particle held at the subgrid-ionized floor this step must not also
      go through Grackle's own chemistry/cooling solve: Grackle's ODE
@@ -1124,8 +1108,7 @@ static gr_float cooling_new_energy_or_keep_previous(
   {
     float u_o;
     if (cooling_debug_fix_neutral_temperature_subgrid(
-            phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
-            &u_o)) {
+            phys_const, us, cosmo, hydro_props, cooling, p, xp, &u_o)) {
       /* Species are untouched here, only u changes, but this path replaces
          Grackle's solve for every non-ionized particle: both caches are
          written here or they are never written at all in this
@@ -1812,11 +1795,7 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   chemistry->three_body_rate = cooling->H2_three_body_rate;
   chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
   chemistry->cie_cooling = cooling->H2_cie_cooling;
-  chemistry->h2_on_dust = cooling->H2_on_dust;
-#ifdef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
-  chemistry->H2_photodissociation_heating =
-      cooling->H2_photodissociation_heating;
-#endif
+  chemistry->h2_on_dust = max(cooling->H2_on_dust, 0);
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   if (cooling->local_dust_to_gas_ratio > 0)

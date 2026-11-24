@@ -386,6 +386,7 @@ INLINE static void star_formation_copy_properties(
     star_formation_separate_particles(e, p, xp, sp, displacement);
   } else {
     sp->mass = mass_gas;
+    feedback_book_removed_gas_to_spart(p, sp);
   }
   sp->sf_data.birth_mass = sp->mass;
 

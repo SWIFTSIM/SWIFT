@@ -1,0 +1,4462 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2026 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#include <config.h>
+
+/* This object's header. */
+#include "radiation_packet.h"
+
+/* Local includes. */
+#include "dimension.h"
+#include "engine.h"
+#include "hydro.h"
+#include "kernel_hydro.h"
+#include "parser.h"
+#include "random.h"
+#include "restart.h"
+#include "star_gas_weights.h"
+#include "threadpool.h"
+
+#if defined(HAVE_CHEALPIX)
+#include <chealpix.h>
+#endif
+
+#include <float.h>
+#include <math.h>
+#include <stdint.h>
+#include <string.h>
+
+/* Constants. */
+
+/*! Largest share of the placed light that may land in the far cells before
+    #radiation_packet_far_share_report warns. Light in the far cells leaves
+    late, by up to `W - 1 = 2^RADIATION_PACKET_FAR_SCALE - 1` receiver steps and
+    by half of that on average, so a far share `f` slows the light by about `f
+    (W - 1) / (2 R)`, `R` the number of receiver steps of a hop. `R` is a
+    property of the run, not of the code: the limit is chosen for `R` between 2
+    and 3 (3 is the bulk of a hop at the step bound of the `fixed` mode), where
+    `f = 0.03` and `W = 8` slow the light by 0.035 to 0.053. */
+#define RADIATION_PACKET_FAR_SHARE_LIMIT 0.03
+
+/*! Smallest number of placements before the cumulative far share can warn.
+    A share `f` measured from `n` placements has a relative error of about `1 /
+    sqrt(f n)`; `n = 9 / f` makes it a third. The share is weighted by energy,
+    so a few large placements can dominate it: 300 is a floor on the noise,
+    not an effective sample size. */
+#define RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS \
+  ((int)(9. / RADIATION_PACKET_FAR_SHARE_LIMIT))
+
+/*! Sums of #radiation_packet_placed: for the receivers with a known step, the
+    light placed in all, the light placed in the far cells and the number of
+    placements; then the same three for the receivers without one. */
+enum radiation_packet_placed_sum {
+  rpp_all,
+  rpp_far,
+  rpp_placements,
+  rpp_unknown_all,
+  rpp_unknown_far,
+  rpp_unknown_placements,
+  rpp_sums
+};
+#define RADIATION_PACKET_PLACED_SUMS rpp_sums
+
+/*! What a placement places. A new share of a receiver with a known step, on a
+    lattice that is final, counts in the far share
+    (#radiation_packet_far_share_report). A new share of a receiver without a
+    known step is placed again when its step is set: it counts apart. Light that
+    waited and is placed again after a change of the lattice does not count. */
+enum radiation_packet_placing { rpl_again, rpl_known_step, rpl_unknown_step };
+
+/*! Largest number of threads that place packet light. */
+#define RADIATION_PACKET_MAX_THREADS 1024
+
+/*! Number of particles per chunk of the far stock sum. Fixed, so that the
+ * partial sums and their order do not depend on the number of threads. */
+#define RADIATION_PACKET_FAR_STOCK_CHUNK 8192
+
+/*! Equal sub-steps over which a far cell of a particle with a known step keeps
+    the arrival of its light. */
+#define RADIATION_PACKET_FAR_SUBSTEPS 8
+
+#if RADIATION_PACKET_FAR_SUBSTEPS != 8
+#error "The packing of the far shape is written for 8 sub-steps."
+#endif
+
+/*! Levels of the stored arrived fraction at the end of each sub-step but the
+    last. The shape is stored as its rank among the non-decreasing sequences of
+    7 fractions, `C(levels + 7, 7)` of them, in 59 bits. */
+#define RADIATION_PACKET_FAR_LEVELS 1000
+
+/*! Number of bits of the packed shape: the 27 low bits of `far_first_below`
+    and the 32 of `far_last_below`. The ranks of 1000 levels use 35 per cent of
+    the range. */
+#define RADIATION_PACKET_FAR_PACK_BITS 59
+
+/*! Number of low bits of the rank of a shape that `far_first_below` holds, its
+    mask, and the tag in the bits above: sign set, top four exponent bits
+    zero. */
+#define RADIATION_PACKET_FAR_RANK_BITS 27
+#define RADIATION_PACKET_FAR_RANK_MASK 0x7ffffffu
+#define RADIATION_PACKET_FAR_SHAPE_TAG 0x10u
+
+/*! Number of shapes of a far cell, `C(levels + 7, 7)`, as a 128-bit integer for
+    the compile-time check that they fit in #RADIATION_PACKET_FAR_PACK_BITS. */
+#define RADIATION_PACKET_FAR_RANKS                                         \
+  ((unsigned __int128)(RADIATION_PACKET_FAR_LEVELS + 7) *                  \
+   (RADIATION_PACKET_FAR_LEVELS + 6) * (RADIATION_PACKET_FAR_LEVELS + 5) * \
+   (RADIATION_PACKET_FAR_LEVELS + 4) * (RADIATION_PACKET_FAR_LEVELS + 3) * \
+   (RADIATION_PACKET_FAR_LEVELS + 2) * (RADIATION_PACKET_FAR_LEVELS + 1) / \
+   5040)
+_Static_assert(RADIATION_PACKET_FAR_RANKS <=
+                   ((unsigned __int128)1 << RADIATION_PACKET_FAR_PACK_BITS),
+               "The far shapes do not fit in the bits of their packing.");
+
+/*! Largest number of records of a slot that #radiation_packet_regrid places
+    again: the near bins and the sub-steps of the far cells. */
+#define RADIATION_PACKET_RECORDS \
+  (RADIATION_PACKET_BINS +       \
+   RADIATION_PACKET_FAR_CELLS * RADIATION_PACKET_FAR_SUBSTEPS)
+
+/*! Largest width of a far cell, in integer times. */
+#define RADIATION_PACKET_MAX_FAR_WIDTH ((integertime_t)1 << 60)
+
+/*! Largest far scale: the shift `s + 1` stays below the width of an integer
+    time. */
+#define RADIATION_PACKET_MAX_FAR_SCALE (8 * (int)sizeof(integertime_t) - 2)
+
+/*! Fraction of the light of a hop that the near arrival bins must hold: the
+    bulk of a hop. */
+#define RADIATION_PACKET_BULK_FRACTION 0.97
+
+/*! Distance to the border of its slot above which a mean origin direction
+    cannot change slot by rounding to float (debug check). */
+#define RADIATION_PACKET_BORDER_TOLERANCE 1e-5
+
+/*! Number of arrival containers of a slot: the near bins, then the far cells.
+ */
+#define RADIATION_PACKET_PIECES \
+  (RADIATION_PACKET_BINS + RADIATION_PACKET_FAR_CELLS)
+
+/* State set at start-up and counters of rare events. */
+
+/* The periodic box, set at start-up by radiation_packet_set_box(). */
+static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
+static int radiation_packet_box_periodic = 0;
+static int radiation_packet_box_is_set = 0;
+
+/* Rounding scale of the reach margin per unit of 1 / h, set at every rebuild by
+ * radiation_packet_set_frame_width(). 0 only before the first refresh. */
+static float radiation_packet_guard_scale = 0.f;
+
+/* The redshift constants, set at start-up by radiation_packet_set_redshift().
+ */
+static double radiation_packet_speed_of_light = 0.0;
+static double radiation_packet_weight_energy[ISRF_OPERATOR_COUNT] = {1.0, 1.0};
+static double radiation_packet_weight_photon_lw = 0.0;
+static int radiation_packet_redshift_is_set = 0;
+
+/* The speed limit of the light of a share, set once at start-up by
+   radiation_packet_set_light_speed(). */
+static double radiation_packet_arrival_per_length = 0.0;
+static double radiation_packet_limit_speed = 0.0;
+static int radiation_packet_ticks_are_ln_a = 0;
+
+/*! The rare events counted on this rank since the start of this run segment
+    (reset at a restart): the far cells of a particle became wider, a piece of
+    light fell beyond the widest far cells, a delivery went to a receiver that
+    moves away faster than the clamp allows. One atomic operation each. */
+enum radiation_packet_event {
+  rpe_coarsening,
+  rpe_overflow,
+  rpe_clamp,
+  rpe_count
+};
+static long long radiation_packet_event_count[rpe_count] = {0, 0, 0};
+
+/**
+ * @brief Give the star emission the box, to wrap star-gas vectors.
+ *
+ * @param dim The box size.
+ * @param periodic Is the box periodic?
+ */
+void radiation_packet_set_box(const double dim[3], const int periodic) {
+  for (int k = 0; k < 3; k++) radiation_packet_box_dim[k] = dim[k];
+  radiation_packet_box_periodic = periodic;
+  radiation_packet_box_is_set = 1;
+}
+
+/**
+ * @brief The periodic image of a separation that the pair loop selected.
+ *
+ * @param d The separation along an axis, from the absolute positions.
+ * @param dx The loop's separation along that axis, which picks the image.
+ * @param k The axis.
+ * @return The separation of the image nearest to the loop's.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_packet_periodic_image(const double d, const float dx, const int k) {
+  if (radiation_packet_box_periodic) {
+    const double wrap = d - (double)dx;
+    if (wrap > 0.5 * radiation_packet_box_dim[k])
+      return d - radiation_packet_box_dim[k];
+    else if (wrap < -0.5 * radiation_packet_box_dim[k])
+      return d + radiation_packet_box_dim[k];
+  }
+  return d;
+}
+
+/**
+ * @brief Coordinate of a direction on one axis of the octant frame.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame.
+ * @param k The axis of the frame.
+ * @return The coordinate, in double.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_packet_frame_coordinate(const float frame[9],
+                                  const float direction[3], const int k) {
+  return (double)frame[3 * k + 0] * (double)direction[0] +
+         (double)frame[3 * k + 1] * (double)direction[1] +
+         (double)frame[3 * k + 2] * (double)direction[2];
+}
+
+/**
+ * @brief Rotation matrix of a unit quaternion drawn from three uniform random
+ * numbers (Shoemake 1992), a uniform random rotation.
+ *
+ * @param u1 Uniform random number in [0, 1).
+ * @param u2 Uniform random number in [0, 1).
+ * @param u3 Uniform random number in [0, 1).
+ * @param Q (return) The matrix.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_random_rotation(const double u1, const double u2,
+                                 const double u3, double Q[3][3]) {
+  const double a = sqrt(1.0 - u1);
+  const double b = sqrt(u1);
+  const double qx = a * sin(2.0 * M_PI * u2);
+  const double qy = a * cos(2.0 * M_PI * u2);
+  const double qz = b * sin(2.0 * M_PI * u3);
+  const double qw = b * cos(2.0 * M_PI * u3);
+
+  Q[0][0] = 1.0 - 2.0 * (qy * qy + qz * qz);
+  Q[0][1] = 2.0 * (qx * qy - qz * qw);
+  Q[0][2] = 2.0 * (qx * qz + qy * qw);
+  Q[1][0] = 2.0 * (qx * qy + qz * qw);
+  Q[1][1] = 1.0 - 2.0 * (qx * qx + qz * qz);
+  Q[1][2] = 2.0 * (qy * qz - qx * qw);
+  Q[2][0] = 2.0 * (qx * qz - qy * qw);
+  Q[2][1] = 2.0 * (qy * qz + qx * qw);
+  Q[2][2] = 1.0 - 2.0 * (qx * qx + qy * qy);
+}
+
+/**
+ * @brief Give the reach margin the widest cell frame of the pair loops.
+ *
+ * The loops form `dx` from positions measured from the corner of a cell, up to
+ * `2 W` away for the first particle and `W` for the second, plus the drift
+ * since the last rebuild. The rebuild criterion limits the sum of the two
+ * drifts to `W - R` (cell.h), so the sum `|pi| + |pj|` of an axis is at most
+ * `4 W - R`, bounded here by `4 W`. The bound needs the drift of a cell to be
+ * limited by a hydro pair task. A gas cell whose 26 neighbours are all empty
+ * has no pair task (engine_maketasks.c), so no drift check bounds it there.
+ * That case is rare. The relative rounding error of `r2` at the edge
+ * `R = kernel_gamma h` is at most `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see
+ * #radiation_packet_reach_guard.
+ * The cell width changes at every regrid: #radiation_packet_refresh_frame_width
+ * is called at every rebuild.
+ *
+ * @param width Largest width of a top-level cell, comoving. 0 or less
+ * leaves the margin at #RADIATION_PACKET_REACH_GUARD.
+ */
+void radiation_packet_set_frame_width(const double width) {
+  radiation_packet_guard_scale =
+      width > 0. ? (float)(RADIATION_PACKET_REACH_GUARD_PER_SUPPORT *
+                           RADIATION_PACKET_FRAME_WIDTHS * width / kernel_gamma)
+                 : 0.f;
+}
+
+/**
+ * @brief Give the redshift of a share the speed of light and the band-edge
+ * weights.
+ *
+ * @param speed_of_light The speed of light, internal units.
+ * @param weight_pe #feedback_props.band_edge_weight_pe.
+ * @param weight_lw #feedback_props.band_edge_weight_lw.
+ * @param photon_weight_lw #feedback_props.band_edge_photon_weight_lw.
+ */
+void radiation_packet_set_redshift(const double speed_of_light,
+                                   const double weight_pe,
+                                   const double weight_lw,
+                                   const double photon_weight_lw) {
+  radiation_packet_speed_of_light = speed_of_light;
+  radiation_packet_weight_energy[ISRF_OPERATOR_PE] = weight_pe;
+  radiation_packet_weight_energy[ISRF_OPERATOR_LW] = weight_lw;
+  radiation_packet_weight_photon_lw = photon_weight_lw;
+  radiation_packet_redshift_is_set = 1;
+}
+
+/*! Count one widening of the far cells of a particle. */
+static void radiation_packet_count_coarsening(void) {
+  __sync_fetch_and_add(&radiation_packet_event_count[rpe_coarsening], 1);
+}
+
+/*! Count one piece of light that fell beyond the widest far cells. */
+static void radiation_packet_count_overflow(void) {
+  __sync_fetch_and_add(&radiation_packet_event_count[rpe_overflow], 1);
+}
+
+/*! Count one delivery to a receiver that moves away faster than the clamp
+    allows. */
+static void radiation_packet_count_clamp(void) {
+  __sync_fetch_and_add(&radiation_packet_event_count[rpe_clamp], 1);
+}
+
+/**
+ * @brief Sum the event counts over the ranks. The result is valid on rank 0
+ * only. Collective.
+ *
+ * @param e The #engine.
+ * @param counts (in, out) The counts of this rank, indexed by
+ * #radiation_packet_event.
+ */
+static void radiation_packet_reduce_event_counts(const struct engine *e,
+                                                 long long counts[rpe_count]) {
+#ifdef WITH_MPI
+  long long total[rpe_count];
+  MPI_Reduce(counts, total, rpe_count, MPI_LONG_LONG, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  if (e->nodeID == 0)
+    for (int k = 0; k < rpe_count; k++) counts[k] = total[k];
+#endif
+}
+
+/*! Energy of the new light placed in the arrival bins and cells, in all and in
+    the far cells, and the number of placements, since the last
+    #radiation_packet_far_share_report. One record per thread, on its own cache
+    line, so that the placement takes no atomic operation. Only the light of a
+    new share counts. The light of a receiver with a known step is the first
+    triple. The light of a receiver without a known step is placed again when
+    its step is set: it is the second triple, apart, so that it does not enter
+    the first share. The light that a change of the lattice places again is not
+    new and is in neither. */
+struct radiation_packet_placed {
+  double all;
+  double far;
+  double count;
+  double unknown_all;
+  double unknown_far;
+  double unknown_count;
+  char pad[16];
+} __attribute__((aligned(64)));
+
+static struct radiation_packet_placed
+    radiation_packet_placed_threads[RADIATION_PACKET_MAX_THREADS];
+static int radiation_packet_placed_registered = 0;
+static _Thread_local struct radiation_packet_placed
+    *radiation_packet_placed_mine = NULL;
+
+/*! The same summed over the steps on rank 0, and whether the warning was
+    printed. The sums start with the run or with its last restart: they are
+    not in the restart file. */
+static double radiation_packet_placed_total[RADIATION_PACKET_PLACED_SUMS];
+static double radiation_packet_placed_window[RADIATION_PACKET_PLACED_SUMS];
+static int radiation_packet_far_share_warned = 0;
+
+/*! The record of the calling thread, registered at its first use. */
+static struct radiation_packet_placed *radiation_packet_placed_record(void) {
+  if (radiation_packet_placed_mine == NULL) {
+    const int k = __atomic_fetch_add(&radiation_packet_placed_registered, 1,
+                                     __ATOMIC_RELAXED);
+    if (k >= RADIATION_PACKET_MAX_THREADS)
+      error("More than %d threads place packet light.",
+            RADIATION_PACKET_MAX_THREADS);
+    radiation_packet_placed_mine = &radiation_packet_placed_threads[k];
+  }
+  return radiation_packet_placed_mine;
+}
+
+/*! Counters of the arrival containers, per step and since the start of this
+    run segment. */
+enum radiation_packet_diag {
+  rpd_placed_new,
+  rpd_placed_again,
+  rpd_overflow_inside_new,
+  rpd_overflow_inside_again,
+  rpd_overflow_after_end_new,
+  rpd_overflow_after_end_again,
+  rpd_overflow_before_end_new,
+  rpd_overflow_before_end_again,
+  rpd_past_end_taken,
+  rpd_past_end_due,
+  rpd_overflow_released,
+  rpd_scale_at_limit,
+  rpd_overflow_waiting,
+  rpd_far_waiting,
+  rpd_near_waiting,
+  rpd_emitted,
+  rpd_count
+};
+
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+static const char *radiation_packet_diag_name[rpd_count] = {
+    "placed_new",         "placed_again",
+    "ovf_inside_new",     "ovf_inside_again",
+    "ovf_after_end_new",  "ovf_after_end_again",
+    "ovf_before_end_new", "ovf_before_end_again",
+    "past_end_taken",     "past_end_due",
+    "ovf_released",       "scale_at_limit",
+    "ovf_waiting",        "far_waiting",
+    "near_waiting",       "emitted"};
+static long long radiation_packet_diag_n[2][rpd_count];
+static double radiation_packet_diag_e[2][rpd_count];
+static double radiation_packet_diag_delay[2];
+
+/*! Is the current placing a re-placement of waiting light? */
+static _Thread_local int radiation_packet_diag_again = 0;
+
+/**
+ * @brief Say whether the placing of this thread is a re-placement of waiting
+ * light.
+ *
+ * @param again Is it?
+ */
+static void radiation_packet_diag_set_again(const int again) {
+  radiation_packet_diag_again = again;
+}
+
+/**
+ * @brief Add to a double with an atomic operation.
+ *
+ * @param x The sum.
+ * @param v The term.
+ */
+static void radiation_packet_diag_add_double(double *x, const double v) {
+  double old;
+  double sum;
+  __atomic_load(x, &old, __ATOMIC_RELAXED);
+  do {
+    sum = old + v;
+  } while (!__atomic_compare_exchange(x, &old, &sum, 0, __ATOMIC_RELAXED,
+                                      __ATOMIC_RELAXED));
+}
+
+/**
+ * @brief Sum a record energy over the bands.
+ *
+ * @param e The energy of each band.
+ */
+static double radiation_packet_diag_sum(const float e[ISRF_OPERATOR_COUNT]) {
+  double sum = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) sum += (double)e[b];
+  return sum;
+}
+
+/**
+ * @brief Count one event of a kind and add its energy.
+ *
+ * @param k The kind of event.
+ * @param energy The energy of the event.
+ */
+static void radiation_packet_diag(const enum radiation_packet_diag k,
+                                  const double energy) {
+  __sync_fetch_and_add(&radiation_packet_diag_n[0][k], 1);
+  radiation_packet_diag_add_double(&radiation_packet_diag_e[0][k], energy);
+}
+
+/**
+ * @brief Count the release of light that had no arrival time, and its delay.
+ *
+ * @param energy Energy released.
+ * @param now Time of the release.
+ * @param end End of the cell.
+ * @param old_width Width of the near bins of the previous step.
+ */
+static void radiation_packet_diag_released(const double energy,
+                                           const double now, const double end,
+                                           const integertime_t old_width) {
+  radiation_packet_diag(rpd_overflow_released, energy);
+  radiation_packet_diag_add_double(&radiation_packet_diag_delay[0],
+                                   energy * (now - end) / (double)old_width);
+}
+#else
+INLINE static void radiation_packet_diag_set_again(const int again) {}
+
+INLINE static double radiation_packet_diag_sum(
+    const float e[ISRF_OPERATOR_COUNT]) {
+  return 0.;
+}
+
+INLINE static void radiation_packet_diag(const enum radiation_packet_diag k,
+                                         const double energy) {}
+
+INLINE static void radiation_packet_diag_released(
+    const double energy, const double now, const double end,
+    const integertime_t old_width) {}
+#endif
+
+/**
+ * @brief Limit the speed of the light of a share, or lift the limit.
+ *
+ * A share booked over the physical path `L` arrives `L / limit_speed` after
+ * its sender's arrival time. That time is counted in integer times: a tick is
+ * `time_base` in a static box and a step of `ln a` in a cosmological one,
+ * where the delay is `H L / limit_speed` ticks of `ln a`, the rate of the
+ * start of the hop.
+ *
+ * @param limit_speed The limit speed in internal units. 0 or less lifts the
+ * limit.
+ * @param time_base Length of one integer time, in time units (static) or in
+ * `ln a` (cosmological).
+ * @param cosmological Are the integer times steps of `ln a`?
+ */
+void radiation_packet_set_light_speed(const double limit_speed,
+                                      const double time_base,
+                                      const int cosmological) {
+  radiation_packet_limit_speed = limit_speed > 0.0 ? limit_speed : 0.0;
+  radiation_packet_arrival_per_length =
+      limit_speed > 0.0 ? 1.0 / (limit_speed * time_base) : 0.0;
+  radiation_packet_ticks_are_ln_a = cosmological;
+}
+
+/**
+ * @brief Time, in integer times, that the light needs for a path at the limit
+ * speed.
+ *
+ * In a cosmological run the delay uses the Hubble rate at the start of the
+ * hop. With a falling rate (`q > 0`) the true delay in `ln a` is a little
+ * shorter and the share arrives late by a second-order term. In an
+ * accelerating phase (`q < 0`) the rate grows, the true delay is longer, and
+ * the share arrives early by the term `zeta^2 q / 2` of `ln a`, with
+ * `zeta = H path / c`. It is negligible for a hop of a few smoothing lengths
+ * (`zeta` of order 1e-4 or less).
+ *
+ * @param path_phys Physical length of the path.
+ * @param H Current Hubble rate. Read only in a cosmological run.
+ * @param constants The #radiation_packet_constants.
+ * @return The delay, 0 if the speed is not limited.
+ */
+double radiation_packet_arrival_delay(
+    const double path_phys, const double H,
+    const struct radiation_packet_constants *constants) {
+  if (!constants->light_speed_limited) return 0.0;
+  return path_phys * radiation_packet_arrival_per_length *
+         (radiation_packet_ticks_are_ln_a ? H : 1.0);
+}
+
+/**
+ * @brief Light time of a path to a receiver that moves away from the sender.
+ *
+ * The offset to the origin and the arrival time are fixed at the delivery.
+ * A receiver that moves away at the speed `u` along the path is reached by
+ * the front at the speed `v - u`, so the delay is the one of
+ * #radiation_packet_arrival_delay times `v / (v - u)`. A receiver that moves
+ * towards the sender is treated as at rest. The factor is limited to
+ * #RADIATION_PACKET_RECEDING_MAX_FACTOR: when the receiver moves away faster
+ * than the fraction 1 - 1 / factor of `v`, the light is delivered at that
+ * delay, which is earlier than the front reaches the receiver in the frame of
+ * the origin. The limit applies in the gas frame. Each such delivery is
+ * counted and reported by #radiation_packet_step_diagnostics.
+ *
+ * @param path_phys Physical length of the path.
+ * @param H Current Hubble rate. Read only in a cosmological run.
+ * @param closing_speed Physical speed of the receiver away from the sender,
+ * along the path. Negative values are taken as 0.
+ * @param constants The #radiation_packet_constants.
+ * @return The delay, 0 if the speed is not limited.
+ */
+double radiation_packet_arrival_delay_receding(
+    const double path_phys, const double H, const double closing_speed,
+    const struct radiation_packet_constants *constants) {
+  const double base = radiation_packet_arrival_delay(path_phys, H, constants);
+  if (!(closing_speed > 0.0)) return base;
+
+  const double v = radiation_packet_limit_speed;
+  if (v - closing_speed < (1. / RADIATION_PACKET_RECEDING_MAX_FACTOR) * v) {
+    radiation_packet_count_clamp();
+    return base * RADIATION_PACKET_RECEDING_MAX_FACTOR;
+  }
+
+  return base * v / (v - closing_speed);
+}
+
+/**
+ * @brief Give the reach margin the cell width of the current top-level grid.
+ * Called at every rebuild, because a regrid changes the width.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_refresh_frame_width(const struct engine *e) {
+  const struct space *s = e->s;
+  radiation_packet_set_frame_width(
+      fmax(s->width[0], fmax(s->width[1], s->width[2])));
+}
+
+/**
+ * @brief Report the widest cell frame over the smallest kernel support, and
+ * warn on rank 0 if the reach margin is capped.
+ *
+ * The ratio is printed only when the engine is verbose. The reduction runs on
+ * every rank.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_report_frame_width(const struct engine *e) {
+  const struct space *s = e->s;
+
+  float h_min = FLT_MAX;
+  for (size_t i = 0; i < s->nr_parts; i++) {
+    const struct part *p = &s->parts[i];
+    if (p->time_bin != time_bin_inhibited && p->h > 0.f && p->h < h_min)
+      h_min = p->h;
+  }
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &h_min, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+#endif
+
+  if (h_min == FLT_MAX || e->nodeID != 0) return;
+
+  const double width = fmax(s->width[0], fmax(s->width[1], s->width[2]));
+  const double ratio = width / (kernel_gamma * h_min);
+  const float margin =
+      RADIATION_PACKET_REACH_GUARD + radiation_packet_guard_scale / h_min;
+
+  if (e->verbose)
+    message(
+        "Widest cell frame over the smallest kernel support: %.3g. Reach "
+        "margin there: %.3g.",
+        ratio, (double)fminf(0.5f, margin));
+
+  if (margin >= 0.5f)
+    message(
+        "WARNING: the reach margin is capped at 0.5 for the smallest kernel "
+        "support. Its float rounding is no longer covered.");
+}
+
+/**
+ * @brief Number of near arrival bins that light needs on a hop.
+ *
+ * The light of a hop arrives `r / (v dt_r) + s` receiver steps after the
+ * departure of the sender: the hop of length `r h_r` takes `r / q` receiver
+ * steps, and a sender `s` times coarser than the receiver spreads its light
+ * over `s` more, `s` being @p step_ratio.
+ *
+ * @param reach Length of the hop over the smoothing length of the receiver.
+ * @param q Distance that the light covers in one receiver step, over the
+ * smoothing length of the receiver.
+ * @param step_ratio Step ratio of the sender to the receiver, at least 1.
+ * @return The number of bins.
+ */
+int radiation_packet_bin_demand(const double reach, const double q,
+                                const int step_ratio) {
+  return (int)ceil(reach / q) + step_ratio;
+}
+
+/**
+ * @brief Report the near arrival bins that the configured light speed needs.
+ *
+ * Only the `fixed` mode bounds `q`, by its time step margin `f_dt`, so the
+ * bound is the one case known before the run: a receiver at its step bound
+ * has `q = f_dt`, and a shorter step has a smaller `q` and a larger demand.
+ * The line is printed with verbose on rank 0, the warning always, both once
+ * even if the start-up is called twice. No collective operation.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_report_bin_demand(const struct engine *e) {
+  const struct feedback_props *fp = e->feedback_props;
+  static int reported = 0;
+  if (e->nodeID != 0 ||
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_fixed || reported)
+    return;
+  reported = 1;
+
+  const double q = fp->ISRF_packet_light_speed_time_step_margin;
+  if (!(q > 0.)) return;
+
+  const int s_max = 1 << time_bin_neighbour_max_delta_bin;
+  const int bulk =
+      radiation_packet_bin_demand(RADIATION_PACKET_BULK_FRACTION, q, 1);
+  const int bulk_coarse =
+      radiation_packet_bin_demand(RADIATION_PACKET_BULK_FRACTION, q, s_max);
+
+  if (e->verbose)
+    message(
+        "ISRF packet near arrival bins: %d configured. A receiver at its step "
+        "bound (q = %.3g) needs %d for the bulk of the light and %d for the "
+        "kernel edge from a sender of the same step, %d and %d from a sender "
+        "%d times coarser; a shorter step needs more.",
+        RADIATION_PACKET_BINS, q, bulk,
+        radiation_packet_bin_demand(kernel_gamma, q, 1), bulk_coarse,
+        radiation_packet_bin_demand(kernel_gamma, q, s_max), s_max);
+
+  if (bulk_coarse > RADIATION_PACKET_BINS)
+    message(
+        "WARNING: the bulk of the light of a sender %d times coarser than the "
+        "receiver needs %d near arrival bins at the step bound, but %d are "
+        "configured (RADIATION_PACKET_BINS). The surplus waits in the far "
+        "cells and leaves late.",
+        s_max, bulk_coarse, RADIATION_PACKET_BINS);
+}
+
+/**
+ * @brief Sum the placed light of the last step over the threads and the ranks.
+ *
+ * Collective. The result is valid on rank 0 only.
+ *
+ * @param e The #engine.
+ * @param step (out) Light placed in all, light placed in the far cells, number
+ * of placements, then the same three for the receivers without a known step.
+ */
+static void radiation_packet_placed_collect(
+    const struct engine *e, double step[RADIATION_PACKET_PLACED_SUMS]) {
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++) step[k] = 0.;
+
+  const int n = radiation_packet_placed_registered;
+  for (int k = 0; k < n; k++) {
+    struct radiation_packet_placed *t = &radiation_packet_placed_threads[k];
+    step[rpp_all] += t->all;
+    step[rpp_far] += t->far;
+    step[rpp_placements] += t->count;
+    step[rpp_unknown_all] += t->unknown_all;
+    step[rpp_unknown_far] += t->unknown_far;
+    step[rpp_unknown_placements] += t->unknown_count;
+    t->all = 0.;
+    t->far = 0.;
+    t->count = 0.;
+    t->unknown_all = 0.;
+    t->unknown_far = 0.;
+    t->unknown_count = 0.;
+  }
+
+#ifdef WITH_MPI
+  double sum[RADIATION_PACKET_PLACED_SUMS];
+  MPI_Reduce(step, sum, RADIATION_PACKET_PLACED_SUMS, MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  if (e->nodeID == 0)
+    for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++) step[k] = sum[k];
+#endif
+}
+
+/**
+ * @brief Is the speed of the light of a share limited in this run?
+ *
+ * @param e The #engine.
+ * @return 1 if the light speed is limited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_packet_engine_light_speed_limited(const struct engine *e) {
+  return e->feedback_props != NULL &&
+         e->feedback_props->ISRF_packet_constants.light_speed_limited;
+}
+
+/**
+ * @brief Warn once if too much of the packet light lands in the far cells.
+ *
+ * Adds the new light placed in the arrival bins and cells during the last step
+ * to the sums of the run, and warns once when the share of the sums that went
+ * to the far cells exceeds #RADIATION_PACKET_FAR_SHARE_LIMIT after at least
+ * #RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS placements. The sums start with
+ * the run or with its last restart. Collective: called by every rank from
+ * engine_step(), when no task runs. Does nothing without a light speed limit,
+ * on every rank alike.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_far_share_report(const struct engine *e) {
+  if (!radiation_packet_engine_light_speed_limited(e)) return;
+
+  double step[RADIATION_PACKET_PLACED_SUMS];
+  radiation_packet_placed_collect(e, step);
+  if (e->nodeID != 0) return;
+
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++) {
+    radiation_packet_placed_total[k] += step[k];
+    radiation_packet_placed_window[k] += step[k];
+  }
+
+  const double *t = radiation_packet_placed_total;
+  if (!radiation_packet_far_share_warned &&
+      t[rpp_placements] >= RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS &&
+      t[rpp_far] > RADIATION_PACKET_FAR_SHARE_LIMIT * t[rpp_all]) {
+    radiation_packet_far_share_warned = 1;
+    message(
+        "WARNING: after step %d, %.3g of the new ISRF packet light since the "
+        "start (%.0f placements) went to the far arrival cells, above %.3g. "
+        "That light leaves late and slows the light. Raise "
+        "RADIATION_PACKET_BINS (now %d) or read the start-up demand of the "
+        "near bins.",
+        e->step, t[rpp_far] / t[rpp_all], t[rpp_placements],
+        RADIATION_PACKET_FAR_SHARE_LIMIT, RADIATION_PACKET_BINS);
+  }
+}
+
+/**
+ * @brief Print the far share of this run segment, at its end.
+ *
+ * Collective: called by every rank from engine_clean(). Does nothing without
+ * a light speed limit, without placed light, or when no step ran (a dry run,
+ * where MPI is already finalized; e->step is the same on every rank).
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_far_share_final(const struct engine *e) {
+  if (!radiation_packet_engine_light_speed_limited(e) || e->step == 0) return;
+
+  double step[RADIATION_PACKET_PLACED_SUMS];
+  radiation_packet_placed_collect(e, step);
+
+  long long counts[rpe_count];
+  memcpy(counts, radiation_packet_event_count, sizeof(counts));
+  radiation_packet_reduce_event_counts(e, counts);
+
+  if (e->nodeID != 0) return;
+
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++)
+    radiation_packet_placed_total[k] += step[k];
+
+  const double *t = radiation_packet_placed_total;
+
+  if (t[rpp_all] > 0.)
+    message(
+        "ISRF packet light in the far arrival cells over the run: %.3g of the "
+        "new light (%.0f placements), limit %.3g.",
+        t[rpp_far] / t[rpp_all], t[rpp_placements],
+        RADIATION_PACKET_FAR_SHARE_LIMIT);
+
+  if (t[rpp_unknown_all] > 0.)
+    message(
+        "ISRF packet light placed in receivers without a known step over the "
+        "run: %.3g of the new light (%.0f placements), %.3g of it in the far "
+        "arrival cells.",
+        t[rpp_unknown_all] / (t[rpp_all] + t[rpp_unknown_all]),
+        t[rpp_unknown_placements], t[rpp_unknown_far] / t[rpp_unknown_all]);
+
+  message(
+      "ISRF packet arrival cells over the run: far cells widened %lld times, "
+      "%lld pieces of light beyond the widest far cells, %lld deliveries to a "
+      "receiver that moves away faster than %g of the limit speed.",
+      counts[rpe_coarsening], counts[rpe_overflow], counts[rpe_clamp],
+      1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
+}
+
+/*! Partial far stock of one chunk of particles. */
+struct far_stock_chunk {
+  double stock[2];
+  long long holders[2];
+};
+
+/*! Extra data of #radiation_packet_far_stock_mapper. */
+struct far_stock_data {
+  const struct part *parts;
+  size_t nr_parts;
+  struct far_stock_chunk *chunks;
+};
+
+/**
+ * @brief Threadpool mapper summing the far cell energy of the gas, over the
+ * chunks of the partial sums.
+ *
+ * Each chunk sums only its own particles, so it has one writer and the caller
+ * can add the chunks in a fixed order.
+ *
+ * @param map_data The first #far_stock_chunk of the range.
+ * @param num_elements The number of chunks in the range.
+ * @param extra_data The #far_stock_data.
+ */
+static void radiation_packet_far_stock_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
+  struct far_stock_data *data = (struct far_stock_data *)extra_data;
+  struct far_stock_chunk *first = (struct far_stock_chunk *)map_data;
+
+  const size_t first_chunk = first - data->chunks;
+
+  for (int j = 0; j < num_elements; j++) {
+    struct far_stock_chunk *out = &first[j];
+    const size_t begin = (first_chunk + j) * RADIATION_PACKET_FAR_STOCK_CHUNK;
+    size_t end = begin + RADIATION_PACKET_FAR_STOCK_CHUNK;
+    if (end > data->nr_parts) end = data->nr_parts;
+
+    for (size_t i = begin; i < end; i++) {
+      const struct part *p = &data->parts[i];
+      if (p->time_bin == time_bin_inhibited ||
+          p->time_bin == time_bin_not_created)
+        continue;
+
+      const struct feedback_isrf_packet_data *pk =
+          &p->feedback_data.isrf_packet;
+      double held = 0.;
+      for (int k = 0; k < RADIATION_PACKET_SLOTS; k++)
+        for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+          for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+            held += (double)pk->slot[k].band[b].far_energy[c];
+
+      if (held == 0.) continue;
+      out->stock[0] += held;
+      out->holders[0]++;
+
+      if (pk->step_ti == 0) {
+        out->stock[1] += held;
+        out->holders[1]++;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Sum the far cell energy over the gas, with the threadpool.
+ *
+ * The particles are grouped in fixed blocks and the block sums are added in
+ * block order, so the result is the same for any number of threads.
+ *
+ * @param tp The #threadpool.
+ * @param parts The #part array.
+ * @param nr_parts The number of #part.
+ * @param stock (out) The energy in all holders and in those without a known
+ * step.
+ * @param holders (out) The number of those holders.
+ */
+void radiation_packet_far_stock_sum(struct threadpool *tp,
+                                    const struct part *parts, size_t nr_parts,
+                                    double stock[2], long long holders[2]) {
+
+  stock[0] = 0.;
+  stock[1] = 0.;
+  holders[0] = 0;
+  holders[1] = 0;
+  if (nr_parts == 0) return;
+
+  const size_t n_chunks = (nr_parts + RADIATION_PACKET_FAR_STOCK_CHUNK - 1) /
+                          RADIATION_PACKET_FAR_STOCK_CHUNK;
+  struct far_stock_chunk *chunks =
+      (struct far_stock_chunk *)calloc(n_chunks, sizeof(*chunks));
+  if (chunks == NULL) error("Failed to allocate the far stock partial sums.");
+
+  struct far_stock_data data = {parts, nr_parts, chunks};
+
+  threadpool_map(tp, radiation_packet_far_stock_mapper, chunks, n_chunks,
+                 sizeof(struct far_stock_chunk), threadpool_auto_chunk_size,
+                 &data);
+
+  for (size_t c = 0; c < n_chunks; c++) {
+    for (int k = 0; k < 2; k++) {
+      stock[k] += chunks[c].stock[k];
+      holders[k] += chunks[c].holders[k];
+    }
+  }
+
+  free(chunks);
+}
+
+/**
+ * @brief Print the far light of the packet transport at the statistics
+ * cadence: the far share of the new light in the window since the last call
+ * and over this run segment, the share placed in receivers without a known
+ * step, the stock of light that waits in the far cells now, and the counters
+ * of the far cells.
+ *
+ * The stock is the sum of the far cell energy over the local gas: it holds the
+ * light parked in receivers that have not merged since it arrived, which
+ * neither the placement counters nor #radiation_packet_far_share_report see.
+ * The placed light is that of the steps before the current one. Collective:
+ * called by every rank from engine_print_stats(). Prints once per step, even if
+ * the statistics are written several times in it. Does nothing without a light
+ * speed limit, on every rank alike.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_far_diagnostics(const struct engine *e) {
+  if (!radiation_packet_engine_light_speed_limited(e)) return;
+
+  static int last_step = -1;
+  if (e->step == last_step) return;
+  last_step = e->step;
+
+  const struct space *s = e->s;
+  double stock[2] = {0., 0.};
+  long long holders[2] = {0, 0};
+
+  radiation_packet_far_stock_sum(&s->e->threadpool, s->parts, s->nr_parts,
+                                 stock, holders);
+
+  long long counts[rpe_count];
+  memcpy(counts, radiation_packet_event_count, sizeof(counts));
+
+#ifdef WITH_MPI
+  double stock_sum[2];
+  long long holders_sum[2];
+  MPI_Reduce(stock, stock_sum, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(holders, holders_sum, 2, MPI_LONG_LONG, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  if (e->nodeID == 0) {
+    for (int k = 0; k < 2; k++) {
+      stock[k] = stock_sum[k];
+      holders[k] = holders_sum[k];
+    }
+  }
+#endif
+  radiation_packet_reduce_event_counts(e, counts);
+
+  if (e->nodeID != 0) return;
+
+  const double *w = radiation_packet_placed_window;
+  const double *t = radiation_packet_placed_total;
+  const double window_all = w[rpp_all] + w[rpp_unknown_all];
+  const double run_all = t[rpp_all] + t[rpp_unknown_all];
+
+  message(
+      "ISRF packet far light, step %d: in the far arrival cells %.3g of the "
+      "new "
+      "light since the last statistics (%.0f placements) and %.3g over the run "
+      "(%.0f placements), of which placed in receivers without a known step "
+      "%.3g and %.3g of the new light (%.0f and %.0f placements). Waiting now "
+      "in the far cells: %.3g energy units in %lld particles (%.3g of the new "
+      "light of the run), %.3g in %lld particles without a known step. Far "
+      "cells widened %lld times, %lld pieces beyond the widest far cells, "
+      "%lld clamped deliveries over the run.",
+      e->step,
+      window_all > 0. ? (w[rpp_far] + w[rpp_unknown_far]) / window_all : 0.,
+      w[rpp_placements] + w[rpp_unknown_placements],
+      run_all > 0. ? (t[rpp_far] + t[rpp_unknown_far]) / run_all : 0.,
+      t[rpp_placements] + t[rpp_unknown_placements],
+      window_all > 0. ? w[rpp_unknown_all] / window_all : 0.,
+      run_all > 0. ? t[rpp_unknown_all] / run_all : 0.,
+      w[rpp_unknown_placements], t[rpp_unknown_placements], stock[0],
+      holders[0], run_all > 0. ? stock[0] / run_all : 0., stock[1], holders[1],
+      counts[rpe_coarsening], counts[rpe_overflow], counts[rpe_clamp]);
+
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++)
+    radiation_packet_placed_window[k] = 0.;
+}
+
+/**
+ * @brief Start-up of the packet emission, from engine_config().
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_startup(const struct engine *e) {
+  if (e->feedback_props == NULL) return;
+
+  radiation_packet_set_box(e->s->dim, e->s->periodic);
+  radiation_packet_refresh_frame_width(e);
+  radiation_packet_report_frame_width(e);
+  radiation_packet_report_bin_demand(e);
+
+  const struct feedback_props *fp = e->feedback_props;
+  if (fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
+    radiation_packet_set_light_speed(0.0, e->time_base, 0);
+  else
+    radiation_packet_set_light_speed(
+        (double)fp->ISRF_packet_light_speed_fraction_of_c *
+            e->physical_constants->const_speed_light_c,
+        e->time_base, e->policy & engine_policy_cosmology);
+
+  radiation_packet_set_redshift(e->physical_constants->const_speed_light_c,
+                                e->feedback_props->band_edge_weight_pe,
+                                e->feedback_props->band_edge_weight_lw,
+                                e->feedback_props->band_edge_photon_weight_lw);
+}
+
+/**
+ * @brief Redshift of a share over its path in an expanding box.
+ *
+ * With the redshift depth `zeta = H path_phys / c`, the energy of band `b`
+ * falls as `exp(-w_b zeta)`, `w_b` the band-edge weight. The LW energy loses `w
+ * - 1` of its `w` parts through the 11.2 eV edge into the PE band, as the fluid
+ * transport does. The LW photon number falls as `exp(-w_N zeta)` and the
+ * photons it loses enter the PE band in units of the PE lower edge. The PE
+ * photon number loses photons at the rate `(w_PE - 1) E / (N E_lo)`, from its
+ * own mean photon energy, which has no table value. Photons are `N E_lo`.
+ *
+ * @param H Current Hubble rate. 0 or less changes nothing.
+ * @param path_phys Physical path length of the share.
+ * @param energy (in/out) Energy of the share per band.
+ * @param photons (in/out) Photon number of the share per band, `N E_lo`.
+ * @param lost_energy (return) Energy removed from each band, minus the energy
+ * it gained from the other band.
+ * @param lost_photons (return) Photon number removed, as #lost_energy.
+ */
+void radiation_packet_redshift_share(const double H, const double path_phys,
+                                     double energy[ISRF_OPERATOR_COUNT],
+                                     double photons[ISRF_OPERATOR_COUNT],
+                                     double lost_energy[ISRF_OPERATOR_COUNT],
+                                     double lost_photons[ISRF_OPERATOR_COUNT]) {
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    lost_energy[b] = 0.0;
+    lost_photons[b] = 0.0;
+  }
+
+  if (!radiation_packet_redshift_is_set)
+    error("The packet redshift was not given the speed of light.");
+
+  const double zeta = H * path_phys / radiation_packet_speed_of_light;
+  if (!(zeta > 0.0)) return;
+
+  const double w_pe = radiation_packet_weight_energy[ISRF_OPERATOR_PE];
+  const double w_lw = radiation_packet_weight_energy[ISRF_OPERATOR_LW];
+
+  /* The PE photon rate is fixed by the energy and photons before the step. */
+  double loss_pe_photons = 0.0;
+  if (energy[ISRF_OPERATOR_PE] > 0.0 && photons[ISRF_OPERATOR_PE] > 0.0) {
+    const double w_n_pe =
+        (w_pe - 1.0) * energy[ISRF_OPERATOR_PE] / photons[ISRF_OPERATOR_PE];
+    loss_pe_photons = -photons[ISRF_OPERATOR_PE] * expm1(-w_n_pe * zeta);
+  }
+
+  const double loss_pe = -energy[ISRF_OPERATOR_PE] * expm1(-w_pe * zeta);
+  const double loss_lw = -energy[ISRF_OPERATOR_LW] * expm1(-w_lw * zeta);
+  const double loss_lw_photons =
+      -photons[ISRF_OPERATOR_LW] *
+      expm1(-radiation_packet_weight_photon_lw * zeta);
+
+  /* Gain of the PE band: what the LW band loses through its lower edge. */
+  const double gain_pe = loss_lw * (w_lw - 1.0) / w_lw;
+  const double gain_pe_photons =
+      loss_lw_photons *
+      (RADIATION_PE_BAND_LOWER_EDGE_CGS / RADIATION_LW_BAND_LOWER_EDGE_CGS);
+
+  energy[ISRF_OPERATOR_PE] += gain_pe - loss_pe;
+  energy[ISRF_OPERATOR_LW] -= loss_lw;
+  photons[ISRF_OPERATOR_PE] += gain_pe_photons - loss_pe_photons;
+  photons[ISRF_OPERATOR_LW] -= loss_lw_photons;
+
+  lost_energy[ISRF_OPERATOR_PE] = loss_pe - gain_pe;
+  lost_energy[ISRF_OPERATOR_LW] = loss_lw;
+  lost_photons[ISRF_OPERATOR_PE] = loss_pe_photons - gain_pe_photons;
+  lost_photons[ISRF_OPERATOR_LW] = loss_lw_photons;
+}
+
+/**
+ * @brief Relative cut of the squared radius of a reach with smoothing length
+ * `h`.
+ *
+ * The caller's `dx` is formed from float positions measured from a cell corner,
+ * so the relative error of `r2` at the edge is at most
+ * `sqrt(3) 2^-23 S` plus the other roundings of the distance, with
+ * `S = 4 W / (kernel_gamma h)` (#radiation_packet_set_frame_width). The cut is
+ * #RADIATION_PACKET_REACH_GUARD, which holds the other roundings, plus
+ * #RADIATION_PACKET_REACH_GUARD_PER_SUPPORT times `S`, and at most 0.5.
+ *
+ * @param h Comoving smoothing length of the radius.
+ * @return The relative cut.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_reach_guard(
+    const float h) {
+
+  if (!(radiation_packet_guard_scale > 0.f))
+    return RADIATION_PACKET_REACH_GUARD;
+
+  const float g = RADIATION_PACKET_REACH_GUARD +
+                  (h > 0.f ? radiation_packet_guard_scale / h : 1.f);
+  return g < 0.5f ? g : 0.5f;
+}
+
+/**
+ * @brief Is a receiver in the reach of a sender, and in which part of it?
+ *
+ * The inner part is the kernel support of the sender. The outer part is the
+ * rest of the kernel support of the receiver, and it counts only for an
+ * active receiver: the gradient loop reaches it from the visit of that
+ * receiver, which exists only when the receiver is updated. Both radii are
+ * cut by #radiation_packet_reach_guard so that every caller's own filter, which
+ * may round `r2` differently, contains the reach. The margin grows with the
+ * width of the cell frames of the loops.
+ *
+ * @param r2 Square distance, computed in the caller of this function from the
+ * weight vector of #radiation_packet_weight_vector.
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the receiver.
+ * @param is_receiver_active Is the receiver active in this step?
+ * @param want The part asked for: #RADIATION_PACKET_REACH_INNER,
+ * #RADIATION_PACKET_REACH_OUTER or #RADIATION_PACKET_REACH_ALL.
+ * @return 1 if the receiver is in the part asked for.
+ */
+__attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
+    const float r2, const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want) {
+
+  const float cut_s =
+      (1.f - radiation_packet_reach_guard(h_sender)) * kernel_gamma2;
+  const int inner = r2 < cut_s * h_sender * h_sender;
+  const int outer = !inner && is_receiver_active &&
+                    r2 < (1.f - radiation_packet_reach_guard(h_receiver)) *
+                             kernel_gamma2 * h_receiver * h_receiver;
+
+  if (want == RADIATION_PACKET_REACH_INNER) return inner;
+  if (want == RADIATION_PACKET_REACH_OUTER) return outer;
+  return inner || outer;
+}
+
+/**
+ * @brief Transmission weight `V W(r, H) max(0, mu)^p` of a sender towards
+ * one neighbour, with `mu` the cosine between the hop and the packet
+ * direction, `V = mass / rho` the comoving volume of the neighbour and
+ * `H = max(h_sender, h_receiver)`. The expansion factor of the comoving density
+ * is common to all neighbours and cancels in the shares.
+ *
+ * The sum over the neighbours is the SPH quadrature of the integral of
+ * `W mu^p`, so the share to a side follows the solid angle and not the number
+ * of neighbours there.
+ *
+ * Exactly 0 for `mu <= RADIATION_PACKET_MU_MIN`, for `r = 0` and outside the
+ * part of the reach asked for (#radiation_packet_in_reach). The kernel does not
+ * depend on the activity of the receiver: only the membership of the outer part
+ * does. Kept out of line so that the gradient loop and the force loop evaluate
+ * the same compiled arithmetic, `mass / rho` and the distance included: a
+ * caller's `r2` may be contracted differently at each call site.
+ *
+ * @param dx Comoving vector from the sender to the neighbour.
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the neighbour.
+ * @param is_receiver_active Is the neighbour active in this step?
+ * @param want The part of the reach asked for.
+ * @param n Unit direction of the packet.
+ * @param power Power `p` of the cone.
+ * @param mass Mass of the neighbour.
+ * @param rho Comoving density snapshot `rho_prev` of the neighbour.
+ * @return The weight.
+ */
+__attribute__((noinline)) float radiation_packet_transmission_weight(
+    const float dx[3], const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want, const float n[3],
+    const float power, const float mass, const float rho) {
+
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  if (!(r2 > 0.f) || !radiation_packet_in_reach(r2, h_sender, h_receiver,
+                                                is_receiver_active, want))
+    return 0.f;
+
+  const float r = sqrtf(r2);
+  const float mu = (dx[0] * n[0] + dx[1] * n[1] + dx[2] * n[2]) / r;
+  if (mu <= RADIATION_PACKET_MU_MIN) return 0.f;
+
+  const float h_inv = 1.f / fmaxf(h_sender, h_receiver);
+
+  float w;
+  kernel_eval(r * h_inv, &w);
+
+  return (mass / rho) * w * pow_dimension(h_inv) * powf(mu, power);
+}
+
+/**
+ * @brief Vector from a sender to a neighbour for the transmission weight,
+ * from the absolute positions in double.
+ *
+ * The gradient and the force loops form their own `dx` in the frames of the
+ * cells they run in, and the two can differ by an ulp. The weight is very
+ * sensitive to that near the kernel edge. This vector depends only on the two
+ * positions, so both loops agree on the weight of every pair they both visit.
+ * The loop's `dx` only picks the periodic image. The box comes from
+ * #radiation_packet_set_box, called in `engine_config` on every rank; without
+ * it the box is not periodic and no image is chosen.
+ *
+ * @param sender The sender.
+ * @param receiver The neighbour.
+ * @param dx The loop's comoving vector from the sender to the neighbour.
+ * @param out (return) The vector, comoving.
+ */
+__attribute__((noinline)) void radiation_packet_weight_vector(
+    const struct part *sender, const struct part *receiver, const float dx[3],
+    float out[3]) {
+  for (int k = 0; k < 3; k++) {
+    out[k] = (float)radiation_packet_periodic_image(
+        receiver->x[k] - sender->x[k], dx[k], k);
+  }
+}
+
+/**
+ * @brief Octant of the fixed frame that holds a direction: the reception slot
+ * of the light that travels along it.
+ *
+ * Bit `k` of the result is set when the component `k` of the direction in the
+ * frame is zero or positive, so a direction on a border goes to the positive
+ * side whatever the sign of its zero. Directions more than 90 degrees apart are
+ * never in one octant; exactly 90 degrees can be. The octant of the opposite
+ * direction is `7 - octant`, except on a border. Kept out of line, so that
+ * every caller bins with the same compiled arithmetic. The components are
+ * formed in double.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame. Need not be a unit vector.
+ * @return The octant, in [0, 8).
+ */
+__attribute__((noinline)) int radiation_packet_octant(
+    const float frame[9], const float direction[3]) {
+
+  int octant = 0;
+
+  for (int k = 0; k < 3; k++) {
+    const double q = radiation_packet_frame_coordinate(frame, direction, k);
+    if (q >= 0.0) octant |= 1 << k;
+  }
+
+  return octant;
+}
+
+/**
+ * @brief Reception slot that holds a direction: the cell of the partition of
+ * the sphere, fixed in the octant frame, that contains it.
+ *
+ * The cells have equal solid angle and are convex cones, so the mean of
+ * directions in one cell is in it. With 8 slots the cells are the octants
+ * (#radiation_packet_octant). With 12 they are the faces of a rhombic
+ * dodecahedron: slot `4 m + 2 a + b`, `m` the frame axis of smallest absolute
+ * coordinate (the lowest on a tie), `a` and `b` 1 for a coordinate that is zero
+ * or positive on the other two axes in axis order. With 16 slot `o + 8 h`, `o`
+ * the octant and `h` 1 when the absolute second frame coordinate exceeds the
+ * absolute first. With 24 they are the faces of a tetrakis hexahedron: slot
+ * `4 (2 m + s) + 2 t + b`, `m` the frame axis of largest absolute coordinate
+ * (the lowest on a tie), `s` 1 for a zero or positive coordinate on it, `t`
+ * 1 when the absolute coordinate on the first of the two other axes in axis
+ * order is at least that on the second, `b` 1 for a zero or positive
+ * coordinate on the larger of the two. With 48 they are the faces of a
+ * disdyakis dodecahedron: slot `8 (2 m + s) + 4 t + 2 b + c`, `c` 1 for a
+ * zero or positive coordinate on the smaller of the two. A tie goes to the
+ * same side whatever the sign of a zero. Kept out of line, as
+ * #radiation_packet_octant.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame. Need not be a unit vector.
+ * @return The slot, in [0, RADIATION_PACKET_SLOTS).
+ */
+__attribute__((noinline)) int radiation_packet_slot(const float frame[9],
+                                                    const float direction[3]) {
+
+#if RADIATION_PACKET_SLOTS == 8
+  return radiation_packet_octant(frame, direction);
+#else
+  double q[3];
+  for (int k = 0; k < 3; k++)
+    q[k] = radiation_packet_frame_coordinate(frame, direction, k);
+#if RADIATION_PACKET_SLOTS == 16
+  int slot = 0;
+  for (int k = 0; k < 3; k++)
+    if (q[k] >= 0.0) slot |= 1 << k;
+  if (fabs(q[1]) > fabs(q[0])) slot |= 8;
+  return slot;
+#elif RADIATION_PACKET_SLOTS == 24 || RADIATION_PACKET_SLOTS == 48
+  int m = 0;
+  if (fabs(q[1]) > fabs(q[m])) m = 1;
+  if (fabs(q[2]) > fabs(q[m])) m = 2;
+  const int i = (m == 0) ? 1 : 0;
+  const int j = (m == 2) ? 1 : 2;
+  const int t = fabs(q[i]) >= fabs(q[j]);
+  const int big = t ? i : j;
+#if RADIATION_PACKET_SLOTS == 24
+  return 4 * (2 * m + (q[m] >= 0.0)) + 2 * t + (q[big] >= 0.0);
+#else
+  const int small = t ? j : i;
+  return 8 * (2 * m + (q[m] >= 0.0)) + 4 * t + 2 * (q[big] >= 0.0) +
+         (q[small] >= 0.0);
+#endif
+#else
+  int m = 0;
+  if (fabs(q[1]) < fabs(q[m])) m = 1;
+  if (fabs(q[2]) < fabs(q[m])) m = 2;
+  const int i = (m == 0) ? 1 : 0;
+  const int j = (m == 2) ? 1 : 2;
+  return 4 * m + 2 * (q[i] >= 0.0) + (q[j] >= 0.0);
+#endif
+#endif
+}
+
+/**
+ * @brief Distance of a direction from the nearest border of its slot, as the
+ * sine of the angle to the nearest border plane.
+ *
+ * Used by the debug check of #radiation_packet_check_slot_direction to skip
+ * directions that rounding to float can move across a border. For 12, 24 and 48
+ * slots it is conservative: it takes the border between every pair of absolute
+ * coordinates.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame.
+ * @return The distance, 0 on a border, at most 1.
+ */
+double radiation_packet_slot_border_distance(const float frame[9],
+                                             const float direction[3]) {
+
+  double a[3];
+  double norm2 = 0.0;
+  for (int k = 0; k < 3; k++) {
+    const double q = radiation_packet_frame_coordinate(frame, direction, k);
+    a[k] = fabs(q);
+    norm2 += q * q;
+  }
+
+  const double norm = sqrt(norm2);
+  if (!(norm > 0.0)) return 0.0;
+
+  double d = 1.0;
+#if RADIATION_PACKET_SLOTS == 8 || RADIATION_PACKET_SLOTS == 16 || \
+    RADIATION_PACKET_SLOTS == 48
+  for (int k = 0; k < 3; k++) d = fmin(d, a[k]);
+#endif
+#if RADIATION_PACKET_SLOTS == 16
+  d = fmin(d, fabs(a[0] - a[1]) * M_SQRT1_2);
+#elif RADIATION_PACKET_SLOTS == 12 || RADIATION_PACKET_SLOTS == 24 || \
+    RADIATION_PACKET_SLOTS == 48
+  for (int k = 0; k < 3; k++)
+    d = fmin(d, fabs(a[k] - a[(k + 1) % 3]) * M_SQRT1_2);
+#endif
+
+  return d / norm;
+}
+
+/**
+ * @brief Build the rotation matrix of the octant frame.
+ *
+ * The matrix is `Rz(a_z) Ry(a_y) Rx(a_x)`. A positive seed offset composes it
+ * with a rotation drawn uniformly from that seed (Shoemake 1992), so that
+ * repeats of a run use independent frames.
+ *
+ * @param angles_deg Rotation angles about x, y and z, in degrees.
+ * @param seed_offset Seed of the extra rotation. 0 for none.
+ * @param frame (return) The matrix, row-major.
+ */
+void radiation_packet_build_octant_frame(const float angles_deg[3],
+                                         const int seed_offset,
+                                         float frame[9]) {
+
+  const double to_rad = M_PI / 180.0;
+  const double cx = cos(angles_deg[0] * to_rad);
+  const double sx = sin(angles_deg[0] * to_rad);
+  const double cy = cos(angles_deg[1] * to_rad);
+  const double sy = sin(angles_deg[1] * to_rad);
+  const double cz = cos(angles_deg[2] * to_rad);
+  const double sz = sin(angles_deg[2] * to_rad);
+
+  const double Rx[3][3] = {{1., 0., 0.}, {0., cx, -sx}, {0., sx, cx}};
+  const double Ry[3][3] = {{cy, 0., sy}, {0., 1., 0.}, {-sy, 0., cy}};
+  const double Rz[3][3] = {{cz, -sz, 0.}, {sz, cz, 0.}, {0., 0., 1.}};
+
+  double A[3][3];
+  double R[3][3];
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      A[i][j] = 0.;
+      for (int k = 0; k < 3; k++) A[i][j] += Ry[i][k] * Rx[k][j];
+    }
+
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      R[i][j] = 0.;
+      for (int k = 0; k < 3; k++) R[i][j] += Rz[i][k] * A[k][j];
+    }
+
+  if (seed_offset > 0) {
+    const double u1 =
+        random_unit_interval(seed_offset, 0, random_number_ISRF_octant_frame);
+    const double u2 =
+        random_unit_interval(seed_offset, 1, random_number_ISRF_octant_frame);
+    const double u3 =
+        random_unit_interval(seed_offset, 2, random_number_ISRF_octant_frame);
+    double Q[3][3];
+    radiation_packet_random_rotation(u1, u2, u3, Q);
+
+    double C[3][3];
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 3; j++) {
+        C[i][j] = 0.;
+        for (int k = 0; k < 3; k++) C[i][j] += Q[i][k] * R[k][j];
+      }
+
+    memcpy(R, C, sizeof(R));
+  }
+
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) frame[3 * i + j] = (float)R[i][j];
+}
+
+/**
+ * @brief Read the test beams of the packet transport.
+ *
+ * A beam is #RADIATION_PACKET_TEST_BEAM_FIELDS numbers in internal units, in
+ * the order of the RADIATION_PACKET_TEST_BEAM_* offsets. Absent or with zero
+ * energy, a beam is off. The direction is normalised. Finiteness is tested on
+ * the bit pattern, which -ffinite-math-only cannot fold away.
+ *
+ * @param params The parameter file.
+ * @param beams (return) The beams.
+ * @return The number of active beams.
+ */
+int radiation_packet_read_test_beams(
+    struct swift_params *params,
+    float beams[RADIATION_PACKET_TEST_BEAMS]
+               [RADIATION_PACKET_TEST_BEAM_FIELDS]) {
+
+  int n_active = 0;
+  memset(beams, 0,
+         sizeof(float) * RADIATION_PACKET_TEST_BEAM_FIELDS *
+             RADIATION_PACKET_TEST_BEAMS);
+
+  for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
+    char key[64];
+    snprintf(key, sizeof(key), "GEARFeedback:ISRF_packet_test_beam_%d", i + 1);
+    parser_get_opt_param_float_array(
+        params, key, RADIATION_PACKET_TEST_BEAM_FIELDS, beams[i]);
+  }
+
+  for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
+    float *bm = beams[i];
+    float *lower = &bm[RADIATION_PACKET_TEST_BEAM_LOWER];
+    float *upper = &bm[RADIATION_PACKET_TEST_BEAM_UPPER];
+    float *direction = &bm[RADIATION_PACKET_TEST_BEAM_DIRECTION];
+    const float energy_PE = bm[RADIATION_PACKET_TEST_BEAM_ENERGY_PE];
+    const float energy_LW = bm[RADIATION_PACKET_TEST_BEAM_ENERGY_LW];
+
+    for (int k = 0; k < RADIATION_PACKET_TEST_BEAM_FIELDS; k++) {
+      uint32_t bits;
+      memcpy(&bits, &bm[k], sizeof(bits));
+      volatile uint32_t opaque = bits;
+      if (((opaque >> 23) & 0xFFu) == 0xFFu)
+        error("GEARFeedback:ISRF_packet_test_beam_%d: non-finite entry %d.",
+              i + 1, k);
+    }
+
+    if (energy_PE < 0.f || energy_LW < 0.f)
+      error("GEARFeedback:ISRF_packet_test_beam_%d: negative energy.", i + 1);
+    if (energy_PE == 0.f && energy_LW == 0.f) continue;
+
+    const float norm =
+        sqrtf(direction[0] * direction[0] + direction[1] * direction[1] +
+              direction[2] * direction[2]);
+
+    if (!(norm > 0.f))
+      error("GEARFeedback:ISRF_packet_test_beam_%d: zero direction.", i + 1);
+    for (int k = 0; k < 3; k++) direction[k] /= norm;
+
+    for (int k = 0; k < 3; k++)
+      if (!(upper[k] > lower[k]))
+        error(
+            "GEARFeedback:ISRF_packet_test_beam_%d: the box has upper corner "
+            "%g not above lower corner %g on axis %d.",
+            i + 1, upper[k], lower[k], k);
+
+    n_active++;
+    message(
+        "ISRF packet test beam %d is ACTIVE: energy %g (PE) and %g (LW) per "
+        "particle in the box, injected once at each particle's first merge, "
+        "in no ledger.",
+        i + 1, energy_PE, energy_LW);
+  }
+
+  return n_active;
+}
+
+/**
+ * @brief Give the particles inside a test beam box their beam pulse, once.
+ *
+ * The pulse goes into the inbox of the slot of the beam direction, as a share
+ * whose origin lies @a origin_distance_h smoothing lengths behind the particle.
+ * Its photon number is its energy (mean photon energy at the band lower edge).
+ * The energy is in no ledger: a test adds it up from the parameters. Called
+ * before the first merge of the particle.
+ *
+ * @param p The particle.
+ * @param beams The beams, see #radiation_packet_read_test_beams.
+ * @param origin_distance_h Distance of the origin behind the particle, in
+ * smoothing lengths. Large is a collimated beam.
+ * @param ti_current Current integer time, the arrival time of the pulse.
+ * @param constants The #radiation_packet_constants.
+ */
+void radiation_packet_inject_test_beams(
+    struct part *p,
+    const float beams[RADIATION_PACKET_TEST_BEAMS]
+                     [RADIATION_PACKET_TEST_BEAM_FIELDS],
+    const float origin_distance_h, const integertime_t ti_current,
+    const struct radiation_packet_constants *constants) {
+
+  for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
+    const float *bm = beams[i];
+    const float *lower = &bm[RADIATION_PACKET_TEST_BEAM_LOWER];
+    const float *upper = &bm[RADIATION_PACKET_TEST_BEAM_UPPER];
+    const float *direction = &bm[RADIATION_PACKET_TEST_BEAM_DIRECTION];
+    const double energy[ISRF_OPERATOR_COUNT] = {
+        bm[RADIATION_PACKET_TEST_BEAM_ENERGY_PE],
+        bm[RADIATION_PACKET_TEST_BEAM_ENERGY_LW]};
+    if (energy[0] == 0. && energy[1] == 0.) continue;
+
+    int inside = 1;
+    for (int k = 0; k < 3; k++)
+      if (!(p->x[k] >= (double)lower[k] && p->x[k] < (double)upper[k]))
+        inside = 0;
+    if (!inside) continue;
+
+    const float back = origin_distance_h * p->h;
+    const float offset[3] = {-back * direction[0], -back * direction[1],
+                             -back * direction[2]};
+    radiation_packet_deliver(p, constants, energy, energy, offset, 0.f, 0.f, 0,
+                             0, (double)ti_current, (double)ti_current);
+  }
+}
+
+/**
+ * @brief Emission cone of a gas neighbour of a star: the HEALPix nside 1
+ * pixel of the direction from the star to the gas, in a random frame drawn
+ * from the star's ID and the start of its step.
+ *
+ * Kept out of line, so that the density loop and the feedback loop of the star,
+ * on any rank, use the same arithmetic.
+ *
+ * @param star_id ID of the star.
+ * @param ti_begin Start of the star's step.
+ * @param dx Comoving vector from the gas to the star (star - gas).
+ * @return The cone, in [0, RADIATION_PACKET_EMISSION_CONES).
+ */
+__attribute__((noinline)) int radiation_packet_emission_cone(
+    const long long star_id, const integertime_t ti_begin, const double dx[3]) {
+
+#if defined(HAVE_CHEALPIX)
+  if (dx[0] == 0.0 && dx[1] == 0.0 && dx[2] == 0.0) return 0;
+
+  const integertime_t ti = 3 * ti_begin;
+  const double u1 =
+      random_unit_interval(star_id, ti, random_number_ISRF_emission_frame);
+  const double u2 =
+      random_unit_interval(star_id, ti + 1, random_number_ISRF_emission_frame);
+  const double u3 =
+      random_unit_interval(star_id, ti + 2, random_number_ISRF_emission_frame);
+
+  double Q[3][3];
+  radiation_packet_random_rotation(u1, u2, u3, Q);
+
+  const double d0 = -dx[0];
+  const double d1 = -dx[1];
+  const double d2 = -dx[2];
+  double dir[3];
+  for (int i = 0; i < 3; i++)
+    dir[i] = Q[i][0] * d0 + Q[i][1] * d1 + Q[i][2] * d2;
+
+  int64_t ipix = 0;
+  vec2pix_ring64(1, dir, &ipix);
+  return (int)ipix;
+#else
+  error("The ISRF packet emission needs the HEALPix C library.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Emission cone and weight of a gas neighbour of a star.
+ *
+ * The star-gas vector is taken in double from the absolute positions; the
+ * float @p dx of the runner only picks the periodic image. Both star loops call
+ * this out-of-line function on the same positions, so they agree bit for bit on
+ * the cone, the weight and the receivers, whatever path the runner took.
+ *
+ * @param si The star.
+ * @param pj The gas neighbour.
+ * @param dx The runner's comoving vector from the gas to the star.
+ * @param ti_begin Start of the star's step.
+ * @param d (return) Comoving vector from the gas to the star, in double.
+ * @param q (return) Distance over the star's kernel support.
+ * @param weight (return) Tent weight, 0 when the gas is not a receiver:
+ * beyond #RADIATION_PACKET_EMISSION_EDGE or with no density.
+ * @return The emission cone.
+ */
+__attribute__((noinline)) int radiation_packet_star_gas_weight(
+    const struct spart *si, const struct part *pj, const float dx[3],
+    const integertime_t ti_begin, double d[3], double *q, double *weight) {
+
+  if (!radiation_packet_box_is_set)
+    error("The packet emission was not given the box size.");
+
+  for (int k = 0; k < 3; k++) {
+    d[k] = radiation_packet_periodic_image(si->x[k] - pj->x[k], dx[k], k);
+  }
+
+  const double r = sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  const double u = r / (double)si->h;
+  *q = u * (double)kernel_gamma_inv;
+  *weight = 0.0;
+
+  if (*q < RADIATION_PACKET_EMISSION_EDGE)
+    *weight = star_gas_tent_weight(*q, (double)hydro_get_mass(pj),
+                                   (double)hydro_get_comoving_density(pj));
+
+  return radiation_packet_emission_cone(si->id, ti_begin, d);
+}
+
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+/**
+ * @brief Counters of the arrival bins on this rank since the start of this run
+ * segment, for tests.
+ *
+ * @param widened (return) Times the far cells of a particle became wider.
+ * @param beyond (return) Pieces of light beyond the widest far cells.
+ * @param clamped (return) Deliveries where the clamp of the delay of a
+ * receding receiver acted (#radiation_packet_arrival_delay_receding).
+ */
+void radiation_packet_bin_counters(long long *widened, long long *beyond,
+                                   long long *clamped) {
+  *widened = radiation_packet_event_count[rpe_coarsening];
+  *beyond = radiation_packet_event_count[rpe_overflow];
+  *clamped = radiation_packet_event_count[rpe_clamp];
+}
+
+/*! Packet ledger of the gas that left a non-periodic box on this rank, since
+    the start: the light in flight at the exit, which escapes, and the
+    absorbed, escaped and redshifted ledgers of the gas. Written under
+    `e->s->lock`. */
+static struct feedback_isrf_packet_removed_data radiation_packet_left_box;
+
+/*! #radiation_packet_left_box summed over the ranks at the last
+    #radiation_packet_reduce_left_box, and the factor from internal to
+    snapshot energy units. */
+static struct feedback_isrf_packet_removed_data radiation_packet_left_box_sum;
+static double radiation_packet_left_box_to_snapshot = 1.0;
+
+/*! Box ledger of the stars and sinks that left a non-periodic box and of the
+    gas swallowed by black holes on this rank, since the start. Written under
+    `e->s->lock`. */
+static struct feedback_isrf_packet_box_data radiation_packet_box;
+
+/*! #radiation_packet_box summed over the ranks at the last
+    #radiation_packet_reduce_left_box. */
+static struct feedback_isrf_packet_box_data radiation_packet_box_sum;
+
+#define RADIATION_PACKET_LEFT_BOX_DOUBLES \
+  (sizeof(struct feedback_isrf_packet_removed_data) / sizeof(double))
+#define RADIATION_PACKET_BOX_DOUBLES \
+  (sizeof(struct feedback_isrf_packet_box_data) / sizeof(double))
+
+_Static_assert(sizeof(struct feedback_isrf_packet_removed_data) ==
+                   RADIATION_PACKET_LEFT_BOX_DOUBLES * sizeof(double),
+               "The left-box ledger is reduced as an array of doubles.");
+_Static_assert(sizeof(struct feedback_isrf_packet_box_data) ==
+                   RADIATION_PACKET_BOX_DOUBLES * sizeof(double),
+               "The box ledger is reduced as an array of doubles.");
+
+/**
+ * @brief Book the packet of a gas particle that leaves the gas, converted
+ * into or swallowed by another particle or removed at the edge of a
+ * non-periodic box, into that particle's ledger or the box ledger.
+ *
+ * The light in flight (held, inbox and reservoir, in every slot) is booked as
+ * removed. The absorbed, escaped and redshifted ledgers of the gas are carried
+ * over.
+ *
+ * @param p The gas particle.
+ * @param l The ledger of the star, the sink or the box.
+ */
+static void radiation_packet_book_removed_gas(
+    const struct part *p, struct feedback_isrf_packet_removed_data *l) {
+  const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const int light_speed_limited = radiation_packet_limit_speed > 0.0;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    const struct feedback_isrf_packet_band_data *d = &pk->band[b];
+
+    for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
+      const struct feedback_isrf_packet_slot_band_data *t =
+          &pk->slot[k].band[b];
+
+      double waiting_energy = 0.;
+      double waiting_photons = 0.;
+      for (int i = 0; i < RADIATION_PACKET_BINS; i++) {
+        waiting_energy += (double)t->bin_energy[i];
+        waiting_photons += (double)t->bin_photons[i];
+      }
+
+      if (light_speed_limited) {
+        for (int i = 0; i < RADIATION_PACKET_FAR_CELLS; i++) {
+          waiting_energy += (double)t->far_energy[i];
+          waiting_photons += (double)t->far_photons[i];
+        }
+      } else {
+        waiting_energy += (double)t->reservoir_energy;
+        waiting_photons += (double)t->reservoir_photons;
+      }
+
+      l->removed_energy[b] += (double)t->energy + waiting_energy;
+      l->removed_photons[b] += (double)t->photons + waiting_photons;
+    }
+
+    l->inherited_energy[b] +=
+        d->absorbed_energy + d->escaped_energy + d->redshifted_energy;
+    l->inherited_photons[b] +=
+        d->absorbed_photons + d->escaped_photons + d->redshifted_photons;
+  }
+}
+
+/**
+ * @brief Gas converted into a star: book its packet to the star, after the
+ * star's #radiation_packet_first_init_star.
+ *
+ * @param p The gas particle.
+ * @param sp The new star.
+ */
+void radiation_packet_book_removed_gas_to_star(const struct part *p,
+                                               struct spart *sp) {
+  radiation_packet_book_removed_gas(
+      p, &sp->feedback_data.radiation.packet.removed);
+}
+
+/**
+ * @brief Gas converted into or swallowed by a sink: book its packet to the
+ * sink.
+ *
+ * @param p The gas particle.
+ * @param sink The sink.
+ */
+void radiation_packet_book_removed_gas_to_sink(const struct part *p,
+                                               struct sink *sink) {
+  radiation_packet_book_removed_gas(p, &sink->feedback_data.isrf_packet);
+}
+
+/**
+ * @brief A gas particle leaves a non-periodic box: book its packet to the
+ * ledger of the gas that left the box. Called with `e->s->lock` held.
+ *
+ * @param p The gas particle.
+ */
+void radiation_packet_book_gas_left_box(const struct part *p) {
+  radiation_packet_book_removed_gas(p, &radiation_packet_left_box);
+}
+
+/**
+ * @brief A star leaves a non-periodic box: add its emitted, escaped and
+ * inherited ledgers to the box ledger. Called with `e->s->lock` held.
+ *
+ * @param sp The star particle.
+ */
+void radiation_packet_book_star_left_box(const struct spart *sp) {
+  struct feedback_isrf_packet_star_ledger_data *l =
+      &radiation_packet_box.stars_left_box;
+  const struct feedback_isrf_packet_removed_data *removed =
+      &sp->feedback_data.radiation.packet.removed;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    l->emitted_energy[b] +=
+        sp->feedback_data.radiation.packet.emitted_energy[b];
+    l->emitted_photons[b] +=
+        sp->feedback_data.radiation.packet.emitted_photons[b];
+    l->escaped_energy[b] +=
+        sp->feedback_data.radiation.packet.escaped_energy[b];
+    l->escaped_photons[b] +=
+        sp->feedback_data.radiation.packet.escaped_photons[b];
+  }
+
+  radiation_packet_add_removed(&l->removed, removed);
+}
+
+/**
+ * @brief A sink leaves a non-periodic box: add its ledger to the box ledger.
+ * Called with `e->s->lock` held.
+ *
+ * @param sink The sink particle.
+ */
+void radiation_packet_book_sink_left_box(const struct sink *sink) {
+  radiation_packet_add_removed(&radiation_packet_box.sinks_left_box,
+                               &sink->feedback_data.isrf_packet);
+}
+
+/**
+ * @brief A black hole swallows a gas particle: book the gas's packet to the
+ * box ledger, on the rank of the gas. Called with `e->s->lock` held.
+ *
+ * @param p The gas particle.
+ */
+void radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {
+  radiation_packet_book_removed_gas(
+      p, &radiation_packet_box.gas_swallowed_by_black_holes);
+}
+
+/**
+ * @brief Sum the ledger of the gas that left the box and the box ledger over
+ * the ranks. Collective.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_reduce_left_box(const struct engine *e) {
+#ifdef WITH_MPI
+  double send[RADIATION_PACKET_LEFT_BOX_DOUBLES + RADIATION_PACKET_BOX_DOUBLES];
+  double recv[RADIATION_PACKET_LEFT_BOX_DOUBLES + RADIATION_PACKET_BOX_DOUBLES];
+  memcpy(send, &radiation_packet_left_box, sizeof(radiation_packet_left_box));
+  memcpy(send + RADIATION_PACKET_LEFT_BOX_DOUBLES, &radiation_packet_box,
+         sizeof(radiation_packet_box));
+
+  MPI_Allreduce(
+      send, recv,
+      RADIATION_PACKET_LEFT_BOX_DOUBLES + RADIATION_PACKET_BOX_DOUBLES,
+      MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  memcpy(&radiation_packet_left_box_sum, recv,
+         sizeof(radiation_packet_left_box_sum));
+  memcpy(&radiation_packet_box_sum, recv + RADIATION_PACKET_LEFT_BOX_DOUBLES,
+         sizeof(radiation_packet_box_sum));
+#else
+  radiation_packet_left_box_sum = radiation_packet_left_box;
+  radiation_packet_box_sum = radiation_packet_box;
+#endif
+
+  radiation_packet_left_box_to_snapshot = units_conversion_factor(
+      e->internal_units, e->snapshot_units, UNIT_CONV_ENERGY);
+}
+
+/**
+ * @brief Ledger of the gas that left the box, summed over the ranks at the
+ * last #radiation_packet_reduce_left_box, in internal units.
+ *
+ * @param l (return) The ledger.
+ * @param to_snapshot_units (return) Factor from internal to snapshot energy
+ * units.
+ */
+void radiation_packet_left_box_total(
+    struct feedback_isrf_packet_removed_data *l, double *to_snapshot_units) {
+  *l = radiation_packet_left_box_sum;
+  *to_snapshot_units = radiation_packet_left_box_to_snapshot;
+}
+
+/**
+ * @brief Box ledger of the stars and sinks that left the box and of the gas
+ * swallowed by black holes, summed over the ranks at the last
+ * #radiation_packet_reduce_left_box, in internal units. The factor to snapshot
+ * units is the one of #radiation_packet_left_box_total.
+ *
+ * @param l (return) The ledger.
+ */
+void radiation_packet_box_total(struct feedback_isrf_packet_box_data *l) {
+  *l = radiation_packet_box_sum;
+}
+
+/**
+ * @brief Write this rank's ledger of the gas that left the box and its box
+ * ledger to a restart file.
+ *
+ * @param stream The restart file.
+ */
+void radiation_packet_left_box_dump(FILE *stream) {
+  restart_write_blocks(&radiation_packet_left_box,
+                       sizeof(radiation_packet_left_box), 1, stream,
+                       "isrf_left_box", "ISRF ledger of the gas that left");
+  restart_write_blocks(&radiation_packet_box, sizeof(radiation_packet_box), 1,
+                       stream, "isrf_box", "ISRF box ledger");
+}
+
+/**
+ * @brief Read this rank's ledger of the gas that left the box and its box
+ * ledger from a restart file.
+ *
+ * @param stream The restart file.
+ */
+void radiation_packet_left_box_restore(FILE *stream) {
+  restart_read_blocks(&radiation_packet_left_box,
+                      sizeof(radiation_packet_left_box), 1, stream, NULL,
+                      "ISRF ledger of the gas that left");
+  restart_read_blocks(&radiation_packet_box, sizeof(radiation_packet_box), 1,
+                      stream, NULL, "ISRF box ledger");
+}
+
+/**
+ * @brief Print the ledger of the gas that left the box and the box ledger,
+ * when they changed. Collective.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_print_left_box_ledgers(const struct engine *e) {
+  static struct feedback_isrf_packet_removed_data printed;
+  radiation_packet_reduce_left_box(e);
+
+  const struct feedback_isrf_packet_removed_data *l =
+      &radiation_packet_left_box_sum;
+  if (e->nodeID == 0 && memcmp(l, &printed, sizeof(printed)) != 0)
+    message(
+        "ISRF packet light of the gas that left the box, step %d: in flight at "
+        "the exit (escaped) %.9e %.9e, inherited ledgers %.9e %.9e (energy, PE "
+        "then LW, internal units).",
+        e->step, l->removed_energy[0], l->removed_energy[1],
+        l->inherited_energy[0], l->inherited_energy[1]);
+
+  printed = *l;
+
+  static struct feedback_isrf_packet_box_data printed_box;
+  const struct feedback_isrf_packet_box_data *x = &radiation_packet_box_sum;
+  if (e->nodeID == 0 && memcmp(x, &printed_box, sizeof(printed_box)) != 0)
+    message(
+        "ISRF packet light of the box ledger, step %d: stars that left emitted "
+        "%.9e %.9e; sinks that left %.9e %.9e; gas swallowed by black holes "
+        "%.9e %.9e (energy, PE then LW, internal units; sinks and black holes: "
+        "in flight plus inherited).",
+        e->step, x->stars_left_box.emitted_energy[0],
+        x->stars_left_box.emitted_energy[1],
+        x->sinks_left_box.removed_energy[0] +
+            x->sinks_left_box.inherited_energy[0],
+        x->sinks_left_box.removed_energy[1] +
+            x->sinks_left_box.inherited_energy[1],
+        x->gas_swallowed_by_black_holes.removed_energy[0] +
+            x->gas_swallowed_by_black_holes.inherited_energy[0],
+        x->gas_swallowed_by_black_holes.removed_energy[1] +
+            x->gas_swallowed_by_black_holes.inherited_energy[1]);
+
+  printed_box = *x;
+}
+
+/**
+ * @brief Print the event counts of the last step, summed over the ranks, when
+ * one is not zero. Collective.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_print_event_counts(const struct engine *e) {
+  static long long counted[rpe_count];
+  long long counts[rpe_count];
+  for (int k = 0; k < rpe_count; k++) {
+    counts[k] = radiation_packet_event_count[k] - counted[k];
+    counted[k] = radiation_packet_event_count[k];
+  }
+
+  radiation_packet_reduce_event_counts(e, counts);
+
+  if (e->nodeID == 0 && (counts[rpe_coarsening] > 0 ||
+                         counts[rpe_overflow] > 0 || counts[rpe_clamp] > 0))
+    message(
+        "ISRF packet arrival, step %d: far cells widened %lld times, %lld "
+        "pieces of light beyond the widest far cells, %lld deliveries to a "
+        "receiver that moves away faster than %g of the limit speed (the "
+        "light is delivered early).",
+        e->step, counts[rpe_coarsening], counts[rpe_overflow],
+        counts[rpe_clamp], 1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
+}
+
+/**
+ * @brief Print, per rank, the counters of the arrival containers of the step
+ * before the current one and since the start, and reset the step counters.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_print_diag_table(const struct engine *e) {
+  /* Per rank, the step before e->step. */
+  for (int k = 0; k < rpd_count; k++) {
+    radiation_packet_diag_n[1][k] += radiation_packet_diag_n[0][k];
+    radiation_packet_diag_e[1][k] += radiation_packet_diag_e[0][k];
+  }
+
+  radiation_packet_diag_delay[1] += radiation_packet_diag_delay[0];
+
+  for (int t = 0; t < 2; t++) {
+    char line[2048];
+    int len =
+        snprintf(line, sizeof(line), "rpd %s rank %d step %d time %.9e",
+                 t == 0 ? "step" : "total", e->nodeID, e->step - 1, e->time);
+
+    for (int k = 0; k < rpd_count && len < (int)sizeof(line); k++)
+      len +=
+          snprintf(line + len, sizeof(line) - len, " %s %lld %.6e",
+                   radiation_packet_diag_name[k], radiation_packet_diag_n[t][k],
+                   radiation_packet_diag_e[t][k]);
+
+    if (len < (int)sizeof(line))
+      snprintf(line + len, sizeof(line) - len, " ovf_delay_e_steps %.6e",
+               radiation_packet_diag_delay[t]);
+    message("%s", line);
+  }
+
+  for (int k = 0; k < rpd_count; k++) {
+    radiation_packet_diag_n[0][k] = 0;
+    radiation_packet_diag_e[0][k] = 0.;
+  }
+
+  radiation_packet_diag_delay[0] = 0.;
+}
+
+/**
+ * @brief Print, once per step, how many times the far arrival cells had to
+ * widen, how many pieces of light were beyond the widest far cells and how
+ * many deliveries went to a receiver that moved away faster than the clamp of
+ * the delay allows since the last step, summed over the ranks. Prints nothing
+ * if all are zero. Also prints the ledger of the gas that
+ * left the box and the box ledger when they changed. Collective: called by
+ * every rank from engine_step().
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_step_diagnostics(const struct engine *e) {
+  radiation_packet_print_left_box_ledgers(e);
+
+  if (!radiation_packet_engine_light_speed_limited(e)) return;
+
+  radiation_packet_print_event_counts(e);
+  radiation_packet_print_diag_table(e);
+}
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
+
+/**
+ * @brief Largest float not above a distance, for a stored distance below the
+ * end of a bin or a cell: a smaller distance is a later time, which is the
+ * safe side. The result is at most @p x and within one float step of it.
+ *
+ * @param x The distance.
+ */
+static float radiation_packet_round_down(const double x) {
+  /* Through memory: -ffast-math folds (double)(float)x to x, so that the float
+     is rounded to the nearest and never corrected downwards. */
+  volatile float rounded = (float)x;
+  float f = rounded;
+  if ((double)f > x) f = nextafterf(f, -FLT_MAX);
+  return f;
+}
+
+/**
+ * @brief Latest arrival time of a bin or cell after a piece joins it, as a
+ * distance below its end, for a particle with a known step.
+ *
+ * A part whose energy is below the float rounding of the other part
+ * (`FLT_EPSILON` of it) takes the time of the other part, so the time at which
+ * the light leaves is set by its bulk, not by light near the photon cutoff.
+ * That faint part may leave before it arrives. Otherwise the later time is
+ * kept.
+ *
+ * The energies are sums over both bands. The result depends on the order in
+ * which the pieces arrive: faint pieces that come before the bulk can set the
+ * time, so the bulk then leaves late, never early.
+ *
+ * @param held Energy in the bin or cell before the piece.
+ * @param held_below Its time, as a distance below the end.
+ * @param piece Energy of the piece.
+ * @param piece_below Time of the piece, as a distance below the end.
+ */
+static float radiation_packet_join_below_end(const float held,
+                                             const float held_below,
+                                             const float piece,
+                                             const float piece_below) {
+  if (!(held > 0.f) || held < FLT_EPSILON * piece) return piece_below;
+  if (piece < FLT_EPSILON * held) return held_below;
+  return fminf(held_below, piece_below);
+}
+
+/**
+ * @brief The bits of a float.
+ *
+ * @param x The float.
+ */
+static uint32_t radiation_packet_float_bits(const float x) {
+  uint32_t u;
+  memcpy(&u, &x, sizeof(u));
+  return u;
+}
+
+/**
+ * @brief The packed rank of the shape of a far cell, from the bits of its two
+ * stamps.
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ */
+static uint64_t radiation_packet_far_rank(
+    const struct feedback_isrf_packet_slot_data *sl, const int c) {
+  const uint32_t first = radiation_packet_float_bits(sl->far_first_below[c]);
+  return (uint64_t)(first & RADIATION_PACKET_FAR_RANK_MASK) |
+         ((uint64_t)radiation_packet_float_bits(sl->far_last_below[c])
+          << RADIATION_PACKET_FAR_RANK_BITS);
+}
+
+/**
+ * @brief Does a far cell keep the shape of its light?
+ *
+ * A shaped cell has the sign bit of `far_first_below` set and the top four
+ * bits of its exponent zero, a pattern that no stamp takes. Its two stamps then
+ * hold the shape as bits and are never read as floats. The packed rank must
+ * also be valid, which rejects an interval with two stamps of -0.0.
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ */
+static int radiation_packet_far_has_shape(
+    const struct feedback_isrf_packet_slot_data *sl, const int c) {
+  const uint32_t first = radiation_packet_float_bits(sl->far_first_below[c]);
+  return (first >> RADIATION_PACKET_FAR_RANK_BITS) ==
+             RADIATION_PACKET_FAR_SHAPE_TAG &&
+         radiation_packet_far_rank(sl, c) < RADIATION_PACKET_FAR_RANKS;
+}
+
+/**
+ * @brief Does a far cell hold one uniform interval of light: the share of a
+ * particle without a known step, which arrives evenly between two times (a
+ * stamp of zero or more in `far_first_below`)?
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ */
+static int radiation_packet_far_has_interval(
+    const struct feedback_isrf_packet_slot_data *sl, const int c) {
+  return (radiation_packet_float_bits(sl->far_first_below[c]) >> 31) == 0u;
+}
+
+/**
+ * @brief Distance from the end of a far cell down to the latest arrival time
+ * of its light: zero for a shaped cell, whose light arrives by its end.
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ */
+static float radiation_packet_far_last_below(
+    const struct feedback_isrf_packet_slot_data *sl, const int c) {
+  return radiation_packet_far_has_shape(sl, c) ? 0.f : sl->far_last_below[c];
+}
+
+/*! Binomial coefficients `C(n, k)` for `k` up to the number of fractions of a
+    shape and `n` up to the number of levels plus that number, filled once
+    before `main`. */
+static uint64_t radiation_packet_binomial[RADIATION_PACKET_FAR_SUBSTEPS]
+                                         [RADIATION_PACKET_FAR_LEVELS +
+                                          RADIATION_PACKET_FAR_SUBSTEPS];
+
+/**
+ * @brief Fill #radiation_packet_binomial with Pascal's rule, before `main`.
+ */
+__attribute__((constructor)) static void radiation_packet_binomial_fill(void) {
+  const int n_max = RADIATION_PACKET_FAR_LEVELS + RADIATION_PACKET_FAR_SUBSTEPS;
+  for (int n = 0; n < n_max; n++) {
+    radiation_packet_binomial[0][n] = 1;
+    for (int k = 1; k < RADIATION_PACKET_FAR_SUBSTEPS; k++)
+      radiation_packet_binomial[k][n] =
+          n == 0 ? 0
+                 : radiation_packet_binomial[k - 1][n - 1] +
+                       radiation_packet_binomial[k][n - 1];
+  }
+}
+
+/**
+ * @brief Read the shape of a far cell: the fraction of its light that has
+ * arrived by the end of each sub-step but the last, in units of
+ * 1 / #RADIATION_PACKET_FAR_LEVELS.
+ *
+ * @param sl The slot.
+ * @param c The cell, shaped.
+ * @param C (return) The fractions, not decreasing.
+ */
+static void radiation_packet_far_shape_get(
+    const struct feedback_isrf_packet_slot_data *sl, const int c,
+    int C[RADIATION_PACKET_FAR_SUBSTEPS - 1]) {
+  uint64_t r = radiation_packet_far_rank(sl, c);
+
+  for (int i = RADIATION_PACKET_FAR_SUBSTEPS - 2; i >= 0; i--) {
+    /* Largest d with C(d, i + 1) <= r, d in [i, levels + i]. */
+    int lo = i;
+    int hi = RADIATION_PACKET_FAR_LEVELS + i;
+    while (lo < hi) {
+      const int mid = (lo + hi + 1) / 2;
+      if (radiation_packet_binomial[i + 1][mid] <= r)
+        lo = mid;
+      else
+        hi = mid - 1;
+    }
+
+    r -= radiation_packet_binomial[i + 1][lo];
+    C[i] = lo - i;
+  }
+}
+
+/**
+ * @brief Store the shape of a far cell (#radiation_packet_far_shape_get).
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ * @param C The fractions, not decreasing, from 0 to
+ * #RADIATION_PACKET_FAR_LEVELS.
+ */
+static void radiation_packet_far_shape_set(
+    struct feedback_isrf_packet_slot_data *sl, const int c,
+    const int C[RADIATION_PACKET_FAR_SUBSTEPS - 1]) {
+  uint64_t r = 0;
+  for (int i = 0; i < RADIATION_PACKET_FAR_SUBSTEPS - 1; i++)
+    r += radiation_packet_binomial[i + 1][C[i] + i];
+
+  const uint32_t first =
+      (RADIATION_PACKET_FAR_SHAPE_TAG << RADIATION_PACKET_FAR_RANK_BITS) |
+      (uint32_t)(r & RADIATION_PACKET_FAR_RANK_MASK);
+  const uint32_t last = (uint32_t)(r >> RADIATION_PACKET_FAR_RANK_BITS);
+
+  memcpy(&sl->far_first_below[c], &first, sizeof(first));
+  memcpy(&sl->far_last_below[c], &last, sizeof(last));
+}
+
+/*! Light of one container (a near bin or a far cell) that waits to be
+    placed again: it arrives evenly between `first` and `last`. */
+struct radiation_packet_record {
+  float energy[ISRF_OPERATOR_COUNT];
+  float photons[ISRF_OPERATOR_COUNT];
+  double first;
+  double last;
+};
+
+/*! End and width of a far cell, on the lattice that its light is stored in. */
+struct radiation_packet_cell {
+  double end;
+  double width;
+};
+
+/**
+ * @brief Add a piece of light that arrives by the end of a far cell to its
+ * shape.
+ *
+ * The new fraction at each sub-step end is the mean of the stored one and the
+ * one of the piece, weighted by the light held before and by the piece. It is
+ * taken as the smallest over the energy and the photon number of each band,
+ * and rounded down, so that no band leaves before it has arrived, up to the
+ * float rounding of the weights. The shape is shared by the bands, so light of
+ * one band that arrives late holds back the light of the other bands of the
+ * cell. A piece beyond the end (faint overflow) counts in the last sub-step.
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ * @param held_light The light of the cell before the piece (the times are
+ * unused).
+ * @param piece_light The piece, with its first and last arrival times.
+ * @param cell The end and the width of the cell.
+ * @param empty Did the cell hold no light before the piece?
+ */
+static void radiation_packet_far_shape_add(
+    struct feedback_isrf_packet_slot_data *sl, const int c,
+    const struct radiation_packet_record *held_light,
+    const struct radiation_packet_record *piece_light,
+    const struct radiation_packet_cell *cell, const int empty) {
+
+  const double lo = piece_light->first;
+  const double hi = piece_light->last;
+  const double end = cell->end;
+  const double width = cell->width;
+  const int m = RADIATION_PACKET_FAR_SUBSTEPS - 1;
+  const double levels = (double)RADIATION_PACKET_FAR_LEVELS;
+  int C[RADIATION_PACKET_FAR_SUBSTEPS - 1];
+
+  if (empty)
+    for (int i = 0; i < m; i++) C[i] = 0;
+  else
+    radiation_packet_far_shape_get(sl, c, C);
+
+  double held[2 * ISRF_OPERATOR_COUNT];
+  double piece[2 * ISRF_OPERATOR_COUNT];
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    held[2 * b] = empty ? 0. : (double)held_light->energy[b];
+    held[2 * b + 1] = empty ? 0. : (double)held_light->photons[b];
+    piece[2 * b] = (double)piece_light->energy[b];
+    piece[2 * b + 1] = (double)piece_light->photons[b];
+  }
+
+  const double sub = width / RADIATION_PACKET_FAR_SUBSTEPS;
+  const double start = end - width;
+  int next[RADIATION_PACKET_FAR_SUBSTEPS - 1];
+
+  for (int i = 0; i < m; i++) {
+    const double b_end = start + (double)(i + 1) * sub;
+    double g;
+    if (hi > end)
+      g = 0.;
+    else if (hi <= b_end)
+      g = 1.;
+    else if (lo >= b_end)
+      g = 0.;
+    else
+      g = (b_end - lo) / (hi - lo);
+
+    double best = levels;
+    for (int x = 0; x < 2 * ISRF_OPERATOR_COUNT; x++) {
+      const double sum = held[x] + piece[x];
+      if (!(sum > 0.) || held[x] < 0. || piece[x] < 0.) continue;
+      best = fmin(best, (held[x] * (double)C[i] + piece[x] * levels * g) / sum);
+    }
+
+    const double f = floor(best);
+    next[i] = f < 0. ? 0 : (f > levels ? RADIATION_PACKET_FAR_LEVELS : (int)f);
+  }
+
+  for (int i = m - 2; i >= 0; i--)
+    if (next[i] > next[i + 1]) next[i] = next[i + 1];
+
+  radiation_packet_far_shape_set(sl, c, next);
+}
+
+/**
+ * @brief Add a piece of a share to a near arrival bin.
+ *
+ * @param sl The slot.
+ * @param j The bin.
+ * @param energy Energy of the piece per band.
+ * @param photons Photon number of the piece per band.
+ * @param below_end Distance from the end of the bin to the latest arrival time
+ * of the piece, rounded down.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
+ * @param known_step Does the particle have a known step
+ * (#radiation_packet_join_below_end)?
+ */
+static void radiation_packet_add_to_bin(
+    struct feedback_isrf_packet_slot_data *sl, const int j,
+    const float energy[ISRF_OPERATOR_COUNT],
+    const float photons[ISRF_OPERATOR_COUNT], const float below_end,
+    const uint32_t salt, const int known_step) {
+  float held = 0.f;
+  float piece = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    held += sl->band[b].bin_energy[j];
+    piece += energy[b];
+  }
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    sl->band[b].bin_energy[j] = radiation_packet_add_stochastic(
+        sl->band[b].bin_energy[j], energy[b], salt);
+    sl->band[b].bin_photons[j] = radiation_packet_add_stochastic(
+        sl->band[b].bin_photons[j], photons[b], salt);
+  }
+
+  if (known_step)
+    sl->bin_stamp_below_end[j] = radiation_packet_join_below_end(
+        held, sl->bin_stamp_below_end[j], piece, below_end);
+  else
+    sl->bin_stamp_below_end[j] =
+        held > 0.f ? fminf(sl->bin_stamp_below_end[j], below_end) : below_end;
+}
+
+/**
+ * @brief Add a piece of a share to a far arrival cell.
+ *
+ * The first piece in a cell keeps its interval: its light arrives evenly
+ * between @p lo and @p hi. A second piece makes the cell hold several shares,
+ * of which the cell keeps one uniform interval (the later first time, the
+ * later last time) if both are intervals inside the cell, and otherwise only
+ * the latest arrival time. A piece that carries light of earlier pieces (below
+ * the photon cutoff) keeps the interval of its own light: the carried light
+ * arrived before it, so it leaves no earlier than it has arrived.
+ *
+ * With a known step the cell keeps the shape of its light over
+ * #RADIATION_PACKET_FAR_SUBSTEPS sub-steps (#radiation_packet_far_shape_add).
+ * Light beyond the end of the last cell turns the cell into one pulse at its
+ * latest arrival time (#radiation_packet_join_below_end), unless it is faint
+ * (@p is_faint).
+ *
+ * The widening of the far cells, the faint-light rule and the limit of the far
+ * light are in theory/GEAR/Radiation/04_isrf_packet_transport.tex (the
+ * paragraph on arrival bins and cells, and the limit on the far light at a slow
+ * speed).
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ * @param incoming The piece, with its first and last arrival times.
+ * @param cell The end and the width of the cell.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
+ * @param known_step Does the particle have a known step?
+ * @param is_faint Is the light beyond the end of the cell faint
+ * (#radiation_packet_faint_energy)?
+ */
+static void radiation_packet_add_to_far(
+    struct feedback_isrf_packet_slot_data *sl, const int c,
+    const struct radiation_packet_record *incoming,
+    const struct radiation_packet_cell *cell, const uint32_t salt,
+    const int known_step, const int is_faint) {
+  const float *energy = incoming->energy;
+  const float *photons = incoming->photons;
+  const double lo = incoming->first;
+  const double hi = incoming->last;
+  const double end = cell->end;
+  float held = 0.f;
+  struct radiation_packet_record held_light;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    held_light.energy[b] = sl->band[b].far_energy[c];
+    held_light.photons[b] = sl->band[b].far_photons[c];
+    held += held_light.energy[b];
+  }
+  held_light.first = 0.;
+  held_light.last = 0.;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    sl->band[b].far_energy[c] = radiation_packet_add_stochastic(
+        sl->band[b].far_energy[c], energy[b], salt);
+    sl->band[b].far_photons[c] = radiation_packet_add_stochastic(
+        sl->band[b].far_photons[c], photons[b], salt);
+  }
+
+  const float last_below = (hi <= end || is_faint) && known_step
+                               ? 0.f
+                               : radiation_packet_round_down(end - hi);
+
+  if (known_step) {
+    const int empty = !(held > 0.f);
+    if (last_below == 0.f && (empty || radiation_packet_far_has_shape(sl, c))) {
+      radiation_packet_far_shape_add(sl, c, &held_light, incoming, cell, empty);
+    } else {
+      float piece = 0.f;
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) piece += energy[b];
+
+      sl->far_last_below[c] = radiation_packet_join_below_end(
+          held, radiation_packet_far_last_below(sl, c), piece, last_below);
+      sl->far_first_below[c] = -1.f;
+    }
+  } else if (held > 0.f) {
+    /* Two uniform intervals make one from the later of the first times to the
+       later of the last times: the light of each share arrives, along its
+       line, at or above the line of the merged interval, so the cell never
+       releases more than has arrived. A cell that holds light beyond its end
+       keeps only the latest arrival time. */
+    const int interval = radiation_packet_far_has_interval(sl, c) && hi <= end;
+    sl->far_first_below[c] = interval
+                                 ? fminf(sl->far_first_below[c],
+                                         radiation_packet_round_down(end - lo))
+                                 : -1.f;
+    sl->far_last_below[c] =
+        fminf(radiation_packet_far_last_below(sl, c), last_below);
+  } else {
+    /* Light that arrives beyond the end of the cell cannot be kept as an
+       interval inside it. */
+    sl->far_first_below[c] =
+        hi <= end ? radiation_packet_round_down(end - lo) : -1.f;
+    sl->far_last_below[c] = last_below;
+  }
+}
+
+/**
+ * @brief Width of the near arrival bins: the length of the step.
+ *
+ * @param pk The packet of the receiver.
+ */
+static integertime_t radiation_packet_step_width(
+    const struct feedback_isrf_packet_data *pk) {
+  return pk->step_ti > 0 ? pk->step_ti : 1;
+}
+
+/**
+ * @brief End of a near arrival bin on the receiver's step lattice.
+ *
+ * The bins are one step wide and lie on the multiples of the step. Bin 0 ends
+ * at the first multiple at or after the end of the current step, and bin `j`
+ * at `j` steps later. A lattice that does not move with the step keeps what
+ * waits in a bin in place, so that its light comes nearer the merge time as
+ * time passes. The bins never become wider: light that arrives beyond the
+ * last bin goes to the far cells.
+ *
+ * @param pk The packet of the receiver.
+ * @param j The bin.
+ * @return The end of the bin, an integer time.
+ */
+integertime_t radiation_packet_bin_end(
+    const struct feedback_isrf_packet_data *pk, const int j) {
+  const integertime_t w = radiation_packet_step_width(pk);
+  return ((pk->step_end_ti + w - 1) / w) * w + (integertime_t)j * w;
+}
+
+/**
+ * @brief Largest far scale for a step: the width stays below
+ * #RADIATION_PACKET_MAX_FAR_WIDTH.
+ *
+ * @param w The length of the step.
+ */
+static int radiation_packet_far_scale_limit(const integertime_t w) {
+  int s = 0;
+  while (s < RADIATION_PACKET_MAX_FAR_SCALE &&
+         w <= (RADIATION_PACKET_MAX_FAR_WIDTH >> (s + 1)))
+    s++;
+  return s;
+}
+
+/**
+ * @brief End of a far arrival cell for a given scale.
+ *
+ * The cells are `2^scale` steps wide and lie on the multiples of that width.
+ * Cell 0 ends at the first multiple after the end of the last near bin, so
+ * that it holds the light that arrives beyond the near bins, and cell `c` at
+ * `c` widths later.
+ *
+ * @param pk The packet of the receiver.
+ * @param scale The far scale.
+ * @param c The cell.
+ * @return The end of the cell, an integer time.
+ */
+static integertime_t radiation_packet_far_end_at(
+    const struct feedback_isrf_packet_data *pk, const int scale, const int c) {
+  const integertime_t width = radiation_packet_step_width(pk) << scale;
+  const integertime_t reach =
+      radiation_packet_bin_end(pk, RADIATION_PACKET_BINS - 1);
+  return (reach / width + 1 + (integertime_t)c) * width;
+}
+
+/**
+ * @brief End of a far arrival cell.
+ *
+ * @param pk The packet of the receiver.
+ * @param c The cell.
+ * @return The end of the cell, an integer time.
+ */
+integertime_t radiation_packet_far_end(
+    const struct feedback_isrf_packet_data *pk, const int c) {
+  return radiation_packet_far_end_at(pk, pk->far_scale, c);
+}
+
+/**
+ * @brief Ends of the near bins and of the far cells of a receiver, as doubles.
+ *
+ * Gives the same values as #radiation_packet_bin_end and
+ * #radiation_packet_far_end with two divisions in all.
+ *
+ * @param pk The packet of the receiver.
+ * @param ub (return) The ends: the near bins first, then the far cells.
+ */
+static void radiation_packet_piece_ends(
+    const struct feedback_isrf_packet_data *pk,
+    double ub[RADIATION_PACKET_PIECES]) {
+  const integertime_t w = radiation_packet_step_width(pk);
+  const integertime_t e0 = ((pk->step_end_ti + w - 1) / w) * w;
+
+  for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+    ub[j] = (double)(e0 + (integertime_t)j * w);
+
+  const integertime_t reach =
+      e0 + (integertime_t)(RADIATION_PACKET_BINS - 1) * w;
+  const integertime_t width = w << pk->far_scale;
+  const integertime_t f0 = (reach / width + 1) * width;
+
+  for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+    ub[RADIATION_PACKET_BINS + c] = (double)(f0 + (integertime_t)c * width);
+}
+
+/**
+ * @brief Time of a stamp stored as a distance below the end of a near bin or
+ * a far cell.
+ *
+ * A distance of zero or more is a time at or before the end. From 2^53 on the
+ * rounding up of #radiation_packet_time_later would put a time that the
+ * double holds exactly, such as the end itself, past the end, and the light
+ * would leave one bin or cell late. Such a time is capped at the end.
+ *
+ * @param end The end of the bin or the cell.
+ * @param below The distance below the end.
+ */
+static double radiation_packet_time_below_end(const double end,
+                                              const float below) {
+  const double t = radiation_packet_time_later(end - (double)below);
+  return below >= 0.f ? fmin(t, end) : t;
+}
+
+/**
+ * @brief Does the slot wait for light in any near bin or far cell?
+ *
+ * @param sl The slot.
+ */
+static int radiation_packet_slot_is_pending(
+    const struct feedback_isrf_packet_slot_data *sl) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+      if (sl->band[b].bin_energy[j] != 0.f || sl->band[b].bin_photons[j] != 0.f)
+        return 1;
+    for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+      if (sl->band[b].far_energy[c] != 0.f || sl->band[b].far_photons[c] != 0.f)
+        return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Take the light of a near bin out of a slot as a pulse at its latest
+ * arrival time.
+ *
+ * @param sl The slot.
+ * @param j The bin.
+ * @param end The end of the bin, on the lattice that the light was stored in.
+ * @param rec (return) The light.
+ * @return Did the bin hold light?
+ */
+static int radiation_packet_take_bin(struct feedback_isrf_packet_slot_data *sl,
+                                     const int j, const integertime_t end,
+                                     struct radiation_packet_record *rec) {
+  int occupied = 0;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    rec->energy[b] = band->bin_energy[j];
+    rec->photons[b] = band->bin_photons[j];
+    if (rec->energy[b] != 0.f || rec->photons[b] != 0.f) occupied = 1;
+    band->bin_energy[j] = 0.f;
+    band->bin_photons[j] = 0.f;
+  }
+
+  rec->last =
+      radiation_packet_time_below_end((double)end, sl->bin_stamp_below_end[j]);
+  rec->first = rec->last;
+
+  if (occupied && sl->bin_stamp_below_end[j] >= 0.f && rec->last > (double)end)
+    radiation_packet_diag(rpd_past_end_taken,
+                          radiation_packet_diag_sum(rec->energy));
+
+  sl->bin_stamp_below_end[j] = 0.f;
+  return occupied;
+}
+
+/*! What the split of a share into consecutive pieces carries from one piece to
+    the next: the sum given to the earlier pieces, and the part of a piece below
+    the photon cutoff that joins the next later piece. */
+struct radiation_packet_split {
+  double given_e[ISRF_OPERATOR_COUNT];
+  double given_n[ISRF_OPERATOR_COUNT];
+  float carry_e[ISRF_OPERATOR_COUNT];
+  float carry_n[ISRF_OPERATOR_COUNT];
+};
+
+/**
+ * @brief Start the split of a share.
+ *
+ * @param split The state of the split.
+ */
+static void radiation_packet_split_init(struct radiation_packet_split *split) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    split->given_e[b] = 0.;
+    split->given_n[b] = 0.;
+    split->carry_e[b] = 0.f;
+    split->carry_n[b] = 0.f;
+  }
+}
+
+/**
+ * @brief Take the next piece of a share.
+ *
+ * A piece that is not the last is rounded down, so that no part of the share
+ * is placed before its arrival allows. The last piece takes the rest. A piece
+ * below the photon cutoff in a band joins the next later piece, never an
+ * earlier one.
+ *
+ * @param split (in/out) The state of the split.
+ * @param energy Energy of the share per band.
+ * @param photons Photon number of the share per band.
+ * @param share Fraction of the share in this piece.
+ * @param is_last Is this the last piece?
+ * @param pe (return) Energy of the piece per band.
+ * @param pn (return) Photon number of the piece per band.
+ * @return Does the piece hold any light?
+ */
+static int radiation_packet_split_next(struct radiation_packet_split *split,
+                                       const float energy[ISRF_OPERATOR_COUNT],
+                                       const float photons[ISRF_OPERATOR_COUNT],
+                                       const double share, const int is_last,
+                                       float pe[ISRF_OPERATOR_COUNT],
+                                       float pn[ISRF_OPERATOR_COUNT]) {
+  int any = 0;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    if (is_last) {
+      pe[b] = (float)((double)energy[b] - split->given_e[b]);
+      pn[b] = (float)((double)photons[b] - split->given_n[b]);
+    } else {
+      pe[b] = radiation_packet_round_down((double)energy[b] * share);
+      pn[b] = radiation_packet_round_down((double)photons[b] * share);
+    }
+
+    split->given_e[b] += (double)pe[b];
+    split->given_n[b] += (double)pn[b];
+    pe[b] += split->carry_e[b];
+    pn[b] += split->carry_n[b];
+    split->carry_e[b] = 0.f;
+    split->carry_n[b] = 0.f;
+
+    if (!is_last && pn[b] > 0.f && pn[b] < RADIATION_PACKET_MIN_PHOTONS) {
+      split->carry_e[b] = pe[b];
+      split->carry_n[b] = pn[b];
+      pe[b] = 0.f;
+      pn[b] = 0.f;
+    }
+
+    if (pe[b] != 0.f || pn[b] != 0.f) any = 1;
+  }
+  return any;
+}
+
+/**
+ * @brief Light of a shaped far cell as pulses, one at the end of each
+ * sub-step that holds light.
+ *
+ * Each pulse but the last is rounded down, so that the light that has left by
+ * a time is never above the stored fraction; the last takes the rest. A band
+ * of a pulse below the photon cutoff joins the next later pulse.
+ *
+ * @param C The shape (#radiation_packet_far_shape_get).
+ * @param energy Energy of the cell per band.
+ * @param photons Photon number of the cell per band.
+ * @param end End of the cell.
+ * @param width Width of the cell.
+ * @param rec (return) The pulses.
+ * @return The number of pulses.
+ */
+static int radiation_packet_far_shape_pulses(
+    const int C[RADIATION_PACKET_FAR_SUBSTEPS - 1],
+    const float energy[ISRF_OPERATOR_COUNT],
+    const float photons[ISRF_OPERATOR_COUNT], const double end,
+    const double width, struct radiation_packet_record *rec) {
+
+  const double sub = width / RADIATION_PACKET_FAR_SUBSTEPS;
+  const double start = end - width;
+  struct radiation_packet_split split;
+  radiation_packet_split_init(&split);
+
+  int k = 0;
+  int prev = 0;
+  for (int i = 0; i < RADIATION_PACKET_FAR_SUBSTEPS; i++) {
+    const int is_last = i == RADIATION_PACKET_FAR_SUBSTEPS - 1;
+    const int cum = is_last ? RADIATION_PACKET_FAR_LEVELS : C[i];
+    if (!is_last && cum == prev) continue;
+
+    const double share =
+        (double)(cum - prev) / (double)RADIATION_PACKET_FAR_LEVELS;
+    prev = cum;
+
+    const int any = radiation_packet_split_next(
+        &split, energy, photons, share, is_last, rec[k].energy, rec[k].photons);
+
+    if (!any) continue;
+    rec[k].last = is_last ? end : start + (double)(i + 1) * sub;
+    rec[k].first = rec[k].last;
+    k++;
+  }
+
+  return k;
+}
+
+/**
+ * @brief Move the light of a far cell, with its stamps or shape, to another
+ * cell of the same end and width, which is empty.
+ *
+ * @param sl The slot.
+ * @param from The cell that holds the light.
+ * @param to The empty cell.
+ */
+static void radiation_packet_move_far(struct feedback_isrf_packet_slot_data *sl,
+                                      const int from, const int to) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    band->far_energy[to] = band->far_energy[from];
+    band->far_photons[to] = band->far_photons[from];
+    band->far_energy[from] = 0.f;
+    band->far_photons[from] = 0.f;
+  }
+
+  memcpy(&sl->far_first_below[to], &sl->far_first_below[from], sizeof(float));
+  memcpy(&sl->far_last_below[to], &sl->far_last_below[from], sizeof(float));
+
+  sl->far_first_below[from] = 0.f;
+  sl->far_last_below[from] = 0.f;
+}
+
+/**
+ * @brief Take the light of a far cell out of a slot: a uniform interval if the
+ * cell holds one share of a particle with an unknown step, a pulse at the end
+ * of each sub-step if the cell is shaped, a pulse at its latest arrival time
+ * otherwise.
+ *
+ * @param sl The slot.
+ * @param c The cell.
+ * @param end The end of the cell, on the lattice that the light was stored in.
+ * @param width The width of the cell on that lattice.
+ * @param rec (return) The light, up to #RADIATION_PACKET_FAR_SUBSTEPS records.
+ * @return The number of records: 0 if the cell held no light.
+ */
+static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
+                                     const int c, const integertime_t end,
+                                     const double width,
+                                     struct radiation_packet_record *rec) {
+  int occupied = 0;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    rec->energy[b] = band->far_energy[c];
+    rec->photons[b] = band->far_photons[c];
+    if (rec->energy[b] != 0.f || rec->photons[b] != 0.f) occupied = 1;
+    band->far_energy[c] = 0.f;
+    band->far_photons[c] = 0.f;
+  }
+
+  if (occupied && radiation_packet_far_has_shape(sl, c)) {
+    int C[RADIATION_PACKET_FAR_SUBSTEPS - 1];
+    radiation_packet_far_shape_get(sl, c, C);
+
+    float e[ISRF_OPERATOR_COUNT];
+    float n[ISRF_OPERATOR_COUNT];
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      e[b] = rec->energy[b];
+      n[b] = rec->photons[b];
+    }
+
+    sl->far_first_below[c] = 0.f;
+    sl->far_last_below[c] = 0.f;
+    return radiation_packet_far_shape_pulses(C, e, n, (double)end, width, rec);
+  }
+
+  if (radiation_packet_far_has_shape(sl, c)) {
+    sl->far_first_below[c] = 0.f;
+    sl->far_last_below[c] = 0.f;
+    return 0;
+  }
+
+  rec->last =
+      radiation_packet_time_below_end((double)end, sl->far_last_below[c]);
+  rec->first =
+      sl->far_first_below[c] >= 0.f
+          ? radiation_packet_time_below_end((double)end, sl->far_first_below[c])
+          : rec->last;
+
+  if (occupied && sl->far_last_below[c] >= 0.f && rec->last > (double)end)
+    radiation_packet_diag(rpd_past_end_taken,
+                          radiation_packet_diag_sum(rec->energy));
+
+  sl->far_first_below[c] = 0.f;
+  sl->far_last_below[c] = 0.f;
+  return occupied;
+}
+
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+/**
+ * @brief Count one piece of a placed share, and whether it fell beyond the
+ * last far cell.
+ *
+ * @param pe Energy of the piece in each band.
+ * @param j Index of the arrival container of the piece.
+ * @param last Last arrival time of the share.
+ * @param ub End of each arrival container.
+ */
+static void radiation_packet_diag_placed(
+    const float pe[ISRF_OPERATOR_COUNT], const int j, const double last,
+    const double ub[RADIATION_PACKET_PIECES]) {
+  const int n = RADIATION_PACKET_PIECES;
+  double piece = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) piece += (double)pe[b];
+  const int again = radiation_packet_diag_again;
+  radiation_packet_diag(again ? rpd_placed_again : rpd_placed_new, piece);
+  if (j == n) {
+    if (last <= ub[n - 1])
+      radiation_packet_diag(
+          again ? rpd_overflow_inside_again : rpd_overflow_inside_new, piece);
+    else if (last >= (double)max_nr_timesteps)
+      radiation_packet_diag(
+          again ? rpd_overflow_after_end_again : rpd_overflow_after_end_new,
+          piece);
+    else
+      radiation_packet_diag(
+          again ? rpd_overflow_before_end_again : rpd_overflow_before_end_new,
+          piece);
+  }
+}
+#else
+INLINE static void radiation_packet_diag_placed(
+    const float pe[ISRF_OPERATOR_COUNT], const int j, const double last,
+    const double ub[RADIATION_PACKET_PIECES]) {}
+#endif
+
+/**
+ * @brief Put a share into the arrival bins and cells of a slot, on the
+ * current lattices of the receiver.
+ *
+ * The near bins hold the light that arrives by the end of the bin: bin 0 the
+ * light that arrives by its end `E`, bin `j` the light in `(E + (j - 1) w, E +
+ * j w]`, `w` the step. The far cells hold the light beyond the last bin. A
+ * share arrives evenly between @p first and @p last. A pulse goes whole into
+ * its bin or cell. A longer share is split by its overlap with the bins and
+ * cells (#radiation_packet_split_next). Light beyond the last far cell goes to
+ * it and counts as overflow.
+ *
+ * When a bin or a cell leaves is in
+ * theory/GEAR/Radiation/04_isrf_packet_transport.tex (the paragraph on arrival
+ * bins and cells).
+ *
+ * @param sl The slot.
+ * @param ub The ends of the near bins and the far cells of the receiver
+ * (#radiation_packet_piece_ends).
+ * @param far_width Width of the far cells of the receiver.
+ * @param light The share, with its first and last arrival times.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
+ * @param known_step Does the receiver have a known step
+ * (#radiation_packet_add_to_far)?
+ * @param faint Energy below which light is faint
+ * (#radiation_packet_faint_energy).
+ * @param placing What is placed, see #radiation_packet_placing.
+ */
+static void radiation_packet_place(
+    struct feedback_isrf_packet_slot_data *sl,
+    const double ub[RADIATION_PACKET_PIECES], const double far_width,
+    const struct radiation_packet_record *light, const uint32_t salt,
+    const int known_step, const double faint,
+    const enum radiation_packet_placing placing) {
+
+  const int n = RADIATION_PACKET_PIECES;
+  const float *energy = light->energy;
+  const float *photons = light->photons;
+  const double first = light->first;
+  const double last = light->last;
+
+  /* With a known step, faint light does not widen the far cells
+     (#radiation_packet_regrid), so its overflow must not move the time of the
+     light in the last cell either. Light after the end of the time line does
+     not widen them either, but it never arrives and keeps its time. */
+  double share_energy = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    share_energy += fabs((double)energy[b]);
+  const int is_faint = known_step && share_energy < faint;
+
+  /* Cumulative fraction of the share in the pieces 0..j, and beyond (j = n). */
+  double cum[RADIATION_PACKET_PIECES + 1];
+  if (!(last > first)) {
+    int j = 0;
+    while (j < n && ub[j] < first) j++;
+    for (int i = 0; i <= n; i++) cum[i] = i >= j ? 1. : 0.;
+  } else {
+    /* A piece that ends at or after the last arrival holds the rest exactly:
+       under -freciprocal-math the quotient can be one rounding below 1. */
+    const double length = last - first;
+    for (int i = 0; i < n; i++)
+      cum[i] = ub[i] >= last
+                   ? 1.
+                   : fmin(1., fmax(0., (fmin(last, ub[i]) - first) / length));
+    cum[n] = 1.;
+  }
+
+  int last_piece = n;
+  for (int i = 0; i <= n; i++)
+    if (cum[i] >= 1.) {
+      last_piece = i;
+      break;
+    }
+
+  struct radiation_packet_split split;
+  radiation_packet_split_init(&split);
+
+  double placed = 0.;
+  double placed_far = 0.;
+  for (int j = 0; j <= last_piece; j++) {
+    float pe[ISRF_OPERATOR_COUNT];
+    float pn[ISRF_OPERATOR_COUNT];
+    const double share = cum[j] - (j > 0 ? cum[j - 1] : 0.);
+    const int any = radiation_packet_split_next(&split, energy, photons, share,
+                                                j == last_piece, pe, pn);
+
+    if (!any) continue;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      placed += fabs((double)pe[b]);
+      if (j >= RADIATION_PACKET_BINS) placed_far += fabs((double)pe[b]);
+    }
+
+    radiation_packet_diag_placed(pe, j, last, ub);
+
+    const uint32_t piece_salt =
+        salt ^ ((uint32_t)j * RADIATION_PACKET_HASH_MIX_2);
+
+    struct radiation_packet_record piece;
+    struct radiation_packet_cell cell;
+    cell.width = far_width;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      piece.energy[b] = pe[b];
+      piece.photons[b] = pn[b];
+    }
+
+    if (j < RADIATION_PACKET_BINS) {
+      const double stamp = fmin(last, ub[j]);
+      radiation_packet_add_to_bin(sl, j, pe, pn,
+                                  radiation_packet_round_down(ub[j] - stamp),
+                                  piece_salt, known_step);
+    } else if (j < n) {
+      piece.first = fmax(first, ub[j - 1]);
+      piece.last = fmin(last, ub[j]);
+      cell.end = ub[j];
+      radiation_packet_add_to_far(sl, j - RADIATION_PACKET_BINS, &piece, &cell,
+                                  piece_salt, known_step, 0);
+    } else {
+      piece.first = fmax(first, ub[n - 1]);
+      piece.last = last;
+      cell.end = ub[n - 1];
+      radiation_packet_add_to_far(sl, RADIATION_PACKET_FAR_CELLS - 1, &piece,
+                                  &cell, piece_salt, known_step, is_faint);
+      radiation_packet_count_overflow();
+    }
+  }
+
+  if (placing != rpl_again && placed > 0.) {
+    struct radiation_packet_placed *mine = radiation_packet_placed_record();
+    if (placing == rpl_known_step) {
+      mine->all += placed;
+      mine->far += placed_far;
+      mine->count += 1.;
+    } else {
+      mine->unknown_all += placed;
+      mine->unknown_far += placed_far;
+      mine->unknown_count += 1.;
+    }
+  }
+}
+
+/*! The near and far lattices of a packet at one moment: the end of bin 0, the
+    width of the near bins, the far scale and the ends of the far cells. */
+struct radiation_packet_lattice {
+  integertime_t first;
+  integertime_t width;
+  int scale;
+  integertime_t far_end[RADIATION_PACKET_FAR_CELLS];
+};
+
+/**
+ * @brief Save the lattices that the light of a packet waits on, before the
+ * step of the packet changes.
+ *
+ * @param pk The packet of the particle.
+ * @return The lattices.
+ */
+static struct radiation_packet_lattice radiation_packet_lattice_save(
+    const struct feedback_isrf_packet_data *pk) {
+  struct radiation_packet_lattice l;
+  l.first = radiation_packet_bin_end(pk, 0);
+  l.width = radiation_packet_step_width(pk);
+  l.scale = pk->far_scale;
+  for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+    l.far_end[c] = radiation_packet_far_end(pk, c);
+  return l;
+}
+
+/**
+ * @brief Energy below which light of a particle with a known step is faint.
+ *
+ * Faint light is below `FLT_EPSILON` of all the light that waits in the
+ * particle, summed over the slots, the bins, the cells and the bands, and of
+ * the share about to be placed. It does not widen the far cells
+ * (#radiation_packet_regrid), and when it lands beyond the last far cell it
+ * does not move the time of the light there (#radiation_packet_place).
+ *
+ * @param pk The packet of the particle.
+ * @param extra_energy Energy of a share about to be placed, or 0.
+ */
+static double radiation_packet_faint_energy(
+    const struct feedback_isrf_packet_data *pk, const double extra_energy) {
+  double bulk = extra_energy;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    const struct feedback_isrf_packet_slot_data *sl = &pk->slot[s];
+    if (!radiation_packet_slot_is_pending(sl)) continue;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+        bulk += fabs((double)sl->band[b].bin_energy[j]);
+      for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+        bulk += fabs((double)sl->band[b].far_energy[c]);
+    }
+  }
+  return (double)FLT_EPSILON * bulk;
+}
+
+/**
+ * @brief Move the waiting light of a particle to the lattices of its new step
+ * and, when needed, to another far scale.
+ *
+ * Call it after the step of the packet changed (or, with @p extra_last, before
+ * a share is placed whose light arrives beyond the far cells). The far scale
+ * becomes the smallest at which all waiting light, and the share, fits the far
+ * cells. With a known step it is at least #RADIATION_PACKET_FAR_SCALE, and
+ * light below `FLT_EPSILON` of the energy that waits, and light that arrives
+ * after the end of the time line, do not count, so that they cannot widen the
+ * cells.
+ * Light that waits in a near bin becomes a pulse at its latest arrival time,
+ * light in a far cell that holds one share keeps its interval, and light in a
+ * far cell that holds several shares, or that leaves at the end of the cell,
+ * becomes a pulse at that time: it is never moved earlier. What the new
+ * lattices cannot hold in the near bins goes to the far cells.
+ *
+ * @param pk The packet of the particle.
+ * @param old The previous lattices.
+ * @param extra_last Last arrival time of a share about to be placed, or a
+ * negative value for none.
+ * @param extra_energy Energy of that share, summed over the bands.
+ * @param salt Salt of the roundings (#radiation_packet_salt).
+ */
+static void radiation_packet_regrid(struct feedback_isrf_packet_data *pk,
+                                    const struct radiation_packet_lattice *old,
+                                    const double extra_last,
+                                    const double extra_energy,
+                                    const uint32_t salt) {
+
+  const int n = RADIATION_PACKET_BINS;
+  const integertime_t w = radiation_packet_step_width(pk);
+  const integertime_t new_first = radiation_packet_bin_end(pk, 0);
+  const int known_step = pk->step_ti > 0;
+  const int limit = radiation_packet_far_scale_limit(w);
+
+  /* Faint light does not set the width of the cells of a known step. */
+  const double faint =
+      known_step ? radiation_packet_faint_energy(pk, extra_energy) : 0.;
+
+  /* The latest arrival time of everything that waits. */
+  double need = extra_energy < faint ? -1. : extra_last;
+  int pending = extra_last >= 0.;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    const struct feedback_isrf_packet_slot_data *sl = &pk->slot[s];
+    if (!radiation_packet_slot_is_pending(sl)) continue;
+    pending = 1;
+    for (int j = 0; j < n; j++) {
+      float e = 0.f;
+      float ee = 0.f;
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+        e += fabsf(sl->band[b].bin_energy[j]) +
+             fabsf(sl->band[b].bin_photons[j]);
+        ee += fabsf(sl->band[b].bin_energy[j]);
+      }
+      if (e != 0.f && (double)ee >= faint)
+        need = fmax(need, (double)(old->first + (integertime_t)j * old->width) -
+                              (double)sl->bin_stamp_below_end[j]);
+    }
+
+    for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++) {
+      float e = 0.f;
+      float ee = 0.f;
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+        e += fabsf(sl->band[b].far_energy[c]) +
+             fabsf(sl->band[b].far_photons[c]);
+        ee += fabsf(sl->band[b].far_energy[c]);
+      }
+
+      const double latest = (double)old->far_end[c] -
+                            (double)radiation_packet_far_last_below(sl, c);
+
+      /* Light that arrives after the end of the time line never arrives. */
+      if (e != 0.f && (double)ee >= faint &&
+          !(known_step && latest >= (double)max_nr_timesteps))
+        need = fmax(need, latest);
+    }
+  }
+
+  const int base_scale =
+      known_step ? min(RADIATION_PACKET_FAR_SCALE, limit) : 0;
+
+  if (!pending) {
+    pk->far_scale = base_scale;
+    return;
+  }
+
+  /* The smallest far scale at which it fits. */
+  int scale = base_scale;
+  if (need > (double)radiation_packet_bin_end(pk, n - 1))
+    while (scale < limit &&
+           (double)radiation_packet_far_end_at(
+               pk, scale, RADIATION_PACKET_FAR_CELLS - 1) < need)
+      scale++;
+
+  const int near_changed = new_first != old->first || w != old->width;
+  const int far_changed =
+      scale != old->scale || w != old->width ||
+      radiation_packet_far_end_at(pk, scale, 0) != old->far_end[0];
+  pk->far_scale = (unsigned char)scale;
+  if (!near_changed && !far_changed) return;
+
+  double ub[RADIATION_PACKET_PIECES];
+  radiation_packet_piece_ends(pk, ub);
+  const double far_width = (double)(w << scale);
+  const double old_far_width = (double)(old->width << old->scale);
+
+  /* A far lattice that only slides by one cell keeps the shaped cells whole. */
+  const int slide = RADIATION_PACKET_FAR_CELLS > 1 && w == old->width &&
+                    scale == old->scale &&
+                    (double)old->far_end[1] == ub[RADIATION_PACKET_BINS];
+
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct feedback_isrf_packet_slot_data *sl = &pk->slot[s];
+    if (!radiation_packet_slot_is_pending(sl)) continue;
+
+    struct radiation_packet_record rec[RADIATION_PACKET_RECORDS];
+    int count = 0;
+    if (near_changed)
+      for (int j = 0; j < n; j++)
+        if (radiation_packet_take_bin(
+                sl, j, old->first + (integertime_t)j * old->width, &rec[count]))
+          count++;
+
+    if (far_changed)
+      for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++) {
+        if (slide && c > 0 && radiation_packet_far_has_shape(sl, c))
+          radiation_packet_move_far(sl, c, c - 1);
+        else
+          count += radiation_packet_take_far(sl, c, old->far_end[c],
+                                             old_far_width, &rec[count]);
+      }
+
+    radiation_packet_diag_set_again(1);
+
+    for (int i = 0; i < count; i++)
+      radiation_packet_place(sl, ub, far_width, &rec[i],
+                             radiation_packet_salt_index(salt, (uint32_t)i),
+                             known_step, faint, rpl_again);
+    radiation_packet_diag_set_again(0);
+  }
+}
+
+/**
+ * @brief Put a share into the arrival bins and cells of a slot.
+ *
+ * If the last light of the share is beyond the last far cell, the far cells
+ * become wider until it fits (#radiation_packet_regrid), up to a limit. The
+ * near bins never widen. The placing is #radiation_packet_place. Light does
+ * not leave before it has arrived, except faint light
+ * (#radiation_packet_faint_energy).
+ *
+ * The widening of the far cells, the faint-light rule and the limit of the far
+ * light are in theory/GEAR/Radiation/04_isrf_packet_transport.tex (the
+ * paragraph on arrival bins and cells, and the limit on the far light at a slow
+ * speed).
+ *
+ * @param pk The packet of the receiver.
+ * @param sl The slot.
+ * @param energy Energy of the share per band.
+ * @param photons Photon number of the share per band.
+ * @param first First arrival time of the share.
+ * @param last Last arrival time of the share.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
+ */
+void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
+                              struct feedback_isrf_packet_slot_data *sl,
+                              const float energy[ISRF_OPERATOR_COUNT],
+                              const float photons[ISRF_OPERATOR_COUNT],
+                              const double first, const double last,
+                              const uint32_t salt) {
+
+  double ub[RADIATION_PACKET_PIECES];
+  radiation_packet_piece_ends(pk, ub);
+  const int known_step = pk->step_ti > 0;
+  double energy_sum = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    energy_sum += fabs((double)energy[b]);
+
+  if (last < (double)max_nr_timesteps &&
+      last > ub[RADIATION_PACKET_PIECES - 1] &&
+      pk->far_scale <
+          radiation_packet_far_scale_limit(radiation_packet_step_width(pk))) {
+    const struct radiation_packet_lattice old =
+        radiation_packet_lattice_save(pk);
+
+    radiation_packet_regrid(pk, &old, last, energy_sum, salt);
+
+    if (pk->far_scale != old.scale) radiation_packet_count_coarsening();
+    radiation_packet_piece_ends(pk, ub);
+  }
+
+  const double faint = known_step && last > ub[RADIATION_PACKET_PIECES - 1]
+                           ? radiation_packet_faint_energy(pk, energy_sum)
+                           : 0.;
+  const double far_width =
+      (double)(radiation_packet_step_width(pk) << pk->far_scale);
+
+  struct radiation_packet_record share;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    share.energy[b] = energy[b];
+    share.photons[b] = photons[b];
+  }
+  share.first = first;
+  share.last = last;
+
+  radiation_packet_place(sl, ub, far_width, &share, salt, known_step, faint,
+                         known_step ? rpl_known_step : rpl_unknown_step);
+}
+
+/**
+ * @brief Book the bands of a bucket whose whole photon number is below the
+ * cutoff as absorbed, as the delivery does.
+ *
+ * @param energy (in/out) Energy of the bucket in a band.
+ * @param photons (in/out) Photon number of the bucket in a band.
+ * @param ledger The ledger of the band.
+ */
+static void radiation_packet_absorb_below_cutoff(
+    float *energy, float *photons,
+    struct feedback_isrf_packet_band_data *ledger) {
+  /* A negative value cannot be released either. */
+  if ((*photons != 0.f || *energy != 0.f) &&
+      *photons < RADIATION_PACKET_MIN_PHOTONS) {
+    radiation_packet_ledger_absorbed(ledger, (double)*energy, (double)*photons);
+    *energy = 0.f;
+    *photons = 0.f;
+  }
+}
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Stop if the direction of a slot is outside its cell.
+ *
+ * A cell is convex, so the mean origin of its shares lies in it too. A
+ * direction near a border may flip by rounding to float.
+ *
+ * @param sl The slot, after its merge.
+ * @param slot_index Index of the slot.
+ * @param frame Octant frame.
+ */
+static void radiation_packet_check_slot_direction(
+    const struct feedback_isrf_packet_slot_data *sl, const int slot_index,
+    const float frame[9]) {
+  if (!(sl->origin_distance > 0.f)) return;
+
+  if (radiation_packet_slot_border_distance(frame, sl->direction) >
+          RADIATION_PACKET_BORDER_TOLERANCE &&
+      radiation_packet_slot(frame, sl->direction) != slot_index)
+    error("The direction of slot %d is in slot %d.", slot_index,
+          radiation_packet_slot(frame, sl->direction));
+}
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_slot_direction(
+    const struct feedback_isrf_packet_slot_data *sl, const int slot_index,
+    const float frame[9]) {}
+#endif
+
+/**
+ * @brief Set the origin and the direction of the held packet of a slot from
+ * the energy-weighted sum of the origin offsets.
+ *
+ * @param sl The slot.
+ * @param offset Sum of energy times offset of what was released.
+ * @param total_energy Energy released.
+ */
+static void radiation_packet_set_origin(
+    struct feedback_isrf_packet_slot_data *sl, double offset[3],
+    const double total_energy) {
+  for (int k = 0; k < 3; k++) offset[k] /= total_energy;
+
+  const double d = sqrt(offset[0] * offset[0] + offset[1] * offset[1] +
+                        offset[2] * offset[2]);
+
+  sl->origin_distance = (float)d;
+
+  if (d > 0.0) {
+    for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
+  } else {
+    /* Mean origin on the particle: any direction is as good. It can lie
+       outside the cell of the slot, which is harmless: shares are binned by
+       their own geometry. */
+    sl->direction[0] = 0.f;
+    sl->direction[1] = 0.f;
+    sl->direction[2] = 1.f;
+  }
+}
+
+/*! Relative distance below the shielding factor at column 0 within which the
+    harmonic factor of merged light counts as clear light. A column of that
+    factor is below about 1e10 cm^-2. */
+#define RADIATION_PACKET_LINE_CLEAR_TOLERANCE 1e-6
+
+/**
+ * @brief The H2 line state of a slot before a merge, from which
+ * #radiation_packet_line_end sets the held and the waiting state after it.
+ */
+struct radiation_packet_line_state {
+
+  /*! LW energy that waits in the slot. */
+  double waiting;
+
+  /*! LW energy that the slot holds. */
+  double held;
+
+  /*! Dissociating energy that the slot holds. */
+  double held_dissociating;
+
+  /*! Dissociating energy over the shielding factor of its column, of the held
+      light, in the fit of the merging particle. */
+  double held_over_factor;
+
+  /*! Dissociating energy times velocity shift of the held light. */
+  double held_shift;
+
+  /*! Dissociating energy that waits in the slot. */
+  double waiting_dissociating;
+
+  /*! Dissociating energy over the shielding factor of its column, of the
+      waiting light. */
+  double waiting_over_factor;
+
+  /*! Dissociating energy times velocity shift of the waiting light. */
+  double waiting_shift;
+
+  /*! Column of the held light before the merge, in cm^-2. */
+  double held_column;
+
+  /*! Is the sum over the factor of the held or the waiting light saturated
+      at the largest float? */
+  int saturated;
+};
+
+/**
+ * @brief LW energy that waits in a slot: the near bins and the far cells or
+ * the reservoir.
+ *
+ * @param sl The slot.
+ * @param constants The #radiation_packet_constants.
+ * @return The LW energy that waits in the slot.
+ */
+static double radiation_packet_waiting_LW_energy(
+    const struct feedback_isrf_packet_slot_data *sl,
+    const struct radiation_packet_constants *constants) {
+  const struct feedback_isrf_packet_slot_band_data *band =
+      &sl->band[ISRF_OPERATOR_LW];
+  double waiting = 0.;
+  for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+    waiting += (double)band->bin_energy[j];
+  if (constants->light_speed_limited) {
+    for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+      waiting += (double)band->far_energy[c];
+  } else {
+    waiting += (double)band->reservoir_energy;
+  }
+  return waiting;
+}
+
+/**
+ * @brief H2 column whose shielding factor is the ratio of a dissociating
+ * energy to its sum over the factor, in the fit of a particle: the column of
+ * merged light whose factor is the harmonic mean of the factors of its parts.
+ *
+ * A ratio within float rounding of the factor at column 0 gives column 0, so
+ * clear light keeps no column and needs no inverse. Without a line width the
+ * light counts as clear light and the column is 0.
+ *
+ * @param dissociating The dissociating energy, positive.
+ * @param over_factor Its sum over the factor, not saturated. A sum of exactly 0
+ * is a float sum that flushed and is read as the smallest normal float: one
+ * flushed share gets a column at least its own, several in one slot get less.
+ * @param alpha Exponent of the fit.
+ * @param b5 Thermal line width of H2 of the fit in km/s.
+ * @return The column in cm^-2.
+ */
+static double radiation_packet_line_harmonic_column(const double dissociating,
+                                                    double over_factor,
+                                                    const double alpha,
+                                                    const double b5) {
+  if (!(b5 > 0.)) return 0.;
+  /* A sum of 0 means a flushed float sum: the column cannot be recovered. */
+  if (!(over_factor > 0.)) over_factor = FLT_MIN;
+  const double f = dissociating / over_factor;
+  if (f >= radiation_h2_shielding_factor_at_zero() *
+               (1. - RADIATION_PACKET_LINE_CLEAR_TOLERANCE))
+    return 0.;
+  return radiation_h2_shielding_inverse(f, alpha, b5);
+}
+
+/**
+ * @brief Record the H2 line state of a slot before its merge.
+ *
+ * @param sl The slot.
+ * @param fd The feedback data of the merging particle, whose fit is used.
+ * @param constants The #radiation_packet_constants.
+ * @param st (return) The state.
+ */
+static void radiation_packet_line_begin(
+    const struct feedback_isrf_packet_slot_data *sl,
+    const struct feedback_part_data *fd,
+    const struct radiation_packet_constants *constants,
+    struct radiation_packet_line_state *st) {
+  st->waiting = radiation_packet_waiting_LW_energy(sl, constants);
+  st->held = (double)sl->band[ISRF_OPERATOR_LW].energy;
+  st->held_dissociating = st->held * (double)sl->H2_transmission;
+  st->held_column = sl->H2_column;
+  st->held_over_factor = 0.;
+  if (st->held_dissociating > 0.) {
+    const double b5 = fd->H2_line_width_km_s;
+    const double f = b5 > 0. && st->held_column > 0.
+                         ? radiation_h2_shielding_factor(
+                               st->held_column, fd->H2_shielding_exponent, b5)
+                         : radiation_h2_shielding_factor_at_zero();
+    st->held_over_factor = st->held_dissociating / f;
+  }
+  st->held_shift = st->held_dissociating * (double)sl->H2_velocity_shift;
+  st->waiting_dissociating = sl->H2_waiting_dissociating_energy;
+  st->waiting_over_factor = sl->H2_waiting_energy_over_factor;
+  st->waiting_shift = sl->H2_waiting_velocity_sum;
+  st->saturated = !(sl->H2_waiting_energy_over_factor < FLT_MAX) ||
+                  !(st->held_over_factor < (double)FLT_MAX);
+}
+
+/**
+ * @brief Set the held and the waiting H2 line state of a slot after its merge.
+ *
+ * The waiting light keeps its mean transmission, its mean inverse factor and
+ * its shift whether the merge releases it or drops it below the photon cutoff:
+ * its three sums leave in the share of the LW energy that leaves. The held
+ * light takes the dissociating energy of what was released, so its
+ * transmission is the dissociating over the LW energy, at most
+ * #radiation_packet_constants.LW_dissociating_factor_max. Its column
+ * is the one whose factor is the harmonic mean of the factors of the merged
+ * light, weighted by the dissociating energy
+ * (#radiation_packet_line_harmonic_column). A saturated sum gives the column
+ * cap, and held light with nothing released keeps its column.
+ *
+ * @param sl The slot.
+ * @param fd The feedback data of the merging particle, whose fit is used.
+ * @param constants The #radiation_packet_constants.
+ * @param st The state before the merge.
+ */
+static void radiation_packet_line_end(
+    struct feedback_isrf_packet_slot_data *sl,
+    const struct feedback_part_data *fd,
+    const struct radiation_packet_constants *constants,
+    const struct radiation_packet_line_state *st) {
+
+  const double left = radiation_packet_waiting_LW_energy(sl, constants);
+  const double energy = (double)sl->band[ISRF_OPERATOR_LW].energy;
+
+  double released_share = 0.;
+  double left_share = 0.;
+  if (st->waiting > 0.) {
+    double released = energy - st->held;
+    if (released < 0.) released = 0.;
+    released_share = fmin(1., released / st->waiting);
+    left_share = fmin(1., left / st->waiting);
+  }
+  const double released_waiting = st->waiting_dissociating * released_share;
+  const double released_dissociating = st->held_dissociating + released_waiting;
+  const double released_over_factor =
+      st->held_over_factor + st->waiting_over_factor * released_share;
+  const double released_shift =
+      st->held_shift + st->waiting_shift * released_share;
+
+  if (left > 0.) {
+    sl->H2_waiting_dissociating_energy = st->waiting_dissociating * left_share;
+    sl->H2_waiting_energy_over_factor =
+        st->saturated ? FLT_MAX
+                      : radiation_packet_add_saturated(
+                            0.f, st->waiting_over_factor * left_share);
+    sl->H2_waiting_velocity_sum = st->waiting_shift * left_share;
+  } else {
+    sl->H2_waiting_dissociating_energy = 0.;
+    sl->H2_waiting_energy_over_factor = 0.f;
+    sl->H2_waiting_velocity_sum = 0.;
+  }
+
+  double t = 1.;
+  double N = 0.;
+  double dv = 0.;
+  if (energy > 0.) {
+    t = released_dissociating / energy;
+    if (!(t > 0.)) t = 0.;
+    if (t > (double)constants->LW_dissociating_factor_max)
+      t = (double)constants->LW_dissociating_factor_max;
+    if (!(released_dissociating > 0.)) {
+      N = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+    } else {
+      dv = released_shift / released_dissociating;
+      if (!(released_waiting > 0.))
+        N = st->held_column;
+      else if (st->saturated || !(released_over_factor < (double)FLT_MAX))
+        N = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+      else
+        N = radiation_packet_line_harmonic_column(
+            released_dissociating, released_over_factor,
+            fd->H2_shielding_exponent, fd->H2_line_width_km_s);
+    }
+  }
+  sl->H2_transmission = (float)t;
+  sl->H2_column = (float)N;
+  sl->H2_velocity_shift = (float)dv;
+}
+
+/**
+ * @brief Move the sum over the factor of the light that waits in each slot of
+ * a particle from its old fit to its new one: the column of the waiting light
+ * in the old fit (#radiation_packet_line_harmonic_column) gives the sum in the
+ * new.
+ *
+ * Exact for waiting light of one column. A saturated sum stays saturated, and
+ * clear waiting light keeps its sum.
+ *
+ * @param p The particle, with its new fit.
+ * @param old_alpha Exponent of the old fit.
+ * @param old_b5 Thermal line width of H2 of the old fit in km/s.
+ */
+void radiation_packet_line_refit(struct part *p, const float old_alpha,
+                                 const float old_b5) {
+  const struct feedback_part_data *fd = &p->feedback_data;
+  const double alpha = fd->H2_shielding_exponent;
+  const double b5 = fd->H2_line_width_km_s;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct feedback_isrf_packet_slot_data *sl =
+        &p->feedback_data.isrf_packet.slot[s];
+    const double A = sl->H2_waiting_dissociating_energy;
+    const double B = sl->H2_waiting_energy_over_factor;
+    if (!(A > 0.) || !(B > 0.) || !(B < (double)FLT_MAX)) continue;
+    const double N =
+        radiation_packet_line_harmonic_column(A, B, old_alpha, old_b5);
+    if (!(N > 0.)) continue;
+    const double f = b5 > 0. ? radiation_h2_shielding_factor(N, alpha, b5)
+                             : radiation_h2_shielding_factor_at_zero();
+    sl->H2_waiting_energy_over_factor =
+        radiation_packet_add_saturated(0.f, A / f);
+  }
+}
+
+/**
+ * @brief Start of an active step without a speed limit, for one slot: the
+ * inbox and the due part of the reservoir become the held packet.
+ *
+ * The origin is the energy-weighted mean of the arriving origins and the
+ * direction points from it to the particle. The reservoir releases the part due
+ * in the step that ends now, `dt / t_rem`, with `dt` and `t_rem` measured from
+ * the start of that step, and all of it once `t_rem <= dt`. A share with `n dt`
+ * to run is met by `n` merges that release `1/n`, `1/(n-1)` of the rest, ...,
+ * so each takes `1/n` of it. Same with proper-time steps.
+ *
+ * Without a speed limit every share arrives in bin 0, the inbox.
+ *
+ * @param sl The slot.
+ * @param ti_current Time of the merge, the end of the particle's last step.
+ * @param ti_step Length of that last step.
+ * @param time_base Physical length of one integer time step. Under cosmology
+ * it is a step in `ln a`, so @p cosmo is used instead.
+ * @param cosmo The cosmological model, or NULL in a static box.
+ * @param salt Salt of the roundings of the slot (#radiation_packet_salt).
+ */
+static void radiation_packet_merge_slot_unlimited(
+    struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
+    const integertime_t ti_step, const double time_base,
+    const struct cosmology *cosmo, const uint32_t salt) {
+
+  float release = 1.f;
+  if (sl->reservoir_end_ti > ti_current) {
+    const integertime_t ti_begin = ti_current - ti_step;
+    double t_rem;
+    double dt;
+    if (cosmo != NULL) {
+      t_rem = cosmology_get_delta_time(cosmo, ti_begin, sl->reservoir_end_ti);
+      dt = cosmology_get_delta_time(cosmo, ti_begin, ti_current);
+    } else {
+      t_rem = (double)(sl->reservoir_end_ti - ti_begin) * time_base;
+      dt = (double)ti_step * time_base;
+    }
+
+    if (t_rem > dt) release = (float)(dt / t_rem);
+  }
+
+  /* One decision for every band and the origin sum: a part below the photon
+     cutoff releases the whole reservoir, and its origin sum with it. */
+  int partial = release < 1.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT && partial; b++) {
+    const float res_photons = sl->band[b].reservoir_photons;
+    if (res_photons > 0.f &&
+        res_photons * release < RADIATION_PACKET_MIN_PHOTONS)
+      partial = 0;
+  }
+
+  double total_energy = 0.0;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    float res_energy = band->reservoir_energy;
+    float res_photons = band->reservoir_photons;
+    if (partial) {
+      res_energy *= release;
+      res_photons *= release;
+      band->reservoir_energy -= res_energy;
+      band->reservoir_photons -= res_photons;
+    } else {
+      band->reservoir_energy = 0.f;
+      band->reservoir_photons = 0.f;
+    }
+
+    /* Added, not assigned: a packet still held would otherwise be lost. */
+    const float arriving =
+        radiation_packet_add_stochastic(band->bin_energy[0], res_energy, salt);
+    band->energy =
+        radiation_packet_add_stochastic(band->energy, arriving, salt);
+    band->photons = radiation_packet_add_stochastic(
+        band->photons,
+        radiation_packet_add_stochastic(band->bin_photons[0], res_photons,
+                                        salt),
+        salt);
+
+    band->bin_energy[0] = 0.f;
+    band->bin_photons[0] = 0.f;
+    total_energy += (double)arriving;
+  }
+
+  /* Double: the product of a share near the transmission cutoff with a small
+     offset component is below FLT_MIN and would flush to zero. */
+  double offset[3];
+  for (int k = 0; k < 3; k++) {
+    double res_offset = sl->reservoir_origin_offset[k];
+    if (partial) {
+      res_offset *= (double)release;
+      sl->reservoir_origin_offset[k] -= res_offset;
+    } else {
+      sl->reservoir_origin_offset[k] = 0.0;
+    }
+
+    offset[k] = sl->inbox_origin_offset[k] + res_offset;
+    sl->inbox_origin_offset[k] = 0.0;
+  }
+
+  if (!(total_energy > 0.0)) return;
+  radiation_packet_set_origin(sl, offset, total_energy);
+}
+
+/**
+ * @brief Far cell of a slot at the start of an active step with a speed
+ * limit: release the part of its light that has arrived to the held packet.
+ *
+ * A far cell that holds one share releases the fraction of it that has
+ * arrived, as the light arrives evenly. A far cell that holds several shares,
+ * or any far cell once the particle has a known step, releases all of it at
+ * its stored latest time (#radiation_packet_add_to_far).
+ *
+ * @param sl The slot.
+ * @param ledger The ledger of the particle, per band.
+ * @param c The far cell.
+ * @param far_end End of the far cell on the previous lattice.
+ * @param old_width Width of the near bins of the previous step.
+ * @param now Time of the merge.
+ * @param salt Salt of the roundings (#radiation_packet_salt).
+ * @param total_energy (in, out) Energy released to the held packet, summed.
+ */
+static void radiation_packet_release_far_cell(
+    struct feedback_isrf_packet_slot_data *sl,
+    struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
+    const int c, const integertime_t far_end, const integertime_t old_width,
+    const double now, const uint32_t salt, double *total_energy) {
+
+  float cell_total = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    cell_total += sl->band[b].far_energy[c];
+  if (!(cell_total > 0.f)) return;
+
+  const double end = (double)far_end;
+  const float last_below = radiation_packet_far_last_below(sl, c);
+  const double last = radiation_packet_time_below_end(end, last_below);
+  const int single = radiation_packet_far_has_interval(sl, c);
+  const double first =
+      single ? radiation_packet_time_below_end(end, sl->far_first_below[c])
+             : last;
+  if (last_below >= 0.f && now >= end && now < last)
+    radiation_packet_diag(rpd_past_end_due, (double)cell_total);
+
+  double f = 0.;
+  if (now >= last)
+    f = 1.;
+  else if (single && last > first && now > first)
+    f = (now - first) / (last - first);
+
+  double f_b[ISRF_OPERATOR_COUNT];
+  int all = 1;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    double fb = f;
+    const double cell_photons = (double)band->far_photons[c];
+    /* A part below the cutoff waits. A remainder below the cutoff is
+       absorbed with the release, as it cannot be kept. The part that
+       leaves is rounded down, so that it is never above the part due. */
+    if (cell_photons > 0. && fb < 1.) {
+      if (cell_photons * fb < (double)RADIATION_PACKET_MIN_PHOTONS)
+        fb = 0.;
+      else if (cell_photons * (1. - fb) <
+               (double)RADIATION_PACKET_MIN_PHOTONS) {
+        radiation_packet_ledger_absorbed(
+            &ledger[b], (double)band->far_energy[c] * (1. - fb),
+            cell_photons * (1. - fb));
+        fb = 1.;
+        band->far_energy[c] =
+            radiation_packet_round_down((double)band->far_energy[c] * f);
+        band->far_photons[c] = radiation_packet_round_down(cell_photons * f);
+      }
+    }
+
+    f_b[b] = fb;
+    if (fb < 1.) all = 0;
+  }
+
+  double e = 0.0;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    float re = band->far_energy[c];
+    float rp = band->far_photons[c];
+    if (f_b[b] < 1.) {
+      re = radiation_packet_round_down((double)re * f_b[b]);
+      rp = radiation_packet_round_down((double)rp * f_b[b]);
+    }
+
+    band->far_energy[c] -= re;
+    band->far_photons[c] -= rp;
+
+    const uint32_t cell_salt = radiation_packet_salt_index(
+        salt, (uint32_t)(c + RADIATION_PACKET_BINS));
+    band->energy = radiation_packet_add_stochastic(band->energy, re, cell_salt);
+    band->photons =
+        radiation_packet_add_stochastic(band->photons, rp, cell_salt);
+    e += re;
+  }
+
+  if (e > 0.0) {
+    *total_energy += e;
+    if (last_below < 0.f)
+      radiation_packet_diag_released(e, now, end, old_width);
+  }
+
+  if (all) {
+    sl->far_first_below[c] = 0.f;
+    sl->far_last_below[c] = 0.f;
+  } else if (single && f > 0.) {
+    /* What is left arrives evenly from now to the same end. */
+    sl->far_first_below[c] = radiation_packet_round_down(end - now);
+  }
+}
+
+/**
+ * @brief Start of an active step with a speed limit, for one slot: the near
+ * bins that have ended and the part of the far cells that has arrived become
+ * the held packet.
+ *
+ * A bin is released whole at the first merge at or after its end
+ * (#radiation_packet_place). Times of the bins are integers and are compared
+ * with the merge time as integers. The far cells are released as
+ * #radiation_packet_release_far_cell says. The caller then moves what
+ * waits to the lattices of the new step (#radiation_packet_regrid).
+ *
+ * The held packet leaves at the merge time, which is at or after the arrival
+ * of everything it holds. A stamp taken from its content would let the light
+ * of one source delay the light of another in the same slot. The origin of the
+ * packet is the mean origin of everything that waited in the slot.
+ *
+ * @param sl The slot.
+ * @param ledger The ledger of the particle, per band.
+ * @param old The lattices of the previous step.
+ * @param ti_current Time of the merge, the end of the particle's last step.
+ * @param salt Salt of the roundings of the slot (#radiation_packet_salt).
+ */
+static void radiation_packet_merge_slot_limited(
+    struct feedback_isrf_packet_slot_data *sl,
+    struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
+    const struct radiation_packet_lattice *old, const integertime_t ti_current,
+    const uint32_t salt) {
+
+  const int n = RADIATION_PACKET_BINS;
+  const double now = (double)ti_current;
+
+  /* A band whose whole bin or cell is below the cutoff is absorbed before
+     anything else. */
+  double pending = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+    for (int j = 0; j < n; j++) {
+      radiation_packet_absorb_below_cutoff(&band->bin_energy[j],
+                                           &band->bin_photons[j], &ledger[b]);
+      pending += band->bin_energy[j];
+    }
+    for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++) {
+      radiation_packet_absorb_below_cutoff(&band->far_energy[c],
+                                           &band->far_photons[c], &ledger[b]);
+      pending += band->far_energy[c];
+    }
+  }
+
+  double total_energy = 0.0;
+
+  /* The near bins that have ended. */
+  for (int j = 0; j < n; j++) {
+    const integertime_t end = old->first + (integertime_t)j * old->width;
+    if (end > ti_current) continue;
+
+    double e = 0.0;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+      const uint32_t bin_salt = radiation_packet_salt_index(salt, (uint32_t)j) ^
+                                ((uint32_t)b * RADIATION_PACKET_HASH_MIX_1);
+      band->energy = radiation_packet_add_stochastic(
+          band->energy, band->bin_energy[j], bin_salt);
+      band->photons = radiation_packet_add_stochastic(
+          band->photons, band->bin_photons[j], bin_salt);
+      e += band->bin_energy[j];
+      band->bin_energy[j] = 0.f;
+      band->bin_photons[j] = 0.f;
+    }
+
+    if (e > 0.0) total_energy += e;
+  }
+
+  /* The far cells. */
+  for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+    radiation_packet_release_far_cell(sl, ledger, c, old->far_end[c],
+                                      old->width, now, salt, &total_energy);
+
+  /* Origin: the mean origin of everything that waited. */
+  double offset[3] = {0., 0., 0.};
+  if (total_energy > 0.0 && pending > 0.) {
+    const double fraction = fmin(1., total_energy / pending);
+    for (int k = 0; k < 3; k++) {
+      offset[k] = sl->inbox_origin_offset[k] * fraction;
+      sl->inbox_origin_offset[k] -= offset[k];
+    }
+  }
+
+  double left = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    for (int j = 0; j < n; j++) left += sl->band[b].bin_energy[j];
+    for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+      left += sl->band[b].far_energy[c];
+  }
+
+  if (!(left > 0.))
+    for (int k = 0; k < 3; k++) sl->inbox_origin_offset[k] = 0.0;
+
+  if (!(total_energy > 0.0)) return;
+  radiation_packet_set_origin(sl, offset, total_energy);
+}
+
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+/**
+ * @brief Count the light that waits in a particle at its merge, in the near
+ * bins, the far cells, and the last far cell without an arrival time.
+ *
+ * @param pk The packet.
+ * @param old_width Width of the near bins before the merge.
+ * @param old_scale Far scale before the merge.
+ */
+static void radiation_packet_diag_waiting(
+    const struct feedback_isrf_packet_data *pk, const integertime_t old_width,
+    const int old_scale) {
+  double far = 0.;
+  double near = 0.;
+  double ovf = 0.;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+        near += (double)pk->slot[s].band[b].bin_energy[j];
+      for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++) {
+        far += (double)pk->slot[s].band[b].far_energy[c];
+        if (radiation_packet_far_last_below(&pk->slot[s], c) < 0.f)
+          ovf += (double)pk->slot[s].band[b].far_energy[c];
+      }
+    }
+  if (near > 0.) radiation_packet_diag(rpd_near_waiting, near);
+  if (far > 0.) radiation_packet_diag(rpd_far_waiting, far);
+  if (ovf > 0.) radiation_packet_diag(rpd_overflow_waiting, ovf);
+  if (far > 0. && old_scale >= radiation_packet_far_scale_limit(old_width))
+    radiation_packet_diag(rpd_scale_at_limit, far);
+}
+#else
+INLINE static void radiation_packet_diag_waiting(
+    const struct feedback_isrf_packet_data *pk, const integertime_t old_width,
+    const int old_scale) {}
+#endif
+
+/**
+ * @brief Start of an active step: in every slot, the arrival bins that have
+ * ended and the due part of the far cells or the reservoir become the held
+ * packet.
+ *
+ * Each share was binned into its slot on arrival, so nothing merges across
+ * slots. With a speed limit what still waits moves to the lattices of the new
+ * step.
+ *
+ * @param p The particle, active.
+ * @param ti_current Time of the merge, the end of the particle's last step.
+ * @param ti_step Length of the particle's last step. It sets the release of
+ * the reservoir and stands in for the next step in `step_end_ti`.
+ * @param time_base Physical length of one integer time step. Under cosmology
+ * it is a step in `ln a`, so @p cosmo is used instead.
+ * @param cosmo The cosmological model, or NULL in a static box.
+ * @param constants The #radiation_packet_constants.
+ */
+void radiation_packet_merge(
+    struct part *p, const integertime_t ti_current, const integertime_t ti_step,
+    const double time_base, const struct cosmology *cosmo,
+    const struct radiation_packet_constants *constants) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const uint32_t salt = radiation_packet_salt(p->id, ti_current);
+
+  radiation_packet_check_occupied(pk, p->id);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!radiation_packet_is_empty(pk))
+    error("Particle %lld still holds a packet at its merge.", p->id);
+#endif
+
+  if (ti_step > 0) pk->has_merged_step = 1;
+
+  const int with_dissociating =
+      feedback_part_tracks_LW_dissociating(&p->feedback_data);
+
+  if (!constants->light_speed_limited) {
+    pk->step_end_ti = ti_current + ti_step;
+    pk->step_ti = ti_step;
+
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+      struct radiation_packet_line_state line;
+      if (with_dissociating)
+        radiation_packet_line_begin(&pk->slot[s], &p->feedback_data, constants,
+                                    &line);
+
+      radiation_packet_merge_slot_unlimited(
+          &pk->slot[s], ti_current, ti_step, time_base, cosmo,
+          radiation_packet_salt_index(salt, (uint32_t)s));
+      radiation_packet_check_slot_direction(&pk->slot[s], s,
+                                            constants->octant_frame);
+
+      if (with_dissociating)
+        radiation_packet_line_end(&pk->slot[s], &p->feedback_data, constants,
+                                  &line);
+    }
+
+    radiation_packet_refresh_occupied(pk);
+    return;
+  }
+
+  const struct radiation_packet_lattice old = radiation_packet_lattice_save(pk);
+
+  radiation_packet_diag_waiting(pk, old.width, old.scale);
+
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct radiation_packet_line_state line;
+    if (with_dissociating)
+      radiation_packet_line_begin(&pk->slot[s], &p->feedback_data, constants,
+                                  &line);
+
+    radiation_packet_merge_slot_limited(
+        &pk->slot[s], pk->band, &old, ti_current,
+        radiation_packet_salt_index(salt, (uint32_t)s));
+    radiation_packet_check_slot_direction(&pk->slot[s], s,
+                                          constants->octant_frame);
+
+    if (with_dissociating)
+      radiation_packet_line_end(&pk->slot[s], &p->feedback_data, constants,
+                                &line);
+  }
+
+  pk->step_end_ti = ti_current + ti_step;
+  pk->step_ti = ti_step;
+  radiation_packet_regrid(pk, &old, -1., 0., salt);
+
+  radiation_packet_refresh_occupied(pk);
+}
+
+/**
+ * @brief Give the lattices of its first step to a particle that is inactive
+ * before its first merge.
+ *
+ * Light that arrives before the step is known waits in the far cells of a
+ * one-tick lattice until the first merge. It moves to the lattices of the step
+ * here instead, at the drift of the first step. Without a speed limit nothing
+ * is done.
+ *
+ * @param p The particle, not active, with its time bin set.
+ * @param ti_current Current integer time.
+ * @param ti_step Length of the current step of the particle.
+ * @param ti_end End of the current step of the particle.
+ * @param constants The #radiation_packet_constants.
+ */
+void radiation_packet_set_first_step(
+    struct part *p, const integertime_t ti_current, const integertime_t ti_step,
+    const integertime_t ti_end,
+    const struct radiation_packet_constants *constants) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  if (!constants->light_speed_limited || pk->step_ti > 0 || ti_step <= 0)
+    return;
+
+  const struct radiation_packet_lattice old = radiation_packet_lattice_save(pk);
+
+  pk->step_end_ti = ti_end;
+  pk->step_ti = ti_step;
+  radiation_packet_regrid(pk, &old, -1., 0.,
+                          radiation_packet_salt(p->id, ti_current));
+  radiation_packet_refresh_occupied(pk);
+}
+
+/**
+ * @brief End of the gradient loop: normalise the forward advance of each slot
+ * and read the own field off the held packets, or let a slot with no
+ * downstream neighbour escape into the ledger.
+ *
+ * The held packet of a slot is the light that crosses the particle in one
+ * step, over the forward advance of the slot, so its specific energy density is
+ * `(E / m) l_par / (c dt)`. The own field is the sum over the slots, then its
+ * running mean over `tau` (#radiation_packet_read_mean). With H2 line
+ * absorption, the column of the particle is the mean of the slot columns
+ * weighted by the dissociating energy of the slot, not averaged over time.
+ *
+ * @param p The particle.
+ * @param a Current scale factor.
+ * @param speed_of_light Speed of light.
+ * @param dt Physical length of the particle's step.
+ * @param tau Time constant of the running mean. 0 or less is off.
+ * @param constants The #radiation_packet_constants.
+ */
+void radiation_packet_end_gradient(
+    struct part *p, const float a, const float speed_of_light, const float dt,
+    const float tau, const struct radiation_packet_constants *constants) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const float m = hydro_get_mass(p);
+
+  /* An unset frame would send every share to one slot. Checked once per
+   * particle and step. */
+  const float frame_norm =
+      radiation_packet_frame_norm2(constants->octant_frame);
+
+  if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
+    error("The octant frame is unset (norm %e) at the step of particle %lld.",
+          frame_norm, p->id);
+
+  radiation_packet_check_occupied(pk, p->id);
+
+  double field_energy[ISRF_OPERATOR_COUNT];
+  double field_photons[ISRF_OPERATOR_COUNT];
+  double field_dissociating = 0.;
+  double field_column_sum = 0.;
+  const int with_dissociating =
+      feedback_part_tracks_LW_dissociating(&p->feedback_data);
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    field_energy[b] = 0.;
+    field_photons[b] = 0.;
+  }
+
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct feedback_isrf_packet_slot_data *sl = &pk->slot[s];
+    if (sl->weight_sum > 0.f) {
+      sl->forward_advance /= sl->weight_sum;
+
+      float factor = 0.f;
+      if (dt > 0.f && m > 0.f)
+        factor = a * sl->forward_advance / (m * speed_of_light * dt);
+
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+        field_energy[b] += (double)(sl->band[b].energy * factor);
+        field_photons[b] += (double)(sl->band[b].photons * factor);
+      }
+      if (with_dissociating) {
+        const double dissociating = (double)sl->band[ISRF_OPERATOR_LW].energy *
+                                    (double)sl->H2_transmission *
+                                    (double)factor;
+        field_dissociating += dissociating;
+        field_column_sum += dissociating * (double)sl->H2_column;
+      }
+      continue;
+    }
+
+    sl->forward_advance = 0.f;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+      radiation_packet_ledger_escaped(&pk->band[b], (double)band->energy,
+                                      (double)band->photons);
+      band->energy = 0.f;
+      band->photons = 0.f;
+    }
+
+    pk->occupied_slots &=
+        (radiation_packet_mask_t) ~((radiation_packet_mask_t)1u << s);
+  }
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    pk->band[b].field_energy = radiation_packet_read_mean(
+        pk->band[b].field_energy, (float)field_energy[b], dt, tau);
+    pk->band[b].field_photons = radiation_packet_read_mean(
+        pk->band[b].field_photons, (float)field_photons[b], dt, tau);
+  }
+  if (with_dissociating) {
+    pk->field_dissociating_energy = radiation_packet_read_mean(
+        pk->field_dissociating_energy, (float)field_dissociating, dt, tau);
+    p->feedback_data.LW_line_H2_column =
+        field_dissociating > 0. ? (float)(field_column_sum / field_dissociating)
+                                : 0.f;
+  }
+}
+
+/**
+ * @brief End of the force loop: the held packets have left in shares, and the
+ * kernel mean of the own fields is completed with the particle's own term.
+ *
+ * @param p The particle.
+ */
+void radiation_packet_end_force(struct part *p) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  float w_self;
+  kernel_eval(0.f, &w_self);
+  const float mw = hydro_get_mass(p) * w_self;
+  const float norm = 1.f / (pk->ngb_field_weight_sum + mw);
+
+  radiation_packet_check_occupied(pk, p->id);
+
+  pk->occupied_slots = 0;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      pk->slot[s].band[b].energy = 0.f;
+      pk->slot[s].band[b].photons = 0.f;
+    }
+
+  pk->ngb_mean_field_dissociating_energy =
+      (pk->ngb_mean_field_dissociating_energy +
+       (double)mw * (double)pk->field_dissociating_energy) *
+      (double)norm;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_band_data *band = &pk->band[b];
+    band->ngb_mean_field_energy =
+        (band->ngb_mean_field_energy + mw * band->field_energy) * norm;
+    band->ngb_mean_field_photons =
+        (band->ngb_mean_field_photons + mw * band->field_photons) * norm;
+  }
+}
+
+/**
+ * @brief Write the kernel mean of the own field into the band moments: PE to
+ * PE and LW to LW, which the cooling reads, and the LW photon number
+ * (`N E_lo`) to LW_PHOTON, which only the snapshot output reads. Also set the
+ * LW energy that dissociates H2.
+ *
+ * Overwrites the moments, including any value from the initial conditions. Call
+ * after #radiation_packet_end_force.
+ *
+ * @param p The particle.
+ * @param constants The #radiation_packet_constants.
+ */
+void radiation_packet_couple_field(
+    struct part *p, const struct radiation_packet_constants *constants) {
+
+  const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    p->feedback_data.isrf_moment[radiation_isrf_operator_owner[b]].u =
+        (double)pk->band[b].ngb_mean_field_energy;
+
+  p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
+      (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
+
+  /* The LW sum is in float and can flush to 0 where the double sum does not:
+     the lines remove light, they never add it, and no star has a factor above
+     the bound. */
+  const double lw = (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
+  const double dissociating_max =
+      (double)constants->LW_dissociating_factor_max * lw;
+  double dissociating = pk->ngb_mean_field_dissociating_energy;
+  if (dissociating > dissociating_max) dissociating = dissociating_max;
+  p->feedback_data.LW_dissociating_u = dissociating;
+}
+
+/**
+ * @brief Book the emission of a star for this feedback step, and as escaped the
+ * light that its receivers do not take, once per step on the rank of the star.
+ * Only the ledger is booked, so this does nothing without
+ * SWIFT_DEBUG_CHECKS_ISRF.
+ *
+ * An empty cone loses all of its share.
+ *
+ * @param sp The star, after its density loop.
+ * @param Delta_t The star's feedback step.
+ */
+void radiation_packet_star_book_emission(struct spart *sp,
+                                         const float Delta_t) {
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->feedback_data.radiation.packet.cones_booked = 1;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
+    const double E = sp->feedback_data.radiation.L_band[m] * (double)Delta_t;
+    sp->feedback_data.radiation.packet.emitted_energy[b] += E;
+    sp->feedback_data.radiation.packet.emitted_photons[b] +=
+        E * sp->feedback_data.radiation.packet.photon_fraction[b];
+    radiation_packet_diag(rpd_emitted, E);
+  }
+
+  const double floor = radiation_packet_cone_floor(sp);
+  const double fraction =
+      star_gas_escape_fraction(sp->feedback_data.radiation.packet.cone_weight,
+                               floor, RADIATION_PACKET_EMISSION_CONES);
+  if (fraction == 0.0) return;
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
+    const double E =
+        sp->feedback_data.radiation.L_band[m] * (double)Delta_t * fraction;
+    sp->feedback_data.radiation.packet.escaped_energy[b] += E;
+    sp->feedback_data.radiation.packet.escaped_photons[b] +=
+        E * sp->feedback_data.radiation.packet.photon_fraction[b];
+  }
+#endif
+}
+
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_MPI)
+/**
+ * @brief Debugging checks: report whether the feedback loop delivered to the
+ * same receivers as the density loop that summed the cone weights.
+ *
+ * Both loops take each weight from radiation_packet_star_gas_weight() on the
+ * same positions, so the cone weight sums can differ only by summation order.
+ * One line per star step reports the receivers, the empty cones (and those
+ * with gas beyond #RADIATION_PACKET_EMISSION_EDGE only), the largest relative
+ * difference of a cone weight sum, the worst membership difference (density
+ * minus feedback loop), the PE energy of the step and the delivered plus
+ * escaped fraction of the light, minus one.
+ *
+ * @param sp The star, after its feedback loop.
+ * @param ti_current Current integer time, for the message.
+ */
+void radiation_packet_check_star_cones(const struct spart *sp,
+                                       const integertime_t ti_current) {
+  if (!sp->feedback_data.radiation.packet.cones_booked) return;
+
+  const double floor = radiation_packet_cone_floor(sp);
+  int n_receivers = 0;
+  int n_empty = 0;
+  int n_edge_only = 0;
+  int n_diff = 0;
+  long long id_diff = 0;
+  double dS = 0.0;
+  double S_d_sum = 0.0;
+
+  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
+    const int n = sp->feedback_data.radiation.packet.cone_count[c];
+    const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
+    const long long id = sp->feedback_data.radiation.packet.cone_id_sum[c];
+    const long long id_d =
+        sp->feedback_data.radiation.packet.cone_id_sum_delivered[c];
+    const double S = sp->feedback_data.radiation.packet.cone_weight[c];
+    const double S_d =
+        sp->feedback_data.radiation.packet.cone_weight_delivered[c];
+
+    n_receivers += n;
+
+    if (!(S > 0.0)) {
+      n_empty++;
+      if (sp->feedback_data.radiation.packet.cone_edge_count[c] > 0)
+        n_edge_only++;
+    } else {
+      dS = fmax(dS, fabs(S_d - S) / S);
+    }
+
+    S_d_sum += S_d;
+    /* The worst membership difference: the largest count difference, else
+       a swap at the same count. */
+    if (abs(n - n_d) > abs(n_diff) ||
+        (n_diff == 0 && id_diff == 0 && id != id_d)) {
+      n_diff = n - n_d;
+      id_diff = id - id_d;
+    }
+  }
+
+  /* The delivered shares are those of the feedback loop's weight sum. */
+  const double accounted =
+      star_gas_global_share(S_d_sum,
+                            sp->feedback_data.radiation.packet.cone_weight,
+                            floor, RADIATION_PACKET_EMISSION_CONES) +
+      star_gas_escape_fraction(sp->feedback_data.radiation.packet.cone_weight,
+                               floor, RADIATION_PACKET_EMISSION_CONES);
+
+  const double E_pe = sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
+                      (double)sp->feedback_data.radiation.Delta_t;
+
+  message(
+      "Packet emission of star %lld at ti_current %lld: %d receivers, %d "
+      "empty cones (%d with edge gas only), cone weight sum largest relative "
+      "difference %e, h %e and %e, membership difference %d gas (ID sum %lld, "
+      "density minus feedback loop), PE energy %e, delivered fraction minus "
+      "one %e.",
+      sp->id, ti_current, n_receivers, n_empty, n_edge_only, dS,
+      sp->feedback_data.radiation.packet.h_density,
+      sp->feedback_data.radiation.packet.h_feedback, n_diff, id_diff, E_pe,
+      accounted - 1.0);
+}
+#endif

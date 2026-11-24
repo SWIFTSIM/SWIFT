@@ -102,6 +102,26 @@ INLINE static void chemistry_copy_sink_properties(const struct part *p,
 }
 
 /**
+ * @brief Does this chemistry scheme need the flux prep loop before the
+ * force loop?
+ *
+ * @param cd The global chemistry information.
+ */
+static INLINE int chemistry_need_flux_prep_loop(
+    const struct chemistry_global_data *cd) {
+  return 0;
+}
+
+/**
+ * @brief Finish the flux prep loop for a particle.
+ *
+ * @param p The #part.
+ * @param cd The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
+    struct part *restrict p, const struct chemistry_global_data *cd) {}
+
+/**
  * @brief Prints the properties of the chemistry model to stdout.
  *
  * @brief The #chemistry_global_data containing information about the current
@@ -396,12 +416,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param ti_current The current integer time.
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data *cd) {}
+    const integertime_t ti_current, const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -639,6 +660,7 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
  *
  * @param bp_data The black hole data to add to.
  * @param p_data The gas data to use.
+ * @param gas_mass_orig The mass of the gas particle before nibbling.
  * @param bh_mass_old The dynamical mass of the black hole before this gain.
  * @param bh_mass_gained The dynamical mass gained by the black hole.
  * @param nibble_fraction The fraction of the (original) mass of the gas
@@ -647,6 +669,7 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
 __attribute__((always_inline)) INLINE static void
 chemistry_transfer_part_to_bpart(struct chemistry_bpart_data *bp_data,
                                  struct chemistry_part_data *p_data,
+                                 const double gas_mass_orig,
                                  const double bh_mass_old,
                                  const double bh_mass_gained,
                                  const double nibble_fraction) {
@@ -771,6 +794,19 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
     const struct sink *restrict sink) {
 
   return sink->chemistry_data.metal_mass_fraction[0];
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * sink particle.
+ *
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_metal_mass_fraction(const struct sink *restrict sink) {
+
+  return sink->chemistry_data
+      .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
 }
 
 /**
@@ -912,7 +948,7 @@ chemistry_set_star_supernovae_ejected_yields(
     const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const struct phys_const *phys_const) {
-
+#if defined(FEEDBACK_GEAR) || defined(FEEDBACK_GEAR_MECHANICAL)
   /* Use a chemistry function */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 
@@ -933,6 +969,7 @@ chemistry_set_star_supernovae_ejected_yields(
     /* Convert everything in code units */
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
   }
+#endif
 }
 
 /**

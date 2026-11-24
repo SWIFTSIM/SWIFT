@@ -472,8 +472,9 @@ runner_iact_nonsym_bh_gas_swallow(
     struct chemistry_bpart_data *bi_chem = &bi->chemistry_data;
     struct chemistry_part_data *pj_chem = &pj->chemistry_data;
     const float nibble_fraction = nibble_mass * excess_fraction / pj_mass_orig;
-    chemistry_transfer_part_to_bpart(bi_chem, pj_chem, bi_mass_orig,
-                                     nibble_mass, nibble_fraction);
+    chemistry_transfer_part_to_bpart(bi_chem, pj_chem, pj_mass_orig,
+                                     bi_mass_orig, nibble_mass,
+                                     nibble_fraction);
 
   } else { /* ends nibbling section, below comes swallowing */
 

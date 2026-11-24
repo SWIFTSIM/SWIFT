@@ -112,12 +112,15 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
     double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
-    /* Treat the case where a particle was wrapped back exactly onto
+    /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
-     * than around dim) */
-    if (pos_x == dim_x) pos_x = 0.0;
-    if (pos_y == dim_y) pos_y = 0.0;
-    if (pos_z == dim_z) pos_z = 0.0;
+     * than around dim), such that its cell index would be cdim */
+    pos_x =
+        box_wrap_cell_edge(pos_x, dim_x, s->iwidth[0], s->cdim[0], s->periodic);
+    pos_y =
+        box_wrap_cell_edge(pos_y, dim_y, s->iwidth[1], s->cdim[1], s->periodic);
+    pos_z =
+        box_wrap_cell_edge(pos_z, dim_z, s->iwidth[2], s->cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -238,12 +241,15 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
     double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
-    /* Treat the case where a particle was wrapped back exactly onto
+    /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
-     * than around dim) */
-    if (pos_x == dim_x) pos_x = 0.0;
-    if (pos_y == dim_y) pos_y = 0.0;
-    if (pos_z == dim_z) pos_z = 0.0;
+     * than around dim), such that its cell index would be cdim */
+    pos_x =
+        box_wrap_cell_edge(pos_x, dim_x, s->iwidth[0], s->cdim[0], s->periodic);
+    pos_y =
+        box_wrap_cell_edge(pos_y, dim_y, s->iwidth[1], s->cdim[1], s->periodic);
+    pos_z =
+        box_wrap_cell_edge(pos_z, dim_z, s->iwidth[2], s->cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -370,12 +376,15 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
     double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
-    /* Treat the case where a particle was wrapped back exactly onto
+    /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
-     * than around dim) */
-    if (pos_x == dim_x) pos_x = 0.0;
-    if (pos_y == dim_y) pos_y = 0.0;
-    if (pos_z == dim_z) pos_z = 0.0;
+     * than around dim), such that its cell index would be cdim */
+    pos_x =
+        box_wrap_cell_edge(pos_x, dim_x, s->iwidth[0], s->cdim[0], s->periodic);
+    pos_y =
+        box_wrap_cell_edge(pos_y, dim_y, s->iwidth[1], s->cdim[1], s->periodic);
+    pos_z =
+        box_wrap_cell_edge(pos_z, dim_z, s->iwidth[2], s->cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -498,12 +507,15 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
     double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
-    /* Treat the case where a particle was wrapped back exactly onto
+    /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
-     * than around dim) */
-    if (pos_x == dim_x) pos_x = 0.0;
-    if (pos_y == dim_y) pos_y = 0.0;
-    if (pos_z == dim_z) pos_z = 0.0;
+     * than around dim), such that its cell index would be cdim */
+    pos_x =
+        box_wrap_cell_edge(pos_x, dim_x, s->iwidth[0], s->cdim[0], s->periodic);
+    pos_y =
+        box_wrap_cell_edge(pos_y, dim_y, s->iwidth[1], s->cdim[1], s->periodic);
+    pos_z =
+        box_wrap_cell_edge(pos_z, dim_z, s->iwidth[2], s->cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -626,12 +638,15 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
     double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
-    /* Treat the case where a particle was wrapped back exactly onto
+    /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
-     * than around dim) */
-    if (pos_x == dim_x) pos_x = 0.0;
-    if (pos_y == dim_y) pos_y = 0.0;
-    if (pos_z == dim_z) pos_z = 0.0;
+     * than around dim), such that its cell index would be cdim */
+    pos_x =
+        box_wrap_cell_edge(pos_x, dim_x, s->iwidth[0], s->cdim[0], s->periodic);
+    pos_y =
+        box_wrap_cell_edge(pos_y, dim_y, s->iwidth[1], s->cdim[1], s->periodic);
+    pos_z =
+        box_wrap_cell_edge(pos_z, dim_z, s->iwidth[2], s->cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);

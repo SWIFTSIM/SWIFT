@@ -685,15 +685,10 @@ void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 /**
  * @brief Recursively compute non-symmetric pair interactions for sub-cells.
  *
- * Recurses while @c r_cut < 0.5 * ci->dmin, i.e. while the fixed aperture
- * is smaller than a sub-cell.  Once the aperture equals or exceeds half the
- * cell's minimum dimension, all sub-cell progeny pairs would interact and
- * no pruning is possible, so DOPAIR1_BRANCH_HYDRO_APERTURE is called at this
- * level instead of descending further.
- *
- * This is the fixed-aperture analogue of the variable-h hydro loop's
- * @c recurse_below_h_max logic: the recursion stops when the search radius
- * covers a whole sub-cell.
+ * Recurses while cell_can_recurse_in_pair_aperture_task() holds, i.e. while
+ * the fixed aperture plus the gas movement fits in a sub-cell. Otherwise all
+ * sub-cell progeny pairs can interact and DOPAIR1_BRANCH_HYDRO_APERTURE is
+ * called at this level.
  *
  * @param r The #runner.
  * @param ci The first #cell.

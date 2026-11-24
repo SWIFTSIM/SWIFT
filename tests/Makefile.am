@@ -41,14 +41,18 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testSinkApertureEdgeRounding testSinkDriftFlags \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
-        testRadiationHIIConeClaim \
+        testRadiationHIIConeClaim testRadiationPacketSlotGeometry testGEARMechanicalWeights \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
+        testCoolingSplit \
         testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
         testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomRadiationGrid \
-        testZoomGravityDown testSubsetRecursion \
-        testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
+        testZoomGravityDown testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
+        testForeignPairFlux testSymmetricMatrixDiagonalisation \
+        testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
+        testChemistryPositivityLimiter testChemistryFluxInterval \
+        testChemistryFluxStamp # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -60,19 +64,22 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
-		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testCoolingSplit testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
-		 testRadiationHIIConeClaim \
+		 testRadiationHIIConeClaim testRadiationPacketSlotGeometry testGEARMechanicalWeights \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
 		 testChemistryFluxAntisymmetry \
 		 testZoomInit testGetZoomIJKFunc testZoomRegrid testSpaceSplit \
 		 testZoomVoidTree testZoomRadiationGrid testZoomGravityDown \
-		 testSubsetRecursion
+		 testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
+		 testForeignPairFlux testChemistryFluxExchangeOnce \
+		 testChemistryPositivityLimiter testChemistryFluxInterval \
+		 testChemistryFluxStamp
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -92,6 +99,10 @@ testRadiationHIIConeFrame_SOURCES = testRadiationHIIConeFrame.c
 
 testRadiationHIIConeClaim_SOURCES = testRadiationHIIConeClaim.c
 
+testRadiationPacketSlotGeometry_SOURCES = testRadiationPacketSlotGeometry.c
+
+testGEARMechanicalWeights_SOURCES = testGEARMechanicalWeights.c
+
 testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 
 testAtomic_SOURCES = testAtomic.c
@@ -108,6 +119,10 @@ testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
 
+testBoxWrapCellIndex_SOURCES = testBoxWrapCellIndex.c
+
+testCellDxOutsideCheck_SOURCES = testCellDxOutsideCheck.c
+
 testCosmologyAccuracy_SOURCES = testCosmologyAccuracy.c
 
 testOutputList_SOURCES = testOutputList.c
@@ -120,6 +135,14 @@ testSymmetry_SOURCES = testSymmetry.c
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
 
 testChemistryFluxAntisymmetry_SOURCES = testChemistryFluxAntisymmetry.c
+
+testChemistryFluxExchangeOnce_SOURCES = testChemistryFluxExchangeOnce.c
+
+testChemistryPositivityLimiter_SOURCES = testChemistryPositivityLimiter.c
+
+testChemistryFluxInterval_SOURCES = testChemistryFluxInterval.c
+
+testChemistryFluxStamp_SOURCES = testChemistryFluxStamp.c
 
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 
@@ -181,6 +204,8 @@ testMatrixInversion_SOURCES = testMatrixInversion.c
 
 testThreadpool_SOURCES = testThreadpool.c
 
+testSubsetRecursion_SOURCES = testSubsetRecursion.c
+
 testDump_SOURCES = testDump.c
 
 testCSDS_SOURCES = testCSDS.c
@@ -203,6 +228,8 @@ testUtilities_SOURCES = testUtilities.c
 
 testCooling_SOURCES = testCooling.c
 
+testCoolingSplit_SOURCES = testCoolingSplit.c
+
 testComovingCooling_SOURCES = testComovingCooling.c
 
 testFeedback_SOURCES = testFeedback.c
@@ -213,7 +240,7 @@ testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
 
-testSubsetRecursion_SOURCES = testSubsetRecursion.c
+testForeignPairFlux_SOURCES = testForeignPairFlux.c
 
 testHydroMPIrules_SOURCES = testHydroMPIrules.c
 
@@ -267,4 +294,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsHydroSinks.sh hydro_sinks_tolerance_27_normal.dat \
              testZoomInit.sh zoom_params_small.yml zoom_params_large.yml zoom_params_cells.yml zoom_params_cells_exact.yml testGetZoomIJKFunc.sh \
              testZoomRegrid.sh testZoomVoidTree.sh \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
+             testGeajayPhotoelectricKey.sh testGeajayHeliumStop.sh

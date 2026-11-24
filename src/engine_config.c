@@ -663,6 +663,9 @@ void engine_config(int restart, int fof, struct engine *e,
       feedback_radiation_startup_diagnostics(e);
     }
 
+    /* The speed limit of the packet light does not need stars. */
+    feedback_radiation_transport_startup(e);
+
     /* Print information about the RT scheme */
     if (e->policy & engine_policy_rt) {
       rt_props_print(e->rt_props);

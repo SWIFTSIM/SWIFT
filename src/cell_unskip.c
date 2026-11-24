@@ -2017,18 +2017,19 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
-    for (struct link *l = c->hydro.chemistry_fct_prep; l != NULL; l = l->next) {
+    for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
+         l = l->next) {
       scheduler_activate(s, l->t);
 
-      /* The chemistry FCT ghosts of BOTH sides must run, even for an
-         inactive neighbouring cell: its particles can be flux donors and
-         need a current-step theta before the force loop applies fluxes. */
+      /* Activate the chemistry flux ghosts of both cells, even of an
+         inactive one: the ghost finalises the per-particle state of the
+         prep loop, and the force loop reads it on both sides of a pair. */
       struct cell *ci = l->t->ci;
       struct cell *cj = l->t->cj;
-      if (ci->hydro.super->hydro.chemistry_fct_ghost != NULL)
-        scheduler_activate(s, ci->hydro.super->hydro.chemistry_fct_ghost);
-      if (cj != NULL && cj->hydro.super->hydro.chemistry_fct_ghost != NULL)
-        scheduler_activate(s, cj->hydro.super->hydro.chemistry_fct_ghost);
+      if (ci->hydro.super->hydro.chemistry_flux_ghost != NULL)
+        scheduler_activate(s, ci->hydro.super->hydro.chemistry_flux_ghost);
+      if (cj != NULL && cj->hydro.super->hydro.chemistry_flux_ghost != NULL)
+        scheduler_activate(s, cj->hydro.super->hydro.chemistry_flux_ghost);
     }
 
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
@@ -2058,11 +2059,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
    * so, we have to do this now, from the active remote cell). */
   else if (c->nodeID != nodeID && c_active) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
-    /* TODO(MPI): when the GEAR FVPM chemistry FCT limiter gains MPI support,
-       the force pairs activated here also need their chemistry_fct_prep
-       counterparts and both supers' chemistry_fct_ghost activated (plus a
-       theta/sum_out exchange). Currently unreachable: engine_maketasks()
-       errors out for such runs. */
+    /* TODO(MPI): with the chemistry flux prep loop on several ranks, the
+       force pairs activated here also need their prep tasks and the
+       chemistry flux ghosts of both supers. The chemistry modules that use
+       the prep loop refuse runs on several ranks. */
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       struct task *t = l->t;
 
@@ -2299,7 +2299,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * is available at all (e.g. the request hasn't propagated down yet).
  *
  * Also activates the super's stars.feedback_ghost. radiation_in's barrier
- * waits on it (engine_radiation_wire_super_deps, engine_maketasks.c:3586) so
+ * waits on it (engine_radiation_wire_super_deps) so
  * SN feedback writes happen-before the HII gather reads. On a star-inactive
  * super, engine_do_unskip_stars() never visits the cell, so without this
  * call feedback_ghost stays skipped and that wait silently has no effect.
@@ -2632,16 +2632,11 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
         if (cj_nodeID == nodeID) cell_radiation_activate_supers_out(cj, s);
       }
 
-      /* We only want to activate the task if the cell is active and is
-         going to update some gas on the *local* node */
-      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-          (ci_active || cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+      /* The rank that owns the star computes, so the HII task of a local side
+         runs whenever either side is active (the radiation_in rule) and
+         also unlocks stars_out through this task. */
+      if ((ci_active || cj_active) &&
+          (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
         scheduler_activate(s, t);
       }
     }

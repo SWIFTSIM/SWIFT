@@ -79,6 +79,12 @@ pure-hydrogen convention (mu_i=0.5, mu_o=1), which this run does not have:
 it carries helium and Grackle sets the ionization state. Both values are
 printed with their source. See resolve_composition().
 
+Scope and limits: Spitzer over-predicts the late-time radius, which is why STARBENCH exists. The front
+oscillates at this metallicity, so run-to-run and phase differences of several percent at t=3 Myr are expected.
+HII_rebuild_time_Myr must stay at or below the value of params.yml: too coarse a cadence updates the ionization
+state less often than the hydrodynamic response of the swept shell needs, and the front growth diverges from the
+analytic solution.
+
 Usage:
     python3 starbench_analytic_check.py [-s snap/snapshot] [-o out.png]
 """

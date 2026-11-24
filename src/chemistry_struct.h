@@ -27,6 +27,15 @@
 /* Config parameters. */
 #include <config.h>
 
+/**
+ * @brief The two passes of a chemistry flux: the prep pass runs in the
+ * chemistry flux prep loop, the apply pass in the force loop.
+ */
+enum chemistry_flux_pass {
+  chemistry_flux_pass_prep,
+  chemistry_flux_pass_apply
+};
+
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_struct.h"

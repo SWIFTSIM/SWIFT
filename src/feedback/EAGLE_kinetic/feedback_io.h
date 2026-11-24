@@ -43,13 +43,13 @@ INLINE static int feedback_read_particles(struct part *parts,
  * @param xparts The extended data particle array.
  * @param list The list of i/o properties to write.
  * @param with_cosmology Are we running with cosmology switched on?
+ * @param feedback_props The #feedback_props, NULL to list every field.
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int feedback_write_particles(const struct part *parts,
-                                           const struct xpart *xparts,
-                                           struct io_props *list,
-                                           const int with_cosmology) {
+INLINE static int feedback_write_particles(
+    const struct part *parts, const struct xpart *xparts, struct io_props *list,
+    const int with_cosmology, const struct feedback_props *feedback_props) {
   return 0;
 }
 
@@ -80,6 +80,22 @@ INLINE static int feedback_write_sparticles(const struct spart *sparts,
  */
 INLINE static int feedback_read_sparticles(struct spart *sparts,
                                            struct io_props *list) {
+  return 0;
+}
+
+/**
+ * @brief Specifies which sink particle fields to write to a dataset. Nothing
+ * to write here.
+ *
+ * @param sinks The sink particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int feedback_write_sinkparticles(const struct sink *sinks,
+                                               struct io_props *list,
+                                               const int with_cosmology) {
   return 0;
 }
 

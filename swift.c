@@ -46,6 +46,7 @@
 
 /* Local headers. */
 #include "argparse.h"
+#include "runner_radiation_feedback.h"
 #include "swift.h"
 
 /* Engine policy flags. */
@@ -684,6 +685,19 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (feedback_radiation_needs_feedback_option(with_hydro, with_stars,
+                                               with_feedback)) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      pretime_message(
+          "Error: Cannot process gas and stars without feedback when the HII "
+          "ionization of the GEAR subgrid radiation is compiled in, "
+          "--feedback must be chosen (or configure with a "
+          "--with-subgrid-radiation list that leaves out hii).");
+    }
+    return 1;
+  }
+
   if (!with_hydro && with_black_holes) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -1139,10 +1153,6 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    /* Prepare and verify the selection of outputs */
-    io_prepare_output_fields(output_options, with_cosmology, with_fof,
-                             with_structure_finding, e.verbose);
-
 #if defined(SWIFT_DEBUG_TASKS)
     task_create_name_files("task_labels");
 #endif
@@ -1291,25 +1301,20 @@ int main(int argc, char *argv[]) {
     }
     if (myrank == 0) cooling_print(&cooling_func);
 
-    /* Safety net: a subgrid channel that reads Grackle's resolved
-       chemistry_data (e.g. GEAR's local Lyman-Werner/PE dust opacity,
-       local_dust_to_gas_ratio) silently sees an unresolved, zeroed
-       struct if cooling_init() never ran -- neither --cooling nor
-       --temperature was passed. That zeroes real physics without any
-       crash or warning otherwise, so fail loudly instead. */
+    /* Safety net: a subgrid channel that reads the cooling module's
+       chemistry data (e.g. the local dust-to-gas ratio) sees a zeroed
+       struct if cooling_init() never ran because neither --cooling nor
+       --temperature was passed. Fail loudly instead of using it. */
     if (feedback_props_needs_cooling_initialized(&feedback_properties) &&
         !(with_cooling || with_temperature)) {
-      error(
-          "A feedback channel that needs Grackle's chemistry_data "
-          "resolved (e.g. GEARFeedback:with_interstellar_radiation_field) "
-          "is enabled, but neither --cooling nor --temperature was passed: "
-          "chemistry_data (including local_dust_to_gas_ratio) is never "
-          "resolved, silently zeroing that channel's dust opacity. Pass "
-          "--cooling or --temperature (with a working GrackleCooling: "
-          "block), or set GrackleCooling:disable_cooling_for_debugging "
-          "to keep chemistry_data initialization correct while skipping "
-          "the actual per-particle cooling/heating update.");
+      error("%s", cooling_get_missing_init_message());
     }
+
+    /* Prepare and verify the selection of outputs. This comes after
+     * cooling_init() because the cooling chooses its snapshot fields from its
+     * parameters. */
+    io_prepare_output_fields(output_options, with_cosmology, with_fof,
+                             with_structure_finding, e.verbose);
 
     /* Initialise the star formation law and its properties */
     bzero(&starform, sizeof(struct star_formation));

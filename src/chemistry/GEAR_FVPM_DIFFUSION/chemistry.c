@@ -26,15 +26,56 @@
 #include "chemistry_iact.h"
 
 /**
+ * @brief Get the time interval over which a pair exchanges its flux.
+ *
+ * The interval runs from the later of the last flux applications of the two
+ * particles to the current time. It is the thermal kick factor of that
+ * interval times a^2, the time-step convention of the other hydro variables.
+ * Without a limiter or a sync event, it equals the shorter current step of
+ * the active particles.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param time_base The time base that converts integer time to physical
+ * time.
+ * @param t_current The current integer time.
+ * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ * @return The interval in physical units.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
+    const struct part *pi, const struct part *pj, const double time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology) {
+
+  const integertime_t ti_start = chemistry_get_pair_ti_flux_start(pi, pj);
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (ti_start > t_current)
+    error("Flux interval of the pair %lld-%lld starts at %lld after t=%lld.",
+          pi->id, pj->id, ti_start, t_current);
+#endif
+
+  double dt_therm;
+  if (with_cosmology)
+    dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_start, t_current);
+  else
+    dt_therm = (t_current - ti_start) * time_base;
+
+  /* Round to float before the a^2 factor, as for the hydro time-step. */
+  const float dt_therm_float = dt_therm;
+  return dt_therm_float * cosmo->a * cosmo->a;
+}
+
+/**
  * @brief Computes the diffusion pair fluxes of all elements (no side
  * effects).
  *
- * Shared by the FCT prep pass and the flux-applying force loop
- * (runner_iact_chemistry_fluxes_common()). Kept out-of-line, never inlined,
- * and externally linked so both callers always compile to one shared
- * function body, whatever translation unit either ends up in -- required
- * for the FCT donor-side cap, which needs the prep and apply passes to
- * agree bit-for-bit.
+ * Shared by the prep pass of the positivity limiter and the force loop
+ * (chemistry_exchange_pair_flux()). Both loops are instantiated in
+ * runner_doiact_hydro.c. The function is never inlined, so both loops run
+ * the same compiled code: two inlined copies in different loop bodies can
+ * round differently under fast-math. The limiter needs the two passes to
+ * agree bit for bit.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -43,10 +84,14 @@
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i (not modified).
  * @param pj Particle j (not modified).
- * @param chem_data The global properties of the chemistry scheme.
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param t_current The current time (in integer).
  * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  * @param totflux (return) Per-element fluxes across the interface.
- * @param mindt_out (return) Time step of the flux exchange.
+ * @param flux_dt_out (return) Time interval of the flux exchange.
  * @param vmax_out (return) Maximal signal velocity of the pair (hyperbolic
  * scheme; 0 otherwise).
  * @return a CHEMISTRY_PAIR_FLUX_* status describing which outputs are valid.
@@ -54,9 +99,10 @@
 __attribute__((noinline)) int chemistry_compute_pair_fluxes(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct part *restrict pi, const struct part *restrict pj,
+    const double time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo,
-    double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *mindt_out,
+    double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *flux_dt_out,
     float *vmax_out
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
     ,
@@ -64,7 +110,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
 #endif
 ) {
 
-  *mindt_out = 0.f;
+  *flux_dt_out = 0.f;
   *vmax_out = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   *delxbar_i_out = 0.f;
@@ -76,9 +122,6 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
       (pi->chemistry_data.kappa == 0.0 && pj->chemistry_data.kappa == 0.0)) {
     return CHEMISTRY_PAIR_FLUX_NONE;
   }
-
-  const struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -209,31 +252,12 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
-  /* Get the time step for the flux exchange: the smallest positive time step
-   * among the two particles, order-independently. The naive
-   * "(chj->flux.dt > 0.f) ? fminf(chi, chj) : chi" form silently assumes chi
-   * is always the active one; after canonicalisation the "left" slot can
-   * hold either particle, and that assumption would give
-   * fminf(-1.f, dt) = -1.f -- a negative timestep multiplying every flux. */
-  const float dt_L = chi->flux.dt;
-  const float dt_R = chj->flux.dt;
-  float mindt;
-  if (dt_L > 0.f && dt_R > 0.f) {
-    mindt = fminf(dt_L, dt_R);
-  } else if (dt_L > 0.f) {
-    mindt = dt_L;
-  } else if (dt_R > 0.f) {
-    mindt = dt_R;
-  } else {
-    /* Neither side is active: nothing to exchange. Should not happen given
-     * the nonsym/sym dispatch contracts, but stay safe rather than divide
-     * into a negative timestep. */
-    mindt = 0.f;
-  }
-  *mindt_out = mindt;
+  const float flux_dt = chemistry_get_pair_flux_dt(pi, pj, time_base, t_current,
+                                                   cosmo, with_cosmology);
+  *flux_dt_out = flux_dt;
 
   /* Nothing to do */
-  if (mindt == 0.f) {
+  if (flux_dt == 0.f) {
     return CHEMISTRY_PAIR_FLUX_GEOMETRY;
   }
 
@@ -288,8 +312,8 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui[4], Uj[4];
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, cosmo, chem_data, Ui,
-                                Uj);
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, flux_dt, cosmo,
+                                chem_data, Ui, Uj);
     /* Note: The returned values are in physical units. No conversion needed */
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
@@ -298,7 +322,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
     totflux[m][2] = 0.0;
     totflux[m][3] = 0.0;
     chemistry_compute_flux(dx, pi, pj, m, Ui, Uj, Wi, Wj, n_unit, Anorm_p,
-                           chem_data, cosmo, totflux[m]);
+                           flux_dt, chem_data, cosmo, totflux[m]);
 
     /* Flux limiter */
     /* First check that we won't have negative masses. If so, we have a check
@@ -307,7 +331,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
        a lot, we will create a lot of metal mass. */
     /* Note: the limiter only reads interaction_mode for a debug message, so
        passing 0 here keeps the computation mode-independent. */
-    chemistry_limit_metal_mass_flux(pi, pj, m, totflux[m], mindt,
+    chemistry_limit_metal_mass_flux(pi, pj, m, totflux[m], flux_dt,
                                     /*interaction_mode=*/0, chem_data);
   }
 

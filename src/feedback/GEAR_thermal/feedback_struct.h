@@ -36,17 +36,8 @@
  */
 struct feedback_part_data {
 
-#ifdef GEAR_SUBGRID_RADIATION_HII
-  /*! Tag to mark the particle as ionized. */
-  char is_ionized;
-#endif
-
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-  /*! Largest #part.time_bin among this particle and its neighbours in the
-      ISRF density loop of this h-iteration. Drives #c_hyp. Sits in the
-      padding after #is_ionized, so #part does not grow. */
-  timebin_t max_ngb_time_bin;
-#endif
+  /* Members are ordered from large to small alignment. The padding of struct
+     part depends on whether the MPI HII floats are compiled in. */
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */
@@ -61,6 +52,29 @@ struct feedback_part_data {
       the owner-side merge when this claim loses a collision, to count the
       forfeited budget. */
   double cost;
+#endif
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  /*! Per-moment ISRF state, indexed by #radiation_isrf_moment. */
+  struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
+
+  /*! Step (#engine.ti_current) at which #feedback_isrf_moment_data.u was
+      last written. With ISRF_propagation off, a match with the current step
+      means a further star sums into u, a mismatch means u is zeroed first.
+      Set to -1 at first init. */
+  integertime_t ISRF_last_touch_ti;
+
+  /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
+      every injection touch with a margin of
+      RADIATION_ISRF_TAG_LIFETIME_INTERVALS star steps. Set to -1 at first
+      init. */
+  integertime_t ISRF_illumination_end_ti;
+#endif
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /* Trace the metals received from feedback events. This is similar to not
+     diffusing metals */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
 #ifdef GEAR_COOLING
@@ -85,154 +99,97 @@ struct feedback_part_data {
       time. The owner-side merge keeps the claim with the smallest
       (r2, star_id). */
   float r2;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  /*! Per-operator ISRF band-physics coefficients, indexed by
+      #radiation_isrf_operator; a moment reaches its own operator through
+      #radiation_isrf_moment_to_operator. */
+  struct feedback_isrf_operator_data isrf_operator[ISRF_OPERATOR_COUNT];
+
+  /*! LW specific energy weighted by the H2 line transmission, the fraction of
+      the dissociation rate that the lines let through; the kernel mean of the
+      packet field. Written with #isrf_moment, read for the H2 dissociation
+      rate with H2 line absorption on. */
+  double LW_dissociating_u;
+
+  /*! H2 column per unit internal length of path, in cm^-2, of the gas of this
+      particle, cached at every drift. */
+  float H2_column_per_length;
+
+  /*! Exponent of the H2 self-shielding fit at the gas density and temperature
+      of this particle. The fit (this, #H2_line_width_km_s and
+      #H2_velocity_limit) is frozen over the particle's step: it is set after
+      the merge of an active drift, so every share summed into a slot between
+      two merges uses the fit that the next merge inverts with. */
+  float H2_shielding_exponent;
+
+  /*! Thermal line width of H2 in km/s, part of the fit. 0 until the first fit
+      and if the temperature was not positive. */
+  float H2_line_width_km_s;
+
+  /*! Relative velocity in internal units beyond which light no longer sees
+      the H2 column it carries, part of the fit. */
+  float H2_velocity_limit;
+
+  /*! Comoving density snapshot of the previous step, read by the packet
+      transport. Seeded to 1 at first init, never 0. */
+  float rho_prev;
+
+  /*! This particle's own physical timestep, cached once per step at the
+      drift. */
+  float dt_prev;
+
+  /*! Radiation packet of the packet transport. */
+  struct feedback_isrf_packet_data isrf_packet;
+#endif
+
+#ifdef GEAR_SUBGRID_RADIATION_HII
+  /*! Tag to mark the particle as ionized. */
+  char is_ionized;
+#endif
+
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
   /*! Set when this rank claims a foreign copy of this particle, so the claim
       is reported to the owner. Cleared when the report is packed. */
   char claimed_this_pass;
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-  /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */
-  struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
-
-  /*! Per-operator ISRF band-physics coefficients, indexed by
-      #radiation_isrf_operator; a moment reaches its own operator through
-      #radiation_isrf_moment_to_operator. */
-  struct feedback_isrf_operator_data isrf_operator[ISRF_OPERATOR_COUNT];
-
-  /*! Comoving density snapshot of the previous step, used by the gradient
-      and force loops so `grad` stays the adjoint of `div`. Seeded to 1 at
-      first init, never 0. */
-  float rho_prev;
-
-  /*! Hyperbolic propagation speed, shared by both bands. Under
-      #isrf_c_hyp_scheme_fixed_fraction it is `f*c`. Under
-      #isrf_c_hyp_scheme_kernel_local_reduced_flux it is
-      `min(C_hyp*h_i/dt_max(i), c)`, with `dt_max(i)` set by #max_ngb_time_bin.
-      The CFL condition is not guaranteed for pairs with `H_i <= r < H_j`. */
-  float c_hyp;
-
-  /*! This particle's own physical timestep, cached once per step at the
-      drift. */
-  float dt_prev;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! #engine.snapshot_output_count at the last write of
-      #feedback_isrf_moment_data.u_min_since_snapshot. */
-  int u_min_snapshot_index;
-#endif
-
-  /*! Step (#engine.ti_current) at which #feedback_isrf_moment_data.u was
-      last written. With ISRF_propagation off, a match with the current step
-      means a further star sums into u, a mismatch means u is zeroed first.
-      Set to -1 at first init. */
-  integertime_t ISRF_last_touch_ti;
-
   /*! Is the particle illuminated by a star's injection pass, with the
       episode still live? Gates a first-touch-only timestep_sync_part call and
       is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
   char is_illuminated_ISRF;
 
-  /*! Copy of #feedback_props.ISRF_flux_dissipation, set at drift and in the
-      extra ghost, so the force pairs read it without the engine. */
-  char ISRF_flux_dissipation;
+  /*! Copy of #feedback_props.ISRF_propagation, set at drift and in the extra
+      ghost, so the neighbour loops read it without the engine. */
+  char ISRF_packet_transport;
 
-  /*! Cross-bin pair booking state: < 0 inactive (may receive pending), > 0
-      active (equals #dt_prev), 0 legacy (every pair booked as before). */
-  float dt_active;
+  /*! Bits of the LW dissociation transport, set at the drift:
+      #RADIATION_ISRF_H2_LINES (#feedback_props.ISRF_H2_line_absorption) and
+      #RADIATION_ISRF_LW_POPULATION
+      (#radiation_packet_constants.LW_population_track).
+      Any bit set turns on the dissociating energy bookkeeping. Read through
+      #feedback_part_has_H2_lines and #feedback_part_tracks_LW_dissociating. */
+  char ISRF_H2_line_absorption;
 
-  /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
-      every injection touch with a margin of
-      RADIATION_ISRF_TAG_LIFETIME_INTERVALS star steps. Set to -1 at first
-      init. */
-  integertime_t ISRF_illumination_end_ti;
+  /*! H2 column in cm^-2 of the own LW light, weighted by its dissociating
+      energy, from the end of the gradient loop. 0 without dissociating light
+      or without H2 line absorption. */
+  float LW_line_H2_column;
 
-  /*! Integer time by which every dose in
-      #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
-      every star touch. Set to -1 at first init. */
-  integertime_t ISRF_reservoir_end_ti;
-#endif
-
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-  /* Trace the metals received from feedback events. This is similar to not
-     diffusing metals */
-  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  /*! Unused. With 10 chemistry elements #LW_line_H2_column and this array
+      together keep sizeof(struct part) at 4256 B. Other builds can still
+      reach 4096 B, where a stride was measured to cost 7 per cent more CPU time
+      without H2 line absorption; the
+      start-up refuses that with H2 line absorption on
+      (#feedback_props_init). */
+  char ISRF_packet_stride_padding[28];
 #endif
 };
 
-#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-
-/**
- * @brief HII claim sent back by the rank that ran the star's search to the
- * rank that owns the gas (task_subtype_part_hii_tag).
- *
- * One entry per particle of the cell. The owner merges only the entries
- * stamped by #claimed_this_pass.
- */
-struct hii_tag_report {
-
-  /*! Id of the star that claimed the particle. */
-  long long star_id;
-
-  /*! Simulation time until which the particle stays tagged. */
-  double end_time;
-
-  /*! Photons charged for this claim, counted as forfeited if it loses. */
-  double cost;
-
-  /*! Squared distance to the claiming star at claim time. The owner may hold
-      no copy of that star, so it is sent, not recomputed. */
-  float r2;
-
-  /*! Ionization tag of the claim. */
-  char is_ionized;
-
-  /*! Set if this entry is a claim of this pass; others are not merged. */
-  char claimed_this_pass;
-};
-
-/**
- * @brief Post-cooling HII state sent by the gas owner to every rank that
- * holds a foreign copy (task_subtype_part_hii_state).
- *
- * The search on the other rank then sees the owner's tag and eligibility
- * caches of this step, not the pre-cooling snapshot of the xv/rho channel.
- * The unpack writes only these fields.
- */
-struct hii_state_update {
-
-  /*! Id of the star holding the tag. */
-  long long star_id;
-
-  /*! Simulation time until which the particle stays tagged. */
-  double end_time;
-
-  /*! Photons debited for the current claim. */
-  double cost;
-
-  /*! Eligibility temperature cache, see #feedback_part_data. */
-  float T_eligibility;
-
-  /*! Mean molecular weight cache, see #feedback_part_data. */
-  float mu_eligibility;
-
-  /*! Neutral hydrogen mass fraction cache, see #feedback_part_data. */
-  float neutral_H_frac;
-
-  /*! Squared distance to the star holding the tag, at claim time. */
-  float r2;
-
-  /*! Ionization tag. */
-  char is_ionized;
-};
-
-#else
-
-/*! Empty payloads: without HII under MPI these subtypes carry nothing. */
-struct hii_tag_report {};
-struct hii_state_update {};
-
-#endif
+/* The shared accessors read the fields above. */
+#include "../GEAR/radiation_part.h"
 
 /**
  * @brief Extra feedback fields carried by each hydro particles
@@ -364,6 +321,18 @@ struct feedback_spart_data {
 
   /*! Radiation data structs */
   struct feedback_spart_radiation_data radiation;
+};
+
+/**
+ * @brief Feedback fields carried by each sink particle.
+ */
+struct feedback_sink_data {
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+  /*! Packet ledger of the gas the sink formed from and swallowed, and of the
+      sinks it merged with. */
+  struct feedback_isrf_packet_removed_data isrf_packet;
+#endif
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
