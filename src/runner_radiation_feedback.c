@@ -705,6 +705,10 @@ struct hii_star_pass {
 
   /*! Number of passes the star made before this one. */
   int64_t pass_index;
+
+  /*! Stop radius of the pass whose unspent photons this pass received, 0 if
+      none. */
+  float carried_from_radius;
 };
 
 /**
@@ -798,6 +802,7 @@ static int runner_hii_open_star_pass(const struct engine *e,
      pass, in "rebuild every step" mode. */
   const double dt_floored = dt_elapsed > 0.0 ? dt_elapsed : dt_floor;
   const double dt_back = min(dt_floored, dt_ceiling);
+  const float carried_from_radius = feedback_get_star_HII_carry_stop_radius(si);
   feedback_open_star_ionizing_photon_budget(si, dt_back);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
@@ -812,6 +817,7 @@ static int runner_hii_open_star_pass(const struct engine *e,
   pass->dt_back = dt_back;
   pass->star_age_safe = star_age_safe;
   pass->pass_index = pass_index;
+  pass->carried_from_radius = carried_from_radius;
   return 1;
 }
 
@@ -829,13 +835,15 @@ static int runner_hii_open_star_pass(const struct engine *e,
  * box axes.
  * @param dt_back Time over which the pass spends photons.
  * @param interaction_limit The initial search range boundary.
+ * @param covered_radius Radius inside which the pass sees all the gas.
  * @return Number of gas particles the star holds ionized.
  */
 static int runner_hii_maintain_held_region(struct runner *r, struct cell *c,
                                            struct spart *si,
                                            const double *frame,
                                            const double dt_back,
-                                           const float interaction_limit) {
+                                           const float interaction_limit,
+                                           const float covered_radius) {
 
   /* Held outside the #ifndef so it is in scope for the retry loop's
      expansion cap either way. Stays 0 when Phase 1 is compiled out, which
@@ -868,15 +876,22 @@ static int runner_hii_maintain_held_region(struct runner *r, struct cell *c,
       .r = r,
       .buffer_count = 0,
   };
-  struct hii_gather_state held_gather = {.r = r,
-                                         .si = si,
-                                         .search_radius = interaction_limit,
-                                         .buffer = NULL,
-                                         .max_size = 0,
-                                         .count_found = 0,
-                                         .mode = hii_gather_already_ionized,
-                                         .ctx = &maintenance_ctx,
-                                         .frame = frame};
+
+  /* After a rebuild the cells are sized for the region, so a cut here is
+     rare; counted, since held gas beyond it is not maintained. */
+  if (interaction_limit > covered_radius)
+    atomic_add_d(&r->e->radiation_hii_coverage_local.held_search_cuts, 1.);
+
+  struct hii_gather_state held_gather = {
+      .r = r,
+      .si = si,
+      .search_radius = min(interaction_limit, covered_radius),
+      .buffer = NULL,
+      .max_size = 0,
+      .count_found = 0,
+      .mode = hii_gather_already_ionized,
+      .ctx = &maintenance_ctx,
+      .frame = frame};
   runner_hii_visit_neighbors(c, &held_gather);
   count_held = held_gather.count_found;
 
@@ -979,7 +994,10 @@ struct hii_claim_summary {
  * box axes.
  * @param dt_back Time over which the pass spends photons.
  * @param interaction_limit The initial search range boundary.
- * @param max_reachable_search_radius The neighbour cell margin of this pass.
+ * @param covered_radius Radius inside which the pass sees all the gas; the
+ * search never goes beyond it.
+ * @param carried_from_radius Stop radius of the pass whose unspent photons
+ * this pass received, 0 if none.
  * @param count_held Gas the star already held at the start of the pass.
  * @param diag The #hii_pass_diagnostics.
  * @param summary (return) How the walk ended.
@@ -987,8 +1005,9 @@ struct hii_claim_summary {
 static void runner_hii_claim_and_retry(
     struct runner *r, struct cell *c, struct spart *si, const double *frame,
     const double dt_back, const float interaction_limit,
-    const float max_reachable_search_radius, const int count_held,
-    struct hii_pass_diagnostics *diag, struct hii_claim_summary *summary) {
+    const float covered_radius, const float carried_from_radius,
+    const int count_held, struct hii_pass_diagnostics *diag,
+    struct hii_claim_summary *summary) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -1032,7 +1051,7 @@ static void runner_hii_claim_and_retry(
    * confined to the one star that actually needs it: neither retry
    * kind touches the outer loop over sparts, so a star that already
    * exhausts its budget on the first pass costs nothing extra. */
-  float dynamic_search_radius = interaction_limit;
+  float dynamic_search_radius = min(interaction_limit, covered_radius);
   int num_retry_full_buffer = 0;
   int num_radius_expansions = 0;
   int num_empty_expansions = 0;
@@ -1139,28 +1158,38 @@ static void runner_hii_claim_and_retry(
        * photons remain: expand the radius unless one of the limits in
        * runner_hii_search_stop() binds. */
       const enum hii_search_stop stop = runner_hii_search_stop(
-          dynamic_search_radius, max_search_radius, max_reachable_search_radius,
+          dynamic_search_radius, max_search_radius, covered_radius,
           num_radius_expansions, max_radius_expansion_tries, count_found,
           count_held, num_empty_expansions);
 
       if (stop == hii_search_stop_margin) {
         /* Only the cell layout stops this star, so ask the next passes,
            and the rebuild check once the radius outgrows the wired
-           neighbours, for the radius it would have tried next. */
+           neighbours, for the radius it would have tried next. The
+           unspent photons wait for the next pass, after that rebuild. */
         si->h_hii_request = runner_hii_requested_radius(dynamic_search_radius,
                                                         radius_expansion_factor,
                                                         max_search_radius) /
                             (radiation_search_radius_factor * kernel_gamma);
-#ifdef SWIFT_DEBUG_CHECKS
-        atomic_inc(&e->radiation_reach_clamp_count);
+        const double released = feedback_carry_star_HII_unspent_photons(
+            si, feedback_props, dynamic_search_radius, carried_from_radius);
+        if (feedback_get_star_HII_carry_stop_radius(si) > 0.f) {
+          atomic_add_d(&e->radiation_hii_coverage_local.carried_passes, 1.);
+        } else {
+          atomic_add_d(&e->radiation_hii_coverage_local.released_passes, 1.);
+          atomic_add_d(&e->radiation_hii_coverage_local.released_photons,
+                       released);
+        }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
         message(
-            "Star %lld: radius expansion clamped at the reachable stencil "
-            "bound (dynamic_search_radius = %e, max_reachable = %e), "
-            "requesting %e.",
-            si->id, dynamic_search_radius, max_reachable_search_radius,
-            kernel_gamma * si->h_hii_request);
-#endif
+            "Star %lld: search stopped at the covered radius %e (carried "
+            "from %e), requesting %e, carried %.17g, released %.17g.",
+            si->id, dynamic_search_radius, carried_from_radius,
+            kernel_gamma * si->h_hii_request,
+            feedback_get_star_HII_carry_stop_radius(si) > 0.f
+                ? feedback_get_star_ionization_budget_total(si)
+                : 0.,
+            released);
 #endif
       }
       if (stop != hii_search_grow) break;
@@ -1172,7 +1201,7 @@ static void runner_hii_claim_and_retry(
 
       dynamic_search_radius =
           min3(dynamic_search_radius * radius_expansion_factor,
-               max_search_radius, max_reachable_search_radius);
+               max_search_radius, covered_radius);
       ++num_radius_expansions;
     }
   }
@@ -1275,12 +1304,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
      early-return. */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
-  /* The gather only visits wired cells whatever the search radius says, so
-   * the radius stops at this margin. A star stopped there asks for a wider
-   * reach (h_hii_request) rather than waiting for an unrelated rebuild. */
-  const float max_reachable_search_radius =
-      interaction_limit + cell_radiation_neighbour_margin(c);
-
   for (int i = 0; i < scount; i++) {
 
     /* Get a hold of the ith spart in ci. */
@@ -1310,14 +1333,20 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     const double *frame = runner_hii_star_cone_frame(
         si, feedback_props, pass.pass_index, cone_frame_storage);
 
+    /* The gather only visits linked cells whatever the search radius says,
+       so no search of this pass goes beyond this radius. A star stopped
+       there asks for a wider reach (h_hii_request). */
+    const float covered_radius =
+        cell_radiation_covered_radius(c, si->x, e->s->dim, e->s->periodic);
+
     const int count_held = runner_hii_maintain_held_region(
-        r, c, si, frame, pass.dt_back, interaction_limit);
+        r, c, si, frame, pass.dt_back, interaction_limit, covered_radius);
 
     struct hii_pass_diagnostics diag;
     struct hii_claim_summary summary;
     runner_hii_claim_and_retry(r, c, si, frame, pass.dt_back, interaction_limit,
-                               max_reachable_search_radius, count_held, &diag,
-                               &summary);
+                               covered_radius, pass.carried_from_radius,
+                               count_held, &diag, &summary);
 
     hii_pass_diagnostics_print(&diag, e, si, count_held);
     runner_hii_close_star_pass(c, si, pass.star_age_safe, &summary, &diag,

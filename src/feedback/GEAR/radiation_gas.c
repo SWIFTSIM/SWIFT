@@ -310,7 +310,8 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
 
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
- * the photons emitted over dt_back. Nothing carries over from the last pass.
+ * the photons emitted over dt_back, plus the unspent photons of the last pass
+ * if it stopped at the edge of the gas the tree covered.
  *
  * The rate is integrated with the trapezoid rule, because a declining SSP rate
  * makes the rectangle rule under-issue photons.
@@ -321,9 +322,15 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
 __attribute__((always_inline)) INLINE void
 radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 
+  /* The carry is used once. */
+  const int with_carry =
+      sp->feedback_data.radiation.HII_carry_stop_radius > 0.f;
+  sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
+
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   /* All pixels share one rate, so log once per star. */
   double issued_total = 0.;
+  double carried_total = 0.;
   double rate_prev_dbg = 0.;
   double rate_now_dbg = 0.;
   double rate_used_dbg = 0.;
@@ -331,9 +338,10 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 
   for (int pixel = 0; pixel < sp->feedback_data.radiation.n_HII_pixels;
        pixel++) {
-    /* Unspent photons escaped. A pixel never ends a pass below zero: a won
-       roll on a candidate costing more than the budget takes what is left,
-       and the roll's p = budget / cost keeps the spend unbiased. */
+    /* Without a carry the unspent photons escaped. A pixel never ends a pass
+       below zero: a won roll on a candidate costing more than the budget
+       takes what is left, and the roll's p = budget / cost keeps the spend
+       unbiased. */
     const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[pixel];
     const double rate_prev =
         sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel];
@@ -341,12 +349,15 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
     const double rate_used =
         rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
     const double issued = rate_used * dt_back;
+    const double carried =
+        with_carry ? sp->feedback_data.radiation.N_ion_budget_pix[pixel] : 0.;
 
-    sp->feedback_data.radiation.N_ion_budget_pix[pixel] = issued;
+    sp->feedback_data.radiation.N_ion_budget_pix[pixel] = issued + carried;
     sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel] = rate_now;
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     issued_total += issued;
+    carried_total += carried;
     rate_prev_dbg = rate_prev;
     rate_now_dbg = rate_now;
     rate_used_dbg = rate_used;
@@ -356,9 +367,9 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
       "HII budget open: star %lld dt_back=%e rate_prev=%e rate_now=%e "
-      "rate_used=%e issued_total=%.17g",
-      sp->id, dt_back, rate_prev_dbg, rate_now_dbg, rate_used_dbg,
-      issued_total);
+      "rate_used=%e issued_total=%.17g carried_total=%.17g",
+      sp->id, dt_back, rate_prev_dbg, rate_now_dbg, rate_used_dbg, issued_total,
+      carried_total);
 #endif
 }
 

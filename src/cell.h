@@ -27,6 +27,7 @@
 #include <config.h>
 
 /* Includes. */
+#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -1902,6 +1903,57 @@ cell_radiation_neighbour_margin(const struct cell *c) {
     margin = min(margin, partner->dmin);
   }
   return margin;
+}
+
+/**
+ * @brief Radius around a star inside which an HII pass sees all the gas.
+ *
+ * The pass visits the star's radiation_level cell and every cell linked to
+ * it. A sphere around the star stays inside them up to its distance to the
+ * nearest face of the radiation_level cell plus the width of the thinnest
+ * linked partner. A face on the wall of a non-periodic box is left out: no
+ * gas lies beyond it. Gas that entered the covered cells from an unlinked
+ * cell since the last rebuild is still stored in that cell, so the largest
+ * gas displacement of the partners is taken off.
+ *
+ * @param c The working-level #cell holding the star.
+ * @param x The position of the star.
+ * @param dim The size of the box.
+ * @param periodic Is the box periodic?
+ * @return The covered radius, at least 0, or FLT_MAX if every face is a wall.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_covered_radius(const struct cell *c, const double x[3],
+                              const double dim[3], const int periodic) {
+
+  const struct cell *level = c->stars.radiation_level;
+
+  float partner_width = level->dmin;
+  float partner_drift = 0.f;
+  for (const struct link *l = level->stars.radiation_in; l != NULL;
+       l = l->next) {
+    if (l->t->type == task_type_self) continue;
+    const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
+    partner_width = min(partner_width, partner->dmin);
+    partner_drift = max(partner_drift, partner->hydro.dx_max_part);
+  }
+
+  double face_distance = DBL_MAX;
+  for (int k = 0; k < 3; k++) {
+    const double half_width = 0.5 * level->width[k];
+    double dx = x[k] - (level->loc[k] + half_width);
+    if (periodic) dx = nearest(dx, dim[k]);
+
+    const int lower_is_wall = !periodic && level->loc[k] <= 0.;
+    const int upper_is_wall =
+        !periodic && level->loc[k] + level->width[k] >= dim[k];
+    if (!lower_is_wall) face_distance = min(face_distance, half_width + dx);
+    if (!upper_is_wall) face_distance = min(face_distance, half_width - dx);
+  }
+  if (face_distance == DBL_MAX) return FLT_MAX;
+
+  const double covered = face_distance + partner_width - partner_drift;
+  return covered > 0. ? (float)covered : 0.f;
 }
 
 /**

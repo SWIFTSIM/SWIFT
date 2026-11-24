@@ -77,8 +77,8 @@ Section~\ref{sec:front-radius} relies on. ``Tagged'' below always
 means holding an active (not yet lapsed) claim.
 
 \paragraph{Implementation.} The tag is applied by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:424-440}) and reset by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:448-452}),
+(\code{src/feedback/GEAR/radiation\_gas.c:435-451}) and reset by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:459-463}),
 which leaves the star id in place.
 
 \subsubsection{Candidate Gating and the Recombination Rate}
@@ -114,7 +114,7 @@ identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. 
 
 \paragraph{Implementation.} The candidate filter is \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:720-754}).
+(\code{src/feedback/GEAR/feedback\_common.c:723-757}).
 
 \subsubsection{Claim Cost vs.\ Maintenance Rate}
 
@@ -455,7 +455,7 @@ differently; see Section~\ref{sec:front-radius}.
 gate recurs at line 97. The rate-coupled branch starts at line 74 and leaves the energy alone.
 $\Gamma_{\rm HI}$ is
 \code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
-(\code{src/feedback/GEAR/radiation\_gas.c:551-560}); the excess photon energy is
+(\code{src/feedback/GEAR/radiation\_gas.c:562-571}); the excess photon energy is
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
 (\code{src/feedback/GEAR/radiation\_getters.c:575-582}); the fields are handed to
 Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
@@ -519,9 +519,9 @@ which can be arbitrarily small; the nominal cadence used to bound how
 large a single pass's $\Delta t_{\rm back}$ is trusted to be is
 floored at \code{GEARFeedback:HII\_rebuild\_floor\_Myr}, the same
 constant that also floors the star's own timestep in that mode so it
-cannot collapse toward zero. Nothing carries over from the last
-pass. Unspent budget is dropped: those photons reached no gas and
-escaped. No pass leaves a debt either: a pixel's count never goes
+cannot collapse toward zero. Unspent budget is dropped, with one
+exception given below: those photons reached no gas and escaped. No
+pass leaves a debt either: a pixel's count never goes
 below zero, because a charge larger than what is left takes only
 what is left. A claim of a particle the pixel cannot afford is
 therefore not repaid later; the boundary roll
@@ -545,9 +545,33 @@ cell does not make the next real pass cover the skipped gap. The cached
 previous rate is resynced to the current one on that skip, so the trapezoid
 never averages against a stale rate.
 
+\paragraph{Carry at the coverage stop.}\label{sec:budget-carry} A pass can
+stop because its search reached the covered radius $r_{\rm cov}$, the
+radius inside which the visited cells hold all the gas
+(Eq.~\eqref{eq:hii-covered-radius}). Its photons did not escape: the gas beyond
+$r_{\rm cov}$ was not visible. The pass asks for a wider tree, and its
+unspent photons are kept per pixel and added to the next budget,
+\begin{equation}
+  N_{{\rm ion},p}^{\rm open} =
+  \dot N_{{\rm ion},p}\,\Delta t_{\rm back} + N_{{\rm ion},p}^{\rm left},
+  \label{eq:budget-carry}
+\end{equation}
+where $N_{{\rm ion},p}^{\rm left}$ is the count pixel $p$ had at the end of
+the stopped pass. A carry is used once. If the next pass stops at the
+coverage again, the photons are kept only if its $r_{\rm cov}$ is larger
+than the one that created the carry; otherwise the rebuild did not widen
+the tree (for example the top-level grid cannot coarsen further) and the
+photons are counted as escaped at the coverage limit. Each pass therefore
+closes the ledger issued plus carried in equals spent plus escaped plus
+carried out. A gas-free skip keeps the carry. Birth, death and the end of
+the HII age window clear it. With
+\code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop}$\,=0$ the photons
+of a stopped pass escape. The step log reports the carried and released
+passes and the released photons.
+
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1184-1195}).
+(\code{src/feedback/GEAR/feedback\_common.c:1187-1198}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -647,12 +671,12 @@ ionized for ever, and a pixel whose Strömgren mass is below one
 particle would hold a whole particle permanently.
 
 \paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{src/runner\_radiation\_feedback.c:1258}), exempt from
+(\code{src/runner\_radiation\_feedback.c:1287}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:720-754}). The charge and renewal are
+(\code{src/feedback/GEAR/feedback\_common.c:723-757}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{feedback\_common.c:926-995}), called at
-\code{src/runner\_radiation\_feedback.c:913}.
+(\code{feedback\_common.c:929-998}), called at
+\code{src/runner\_radiation\_feedback.c:928}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
@@ -690,10 +714,10 @@ same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
 \paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{src/feedback/GEAR/feedback\_common.c:926-995}) passes the pixel index found
+(\code{src/feedback/GEAR/feedback\_common.c:929-998}) passes the pixel index found
 for the particle's current direction when it was gathered to
 \code{radiation\_consume\_ionizing\_photons}
-(\code{src/feedback/GEAR/radiation\_gas.c:393-406}).
+(\code{src/feedback/GEAR/radiation\_gas.c:404-417}).
 
 \subsection{Front-radius measure}
 \label{sec:front-radius}
@@ -735,8 +759,8 @@ historical-extent measure would instead freeze at the historical
 maximum once the region starts to recede.
 
 \paragraph{Implementation.} The id is written by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:424-440}) and is left in place by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:448-452}).
+(\code{src/feedback/GEAR/radiation\_gas.c:435-451}) and is left in place by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:459-463}).
 
 \subsubsection{Robust Historical Extent: Gap-Aware Outlier Rejection}
 

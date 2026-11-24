@@ -488,8 +488,11 @@ void feedback_will_do_HII_ionization(
     sp->feedback_data.radiation.mass_HII_region = 0.f;
   }
 
-  /* A star with no region can still hold a search request. */
-  if (sp->feedback_data.is_dead || !is_HII_eligible) sp->h_hii_request = 0.f;
+  /* A star with no region can still hold a search request and a carry. */
+  if (sp->feedback_data.is_dead || !is_HII_eligible) {
+    sp->h_hii_request = 0.f;
+    sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
+  }
 }
 
 #endif /* GEAR_SUBGRID_RADIATION_HII */
@@ -1235,6 +1238,45 @@ void feedback_reset_star_HII_mass(struct spart *sp) {
   sp->feedback_data.radiation.mass_HII_region = 0.f;
 }
 
+/**
+ * @brief Stop radius of the pass whose unspent photons the next pass of this
+ * star receives, 0 if none.
+ *
+ * @param sp The star.
+ */
+float feedback_get_star_HII_carry_stop_radius(const struct spart *sp) {
+  return sp->feedback_data.radiation.HII_carry_stop_radius;
+}
+
+/**
+ * @brief Keep the unspent photons of a pass stopped at the edge of the gas
+ * the tree covers, for the next pass of the star, or release them.
+ *
+ * The stop asks for a wider tree. The photons are kept only if this stop is
+ * wider than the stop they were carried from: otherwise the rebuild did not
+ * widen the coverage, and a further carry would pile them up.
+ *
+ * @param sp The star.
+ * @param feedback_props The #feedback_props.
+ * @param stop_radius Search radius at which this pass stopped.
+ * @param carried_from_radius Stop radius of the pass whose photons this pass
+ * received, 0 if none.
+ * @return The photons released (escaped), 0 if they are kept.
+ */
+double feedback_carry_star_HII_unspent_photons(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const float stop_radius, const float carried_from_radius) {
+
+  if (feedback_props->HII_carry_photons_at_coverage_stop &&
+      stop_radius > carried_from_radius) {
+    sp->feedback_data.radiation.HII_carry_stop_radius = stop_radius;
+    return 0.;
+  }
+
+  sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
+  return feedback_get_star_ionization_budget_total(sp);
+}
+
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
 /**
@@ -1422,6 +1464,7 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
   for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
   }
+  sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
 
   /* No previous pass to average against yet; -1 is the sentinel
      radiation_open_ionizing_photon_budget() checks for. */

@@ -37,6 +37,7 @@
 #define default_HII_random_cone_frame_per_star 1
 #define default_HII_cone_frame_redraw_period 0
 #define default_HII_rebuild_floor_Myr 1e-4
+#define default_HII_carry_photons_at_coverage_stop 1
 #define default_dt_evolution_factor_max 300.0
 #define default_event_dt_floor_Myr 1e-4
 /* One kernel support radius: the largest path with the star inside the
@@ -252,6 +253,10 @@ struct feedback_props {
   /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
 
+  /*! Keep the photons of a pass stopped at the tree coverage for the next
+   * pass (1), or count them as escaped (0). */
+  char HII_carry_photons_at_coverage_stop;
+
   /* ------------- Stellar winds properties ------------- */
 
   /*! Pre-supernova feedback energy effectively deposited */
@@ -384,6 +389,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->HII_rebuild_time);
     message("HII rebuild floor (internal units)                         = %g",
             feedback_props->HII_rebuild_floor_Myr);
+    message("HII carry photons at the coverage stop                     = %s",
+            feedback_props->HII_carry_photons_at_coverage_stop ? "on" : "off");
   }
 
   /* ISRF */
@@ -1044,6 +1051,16 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "integrated over, in every cadence mode: <= 0 silently zeroes "
           "every star's first-pass budget.",
           fp->HII_rebuild_floor_Myr);
+
+    const int carry_photons = parser_get_opt_param_int(
+        params, "GEARFeedback:HII_carry_photons_at_coverage_stop",
+        default_HII_carry_photons_at_coverage_stop);
+    if (carry_photons != 0 && carry_photons != 1)
+      error(
+          "GEARFeedback:HII_carry_photons_at_coverage_stop must be 0 or 1, "
+          "got %d.",
+          carry_photons);
+    fp->HII_carry_photons_at_coverage_stop = (char)carry_photons;
 
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *

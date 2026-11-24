@@ -2797,24 +2797,28 @@ int engine_step(struct engine *e) {
     fflush(stdout);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* A star's HII front hitting the reach clamp waits on the next rebuild
-     * to re-level its task instead of expanding further this step. A
-     * persistently growing count means the wired stencil's placement
-     * headroom (radiation_search_radius_factor, src/cell_stars.h -- a
-     * compile-time constant) is too small for this star's growth rate. */
-    if (e->radiation_reach_clamp_count > 0) {
-      warning(
-          "Radiation reach-clamp events: %lld cumulative (+%lld this step) "
-          "-- the wired stencil's placement headroom "
-          "(radiation_search_radius_factor) may be too small for this "
-          "star's growth rate.",
-          e->radiation_reach_clamp_count,
-          e->radiation_reach_clamp_count -
-              e->radiation_reach_clamp_count_last_step);
-      e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
+    /* A pass stopped at the edge of the gas the tree covers asks for a wider
+     * tree. Released photons mean the rebuild could not widen it. */
+    const struct radiation_hii_coverage_stats *cov = &e->radiation_hii_coverage;
+    const struct radiation_hii_coverage_stats *cov_last =
+        &e->radiation_hii_coverage_last_step;
+    if (cov->carried_passes + cov->released_passes + cov->held_search_cuts >
+        cov_last->carried_passes + cov_last->released_passes +
+            cov_last->held_search_cuts) {
+      message(
+          "HII coverage stops: %.0f carried (+%.0f), %.0f released (+%.0f) "
+          "with %.3e photons (+%.3e), %.0f held-gas searches cut (+%.0f).",
+          cov->carried_passes, cov->carried_passes - cov_last->carried_passes,
+          cov->released_passes,
+          cov->released_passes - cov_last->released_passes,
+          cov->released_photons,
+          cov->released_photons - cov_last->released_photons,
+          cov->held_search_cuts,
+          cov->held_search_cuts - cov_last->held_search_cuts);
+      e->radiation_hii_coverage_last_step = *cov;
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
     /* Two ranks' stars both reaching the same boundary gas is expected
      * cross-rank contention, not a bug, so this is a message, not a
      * warning. */

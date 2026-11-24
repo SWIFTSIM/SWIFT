@@ -105,7 +105,8 @@ enum hii_search_stop {
   /*! The radius is at Stars:HII_max_search_radius. */
   hii_search_stop_ceiling = 2,
 
-  /*! The radius is at the neighbour cell margin, and nothing else binds. */
+  /*! The radius is at the edge of the gas the tree covers, and nothing else
+      binds. */
   hii_search_stop_margin = 3,
 
   /*! A star that holds gas has had its one empty probe. */
@@ -121,13 +122,14 @@ enum hii_search_stop {
  * it would otherwise spend every expansion on ever larger empty volumes. A
  * star holding nothing keeps its full configured reach, the case the
  * expansion exists for (a fresh star, or one in a cavity whose nearest gas is
- * several expansions away). The neighbour cell margin is reported only when
- * no other limit binds, so it marks a star that the cell layout alone holds
+ * several expansions away). The covered radius is reported only when no
+ * other limit binds, so it marks a star that the cell layout alone holds
  * back.
  *
  * @param radius The radius just searched.
  * @param max_search_radius Stars:HII_max_search_radius.
- * @param max_reachable_radius The neighbour cell margin of this pass.
+ * @param max_reachable_radius The radius inside which the pass sees all the
+ * gas (cell_radiation_covered_radius()).
  * @param num_expansions Expansions done so far in this pass.
  * @param max_expansions Stars:HII_max_radius_expansion_tries.
  * @param count_found Candidates found at @p radius.
@@ -151,7 +153,7 @@ runner_hii_search_stop(const float radius, const float max_search_radius,
 }
 
 /**
- * @brief Search radius a pass stopped by the neighbour cell margin asks for:
+ * @brief Search radius a pass stopped at the covered radius asks for:
  * the next radius it would have tried.
  *
  * @param radius The radius just searched.

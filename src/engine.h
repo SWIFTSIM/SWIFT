@@ -142,6 +142,25 @@ extern int engine_rank;
  */
 extern int engine_current_step;
 
+/**
+ * @brief Counts of the HII passes stopped at the edge of the gas the tree
+ * covers. Doubles only, so that the ranks sum them in one reduction.
+ */
+struct radiation_hii_coverage_stats {
+
+  /*! Passes that kept their unspent photons for the next pass. */
+  double carried_passes;
+
+  /*! Passes that released their unspent photons as escaped. */
+  double released_passes;
+
+  /*! Photons released by those passes. */
+  double released_photons;
+
+  /*! Held-gas searches whose start radius was cut to the covered radius. */
+  double held_search_cuts;
+};
+
 /* Data structure for the engine. */
 struct engine {
 
@@ -496,17 +515,6 @@ struct engine {
   int rebuild_demand_depth;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! Cumulative HII search-radius expansions clamped at the reachable
-   * radiation_in stencil bound. A persistently growing count means a star's
-   * physical front is waiting on the next rebuild instead of being
-   * reach-limited by configuration; reported as a warning in
-   * engine_step(). */
-  long long radiation_reach_clamp_count;
-
-  /*! radiation_reach_clamp_count at the last per-step report, for printing the
-   * per-step delta. */
-  long long radiation_reach_clamp_count_last_step;
-
   /*! Cumulative owner-side HII merge collisions, summed across all ranks
    * (engine_collect_end_of_step.c reduces
    * radiation_hii_merge_collision_count_local into this field every step).
@@ -538,6 +546,15 @@ struct engine {
    * radiation_hii_merge_collision_count_local. */
   double radiation_hii_forfeited_budget_local;
 #endif
+
+  /*! HII coverage stops of this rank, cumulative. */
+  struct radiation_hii_coverage_stats radiation_hii_coverage_local;
+
+  /*! HII coverage stops summed over the ranks at the end of each step. */
+  struct radiation_hii_coverage_stats radiation_hii_coverage;
+
+  /*! radiation_hii_coverage at the last per-step report. */
+  struct radiation_hii_coverage_stats radiation_hii_coverage_last_step;
 
   /* Force the engine to repartition ? */
   int forcerepart;
