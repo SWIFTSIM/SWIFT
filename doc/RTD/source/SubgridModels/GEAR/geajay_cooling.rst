@@ -56,7 +56,8 @@ Table, background and metals
    * - ``with_uv_background``
      - Enable or not the UV background.
    * - ``redshift``
-     - Redshift to use (-1 means time based redshift).
+     - Redshift to use (-1 means time based redshift). A run with cosmology stops at start-up with
+       any other value, and a value below -0.99 is refused.
    * - ``with_metal_cooling``
      - Enable or not the metal cooling.
    * - ``thermal_time_myr``
@@ -409,6 +410,8 @@ it is -1 (default: -1). The keys are ``initial_hii_to_h_ratio``, ``initial_hei_t
 Each ratio is a number of that species per H nucleus of the gas, so H\ :sub:`2` holds two of them. HI takes the
 H nuclei that HII, H\ :sub:`-`, H\ :sub:`2`, H\ :sub:`2+`, HD, HD\ :sub:`+` and HeH\ :sub:`+` do not hold:
 that is 1 - (HII + HM + 2 H2I + 2 H2II + HDI + HDII + HeHII) of the ratios. The run stops at start-up if that is below 0.
+With ``initial_hei_to_h_ratio`` unset, HeI takes the He nuclei that HeII, HeIII and HeH\ :sub:`+` do not hold,
+in the same way, and the run stops at start-up if those species hold more helium than the gas.
 
 Restart files
 -------------
@@ -416,8 +419,13 @@ Restart files
 A restart file starts with a record of the geajay layout: the network, the number of species per
 particle and the sizes of the cooling structures. SWIFT stops with a message if the record differs
 from the running build, or if the file has no record. Restart files written before the record
-existed (before the network ``H_He_H2_D_ions``) are refused in every network: start again from a
-snapshot or from the initial conditions.
+existed (before the network ``H_He_H2_D_ions``) are refused in every network: start again from the
+initial conditions.
+
+A start from a snapshot is for debugging and optimisation only. The module sets the species of every
+particle from the parameter file, as at the first start, and never reads them from the snapshot.
+Cosmological initial conditions carry no abundances, so a run that needs the correct chemistry always
+restarts from its restart files.
 
 With the network ``H_He_H2_D`` (``primordial_chemistry_network`` 3) geajay holds the total deuterium
 at a constant D to H mass ratio and rescales D, D\ :sub:`+` and HD to it at every call. With the

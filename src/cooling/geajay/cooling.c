@@ -2540,10 +2540,10 @@ void cooling_clean(struct cooling_function_data *cooling) {
 
 /*! The advice of the restart refusals: a start from a snapshot sets every
  * species from the parameter file. */
-#define COOLING_GEAJAY_RESTART_ADVICE                                       \
+#define COOLING_GEAJAY_RESTART_ADVICE                                        \
   "Start again from the initial conditions. A start from a snapshot is for " \
-  "debugging and optimisation only: it sets every species from the "        \
-  "parameter file, and cosmological initial conditions carry no "           \
+  "debugging and optimisation only: it sets every species from the "         \
+  "parameter file, and cosmological initial conditions carry no "            \
   "abundances, so real physics never restarts from a snapshot."
 
 /*! Record written before the cooling struct in a restart file. */
