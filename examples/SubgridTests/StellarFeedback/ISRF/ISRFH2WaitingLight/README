@@ -52,23 +52,6 @@ H2 density is nearly constant, at every snapshot that both runs hold, and tests 
 - the two runs differ by at most the width of the range of the shares of both runs (this follows
   from the two tests above and is not a separate test).
 
-The check prints the first and last snapshot it read and why the comparison ends. A control run
-outside the range of its own shares fails the check. The check needs both runs to be
-non-periodic and the limited run to have lit fewer particles than the control at the first
-compared snapshot (else no light waits). It refuses `ISRF_packet_light_speed: cap` (exit class 4).
-It tests the transmission and the column of every lit particle of every snapshot it reads, and
-stops with exit class 3 if one is not finite. On one core the check takes about 45 minutes for
-the default resolution (41 snapshots per run).
-
-A PASS proves that, at every snapshot read, the H2 transmission and column of each compared
-particle lie, to 1e-5, between the smallest and the largest share that the check rebuilds from
-the carried values of its upstream neighbours, taken at any snapshot up to the compared one. It
-does not prove the absolute value of the transmission: an error that is the same on every
-particle passes, in either sign. It does not see a pooling error that keeps a weighted mean of
-the shares (a lost or a double-counted share, wrong weights, light released twice). It catches
-an error that pushes a particle outside that range, for example an H2 shielding that is too
-strong or too weak on each hop.
-
-The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field (run
-`./run.sh` first), 3 for a non-finite value and 4 for a void run (a premise or the
-positive control is not met).
+The check prints the first and last snapshot it read and why the comparison ends. On one
+core it takes about 45 minutes for the default resolution (41 snapshots per run). It exits
+with a non-zero status when it fails.

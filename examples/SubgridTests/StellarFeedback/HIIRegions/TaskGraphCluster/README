@@ -12,8 +12,8 @@ lock-contention point against up to 6 sibling tasks at once. It exercises the
 
 **Role: software-correctness test.** This checks task-graph lock contention,
   not agreement with any published result. See `../Starbench/`,
-  `../Hu2017/`, and `../ClumpSmith2021/` for the actual validation
-  targets.
+  `../Hu2017/`, and `../ClumpSmith2021/` for examples that reproduce
+  published results.
 
 `gas_mass` defaults to 1.0 Msun, coarser than `../StromgrenSphere/`'s default
 of 0.1. This box holds ~110x more gas at the same density than the single-star

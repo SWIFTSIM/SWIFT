@@ -12,9 +12,9 @@ multiplies it by its own H2 self-shielding factor at the Jeans length of the par
 photodissociation equilibrium the formation rate over the star rate equals `x T_line` with the
 switch on and `x S(x n_H L_J)` with it off, where `x = n_H2 / n_H`, `S` is the shielding
 function of Wolcott-Green and Haiman (2019) and `L_J` the Jeans length. For every gas particle
-the check solves the off-leg equation from the on-leg state, with each leg's own density,
-temperature and formation rates, and compares the median change of `x` per density bin
-with the measured one.
+the check solves the equation of the switch-off run from the state of the switch-on run,
+with each run's own density, temperature and formation rates, and compares the median
+change of `x` per density bin with the measured one.
 
 # Configure
 ```
@@ -40,9 +40,9 @@ leg=repeat ./run.sh
 python3 check_h2_cooling_onoff.py --on on/snap --off off/snap --repeat repeat/snap
 ```
 `run.sh` uses the accurate (BDF) solver of geajay (`solver=1`). The cheap solver holds the
-shielding factor of the switch-off leg fixed over each sub-step, so that leg lags its
+shielding factor of the switch-off run fixed over each sub-step, so that run lags its
 equilibrium while the H2 falls: the check reads the solver from the snapshots and reports
-cheap-solver legs as INDETERMINATE.
+cheap-solver runs as INDETERMINATE.
 
 # Checking
 The check reads snapshots 3 to 6 (`--first`, `--last`), and the snapshot before the first one.
@@ -51,18 +51,4 @@ with the change that the written line transmission predicts, with the library fo
 rates. A density bin with too few particles, or with a noise bar above ln 2, is printed as
 INDETERMINATE and decides nothing.
 
-Exit status: 0 every snapshot passes, 1 a failure (or no snapshot could be evaluated),
-2 bad arguments, 3 inconclusive: some snapshot has no decided bin, or the noise or the
-temperature lag is unknown. `--x-on-scale`, `--t-line-power`, `--column-scale`,
-`--plant-nan-field`, `--plant-hm-sign` and `--synthetic` plant a known error, to confirm that the
-check fails when it should.
-
-# Refusal test
-`check_official_grackle_refusal.sh <swift> <ICs.hdf5> <cloudy.h5> <yields.hdf5> <workdir>`
-checks that a SWIFT built with official Grackle (`--with-cooling=grackle_3`, same configure line
-with `--with-grackle=path/to/grackle` in place of `--with-geajay`) stops at start-up with the
-switch 1 and starts with the switch 0. `<swift>` is that binary. `<ICs.hdf5>` is
-`ICs_homogeneous_box.hdf5` made by `makeIC.py` of `SinkParticles/HomogeneousBox`, whose
-`params.yml` the script reuses. `<cloudy.h5>` is the Cloudy table
-(`getGrackleCoolingTable.sh` of `GEAR_ICs_and_SCRIPTS`), `<yields.hdf5>` the radiation table
-`PopII_parsec_spectral.hdf5`, `<workdir>` an empty scratch directory.
+The check exits with a non-zero status when it fails or cannot decide.
