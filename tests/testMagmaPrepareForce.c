@@ -86,9 +86,8 @@ static double rand_sym(void) { return 2.0 * rand_unit() - 1.0; }
  * @param c_max_ngb The largest sound speed among the neighbours.
  * @param alpha_shock_max_ngb The largest shock coefficient among them.
  */
-static void fill_gradients(struct part *p, const double V[3][3],
-                           const double R, const float laplace_u,
-                           const float c_max_ngb,
+static void fill_gradients(struct part *p, const double V[3][3], const double R,
+                           const float laplace_u, const float c_max_ngb,
                            const float alpha_shock_max_ngb) {
   sym_matrix_identity(&p->gradient.c_matrix_inv);
   for (int l = 0; l < 3; ++l) {
@@ -156,14 +155,13 @@ static void reference_limiter(const struct part *p, const double V[3][3],
       kernel_root * m_over_rho_hd + sqrt(m_over_rho_hd / kernel_norm);
   const double dz = fmin(0.9, const_viscosity_boost_dead_zone * noise);
   const double Rc = fmin(1., fmax(-1., R_raw));
-  const double R = Rc < -dz ? (Rc + dz) / (1. - dz)
+  const double R = Rc < -dz  ? (Rc + dz) / (1. - dz)
                    : Rc > dz ? (Rc - dz) / (1. - dz)
                              : 0.;
   const double boost = 2. * pow(1. - R, 4);
   const double bdiv2 = boost * boost * div2;
-  *limiter =
-      fmax((bdiv2 + S2 > gradient_floor) ? bdiv2 / (bdiv2 + S2) : 1.,
-           limiter_floor);
+  *limiter = fmax((bdiv2 + S2 > gradient_floor) ? bdiv2 / (bdiv2 + S2) : 1.,
+                  limiter_floor);
 }
 
 /* Half-width of the dead zone, as the code computes it */
@@ -216,7 +214,11 @@ static int check_limiter(const struct hydro_props *hp_default,
       int min_dim;
     } cases[] = {
         {"pure shear", {{0, 1, 0}, {0, 0, 0}, {0, 0, 0}}, 0., 0., floors[f], 2},
-        {"pure compression", {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}}, 0., 1., 1.,
+        {"pure compression",
+         {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}},
+         0.,
+         1.,
+         1.,
          1},
         {"rigid rotation", {{0, 1, 0}, {-1, 0, 0}, {0, 0, 0}}, 0., 1., 1., 2},
         {"mixed, R = 0",
@@ -230,8 +232,7 @@ static int check_limiter(const struct hydro_props *hp_default,
          {{-D, s / 2, 0}, {s / 2, -D, 0}, {0, 0, -D}},
          -1.,
          dim * dim * D * D / (dim * dim * D * D + s * s / 2),
-         fmax(1024 * dim * dim * D * D /
-                  (1024 * dim * dim * D * D + s * s / 2),
+         fmax(1024 * dim * dim * D * D / (1024 * dim * dim * D * D + s * s / 2),
               floors[f]),
          2},
         {"mixed, R = +1",
@@ -247,10 +248,18 @@ static int check_limiter(const struct hydro_props *hp_default,
          fmax(4 * dim * dim * D * D / (4 * dim * dim * D * D + s * s / 2),
               floors[f]),
          2},
-        {"compression, R = +1", {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}}, 1., 1.,
-         1., 1},
-        {"compression, R = -1", {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}}, -1., 1.,
-         1., 1},
+        {"compression, R = +1",
+         {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}},
+         1.,
+         1.,
+         1.,
+         1},
+        {"compression, R = -1",
+         {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}},
+         -1.,
+         1.,
+         1.,
+         1},
         {"uniform flow", {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, 0., 1., 1., 1},
     };
     const int n_cases = sizeof(cases) / sizeof(cases[0]);
@@ -401,7 +410,8 @@ static int check_viscosity(const struct hydro_props *hp_default,
                           dt);
       if (!(p.alpha_visc >= floors[f] && p.alpha_visc <= const_viscosity_alpha))
         ++out_of_bounds;
-      if (!(p.alpha_shock >= cap_floor && p.alpha_shock <= const_viscosity_alpha))
+      if (!(p.alpha_shock >= cap_floor &&
+            p.alpha_shock <= const_viscosity_alpha))
         ++out_of_bounds;
       /* The cap takes the conduction coefficient below its floor */
       if (!(p.alpha_diff >= 0.f && p.alpha_diff <= 1.f)) ++out_of_bounds;
@@ -441,8 +451,8 @@ static int check_conduction(const struct hydro_props *hp_default,
   /* Floor 0: growth, decay and the lower bound */
   struct hydro_props hp0 = *hp_default;
   hp0.diffusion.alpha_min = 0.f;
-  const double cap_floor = fmin(hp0.viscosity.alpha_min,
-                                hydro_props_default_viscosity_alpha_min);
+  const double cap_floor =
+      fmin(hp0.viscosity.alpha_min, hydro_props_default_viscosity_alpha_min);
   const float L_values[3] = {2.f, -5.f, 0.f};
   for (int l = 0; l < 3; ++l) {
     init_particle(&p, &hp0);
@@ -569,9 +579,10 @@ static int check_feedback_hook(const struct hydro_props *hp,
     previous = p.alpha_diff;
   }
   if (non_monotonic) {
-    message("hook: the conduction coefficient decreased %d times during the "
-            "release",
-            non_monotonic);
+    message(
+        "hook: the conduction coefficient decreased %d times during the "
+        "release",
+        non_monotonic);
     ++failed;
   }
   failed += check_close(p.alpha_diff, hp->diffusion.alpha_min, 1e-6,
@@ -600,8 +611,7 @@ static int check_timestep(const struct hydro_props *hp,
   p.force.c_sig = c;
   p.force.mu_tilde = mu;
   for (int k = 0; k < 3; ++k) p.a_hydro[k] = 0.f;
-  const double v_sig =
-      2. * (c + 0.6 * const_viscosity_alpha * (c + 2. * mu));
+  const double v_sig = 2. * (c + 0.6 * const_viscosity_alpha * (c + 2. * mu));
   failed += check_close(hydro_get_signal_velocity(&p), v_sig, 1e-6,
                         "signal velocity");
   const double dt_courant = hp->CFL_condition * 2. * H / v_sig;
@@ -613,10 +623,10 @@ static int check_timestep(const struct hydro_props *hp,
   failed += check_close(hydro_get_signal_velocity(&p),
                         v_sig + const_viscosity_beta * dv, 1e-5,
                         "signal velocity after a kick");
-  failed += check_close(hydro_compute_timestep(&p, &xp, hp, cosmo),
-                        hp->CFL_condition * 2. * H /
-                            (v_sig + const_viscosity_beta * dv),
-                        1e-5, "Courant time step after a kick");
+  failed += check_close(
+      hydro_compute_timestep(&p, &xp, hp, cosmo),
+      hp->CFL_condition * 2. * H / (v_sig + const_viscosity_beta * dv), 1e-5,
+      "Courant time step after a kick");
 
   /* The acceleration criterion */
   p.force.c_sig = 1e-10f;
@@ -624,8 +634,8 @@ static int check_timestep(const struct hydro_props *hp,
   p.a_hydro[0] = 0.3f;
   p.a_hydro[1] = (dim > 1) ? -0.4f : 0.f;
   p.a_hydro[2] = 0.f;
-  const double norm_a = sqrt(p.a_hydro[0] * p.a_hydro[0] +
-                             p.a_hydro[1] * p.a_hydro[1]);
+  const double norm_a =
+      sqrt(p.a_hydro[0] * p.a_hydro[0] + p.a_hydro[1] * p.a_hydro[1]);
   failed += check_close(hydro_compute_timestep(&p, &xp, hp, cosmo),
                         hp->CFL_condition * sqrt(2. * H / norm_a), 1e-5,
                         "acceleration time step");

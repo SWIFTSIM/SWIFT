@@ -1026,9 +1026,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * the pressure floor (the conduction terms use the pressure without the
    * floor throughout). With the default floor of 1 the source and the decay
    * are inert and the coefficient is the cap alone. */
-  const float v_sig_phys = (gas_soundspeed_from_pressure(p->rho, pressure) +
-                            p->gradient.c_max_ngb) *
-                           cosmo->a_factor_sound_speed;
+  const float v_sig_phys =
+      (gas_soundspeed_from_pressure(p->rho, pressure) + p->gradient.c_max_ngb) *
+      cosmo->a_factor_sound_speed;
   const float source =
       p->u > 0.f ? hydro_props->diffusion.beta * H * p->laplace_u *
                        cosmo->a_factor_sound_speed * cosmo->a2_inv / sqrtf(p->u)

@@ -698,8 +698,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                              pj->force.gradient_P[2] * dx[2];
     const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
     const float fraction_P =
-        (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
-                       : 0.f;
+        (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P)) : 0.f;
     const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
     const float P_rec_i =
         P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
@@ -1288,8 +1287,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                              pj->force.gradient_P[2] * dx[2];
     const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
     const float fraction_P =
-        (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
-                       : 0.f;
+        (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P)) : 0.f;
     const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
     const float P_rec_i =
         P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +

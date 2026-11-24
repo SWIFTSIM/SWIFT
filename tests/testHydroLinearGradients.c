@@ -213,8 +213,7 @@ static int run_configuration(const int n, const double jitter, const double eta,
                             (float)(pi->x[1] - pj->x[1]),
                             (float)(pi->x[2] - pj->x[2])};
       const float r2 = dxv[0] * dxv[0] + dxv[1] * dxv[1] + dxv[2] * dxv[2];
-      if (r2 < hig2)
-        runner_iact_force(r2, dxv, pi->h, pj->h, pi, pj, 1.f, 0.f);
+      if (r2 < hig2) runner_iact_force(r2, dxv, pi->h, pj->h, pi, pj, 1.f, 0.f);
     }
   }
   for (int i = 0; i < N; ++i) hydro_end_force(&parts[i], cosmo);

@@ -340,10 +340,9 @@ static int check_conservation(const struct part *parts, const int N,
  * discrete switches can flip at round-off level on a borderline pair).
  * @return The number of failed checks.
  */
-static int compare_runs(const struct part *a, const struct part *b,
-                        const int N, const double Q[3][3], const int *mask,
-                        const double tol, const int max_outliers,
-                        const char *label) {
+static int compare_runs(const struct part *a, const struct part *b, const int N,
+                        const double Q[3][3], const int *mask, const double tol,
+                        const int max_outliers, const char *label) {
 
   /* Scales */
   double rms_a = 0., rms_udt = 0., rms_hdt = 0., rms_mu = 0.;
@@ -426,8 +425,7 @@ static int compare_runs(const struct part *a, const struct part *b,
     }
   }
   if (flag_mismatch > max_outliers) {
-    message("%s: fallback flags differ on %d particles", label,
-            flag_mismatch);
+    message("%s: fallback flags differ on %d particles", label, flag_mismatch);
     ++failed;
   }
   if (fallback_mismatch > max_outliers) {
@@ -487,9 +485,8 @@ static void random_rotation(double Q[3][3]) {
  * identity C-matrix, no limiting.
  */
 static void make_pair_particle(struct part *p, const double x[3],
-                               const float v[3], const float m,
-                               const float rho, const float u, const float h,
-                               const char flags) {
+                               const float v[3], const float m, const float rho,
+                               const float u, const float h, const char flags) {
   bzero(p, sizeof(struct part));
   for (int k = 0; k < 3; ++k) {
     p->x[k] = x[k];
@@ -580,9 +577,8 @@ static int check_second_law(const int n_pairs) {
     const int sign_ok = (ui > uj) ? (pi.u_dt < 0.f && pj.u_dt > 0.f)
                                   : (pi.u_dt > 0.f && pj.u_dt < 0.f);
     const int conserved = fabs(E) <= 1e-5 * E_abs;
-    const int nonsym_ok =
-        fabs(pi2.u_dt - pi.u_dt) <= 1e-5 * fabs(pi.u_dt) &&
-        fabs(pj3.u_dt - pj.u_dt) <= 1e-5 * fabs(pj.u_dt);
+    const int nonsym_ok = fabs(pi2.u_dt - pi.u_dt) <= 1e-5 * fabs(pi.u_dt) &&
+                          fabs(pj3.u_dt - pj.u_dt) <= 1e-5 * fabs(pj.u_dt);
     /* The pressure force of the pair must be antisymmetric too */
     double p_sum = 0., p_abs = 0.;
     for (int k = 0; k < 3; ++k) {
@@ -595,8 +591,8 @@ static int check_second_law(const int n_pairs) {
       message(
           "pair %d (%s): u_i %.3f u_j %.3f, u_dt_i %.3e u_dt_j %.3e (nonsym "
           "%.3e %.3e), energy %.2e, momentum %.2e: %s%s%s%s",
-          t, flags ? "kernel gradients" : "gradient functions", ui, uj,
-          pi.u_dt, pj.u_dt, pi2.u_dt, pj3.u_dt, E / E_abs, p_sum / p_abs,
+          t, flags ? "kernel gradients" : "gradient functions", ui, uj, pi.u_dt,
+          pj.u_dt, pi2.u_dt, pj3.u_dt, E / E_abs, p_sum / p_abs,
           sign_ok ? "" : "wrong direction ", conserved ? "" : "not conserved ",
           nonsym_ok ? "" : "nonsym differs ",
           momentum_ok ? "" : "momentum not conserved");
@@ -663,8 +659,8 @@ int main(int argc, char *argv[]) {
   memcpy(ref, parts, N * sizeof(struct part));
 
   /* 2. Symmetric vs non-symmetric with unequal h */
-  run_sequence(parts, xparts, N, L, 1, v, 1.3f, dt_alpha, /*nonsym=*/1, 0,
-               &hp, &cosmo, &floor);
+  run_sequence(parts, xparts, N, L, 1, v, 1.3f, dt_alpha, /*nonsym=*/1, 0, &hp,
+               &cosmo, &floor);
   failed += check_conservation(parts, N, tol_cons, "non-symmetric force loop");
   failed += compare_runs(ref, parts, N, I, NULL, tol_cmp, 0,
                          "symmetric vs non-symmetric");
@@ -678,20 +674,20 @@ int main(int argc, char *argv[]) {
           v[3 * i + k] + ((k < (int)hydro_dimension) ? 1.5f * V[k] : 0.f);
   run_sequence(parts, xparts, N, L, 1, v_boost, 1.3f, dt_alpha, 0, 0, &hp,
                &cosmo, &floor);
-  failed += compare_runs(ref, parts, N, I, NULL, tol_cmp, N / 1000,
-                         "Galilean boost");
+  failed +=
+      compare_runs(ref, parts, N, I, NULL, tol_cmp, N / 1000, "Galilean boost");
 
   /* 4. Conservation with forced fallbacks and with the regularisation */
-  run_sequence(parts, xparts, N, L, 1, v, 1.3f, dt_alpha, 0, /*forced=*/1,
-               &hp, &cosmo, &floor);
+  run_sequence(parts, xparts, N, L, 1, v, 1.3f, dt_alpha, 0, /*forced=*/1, &hp,
+               &cosmo, &floor);
   report_coverage(parts, N, &hp, "forced fallbacks");
   failed += check_conservation(parts, N, tol_cons, "forced fallbacks");
   /* A condition-number limit just above 1: the jittered lattice is nearly
    * isotropic, so most of the inverses go through the regularised branch */
   struct hydro_props hp_reg = hp;
   hp_reg.viscosity.max_condition_number = 1.1f;
-  run_sequence(parts, xparts, N, L, 1, v, 1.3f, dt_alpha, 0, 0, &hp_reg,
-               &cosmo, &floor);
+  run_sequence(parts, xparts, N, L, 1, v, 1.3f, dt_alpha, 0, 0, &hp_reg, &cosmo,
+               &floor);
   report_coverage(parts, N, &hp_reg, "regularised C-matrices");
 #if !defined(HYDRO_DIMENSION_1D)
   /* (in 1D the C-matrix is a scalar: nothing to regularise) */
