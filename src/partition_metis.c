@@ -434,6 +434,8 @@ struct counts_mapper_data {
           parts[k].x[j] += dim[j];                                             \
         else if (parts[k].x[j] >= dim[j])                                      \
           parts[k].x[j] -= dim[j];                                             \
+        parts[k].x[j] = box_wrap_cell_edge(parts[k].x[j], dim[j], iwidth[j],   \
+                                           cdim[j], mydata->s->periodic);      \
       }                                                                        \
       const int cid =                                                          \
           cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \

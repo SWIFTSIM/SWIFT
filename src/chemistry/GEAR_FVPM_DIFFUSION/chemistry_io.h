@@ -82,7 +82,7 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine *e,
                                                       double *ret) {
   /* Output D = K*(q/U), not the raw K: K's own physical units depend on
      diffusion_mode (ordinary diffusivity for isotropic_constant, mass
-     diffusivity otherwise -- see chemistry_get_physical_matrix_D()), so a
+     diffusivity otherwise: see chemistry_get_physical_matrix_D()), so a
      single fixed UNIT_CONV_* tag cannot describe raw K consistently
      across modes. D always has ordinary diffusivity units. */
   double D[3][3];
@@ -210,6 +210,27 @@ INLINE static int chemistry_write_particles(const struct part *parts,
 
   num += 1;
 #endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
+
+  list[num] = io_make_output_field(
+      "PositivityLimiterEngagementCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, chemistry_data.positivity_limiter_engagements,
+      "Number of (step, element) cases in which the positivity limiter "
+      "scaled down the outflow of the particles");
+  num += 1;
+
+  list[num] = io_make_output_field(
+      "DiffusionFluxCoverageTicks", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, chemistry_data.flux_coverage_ticks,
+      "Integer time covered by the diffusion flux exchanges that updated the "
+      "particles, summed over their pairs");
+  num += 1;
+
+  list[num] = io_make_output_field(
+      "DiffusionFluxCatchUpCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      chemistry_data.flux_catch_up_count,
+      "Number of diffusion flux exchanges of the particles over an interval "
+      "longer than the current step of the active particles of the pair");
+  num += 1;
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)

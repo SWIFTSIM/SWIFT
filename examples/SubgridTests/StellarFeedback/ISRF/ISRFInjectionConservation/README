@@ -1,94 +1,46 @@
 # Intro
-A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+A single, fixed-mass star at the centre of a uniform, periodic glass-IC gas
 box, with photoelectric heating on but ISRF propagation off
-(photoionization and radiation pressure also off). Checks the ISRF
-injection kernel-weight normalization directly: at `Z=0` the receiver-side
-dust extinction factor is `exp(0)=1` exactly, so summing the injected
-energy over every gas particle the star's kernel reaches must reproduce
-`Delta_t * L_band` exactly, up to floating-point precision:
+(photoionization and radiation pressure also off). The example checks the
+injection step of the ISRF alone: at `Z=0` there is no dust extinction, so the
+energy injected into all gas particles that the star reaches must equal
+`Delta_t * L_band`:
 
 ```
 sum_j(PESpecificEnergies_j * mass_j) == Delta_t * PELuminosities_star
 sum_j(LWSpecificEnergies_j  * mass_j) == Delta_t * LWLuminosities_star
 ```
 
-This is an exact conservation identity (the injection formula's own
-kernel-weight normalization, `sum_j weight_j = 1`), not an approximate
-physics comparison like `ISRFHyperbolicPropagation`'s profile fit. The
-check tolerance is correspondingly tight.
+`Delta_t` is the feedback time step of the star at the checked snapshot. The
+luminosities and `Delta_t` are read from the snapshot and from `output.log`.
+
+`ISRF_propagation: 0` keeps the packet transport from moving energy between
+particles. Each star feedback pass then resets and re-injects the specific
+energies, so the last snapshot holds one injection pass.
+`run.sh` passes `--cooling`, and `GrackleCooling:disable_cooling_for_debugging: 1`
+in `params.yml` skips the cooling update, so the example needs no thermal
+evolution.
 
 ## Metallicity
-`initial_metallicity: 0` in `params.yml` is what makes the receiver-side dust
-extinction factor exactly 1, isolating the injection term from the extinction
-physics. This is the default leg.
-
+`initial_metallicity: 0` in `params.yml` is the default run.
 `metallicity=<Z> ./run.sh` runs the same box at a nonzero metal mass fraction
 (absolute, not solar: `run.sh` turns `scale_initial_metallicity` off with it)
-and switches the check to the extinction identities. With dust the sum above
-is no longer `Delta_t * L_band`, because the kernel-weighted mean of
-`exp(-tau)` does not factor out of it. Two exact statements replace it:
-
-- the per-particle ratio of the two bands, in which the kernel weight,
-  `Delta_t`, the particle mass, `Z_j`, the dust-to-gas ratio and every unit
-  conversion cancel, leaving
-
-  ```
-  ln(PESpecificEnergies_j / LWSpecificEnergies_j)
-      - ln(PELuminosities / LWLuminosities) - 0.4 * tau_LW_j == 0
-  ```
-
-  where `0.4 = 1 - sigma_PE/sigma_LW` is fixed by the two bands' dust
-  cross-sections per hydrogen nucleon;
-- a bracket on the weighted mean of `exp(-tau)`, which must lie between its
-  smallest and largest per-particle value, since the kernel weights are
-  non-negative and sum to 1. This covers the errors the band ratio cancels.
-
-`metallicity=0.01295` is Grackle's own solar metal mass fraction, which makes
-the dust-to-gas ratio relative to the Milky Way exactly 1 and leaves both
-bands strongly and differently attenuated (`tau_LW` about 2.5, `tau_PE` about
-1.5, at this example's default density and particle mass). The check prints
-`tau_LW`, so a run configured into a regime where the two bands are barely
-distinguishable is visible in the output.
-
-The reconstruction reuses the code's own column model, cross-sections and
-dust-to-gas convention. It therefore checks that the extinction is applied per
-receiving particle with the correct band-dependent cross-section ratio, not
-that any of those three is physically right; the formula itself is unit-tested
-in `testRadiationISRFFormula` (swift-gear's GEAR test suite). In a uniform glass box the column
-barely varies between particles, so this leg is also weak on one wiring error
-specifically: applying the extinction once at the source instead of per
-receiver.
-
-## Propagation
-`ISRF_propagation: 0` isolates the injection step itself: with
-propagation on, the neighbour-mixing/decay update would redistribute
-energy between particles and confound this check. With it off, each star
-feedback pass resets and fully re-injects `PESpecificEnergies`/
-`LWSpecificEnergies` from scratch, so the last snapshot is a clean,
-self-contained record of one injection pass regardless of how many passes
-ran before it.
-
-## Star luminosity and timestep
-The star's own `PELuminosities`/`LWLuminosities` are read directly from
-the snapshot (star-particle output fields). `Delta_t`, the star's own
-feedback timestep at the checked snapshot, is read from swift's own
-step-table log rather than assumed to equal `TimeIntegration:dt_max`:
-individual time-stepping can settle the star on a smaller step.
-
-## Cooling
-`run.sh` passes `--cooling` so `cooling_init()` resolves Grackle's
-`chemistry_data`; `GrackleCooling:disable_cooling_for_debugging: 1` in
-`params.yml` then skips the per-particle cooling/heating update itself, so
-this example does not need real thermal evolution.
+and switches the check to the extinction identities (see Checking).
+`metallicity=0.01295` is Grackle's solar metal mass fraction. The check prints
+`tau_LW`, the LW optical depth of the receiving particles.
 
 # Configure
 ```
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
-`--with-tracers=GEAR` is required: the tracers module registers the
-`PESpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
-themselves live on `struct part`'s `feedback_data`).
+The GEAR feedback module registers the `PESpecificEnergies`/`LWSpecificEnergies`
+snapshot output.
+
+The radiation table is the stellar evolution table with the `Data/Radiation`
+group. The pychem table generator produces it from its parameter file
+`params/chimieparam_radiation_parsec_spectral_popII.py`; `run.sh` fetches the
+published one.
 
 # Run
 ```
@@ -110,52 +62,24 @@ python3 isrf_injection_conservation_check.py
 `run.sh` runs this automatically against its own `output.log` and final
 snapshot. It sums `PESpecificEnergies * mass` (and the LW equivalent)
 over all illuminated gas particles and compares against `Delta_t *
-PELuminosities` (`--tol`, default relative error 1e-5: the measured
-discrepancy is float32 snapshot-storage rounding, ~1e-7).
+PELuminosities` (`--tol`, default relative error 1e-5).
 
-At nonzero metallicity `run.sh` passes `--dusty`, which checks the two
-extinction identities instead. The band-ratio bar is DERIVED from the run's own
-signal and the float32 widths of the reconstruction, and printed with it;
-`--dust-tol` overrides it with a fixed value, and a negative value reports the
-residual without gating. `--dusty` reads the
-run's `GEARFeedback:ISRF_extinction_path` from `used_parameters.yml` and
-rebuilds that mechanism's own column: the star-to-particle separation for
-`pair_separation` (the shipped default), or a multiple of the receiver's
-kernel support radius for `constant_kernel_path`, which is the only case
-that needs the binary's `kernel_gamma` (`--kernel-gamma`, default Wendland
-C2 in 3D). `--extinction-path <R>` forces the `constant_kernel_path` mirror
-at `R` kernel radii whatever the run recorded. `temperature_capped_jeans`
-builds its length from the gas temperature and cannot be reconstructed from
-a snapshot, so it is refused. Without `--dusty` a nonzero metallicity is an
-error, not a silently different check.
+At nonzero metallicity `run.sh` passes `--dusty`, which checks two
+extinction identities instead: the per-particle band ratio and a
+bracket on the weighted mean of `exp(-tau)`. `--dust-tol` overrides
+the band-ratio bar, and a negative value reports the residual with no pass or fail.
+`--dusty` reads `GEARFeedback:ISRF_extinction_path` from `used_parameters.yml`
+and rebuilds that mechanism's column. `--kernel-gamma` (default Wendland C2 in
+3D) and `--extinction-path <R>` apply to `constant_kernel_path`.
+`temperature_capped_jeans` is refused. Without `--dusty` a nonzero metallicity
+is an error. Their derivation is in the script docstring.
 
-The band-ratio gate G2 is what constrains the column. The G1 bracket is
-only as tight as the spread of `exp(-tau)` over the illuminated set, and
-under `pair_separation` the separation covers the whole kernel support, so
-that bracket is wide by construction and a G1 pass there says little on its
-own.
-
-`isrf_ledger_check.py` ships next to it and checks a different identity,
-the running energy ledger:
-
+With the light transported, `run.sh` runs `isrf_emitted_total_check.py` instead:
 ```
-python3 isrf_ledger_check.py -s '<run>/snap/snapshot_*.hdf5'
+n_threads=4 propagation=1 time_end=4e-4 dt_max=1e-4 delta_time=5e-5 ./run.sh
 ```
-Per band and per snapshot it gates `|E + Abs - Inj| / |Inj|` against
-`--tol` (default 1e-3), where `E` is the band specific energy plus its
-`PendingSpecificEnergies` (the energy finer neighbours owe a particle on a
-longer step), and `Inj` and `Abs` are the cumulative injected and absorbed
-specific energies. It needs a run with
-`GEARFeedback:ISRF_propagation: 1`, since only the propagation update
-writes those two fields, and a binary configured with
-`--enable-debugging-checks`, which is what makes them anything but zero.
-Both configurations of this example run with propagation off, so `run.sh`
-does not invoke it; pointed here it fails on `Inj = 0`, which is the same
-signal it gives on a run whose star never became a source. Its home is
-`ISRFHyperbolicPropagation`, whose `run.sh` runs it on a
-`--enable-debugging-checks` build; point it at any other propagation run's
-snapshots with `-s` as above.
-
-Add `--require-live-absorption` on a run that carries dust or runs with
-cosmology, where `Abs` cannot legitimately be zero on every particle and
-so reports a broken opacity.
+The check requires the light the star emitted to equal `L * age` in each band,
+within 1e-6. This needs a build with `--with-chealpix` and
+`--enable-isrf-debugging-checks`, and a radiation table that carries
+`MeanPhotonEnergyPE` (the default table does; `radiation_table=<file>` names
+another one, for instance a pychem output).

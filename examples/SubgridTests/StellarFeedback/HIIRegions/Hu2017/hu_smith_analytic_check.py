@@ -80,6 +80,12 @@ anisotropic front (a leading HEALPix cone at HII_angular_nside > 0, a
 breakout finger) intact. The true max is still reported as a secondary
 diagnostic.
 
+Scope and limits: the box size of 100 pc and HII_max_search_radius of 40 pc give a margin of 1.5 to 2 over the
+Raga-II prediction of about 26 pc at t=8 Myr. At the natural T_i~47500 K of the plain build the equivalent radius
+exceeds even this box, so the script limits its comparison window to when the analytic prediction is box-valid.
+The Bisbas et al. blend reads about 20 pc against the 25 pc of the papers' curve at t=8 Myr for this
+configuration, because its time-dependent weight is calibrated for a single source.
+
 Usage:
     python3 hu_smith_analytic_check.py [-s snap/snapshot] [-o out.png]
 """

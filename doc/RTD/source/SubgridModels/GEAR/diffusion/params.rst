@@ -96,6 +96,11 @@ Riemann-solver flux, before the global FCT positivity limiter:
   fraction of the source particle's mass that may flow into a pristine
   (:math:`Z=0`) neighbour in one step, which seeds diffusion into
   metal-free regions without an unbounded initial jump.
+* ``use_positivity_limiter`` (optional, default :math:`1`): turns the
+  global FCT positivity limiter on or off. When on, each particle's total
+  outflow in a step is scaled down so that its metal mass stays
+  non-negative. A restart keeps the value of the first run and ignores
+  the value in the parameter file.
 
 Timestep parameter
 ~~~~~~~~~~~~~~~~~~~
@@ -164,6 +169,7 @@ A minimal ``GEARChemistry`` section for the **parabolic** variant:
      flux_limiter_safety: 0.5           # (Optional) Global flux-limiter safety factor. (Default: 0.5)
      flux_limiter_sink_stability: 0.25  # (Optional) Sink-particle stability cap. (Default: 0.25)
      flux_limiter_startup: 0.1          # (Optional) Startup fraction into pristine neighbours. (Default: 0.1)
+     use_positivity_limiter: 1          # (Optional) Global FCT positivity limiter on or off. (Default: 1)
      C_CFL_chemistry: 0.4               # CFL-like constant for the chemistry diffusion timestep.
                                         # Must be < 0.5 (parabolic) or < 1 (hyperbolic), see above.
 

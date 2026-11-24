@@ -1196,11 +1196,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 2;
 #endif
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-    /* chemistry FCT prep: 1 self + 26/2 pairs, 1 fct ghost | 15 */
-    n1 += 15;
-#endif
+    /* chemistry flux prep: 1 self + 26/2 pairs, 1 flux ghost | 15 */
+    if (chemistry_need_flux_prep_loop(e->chemistry)) n1 += 15;
 #endif
   }
   if (e->policy & engine_policy_timestep_limiter) {
@@ -1243,23 +1240,19 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          radiation_out : 1 self + 13 pairs       | 14
          hii_ionization: 1                       | 1
       */
-      n1 += 27;
+      const int n_radiation_tasks = 14 + 14 + 1;
+      n1 += n_radiation_tasks;
 
-      /* The radiation splitter (scheduler_splittasks.c) pushes real
-         per-cell tasks down to stars.radiation_level, which follows h_hii
-         and so can sit below the top level: those tasks are created at
-         every level in between and belong in n2. The depth is data
-         dependent, so this is a deliberate over-estimate -- an
-         under-estimate costs a run-time pool reallocation, an
-         over-estimate only a little memory.
-
-         Radiation splitting now actually reaches this level (previously a
-         dead gate kept every radiation task pinned to the top level, so
-         this term was never exercised). Scaled by 4x for headroom: a
-         denseblock stress config (64891 gas + 1 star particles) measured
-         24-38 actual tasks/cell against a 118-139 estimated max here
-         (~20-30% utilisation) with this margin. */
-      n2 += 4 * 27;
+      /* The radiation splitter (scheduler_splittasks.c) pushes these tasks
+         down to stars.radiation_level, which follows h_hii and so can sit
+         below the top level: they are created at every level in between and
+         belong in n2. A cell holds 29 of them when its neighbours sit at the
+         same level and at most 55 when the levels differ (derived, not
+         measured). The depth depends on the data, so n2 is scaled by 4 for
+         headroom (116 covers both): an under-estimate overflows the task list
+         (fatal error in scheduler_addtask), an over-estimate only costs a
+         little memory. */
+      n2 += 4 * n_radiation_tasks;
 
 #ifdef WITH_MPI
       /* HII report-back channel: recv_part_hii_tag and send_part_hii_state
@@ -1606,6 +1599,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
   }
 
+  /* The packet reach margin follows the cell width, which a regrid changes. */
+  feedback_radiation_transport_regrid(e);
+
   /* Re-build the tasks. */
   engine_maketasks(e);
 
@@ -1887,6 +1883,9 @@ void engine_print_stats(struct engine *e) {
     stats_write_to_file(e->file_stats, &global_stats, e->time, e->cosmology->a,
                         e->cosmology->z, e->step);
 
+  /* Collective: the far light of the packet transport. */
+  feedback_radiation_transport_statistics(e);
+
   /* Flag that we dumped some statistics */
   e->step_props |= engine_step_prop_statistics;
 
@@ -1945,8 +1944,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->type == task_type_chemistry_fct_ghost ||
-        t->subtype == task_subtype_chemistry_fct_prep ||
+        t->type == task_type_chemistry_flux_ghost ||
+        t->subtype == task_subtype_chemistry_flux_prep ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
@@ -2582,8 +2581,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Run the 0th time-step */
   TIMER_TIC2;
+  runner_sort_counters_reset();
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+  runner_sort_counters_report(e);
 
   /* When running over MPI, synchronize top-level cells */
 #ifdef WITH_MPI
@@ -2815,6 +2816,10 @@ int engine_step(struct engine *e) {
 #endif
   e->tic_step = getticks();
 
+  /* Collective: every rank reports its counters and resets them. */
+  feedback_radiation_transport_step_diagnostics(e);
+  feedback_radiation_transport_step_report(e);
+
   if (e->nodeID == 0) {
 
     const double dead_time = e->global_deadtime / (e->nr_nodes * e->nr_threads);
@@ -2829,6 +2834,7 @@ int engine_step(struct engine *e) {
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
         e->step_props, dead_time);
+
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -3200,8 +3206,10 @@ int engine_step(struct engine *e) {
 
   /* Start all the tasks. */
   TIMER_TIC;
+  runner_sort_counters_reset();
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+  runner_sort_counters_report(e);
 
   /* When running over MPI, synchronize top-level cells */
 #ifdef WITH_MPI
@@ -4237,6 +4245,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  * @param restart Was this a run that was restarted from check-point files?
  */
 void engine_clean(struct engine *e, const int fof, const int restart) {
+  /* Collective: the far share of the whole run. */
+  if (!fof) feedback_radiation_transport_end_of_run(e);
+
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);

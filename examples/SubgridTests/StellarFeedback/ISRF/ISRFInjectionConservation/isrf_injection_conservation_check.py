@@ -96,6 +96,15 @@ separate source-side from receiver-side wiring. Read a G1 pass on a
 
 Delta_t (the star's own feedback-timestep at the checked snapshot) is read
 from swift's own step-table log, not assumed to equal TimeIntegration:dt_max.
+
+Scope and limits: metallicity=0.01295 (Grackle's solar metal mass fraction) gives a dust-to-gas ratio of exactly 1
+relative to the Milky Way and leaves both bands strongly and differently attenuated (tau_LW about 2.5, tau_PE about
+1.5 at the default density and particle mass). The check prints tau_LW, so a run configured into a regime where the
+two bands are barely distinguishable is visible. The default --tol of 1e-5 sits two decades above the measured
+float32 snapshot-storage rounding (about 1e-7). The reconstruction reuses the code's own column model,
+cross-sections and dust-to-gas convention, so it checks the wiring only. G1 is only as tight as the spread of
+exp(-tau) over the illuminated set: under pair_separation the separation covers the whole kernel support, so the
+bracket is wide by construction and a G1 pass there says little on its own. G2 is what constrains the column.
 """
 
 import argparse
@@ -378,8 +387,6 @@ def check_dusty(
     mass: np.ndarray,
     u_pe: np.ndarray,
     u_lw: np.ndarray,
-    pending_pe: np.ndarray,
-    pending_lw: np.ndarray,
     tau_pe: np.ndarray,
     tau_lw: np.ndarray,
     L_PE: float,
@@ -400,8 +407,6 @@ def check_dusty(
         ("masses", mass),
         ("u_PE", u_pe),
         ("u_LW", u_lw),
-        ("pending_PE", pending_pe),
-        ("pending_LW", pending_lw),
         ("tau_PE", tau_pe),
         ("tau_LW", tau_lw),
     ):
@@ -438,11 +443,9 @@ def check_dusty(
         f"{(1.0 - ratio) * float(np.max(tau_lw[lit])):.4f}"
     )
 
-    # Float32 error budget of the reconstruction. The CANONICAL derivation of
-    # this bar, with the shared-versus-per-band split and the sensitivity
-    # weights that follow from sigma_PE/sigma_LW, is `dust_band_ratio_bar` in
-    # ISRFCosmology/isrf_cosmology_check.py; this fixture carries the same
-    # metric and must keep the same term list. In brief: 4 u32 that do not
+    # Float32 error budget of the reconstruction: one rounding of u32 per
+    # float32 operation, weighted by the sensitivity of the signal to it
+    # (sigma_PE/sigma_LW sets the weights). 4 u32 that do not
     # scale with the signal (the two specific-energy stores and the two expf
     # calls, an expf relative error being an absolute error in the logarithm),
     # plus 16.5 u32 for the scaled part: twelve from the three per-band
@@ -465,11 +468,11 @@ def check_dusty(
     else:
         ok = gate("band-ratio residual (G2), max_j |R_j|", worst, opt.dust_tol)
 
-    for band, u, pending, tau, L in (
-        ("PE", u_pe, pending_pe, tau_pe, L_PE),
-        ("LW", u_lw, pending_lw, tau_lw, L_LW),
+    for band, u, tau, L in (
+        ("PE", u_pe, tau_pe, L_PE),
+        ("LW", u_lw, tau_lw, L_LW),
     ):
-        measured = float(np.sum(mass * (u + pending))) / (Delta_t * L)
+        measured = float(np.sum(mass * u)) / (Delta_t * L)
         low = float(np.min(np.exp(-tau[lit])))
         high = float(np.max(np.exp(-tau[lit])))
         inside = (
@@ -514,10 +517,6 @@ def main() -> int:
         mass = gas["Masses"][:].astype(np.float64)
         u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
-        # Energy owed by finer neighbours counts toward the band energy. It is
-        # zero here: it is only booked by the propagation update, which is off.
-        pending_pe = gas["PEPendingSpecificEnergies"][:].astype(np.float64)
-        pending_lw = gas["LWPendingSpecificEnergies"][:].astype(np.float64)
         # The unsmoothed array, for the Z=0 leg's own precondition only.
         Z = gas["MetalMassFractions"][:, -1]
         if opt.dusty:
@@ -552,8 +551,8 @@ def main() -> int:
     print(f"Illuminated gas particles: {n_illuminated}")
 
     if not opt.dusty:
-        sum_pe = float(np.sum((u_pe + pending_pe) * mass))
-        sum_lw = float(np.sum((u_lw + pending_lw) * mass))
+        sum_pe = float(np.sum(u_pe * mass))
+        sum_lw = float(np.sum(u_lw * mass))
         ok_pe = report_sum("PE", sum_pe, Delta_t * L_PE, opt.tol)
         ok_lw = report_sum("LW", sum_lw, Delta_t * L_LW, opt.tol)
         return 0 if (ok_pe and ok_lw) else 1
@@ -606,8 +605,6 @@ def main() -> int:
         mass,
         u_pe,
         u_lw,
-        pending_pe,
-        pending_lw,
         tau_pe,
         tau_lw,
         L_PE,

@@ -1,96 +1,87 @@
 # Intro
-A `c_hyp` sweep of the ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation
-scheme, from `c_hyp ~ c` down to `c_hyp << c`, at both a star-sourced field
-and a star-free seeded Gaussian pulse (`PESpecificEnergy`/`LWSpecificEnergy`
-in the IC). Measures the scheme's `c_hyp`-independent steady state and
-`c_hyp`-dependent transient (self-similarity and retardation), and locates
-the triggered-dissipation term's own Courant/stability bound empirically.
+A pulse of light crosses a periodic box of uniform dust-free gas (1e3 atom/cm^3,
+0.1 Msun particles, 262144 particles, 51.8 smoothing lengths on a side) at a
+set, slow light speed (3e-5 c, about 9 km/s). The pulse is a cube of 10
+smoothing lengths, injected into the gas at the first step by the test
+parameter `GEARFeedback:ISRF_packet_test_beam_1` (box corners, direction and
+energy per particle in internal units; the layout of the 11 numbers is in
+`examples/parameter_example.yml`). It is meant for tests, not for production runs.
+`makeIC.py` writes the value to `beam_args.txt` and `run.sh` passes it to swift.
+There is no star.
 
-## Why the propagation speed cannot be swept with ISRF_c_hyp_margin alone
-The closure `c_hyp = C_hyp*h/dt` ties the propagation speed to the local
-resolution and time-step so that the hyperbolic CFL condition holds as an
-equality, not an inequality that could be violated. `C_hyp`
-(`GEARFeedback:ISRF_c_hyp_margin`) has a legal range of
-`(0, sqrt(2/0.70)]` (~1.6903) at
-`max(alpha_max, alpha_floor) = 0` (this example sets `alpha_floor: 0`
-explicitly, since the shipped default of 0.5 would otherwise cap `C_hyp`
-at 0.571 and break this sweep); this range narrows whenever either
-dissipation coefficient is nonzero. At this example's resolution the full
-range spans `c_hyp` from about 0.98 to 33 km/s: a factor of 34, nowhere
-near either end of the physically interesting range.
-Reaching `c_hyp -> c` or `c_hyp << c` needs one fixed speed,
-`ISRF_c_hyp_scheme: fixed_fraction` with `ISRF_c_hyp_fixed_fraction_of_c` (`c_hyp_fraction`,
-the speed over `c`). `params.yml` sets
-`ISRF_c_hyp_timestep_term_off_for_debugging: 1`, so fixed_fraction does not limit the
-time step and the effective Courant number `nu_eff = c_hyp*dt/h` is a free
-quantity that this example's check script measures and reports rather than
-assumes, above the stability margin when Leg N asks for it. **Never set that
-parameter in a production run.** `ISRF_dissipation_alpha_pin_for_debugging`
-plays the analogous role for the dissipation trigger: it fixes the
-coefficient a smooth pulse's trigger might otherwise leave at zero, so Leg N
-tests the coefficient the stability bound is actually stated in terms of.
+The light speed is set by `GEARFeedback:ISRF_packet_light_speed`:
 
-## Metallicity
-The PE/LW screening length scales with metallicity; at solar `Z` a seeded
-pulse is absorbed within a handful of steps, leaving nothing to measure.
-`initial_metallicity` defaults to 0.05 here (Legs P, N) so absorption stays
-negligible over the run; Legs R and I use their own values (see `run.sh`).
+- `cap`: a share of light arrives no earlier than the separation divided by the
+  limit speed, `ISRF_packet_light_speed_fraction_of_c` times c, in the frame of the
+  gas. The light still moves at most one kernel per gas step, so the gas step
+  sets its speed, which is far below c in production runs.
+- `fixed`: as `cap`, and the time step of each gas particle is also bounded so that
+  the light moves at the limit speed.
+  `ISRF_packet_light_speed_time_step_margin` sets the bound.
+- `unlimited`: a share arrives at the next step of its receiver, and the light can
+  move faster than c (debugging only).
 
-## Cooling
-`GrackleCooling:disable_cooling_for_debugging: 1` keeps the gas's thermal and
-dynamical state fixed (`chemistry_data` still resolves, since `--cooling` is
-passed), isolating the propagated field from gas response. Leg P's slowest
-runs still drift the gas somewhat via other channels; the check script
-reports this drift and voids the affected gates rather than silently
-ignoring it.
+The example measures the speed of the pulse, and whether it depends on the
+time-step hierarchy. `arm` selects the run:
+
+- `one`: mode `cap` at 3e-5 c. All gas is on one time bin. 80 steps.
+- `two`: mode `fixed` at 3e-5 c, margin 0.4305. About half of the gas takes half
+  of the step, so there are two time bins. 96 steps, which is 48 base steps.
+
+Both arms write a snapshot every 8 base steps (9.375e-6 internal units each).
+`beamSpeed.py` takes the energy centroid of the light in flight along the beam
+between the snapshots at 16 and 40 base steps, divides the advance by the time
+difference and by the set speed, and gives the ratio of the two arms.
+
+`params.yml` fixes the base time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the light is
+the only thing that changes.
 
 # Configure
 ```
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --enable-isrf-debugging-checks --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
 make -j
 ```
+`--with-chealpix` is required by the ISRF transport. `--enable-isrf-debugging-checks`
+adds the `Packet*` snapshot fields that `beamSpeed.py` reads. The number of
+reception slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The published table `PopII_parsec_spectral.hdf5` has
+them. Fetch it into this directory and name it in the shell, so that every
+`./run.sh` command below uses it:
+```
+../../../../GEAR_ICs_and_SCRIPTS/getRadiationTable.sh PopII_parsec_spectral.hdf5
+export radiation_table=PopII_parsec_spectral.hdf5
+```
+Without `radiation_table`, `run.sh` looks for
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory. To build
+your own table with the pychem table generator, see the section "Where each
+Radiation field comes from" of the pychem page "How to generate a Chemistry
+Table for GEAR" (parameter file
+`params/chimieparam_radiation_parsec_spectral_popII.py`).
 
 # Run
 ```
-./run.sh
+arm=one ./run.sh
+arm=two ./run.sh
 ```
-Override any parameter via the matching env var: gas density (`gas_density`,
-atom/cm^3), gas particle mass (`gas_mass`, Msun), resolution level (`level`),
-`seed_pulse` (>0: star-free seeded pulse; 0: star source), `c_hyp_fraction`
-(`ISRF_c_hyp_fixed_fraction_of_c`; > 0 runs fixed_fraction at that fraction of `c`),
-`c_hyp_margin`
-(`ISRF_c_hyp_margin`), `alpha_max`/`alpha_pin`
-(`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`), `propagation`
-(`ISRF_propagation`), star mass and type (`star_mass`, `star_type`, used
-only when `seed_pulse=0`), `expect_stable` (0 for Leg N's
-deliberately-unstable runs, which passes `--expect-unstable` to the
-per-run check), `initial_metallicity`, `time_end`, `dt_max`,
-`dt_min`, `delta_time`, and thread count (`n_threads`); see `run.sh` for the
-full list and defaults. `run_name=<dir> ./run.sh` moves the run's outputs
-into `<dir>` once done, to keep more than one run's outputs side by side.
-The full run table (Legs P, N, R, I) and their env-var settings are recorded
-separately in this project's own validation records, not in this file.
 
-# Checking
-```
-python3 isrf_propagation_speed_sweep_check.py --c-hyp-margin $c_hyp_margin
-python3 sweep_compare.py --mode {P,N,RI} --runs dir1 dir2 ...
-```
-`run.sh` runs the per-run check automatically. It measures the run's own
-`nu_eff` and the dissipation-term stability bound at the run's own alpha,
-the pulse front position, a gas-drift control, and (for N-type runs invoked
-with `--expect-unstable`) whether the run destabilized as predicted.
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_<arm>`, which it empties first. Override a setting with an environment
+variable: `radiation_table`, `n_threads`, `arm`, `light_speed` (cap, fixed or unlimited),
+`speed_fraction` (the fraction of c), `margin`, `n_steps`, `snapshot_every`
+(base steps), `energy_scale`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`swift_exe`, `run_dir` and `extra_args` (further swift arguments).
 
-`sweep_compare.py` performs the cross-run comparisons: self-similarity and
-retardation collapse across a fixed-Courant sweep (gated, `--mode P`), the
-stability bound's bracketing location across a Courant-number sweep (gated,
-`--mode N`; a sweep in which no group holds both a stable and an unstable
-run never brackets the bound, so it prints `NO VERDICT` and exits 1 instead
-of passing), and reachability reporting for the star-sourced and
-propagation-on/off legs (report only, `--mode RI`). A dt-quantization
-mismatch across a `--mode P` sweep is detected and reported on the
-`M-C1 overall` and `M-C2` lines as the run set being INVALID rather than a
-physics failure. The individual per-run lines below them still read FAIL in
-that case, since no run can pass a comparison whose precondition is unmet;
-read the overall lines first. Re-run with `time_end` adjusted if this
-happens.
+# Measure
+```
+python3 beamSpeed.py run_one run_two
+```
+It prints the speed of each run over the set speed and the ratio of the second
+run to the first. It exits with status 1 if that ratio differs from 1 by more
+than `--bar` (default 0.05). `--fraction` gives the set speed if you changed
+`speed_fraction`; `--first` and `--last` choose the snapshots of the window.

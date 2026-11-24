@@ -755,7 +755,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
-  c->hydro.chemistry_fct_prep = NULL;
+  c->hydro.chemistry_flux_prep = NULL;
   c->rt.rt_gradient = NULL;
   c->rt.rt_transport = NULL;
   c->grav.grav = NULL;
@@ -785,6 +785,8 @@ void cell_clean_links(struct cell *c, void *data) {
  * @brief Check that no gas particle lies further outside the box of its leaf
  * cell than the dx_outside_max of the cells above it.
  *
+ * A distance up to cell_face_tolerance() is accepted.
+ *
  * @param c The #cell.
  */
 void cell_check_hydro_dx_outside_max(const struct cell *c) {
@@ -802,7 +804,7 @@ void cell_check_hydro_dx_outside_max(const struct cell *c) {
       const struct part *p = &c->hydro.parts[k];
       if (p->time_bin == time_bin_inhibited) continue;
       const float d = cell_distance_outside_box(c, p->x);
-      if (d > c->hydro.dx_outside_max)
+      if (d > c->hydro.dx_outside_max + cell_face_tolerance(c))
         error(
             "Particle further outside its cell than dx_outside_max: id=%lld "
             "d=%e dx_outside_max=%e nodeID=%d",
@@ -817,6 +819,8 @@ void cell_check_hydro_dx_outside_max(const struct cell *c) {
 /**
  * @brief Check that no star lies further outside the box of its leaf cell
  * than the dx_outside_max of the cells above it.
+ *
+ * A distance up to cell_face_tolerance() is accepted.
  *
  * @param c The #cell.
  */
@@ -835,7 +839,7 @@ void cell_check_stars_dx_outside_max(const struct cell *c) {
       const struct spart *sp = &c->stars.parts[k];
       if (sp->time_bin == time_bin_inhibited) continue;
       const float d = cell_distance_outside_box(c, sp->x);
-      if (d > c->stars.dx_outside_max)
+      if (d > c->stars.dx_outside_max + cell_face_tolerance(c))
         error(
             "Star further outside its cell than dx_outside_max: id=%lld "
             "d=%e dx_outside_max=%e nodeID=%d",
@@ -850,6 +854,8 @@ void cell_check_stars_dx_outside_max(const struct cell *c) {
 /**
  * @brief Check that no black hole lies further outside the box of its leaf
  * cell than the dx_outside_max of the cells above it.
+ *
+ * A distance up to cell_face_tolerance() is accepted.
  *
  * @param c The #cell.
  */
@@ -868,7 +874,7 @@ void cell_check_black_holes_dx_outside_max(const struct cell *c) {
       const struct bpart *bp = &c->black_holes.parts[k];
       if (bp->time_bin == time_bin_inhibited) continue;
       const float d = cell_distance_outside_box(c, bp->x);
-      if (d > c->black_holes.dx_outside_max)
+      if (d > c->black_holes.dx_outside_max + cell_face_tolerance(c))
         error(
             "Black hole further outside its cell than dx_outside_max: id=%lld "
             "d=%e dx_outside_max=%e nodeID=%d",

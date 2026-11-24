@@ -60,18 +60,6 @@ __attribute__((always_inline)) INLINE static void feedback_end_density(
     struct part *p, struct xpart *xp, const struct engine *e) {}
 
 /**
- * @brief Sets all particle fields to sensible values when the #part has 0
- * neighbours. Nothing to do here.
- *
- * @param p The particle to act upon.
- * @param xp The extra particle to act upon.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
-                                const struct engine *e) {}
-
-/**
  * @brief Finishes the #part gradient calculation. Nothing to do here:
  * this feedback model does not track a propagated radiation flux.
  *
@@ -103,16 +91,6 @@ feedback_compute_part_timestep(const struct part *restrict p,
                                const struct engine *e) {
   return FLT_MAX;
 }
-
-/**
- * @brief Re-initialise the gas particle-carried fields related to
- * feedback at the start of each density h-iteration. Nothing to do here.
- *
- * @param p The particle.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static void feedback_init_part(
-    struct part *p, const struct engine *e) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
@@ -218,221 +196,6 @@ __attribute__((always_inline)) INLINE static float feedback_get_part_u_LW(
  */
 __attribute__((always_inline)) INLINE static float
 feedback_get_part_u_LW_PHOTON(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief Negativity-triggered artificial-dissipation coefficient. Nothing to do
- * here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_dissipation_alpha_PE(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_dissipation_alpha_LW(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner-band
- * photon-number moment. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief `(1/rho) div(rho F)` accumulator. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_div_specific_flux_PE(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_div_specific_flux_LW(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner-band
- * photon-number moment. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief Tracked specific flux moment. Nothing to do here.
- *
- * @param p The #part to query.
- * @param ret (return) The three components, zeroed.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
-  ret[0] = 0.f;
-  ret[1] = 0.f;
-  ret[2] = 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @param ret (return) The three components, zeroed.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
-  ret[0] = 0.f;
-  ret[1] = 0.f;
-  ret[2] = 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner-band
- * photon-number moment. Nothing to do here.
- *
- * @param p The #part to query.
- * @param ret (return) The three components, zeroed.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_get_part_specific_flux_LW_PHOTON(const struct part *p, float *ret) {
-  ret[0] = 0.f;
-  ret[1] = 0.f;
-  ret[2] = 0.f;
-}
-
-/**
- * @brief Most negative PE-band specific energy since the previous snapshot.
- * Nothing to do here.
- *
- * @param p The #part to query.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
-                                          const struct engine *e) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
-                                          const struct engine *e) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner-band
- * photon-number moment. Nothing to do here.
- *
- * @param p The #part to query.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
-                                                 const struct engine *e) {
-  return 0.f;
-}
-
-/**
- * @brief Cumulative PE-band raw injected dose since first init. Nothing to
- * do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_cumulative_injected_PE(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_cumulative_injected_LW(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner-band
- * photon-number moment. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief Cumulative PE-band absorbed/transport-and-dissipation-attributed
- * specific energy since first init. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner-band
- * photon-number moment. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
-  return 0.f;
-}
-
-/**
- * @brief Hyperbolic propagation speed of the ISRF. Nothing to do here.
- *
- * @param p The #part to query.
- */
-__attribute__((always_inline)) INLINE static float feedback_get_part_c_hyp(
-    const struct part *p) {
   return 0.f;
 }
 
@@ -766,5 +529,129 @@ __attribute__((always_inline)) INLINE static void
 feedback_unpack_hii_state_update(struct part *restrict p,
                                  const struct hii_state_update *restrict data) {
 }
+
+/**
+ * @brief A gas particle is converted into a star. Nothing to do here.
+ *
+ * @param p The converted #part.
+ * @param sp The new #spart.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp) {}
+
+/**
+ * @brief A gas particle is converted into or swallowed by a sink. Nothing to
+ * do here.
+ *
+ * @param p The removed #part.
+ * @param s The #sink.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s) {}
+
+/**
+ * @brief A sink swallows another. Nothing to do here.
+ *
+ * @param si The surviving #sink.
+ * @param sj The swallowed #sink.
+ */
+__attribute__((always_inline)) INLINE static void feedback_book_sink_merger(
+    struct sink *si, const struct sink *sj) {}
+
+/**
+ * @brief A gas particle leaves a non-periodic box. Nothing to do here.
+ *
+ * @param p The removed #part.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_left_box(const struct part *p) {}
+
+/**
+ * @brief A star leaves a non-periodic box. Nothing to do here.
+ *
+ * @param sp The removed #spart.
+ */
+__attribute__((always_inline)) INLINE static void feedback_book_star_left_box(
+    const struct spart *sp) {}
+
+/**
+ * @brief A sink leaves a non-periodic box. Nothing to do here.
+ *
+ * @param s The removed #sink.
+ */
+__attribute__((always_inline)) INLINE static void feedback_book_sink_left_box(
+    const struct sink *s) {}
+
+/**
+ * @brief A black hole swallows a gas particle. Nothing to do here.
+ *
+ * @param p The removed #part.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_swallowed_by_black_hole(const struct part *p) {}
+
+/**
+ * @brief Zero the feedback fields of a sink. Nothing to do here.
+ *
+ * @param s The #sink.
+ */
+__attribute__((always_inline)) INLINE static void feedback_first_init_sink(
+    struct sink *s) {}
+
+/**
+ * @brief No-op: this model has no radiation transport to start.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_startup(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport to regrid.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_regrid(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport statistics.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_statistics(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport counters.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_diagnostics(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport step report.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_report(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport run report.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_end_of_run(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport ledger to reduce.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_snapshot_reduce(const struct engine *e) {}
 
 #endif /* SWIFT_FEEDBACK_EAGLE_THERMAL_H */

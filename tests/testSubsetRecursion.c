@@ -58,6 +58,9 @@
  * Case 5: the stars density loop of a self task split in two, which
  * interacts the pairs of progeny directly, sorted and unsorted. A control
  * corrupts the sort drift of a progeny and must give a wrong sum.
+ * Case 6: the gas density pair task and subset rerun with unsorted, sorted,
+ * beyond-limit and stale sorts planted. With debugging checks, the sort state
+ * counters must count the planted states, here and in cases 4 and 5.
  */
 
 void runner_dosub_pair_subset_stars_density(struct runner *r, struct cell *ci,
@@ -254,7 +257,7 @@ static void make_split_cell(struct cell *c, struct cell *progeny,
     for (int i = 0; i < n; i++) {
       struct part *p = &c->hydro.parts[offset + i];
       p->h = H_LATTICE;
-      p->mass = 1.f;
+      hydro_set_mass(p, 1.f);
       p->time_bin = 1;
 #ifdef SWIFT_DEBUG_CHECKS
       p->ti_drift = TI_CURRENT;
@@ -435,6 +438,9 @@ static int run_subset_loop(struct runner *r, struct cell *cells, const int loop,
                                            &ind_star, 1, /*h_max_redo=*/h_new,
                                            &cells[1], /*gettimer=*/0);
     wcount_code = sp->density.wcount;
+#if defined(FEEDBACK_GEAR)
+    n_code = sp->feedback_data.num_ngbs;
+#endif
   } else if (loop == 1) {
     bzero(&p_redo->density, sizeof(p_redo->density));
     p_redo->h = h_new;
@@ -593,6 +599,36 @@ static int check_bh_drift_activation(struct cell *cells, struct scheduler *s,
 
 #endif /* WITH_BH_LOOP */
 
+/**
+ * @brief Compare the sort state counters of one particle type at one site
+ * with the expected ones (debugging checks only).
+ *
+ * @param label The name of the case for the output.
+ * @param type The particle type of the sort: gas (0) or stars (1).
+ * @param site The #runner_sort_site.
+ * @param want Whether the unsorted, stale and beyond counts must be positive.
+ * @param sums_ok Whether the sums of the loop agree.
+ * @return 1 if the counts and the sums are as expected, 0 otherwise.
+ */
+static int check_sort_counts(const char *label, const int type,
+                             const enum runner_sort_site site,
+                             const int want[3], const int sums_ok) {
+#ifdef SWIFT_DEBUG_CHECKS
+  struct runner_sort_counters counters;
+  runner_sort_counters_get(&counters);
+  const int *n = counters.count[type][site];
+  int ok = sums_ok;
+  for (int k = 0; k < 3; k++)
+    if ((n[k] > 0) != want[k]) ok = 0;
+  message("%s, %s sorts: unsorted %d stale %d beyond %d, sums %s: %s", label,
+          type == 0 ? "gas" : "stars", n[0], n[1], n[2],
+          sums_ok ? "agree" : "MISMATCH", ok ? "agree" : "MISMATCH");
+  return ok;
+#else
+  return sums_ok;
+#endif
+}
+
 /* Cells of case 4: index 0 is the top cell, 1 + k its octant k and
  * 9 + 8 k + l the octant l of octant k. */
 #define N_DEEP 73
@@ -724,7 +760,7 @@ static void make_deep_cell(struct cell *cells, const double loc_x,
       for (int i = 0; i < n; i++) {
         struct part *p = &parts[offset + i];
         p->h = H_LATTICE;
-        p->mass = 1.f;
+        hydro_set_mass(p, 1.f);
         p->time_bin = 1;
 #ifdef SWIFT_DEBUG_CHECKS
         p->ti_drift = TI_CURRENT;
@@ -942,12 +978,22 @@ static int check_deep_stars(struct runner *r, struct space *s,
 
   /* The rerun reaches the leaves and reads the sort of the gas there. */
   const float r_deep = 0.15f, r_margin = 0.24f;
-  if (!run_deep_stars(r, star, gas, r_deep, /*ntasks=*/0,
-                      "deep stars rerun, leaves"))
+  runner_sort_counters_reset();
+  int sums_ok = run_deep_stars(r, star, gas, r_deep, /*ntasks=*/0,
+                               "deep stars rerun, leaves");
+  if (!sums_ok) n_fail++;
+
+  /* The gas of the star cell is not sorted, and the sort of the leaf of the
+   * drifted gas is beyond its limit. */
+  const int want[3] = {1, 0, 1};
+  if (!check_sort_counts("deep stars rerun, leaves", /*type=*/0,
+                         runner_sort_site_fallback, want, sums_ok))
     n_fail++;
 
   /* The gas planted on the sort axis drifted towards the star: a sorted
    * sweep without the drift of its leaf misses it. */
+  /* A naive build never reads the sort: the control cannot mismatch there. */
+#ifndef SWIFT_USE_NAIVE_INTERACTIONS
   struct cell *leaf_sorted = NULL;
   for (int i = 9; i < N_DEEP; i++)
     if (cell_distance_outside_box(&gas[i], x_new[0]) == 0.f)
@@ -961,6 +1007,7 @@ static int check_deep_stars(struct runner *r, struct space *s,
     n_fail++;
   }
   leaf_sorted->hydro.dx_max_sort = dx_sort_save;
+#endif
 
   /* The drift margin keeps the rerun of a larger star above the leaves. */
   if (!run_deep_stars(r, star, gas, r_margin, /*ntasks=*/0,
@@ -1011,12 +1058,26 @@ static int check_split_self_stars(struct runner *r, const int sorted) {
 
   const float kernel_radius = 0.2f;
   int n_fail = 0;
-  if (!run_deep_stars(
-          r, star, NULL, kernel_radius, /*ntasks=*/2,
-          sorted ? "split stars self, sorted" : "split stars self, unsorted"))
+  const char *label =
+      sorted ? "split stars self, sorted" : "split stars self, unsorted";
+  runner_sort_counters_reset();
+  const int sums_ok =
+      run_deep_stars(r, star, NULL, kernel_radius, /*ntasks=*/2, label);
+  if (!sums_ok) n_fail++;
+
+  /* Unsorted, the pairs fall back on naive interactions. Sorted, the octant
+   * of the drifted gas is beyond its limit. */
+  const int want_unsorted[3] = {1, 0, 0}, want_none[3] = {0, 0, 0};
+  const int want_beyond[3] = {0, 0, 1};
+  if (!check_sort_counts(label, /*type=*/0, runner_sort_site_fallback,
+                         sorted ? want_beyond : want_unsorted, sums_ok) ||
+      !check_sort_counts(label, /*type=*/1, runner_sort_site_fallback,
+                         sorted ? want_none : want_unsorted, sums_ok))
     n_fail++;
 
   /* The octant of the drifted gas is a progeny of the top cell. */
+  /* A naive stars build never reads the sort: the control cannot mismatch. */
+#ifndef SWIFT_USE_NAIVE_INTERACTIONS_STARS
   if (sorted) {
     struct cell *octant = &star[1 + 4];
     const float dx_sort_save = octant->hydro.dx_max_sort;
@@ -1029,11 +1090,167 @@ static int check_split_self_stars(struct runner *r, const int sorted) {
     }
     octant->hydro.dx_max_sort = dx_sort_save;
   }
+#endif
 
   for (int i = 0; i < N_DEEP; i++) cell_free_stars_sorts(&star[i]);
   free_deep_cell(star);
   return n_fail;
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+void runner_dosub_pair1_density(struct runner *r, struct cell *ci,
+                                struct cell *cj, const float h_hi,
+                                const int gettimer);
+
+/* kernel_gamma * h of the gas of case 6, below the leaf width. */
+#define R_GAS_SORT 0.2f
+
+/**
+ * @brief Run the gas density loop of case 6 and compare every density sum with
+ * a brute-force sum over the gas of the other cell.
+ *
+ * @param r The #runner.
+ * @param a The first gas #cell hierarchy.
+ * @param b The second gas #cell hierarchy.
+ * @param ind_subset The index in a of the particle of a subset rerun, or -1
+ * for the pair task.
+ * @return 1 if the sums agree, 0 otherwise.
+ */
+static int run_gas_pair(struct runner *r, struct cell *a, struct cell *b,
+                        const int ind_subset) {
+
+  const float h = R_GAS_SORT / kernel_gamma;
+  for (int c = 0; c < 2; c++) {
+    struct cell *top = (c == 0) ? a : b;
+    for (int i = 0; i < top->hydro.count; i++)
+      bzero(&top->hydro.parts[i].density, sizeof(top->hydro.parts[i].density));
+  }
+
+  runner_sort_counters_reset();
+  if (ind_subset < 0)
+    runner_dosub_pair1_density(r, &a[0], &b[0], /*h_hi=*/FLT_MAX,
+                               /*gettimer=*/0);
+  else
+    runner_dosub_pair_subset_density(r, &a[0], a[0].hydro.parts, &ind_subset, 1,
+                                     /*h_max_redo=*/h, &b[0],
+                                     /*gettimer=*/0);
+
+  const float h_inv = 1.f / h;
+  int ok = 1;
+  for (int c = 0; c < 2; c++) {
+    const struct cell *top = (c == 0) ? a : b;
+    const struct cell *other = (c == 0) ? b : a;
+    for (int i = 0; i < top->hydro.count; i++) {
+      if (ind_subset >= 0 && (c == 1 || i != ind_subset)) continue;
+      const struct part *pi = &top->hydro.parts[i];
+      double wcount_ref = 0.;
+      int n_ref = 0;
+      for (int j = 0; j < other->hydro.count; j++) {
+        const struct part *pj = &other->hydro.parts[j];
+        const float dx[3] = {(float)(pi->x[0] - pj->x[0]),
+                             (float)(pi->x[1] - pj->x[1]),
+                             (float)(pi->x[2] - pj->x[2])};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        if (r2 < h * h * kernel_gamma2) {
+          float w, w_dx;
+          kernel_deval(sqrtf(r2) * h_inv, &w, &w_dx);
+          wcount_ref += w;
+          n_ref++;
+        }
+      }
+      const double diff = fabs(pi->density.wcount - wcount_ref);
+      if (diff > (n_ref + 1) * FLT_EPSILON * max(wcount_ref, 1.)) ok = 0;
+    }
+  }
+  return ok;
+}
+
+/**
+ * @brief Case 6: the sort state counters of the gas density loops.
+ *
+ * @param r The #runner.
+ * @param s The #space.
+ * @return The number of failed checks.
+ */
+static int check_sort_counters(struct runner *r, struct space *s) {
+
+  static struct cell a[N_DEEP], b[N_DEEP];
+  make_deep_cell(a, 0., NULL, NULL, NULL);
+  make_deep_cell(b, 1., NULL, NULL, NULL);
+  const float h = R_GAS_SORT / kernel_gamma;
+  for (int c = 0; c < 2; c++) {
+    struct cell *top = (c == 0) ? a : b;
+    for (int i = 0; i < top[0].hydro.count; i++) top[0].hydro.parts[i].h = h;
+    for (int i = 0; i < N_DEEP; i++)
+      top[i].hydro.h_max = top[i].hydro.h_max_old = top[i].hydro.h_max_active =
+          h;
+  }
+  struct cell *ci = &a[0], *cj = &b[0];
+  double shift[3];
+  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
+
+  const int recurse_size_save = space_recurse_size_pair_hydro;
+  space_recurse_size_pair_hydro = 1;
+  int n_fail = 0;
+
+  /* The leaves are not sorted: the pair leaves sort them on demand. */
+  const int want_unsorted[3] = {1, 0, 0}, want_none[3] = {0, 0, 0};
+  const int want_stale[3] = {0, 1, 0}, want_beyond[3] = {0, 0, 1};
+  int sums_ok = run_gas_pair(r, a, b, /*ind_subset=*/-1);
+  if (!check_sort_counts("sort counters, unsorted pair leaves", /*type=*/0,
+                         runner_sort_site_pair_leaf, want_unsorted, sums_ok))
+    n_fail++;
+
+  /* Sorted and valid at every level. */
+  runner_do_hydro_sort(r, &a[0], 1 << sid, /*cleanup=*/0, /*lock=*/0,
+                       /*rt_requests_sort=*/0, /*clock=*/0);
+  runner_do_hydro_sort(r, &b[0], 1 << sid, /*cleanup=*/0, /*lock=*/0,
+                       /*rt_requests_sort=*/0, /*clock=*/0);
+  sums_ok = run_gas_pair(r, a, b, /*ind_subset=*/-1);
+  if (!check_sort_counts("sort counters, sorted pair leaves", /*type=*/0,
+                         runner_sort_site_pair_leaf, want_none, sums_ok))
+    n_fail++;
+
+  /* A leaf of b on the shared face moved beyond its sort limit after its
+   * sort, but within the limit of its parents. */
+  struct cell *leaf = NULL;
+  for (int i = 9; i < N_DEEP && leaf == NULL; i++)
+    if (b[i].loc[0] == 1.) leaf = &b[i];
+  const float dx_beyond = 1.5f * space_maxreldx * leaf->dmin;
+  for (struct cell *c = leaf; c != NULL; c = c->parent)
+    c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_beyond);
+  sums_ok = run_gas_pair(r, a, b, /*ind_subset=*/-1);
+  if (!check_sort_counts("sort counters, pair leaf beyond its limit",
+                         /*type=*/0, runner_sort_site_pair_leaf, want_beyond,
+                         sums_ok))
+    n_fail++;
+  for (int i = 0; i < N_DEEP; i++) b[i].hydro.dx_max_sort = 0.f;
+
+  /* The subset rerun of a particle of a on the shared face. */
+  int ind = -1;
+  for (int i = 0; i < a[0].hydro.count && ind < 0; i++)
+    if (a[0].hydro.parts[i].x[0] > 0.9) ind = i;
+  sums_ok = run_gas_pair(r, a, b, ind);
+  if (!check_sort_counts("sort counters, sorted subset", /*type=*/0,
+                         runner_sort_site_fallback, want_none, sums_ok))
+    n_fail++;
+
+  /* The sorts of b are stale: the subset falls back on naive interactions. */
+  for (int i = 0; i < N_DEEP; i++)
+    b[i].hydro.dx_max_sort_old = 2.f * space_maxreldx * b[i].dmin;
+  sums_ok = run_gas_pair(r, a, b, ind);
+  if (!check_sort_counts("sort counters, stale subset", /*type=*/0,
+                         runner_sort_site_fallback, want_stale, sums_ok))
+    n_fail++;
+  for (int i = 0; i < N_DEEP; i++) b[i].hydro.dx_max_sort_old = 0.f;
+
+  space_recurse_size_pair_hydro = recurse_size_save;
+  free_deep_cell(a);
+  free_deep_cell(b);
+  return n_fail;
+}
+#endif /* SWIFT_DEBUG_CHECKS */
 
 int main(int argc, char *argv[]) {
 
@@ -1160,6 +1377,13 @@ int main(int argc, char *argv[]) {
   space_recurse_size_self_stars = 1;
   n_fail += check_split_self_stars(&runner, /*sorted=*/0);
   n_fail += check_split_self_stars(&runner, /*sorted=*/1);
+
+  /* Case 6: the sort state counters of the gas pair and subset loops. */
+#ifdef SWIFT_DEBUG_CHECKS
+  n_fail += check_sort_counters(&runner, &space);
+#else
+  message("Case 6 skipped: the sort state counters need debugging checks");
+#endif
 
   if (n_fail) error("%d subset density checks failed", n_fail);
   return 0;

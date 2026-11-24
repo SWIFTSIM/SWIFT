@@ -136,7 +136,7 @@ rho_arr = np.ones(N) * rho_code
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
 #####################
-# Two hand-placed stars, at the centers of two CONSECUTIVE top-level cells
+# Two hand-placed stars, near the centers of two CONSECUTIVE top-level cells
 # along x (see --n_cells help above for why not symmetric-about-center).
 #####################
 N_star = 2
@@ -151,10 +151,14 @@ mid_cell_lo = opt.n_cells // 2 - 1  # index of the first of the two middle cells
 x_a = (mid_cell_lo + 0.5) * cell_width
 x_b = (mid_cell_lo + 1.5) * cell_width
 yz = L / 2.0
+
+# A star exactly on a cell face is one rounding step outside its cell, so
+# move both stars slightly off the cell centers and L/2.
+offset = np.array([0.0044, 0.0123, 0.0123]) * L
 pos_star = np.array(
     [
-        [x_a, yz, yz],
-        [x_b, yz, yz],
+        [x_a, yz, yz] + offset,
+        [x_b, yz, yz] + offset,
     ]
 )
 separation_code = x_b - x_a

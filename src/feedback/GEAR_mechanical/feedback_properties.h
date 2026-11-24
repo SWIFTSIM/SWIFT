@@ -109,9 +109,15 @@ struct feedback_props {
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
-  /*! Run the hyperbolic M1 propagation update? Only meaningful when
+  /*! Transport the ISRF with the packet hop? With 0, a star adds its dose to
+   * the field of the receivers at once. Only meaningful when
    * radiation_policy_isrf is set. */
   char ISRF_propagation;
+
+  /*! Do the H2 lines absorb the Lyman-Werner light along its path? The packet
+   * carries the H2 column it crossed and the H2 dissociation rate is read
+   * from the dissociating part of the light. Needs ISRF_propagation. */
+  char ISRF_H2_line_absorption;
 
   /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or
    * 1. */
@@ -129,48 +135,33 @@ struct feedback_props {
   /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans. */
   float ISRF_extinction_jeans_temperature_cap_K;
 
-  /*! Stability margin C_hyp in `c_hyp_i = C_hyp*h_i/dt_max(i)`, see
-   * feedback_props_init() for its range. */
-  float ISRF_c_hyp_margin;
+  /*! Margin `f_dt` of the step bound `f_dt a h_i / v` of the packet transport
+   * with the fixed light speed, see feedback_props_init() for its range. */
+  float ISRF_packet_light_speed_time_step_margin;
 
-  /*! Active #isrf_c_hyp_scheme, parsed from a string and stored as an
-   * integer. 0 (not a valid scheme) when the ISRF is off. */
-  int ISRF_c_hyp_scheme;
+  /*! Speed limit of the light of the packet transport, a
+   * #isrf_packet_light_speed. */
+  int ISRF_packet_light_speed;
 
-  /*! Fraction f with `c_hyp_i = f*c`, fixed_fraction scheme only. 0 when
-   * unused. */
-  float ISRF_c_hyp_fixed_fraction_of_c;
+  /*! Limit speed of the packet transport as a fraction of the speed of light.
+   * Read only when #ISRF_packet_light_speed is not unlimited. */
+  float ISRF_packet_light_speed_fraction_of_c;
 
-  /*! Debug only: skip the timestep term `C_hyp*h_i/(f*c)` of the
-   * fixed_fraction scheme. */
-  char ISRF_c_hyp_timestep_term_off_for_debugging;
+  /*! Time constant of the running mean of the packet field, internal units. 0
+   * is off. */
+  float ISRF_packet_read_mean_time;
 
-  /*! Ceiling of the negativity-triggered dissipation coefficient. 0 disables
-   * it. The allowed range depends on #ISRF_c_hyp_margin. */
-  float ISRF_dissipation_alpha_max;
+  /*! Octant frame, cone power, light speed switch and LW population factor of
+   * the packet transport. */
+  struct radiation_packet_constants ISRF_packet_constants;
 
-  /*! Relative undershoot of `rho_prev*u` below the neighbours' kernel mean
-   * at which the trigger reaches #ISRF_dissipation_alpha_max. */
-  float ISRF_dissipation_negativity_threshold;
+  /*! Test beams, see #radiation_packet_inject_test_beams. */
+  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS]
+                             [RADIATION_PACKET_TEST_BEAM_FIELDS];
 
-  /*! Floor `alpha_floor/(1+(h*kappa/eps_lambda)^4)` under the trigger,
-   * combined with it by a max. 0 disables it. */
-  float ISRF_dissipation_alpha_floor;
-
-  /*! Screening-length budget `eps_lambda` of the floor roll-off. */
-  float ISRF_dissipation_floor_h_over_lambda;
-
-  /*! Threshold `eps_R` in [0, 1] of the flux-relaxation residual gate on
-   * the floor. 0 disables it. */
-  float ISRF_dissipation_floor_relaxation_residual;
-
-  /*! Debug only: when positive, pin every dissipation coefficient to this
-   * value. */
-  float ISRF_dissipation_alpha_pin_for_debugging;
-
-  /*! Also damp the reduced flux with the pair dissipation coefficient of u?
-   * Experimental, off by default. */
-  char ISRF_flux_dissipation;
+  /*! Distance behind the particle, in smoothing lengths, of the origin of the
+   * test beams. Large is collimated, 1 fans the first hop out. */
+  float ISRF_packet_test_beam_origin_distance_h;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;

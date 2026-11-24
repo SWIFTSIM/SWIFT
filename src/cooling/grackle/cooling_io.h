@@ -189,6 +189,19 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
 
+#if COOLING_GRACKLE_MODE >= 1
+  if (cooling->primordial_chemistry < 1 &&
+      radiation_selection_get_switch(parameter_file,
+                                     "GEARFeedback:with_photoionization",
+                                     RADIATION_COMPILED_HII))
+    error(
+        "GEARFeedback:with_photoionization needs "
+        "GrackleCooling:primordial_chemistry to be 1 or higher. The "
+        "tabulated solve (network 0) does not write the species back, so the "
+        "neutral hydrogen of expired HII gas would stay at 0. Build with "
+        "grackle_0 to run network 0.");
+#endif
+
   cooling->H2_three_body_rate = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:H2_three_body_rate", 0);
 
@@ -196,24 +209,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GrackleCooling:H2_cie_cooling", 0);
 
   cooling->H2_on_dust =
-      parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
-
-  cooling->H2_photodissociation_heating = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:H2_photodissociation_heating", 0);
-#if COOLING_GRACKLE_MODE < 2
-  if (cooling->H2_photodissociation_heating)
-    error(
-        "GrackleCooling:H2_photodissociation_heating needs "
-        "COOLING_GRACKLE_MODE >= 2 (H2 species tracked); this SWIFT was "
-        "compiled with mode %d.",
-        COOLING_GRACKLE_MODE);
-#endif
-#ifndef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
-  if (cooling->H2_photodissociation_heating)
-    error(
-        "GrackleCooling:H2_photodissociation_heating needs a Grackle build "
-        "that provides it; this SWIFT was built against one that does not.");
-#endif
+      parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", -1);
 
   cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:local_dust_to_gas_ratio", -1);
@@ -290,6 +286,30 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  radiation_selection_refuse_H2_line_absorption(
+      parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
+      "Grackle shields the transported LW rate with its own factor "
+      "and SWIFT does not patch it. Use the geajay cooling.");
+
+  /* Grackle forms H2 on dust at primordial_chemistry > 1 whenever
+     dust_chemistry is 1, whatever H2_on_dust says, so an explicit 0 has no
+     effect there with the ISRF on. */
+  if (cooling->with_ISRF && cooling->primordial_chemistry > 1 &&
+      cooling->H2_on_dust == 0)
+    warning(
+        "GrackleCooling:H2_on_dust is 0 with "
+        "GEARFeedback:with_interstellar_radiation_field on. Grackle forms H2 "
+        "on dust anyway, because the ISRF sets dust_chemistry to 1. Remove "
+        "the parameter to silence this warning.");
+
+  /* At grackle_0 Grackle estimates no electron density for cold gas, so the
+     dust grain recombination term is NaN. */
+#if COOLING_GRACKLE_MODE == 0
+  if (cooling->with_ISRF)
+    error(
+        "GEARFeedback:with_interstellar_radiation_field needs grackle_1 or "
+        "higher, or geajay.");
+#endif
 
   char pe_efficiency[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
@@ -299,21 +319,10 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     cooling->photoelectric_heating_efficiency = 2;
   } else if (strcmp(pe_efficiency, "wolfire1995") == 0) {
     cooling->photoelectric_heating_efficiency = 3;
-  } else if (strcmp(pe_efficiency, "density_dependent") == 0) {
-    /* Require the capability only when the ISRF module is actually on. */
-#ifndef GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON
-    if (cooling->with_ISRF)
-      error(
-          "GrackleCooling:photoelectric_heating_efficiency: "
-          "density_dependent needs a Grackle build that provides it "
-          "(GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON); this SWIFT was "
-          "built against one that does not.");
-#endif
-    cooling->photoelectric_heating_efficiency = 4;
   } else {
     error(
         "Invalid GrackleCooling:photoelectric_heating_efficiency '%s': use "
-        "constant, wolfire1995 or density_dependent.",
+        "constant or wolfire1995.",
         pe_efficiency);
   }
 
@@ -329,9 +338,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     warning(
         "GEARFeedback:with_interstellar_radiation_field is on and "
         "GrackleCooling:RT_H2_dissociation_rate_cgs is nonzero. That "
-        "constant is applied as an all-gas background on top of the "
-        "per-particle LW-band-derived rate -- if it is a leftover from "
-        "before with_interstellar_radiation_field was enabled, set it to 0.");
+        "constant is ignored: the per-particle LW-band-derived rate replaces "
+        "it, zero included. If it is a leftover from before "
+        "with_interstellar_radiation_field was enabled, set it to 0.");
   }
 #endif
 

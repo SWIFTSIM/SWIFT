@@ -30,6 +30,7 @@
 #include "black_holes.h"
 #include "cell.h"
 #include "engine.h"
+#include "feedback.h"
 #include "timers.h"
 
 /**
@@ -157,6 +158,8 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
                * by another thread before we do the deed. */
               if (!part_is_inhibited(p, e)) {
 
+                feedback_book_removed_gas_swallowed_by_black_hole(p);
+
                 /* Finally, remove the gas particle from the system
                  * Recall that the gpart associated with it is also removed
                  * at the same time. */
@@ -199,6 +202,8 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
               /* Re-check that the particle has not been removed
                * by another thread before we do the deed. */
               if (!part_is_inhibited(p, e)) {
+
+                feedback_book_removed_gas_swallowed_by_black_hole(p);
 
                 /* Finally, remove the gas particle from the system */
                 cell_remove_part(e, c, p, xp);

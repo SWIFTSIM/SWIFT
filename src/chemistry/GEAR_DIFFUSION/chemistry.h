@@ -62,6 +62,26 @@ INLINE static void chemistry_copy_star_formation_properties(
 }
 
 /**
+ * @brief Does this chemistry scheme need the flux prep loop before the
+ * force loop?
+ *
+ * @param cd The global chemistry information.
+ */
+static INLINE int chemistry_need_flux_prep_loop(
+    const struct chemistry_global_data *cd) {
+  return 0;
+}
+
+/**
+ * @brief Finish the flux prep loop for a particle.
+ *
+ * @param p The #part.
+ * @param cd The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
+    struct part *restrict p, const struct chemistry_global_data *cd) {}
+
+/**
  * @brief Prints the properties of the chemistry model to stdout.
  *
  * @brief The #chemistry_global_data containing information about the current
@@ -298,10 +318,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param ti_current The current integer time.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
-    const int with_cosmology, const double time, const double dt) {
+    const int with_cosmology, const double time, const double dt,
+    const integertime_t ti_current) {
   if (dt == 0) {
     return;
   }

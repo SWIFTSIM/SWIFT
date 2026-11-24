@@ -20,6 +20,8 @@
 #ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_MF_HYPERBOLIC_DIFFUSION_H
 #define SWIFT_CHEMISTRY_STRUCT_GEAR_MF_HYPERBOLIC_DIFFUSION_H
 
+#include "timeline.h"
+
 /**
  * @brief Properties of the chemistry function for #part.
  */
@@ -44,6 +46,23 @@ struct chemistry_part_data {
       is used for debugging to disantagle diffusion effects from feedback
       enrichement. */
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Number of (step, element) cases in which the positivity limiter scaled
+      down this particle's outflow (theta < 1). */
+  int positivity_limiter_engagements;
+
+  /*! Number of flux exchanges that updated this particle, per limiter pass
+      (enum chemistry_flux_pass). */
+  int flux_exchange_count[2];
+
+  /*! Integer time covered by the flux exchanges that updated this particle,
+      summed over its pairs. Debug only: it wraps around beyond about 128
+      pair partners, each adding up to 2^57 ticks over a run. */
+  unsigned long long flux_coverage_ticks;
+
+  /*! Number of flux exchanges that updated this particle over an interval
+      longer than the current step of its active pair members. */
+  int flux_catch_up_count;
 #endif
 
   /* Fluxes. */
@@ -54,19 +73,19 @@ struct chemistry_part_data {
     /*! Flux of the diffusion flux, computed with the Riemann solver. */
     double flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
-    /*! Particle chemistry time-step in physical units. */
-    float dt;
+    /*! Integer time at which the fluxes of this particle were last applied. */
+    integertime_t ti_flux_last;
 
   } flux;
 
   /*! Donor-side positivity (FCT) limiter: prospective metal mass leaving this
-   * particle during the current flux exchange, accumulated by the fct_prep
-   * loop and consumed/reset by the chemistry_fct_ghost task. */
+   * particle during the current flux exchange, accumulated by the flux prep
+   * loop and consumed/reset by the chemistry_flux_ghost task. */
   double fct_sum_out[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Donor-side positivity (FCT) limiter: scaling factor applied to this
    * particle's outgoing metal mass fluxes in the flux (force) loop. Computed
-   * by the chemistry_fct_ghost task from the current step's prospective
+   * by the chemistry_flux_ghost task from the current step's prospective
    * outflow sum; frozen during the flux exchange. */
   double fct_theta[GEAR_CHEMISTRY_ELEMENT_COUNT];
 

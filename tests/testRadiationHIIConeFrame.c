@@ -32,6 +32,9 @@
 #include "runner_radiation_feedback.h"
 #include "swift.h"
 
+/* Not reached through swift.h when the GEAR feedback model is not built. */
+#include "feedback/GEAR/radiation_hii.h"
+
 /*! Number of star IDs in the matrix checks. */
 #define N_IDS_MATRIX 100000
 
