@@ -8,3 +8,8 @@ set -e
 ./testZoomInit @srcdir@/zoom_params_large.yml 80 80 80 8 8 8 2
 ./testZoomInit @srcdir@/zoom_params_cells_exact.yml 80 80 80 8 8 8 2
 ./testZoomInit @srcdir@/zoom_params_cells.yml 80 80 80 16 16 16 3
+
+# Elongated high resolution particle distributions give non-cubic regions.
+./testZoomInit @srcdir@/zoom_params_small.yml 20 20 150 16 16 32 3
+./testZoomInit @srcdir@/zoom_params_small.yml 150 20 20 32 16 16 3
+./testZoomInit @srcdir@/zoom_params_cells.yml 20 20 150 16 16 32 3

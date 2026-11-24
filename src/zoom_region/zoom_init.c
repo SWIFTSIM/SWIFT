@@ -567,21 +567,25 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
  * This function will derive the bounds of the void region and return how many
  * zoom regions tesselate the void region.
  *
- * @param s The space
- * @param ini_max_dim The dim of the zoom region before tesselating the
- * volume.
+ * The region is handled independently along each axis, so the void region
+ * need not be cubic.
  *
- * @return The number of zoom regions that tesselate the void region.
+ * @param s The space
+ * @param region_dim The dim of the zoom region along each axis before
+ * tesselating the volume.
+ *
+ * @return The number of zoom regions that tesselate the void region along the
+ * longest axis of the zoom region.
  */
-int zoom_get_void_geometry(struct space *s, const double region_dim) {
+int zoom_get_void_geometry(struct space *s, const double region_dim[3]) {
 
   /* Get the lower and upper bounds of the zoom region based on the initial
    * dimensions and the padding factor. */
   double lower_bounds[3];
   double upper_bounds[3];
   for (int i = 0; i < 3; i++) {
-    lower_bounds[i] = (s->dim[i] / 2) - (region_dim / 2.0);
-    upper_bounds[i] = (s->dim[i] / 2) + (region_dim / 2.0);
+    lower_bounds[i] = (s->dim[i] / 2) - (region_dim[i] / 2.0);
+    upper_bounds[i] = (s->dim[i] / 2) + (region_dim[i] / 2.0);
   }
 
   /* Assign these temporary bounds to the zoom region bounds, we'll overwrite
@@ -612,8 +616,16 @@ int zoom_get_void_geometry(struct space *s, const double region_dim) {
     s->zoom_props->void_dim[i] = void_upper_bounds[i] - void_lower_bounds[i];
   }
 
-  /* Compute the number of zoom regions that tesselate the void region. */
-  int nr_zoom_regions = ceil(s->zoom_props->void_dim[0] / region_dim);
+  /* Compute the number of zoom regions that tesselate the void region. This
+   * is measured along the longest axis of the region, a short axis is always
+   * rounded up to at least one background cell and says nothing about whether
+   * the background cells are too large. */
+  int longest = 0;
+  for (int i = 1; i < 3; i++) {
+    if (region_dim[i] > region_dim[longest]) longest = i;
+  }
+  int nr_zoom_regions =
+      ceil(s->zoom_props->void_dim[longest] / region_dim[longest]);
 
   return nr_zoom_regions;
 }
@@ -964,18 +976,30 @@ void zoom_region_init(struct space *s, const int regridding,
   /* Apply the zoom shift to the particles. */
   zoom_apply_zoom_shift_to_particles(s, verbose);
 
-  /* The maximal particle extent is the initial dimensions of
-   * the zoom region. */
-  const double ini_dim =
-      max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
-           s->zoom_props->part_dim[2]);
+  /* Which axis of the particle distribution is the longest? */
+  int longest = 0;
+  for (int i = 1; i < 3; i++) {
+    if (s->zoom_props->part_dim[i] > s->zoom_props->part_dim[longest]) {
+      longest = i;
+    }
+  }
 
-  /* Include the requested padding around the high resolution particles. */
-  double max_dim = ini_dim * s->zoom_props->user_region_pad_factor;
+  /* The particle extent along each axis is the initial dimensions of the zoom
+   * region, to which we add the requested padding around the high resolution
+   * particles. Each axis is treated independently, so the zoom region is only
+   * as large as it needs to be along each one. */
+  double max_dim[3];
+  for (int i = 0; i < 3; i++) {
+    max_dim[i] =
+        s->zoom_props->part_dim[i] * s->zoom_props->user_region_pad_factor;
+  }
 
-  /* If bkg_cdim is -1, auto-optimize to find the best value. */
+  /* If bkg_cdim is -1, auto-optimize to find the best value. This uses the
+   * longest axis so that the whole zoom region fits in a single background
+   * cell. */
   if (s->zoom_props->bkg_cdim[0] == -1) {
-    zoom_optimise_bkg_cells(s, ini_dim, max_dim);
+    zoom_optimise_bkg_cells(s, s->zoom_props->part_dim[longest],
+                            max_dim[longest]);
   }
 
   /* Define the background grid (we'll treat this as gospel). */
@@ -1011,7 +1035,7 @@ void zoom_region_init(struct space *s, const int regridding,
         "Initial geometry gives %d zoom regions in the void region "
         "(void_dim=[%f, %f, %f], initial_zoom_dim=[%f, %f, %f])",
         nr_zoom_regions, s->zoom_props->void_dim[0], s->zoom_props->void_dim[1],
-        s->zoom_props->void_dim[2], max_dim, max_dim, max_dim);
+        s->zoom_props->void_dim[2], max_dim[0], max_dim[1], max_dim[2]);
   }
 
   /* Construct the zoom region geometry. */
@@ -1020,12 +1044,6 @@ void zoom_region_init(struct space *s, const int regridding,
   /* Store what the true boost factor ended up being. This is measured along
    * the longest axis of the particle distribution, the shorter axes can be
    * padded by more since each axis is rounded up to whole background cells. */
-  int longest = 0;
-  for (int i = 1; i < 3; i++) {
-    if (s->zoom_props->part_dim[i] > s->zoom_props->part_dim[longest]) {
-      longest = i;
-    }
-  }
   s->zoom_props->region_pad_factor =
       s->zoom_props->dim[longest] / s->zoom_props->part_dim[longest];
 
