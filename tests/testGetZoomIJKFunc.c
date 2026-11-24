@@ -32,7 +32,15 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
-void make_mock_space(struct space *s) {
+/**
+ * @brief Make a mock space with the high resolution particles at the corners
+ * of a box centred in the volume.
+ *
+ * @param s The #space.
+ * @param stretch Factor by which to stretch the box of high resolution
+ * particles along the z axis (1 gives a cube).
+ */
+void make_mock_space(struct space *s, const double stretch) {
 
   /* Define the members we need for the test. */
   s->dim[0] = 1000;
@@ -55,10 +63,12 @@ void make_mock_space(struct space *s) {
   s->e = NULL;
 
   /* Define the corners of the region */
-  double cube_corners[8][3] = {{487.5, 487.5, 487.5}, {487.5, 512.5, 487.5},
-                               {512.5, 487.5, 487.5}, {512.5, 512.5, 487.5},
-                               {487.5, 487.5, 512.5}, {487.5, 512.5, 512.5},
-                               {512.5, 487.5, 512.5}, {512.5, 512.5, 512.5}};
+  const double z_lo = 500 - 12.5 * stretch;
+  const double z_hi = 500 + 12.5 * stretch;
+  double cube_corners[8][3] = {{487.5, 487.5, z_lo}, {487.5, 512.5, z_lo},
+                               {512.5, 487.5, z_lo}, {512.5, 512.5, z_lo},
+                               {487.5, 487.5, z_hi}, {487.5, 512.5, z_hi},
+                               {512.5, 487.5, z_hi}, {512.5, 512.5, z_hi}};
 
   /* Loop over the gparts and set up background and zoom particles. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
@@ -178,6 +188,10 @@ int main(int argc, char *argv[]) {
 
   const char *input_file = argv[1];
 
+  /* An optional second argument stretches the high resolution particles
+   * along the z axis to give a non-cubic zoom region. */
+  const double stretch = argc > 2 ? atof(argv[2]) : 1.0;
+
   /* Create a structure to read file into. */
   struct swift_params param_file;
 
@@ -187,7 +201,7 @@ int main(int argc, char *argv[]) {
   /* Create a space structure. */
   struct space s;
   bzero(&s, sizeof(struct space));
-  make_mock_space(&s);
+  make_mock_space(&s, stretch);
 
   /* Flag that we are running a zoom. */
   s.with_zoom_region = 1;
@@ -195,6 +209,12 @@ int main(int argc, char *argv[]) {
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, &s, 0);
   zoom_region_init(&s, /*regridding*/ 0, /*verbose*/ 0);
+
+  /* A stretched particle distribution must give a non-cubic zoom region. */
+  if (stretch > 1.0) {
+    assert(s.zoom_props->cdim[2] > s.zoom_props->cdim[0]);
+    assert(s.zoom_props->cdim[0] == s.zoom_props->cdim[1]);
+  }
 
   /* Make the cells. */
   make_mock_cells(&s);
@@ -230,6 +250,31 @@ int main(int argc, char *argv[]) {
          bkg_coords[1] < bkg_cell->loc[1] + bkg_cell->width[1]);
   assert(bkg_coords[2] >= bkg_cell->loc[2] &&
          bkg_coords[2] < bkg_cell->loc[2] + bkg_cell->width[2]);
+
+  /* Now test the edges of the zoom region, which sit at a different distance
+   * from the centre along each axis when the region is not cubic. A point just
+   * inside the upper z face must be in a zoom cell... */
+  const double *upper = s.zoom_props->region_upper_bounds;
+  const double *zoom_width = s.zoom_props->width;
+  const double inside[3] = {500.0, 500.0, upper[2] - 0.5 * zoom_width[2]};
+  const struct cell *inside_cell =
+      &s.cells_top[cell_getid_from_pos(&s, inside[0], inside[1], inside[2])];
+  assert(inside_cell->type == cell_type_zoom);
+  for (int k = 0; k < 3; k++) {
+    assert(inside[k] >= inside_cell->loc[k] &&
+           inside[k] < inside_cell->loc[k] + inside_cell->width[k]);
+  }
+
+  /* ... while a point at the same height just outside the upper x face must be
+   * in a background cell. */
+  const double outside[3] = {upper[0] + 0.5 * zoom_width[0], 500.0, inside[2]};
+  const struct cell *outside_cell =
+      &s.cells_top[cell_getid_from_pos(&s, outside[0], outside[1], outside[2])];
+  assert(outside_cell->type == cell_type_bkg);
+  for (int k = 0; k < 3; k++) {
+    assert(outside[k] >= outside_cell->loc[k] &&
+           outside[k] < outside_cell->loc[k] + outside_cell->width[k]);
+  }
 
   free(s.cells_top);
   free(s.zoom_props);

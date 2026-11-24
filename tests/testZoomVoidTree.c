@@ -58,7 +58,15 @@ double random_gaussian_coordinate(const double mean, const double std,
   return z0;
 }
 
-void make_mock_space(struct space *s) {
+/**
+ * @brief Make a mock space with a gaussian cloud of high resolution particles
+ * centred in the volume.
+ *
+ * @param s The #space.
+ * @param stretch Factor by which to stretch the cloud of high resolution
+ * particles along the z axis (1 gives the same extent along every axis).
+ */
+void make_mock_space(struct space *s, const double stretch) {
 
   /* Define the boxsize. */
   s->dim[0] = 1000;
@@ -103,8 +111,8 @@ void make_mock_space(struct space *s) {
                                                 i, ti_current, 0);
     gparts[i].x[1] = random_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100,
                                                 i, ti_current, 1);
-    gparts[i].x[2] = random_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100,
-                                                i, ti_current, 2);
+    gparts[i].x[2] = random_gaussian_coordinate(
+        s->dim[2] / 2, zoom_width * stretch, 100 * stretch, i, ti_current, 2);
     gparts[i].type = swift_type_dark_matter;
     gparts[i].mass = 1.0;
   }
@@ -231,7 +239,10 @@ int main(int argc, char *argv[]) {
    * cell) */
   struct space *s = malloc(sizeof(struct space));
   bzero(s, sizeof(struct space));
-  make_mock_space(s);
+  /* An optional second argument stretches the high resolution particles
+   * along the z axis to give a non-cubic zoom region. */
+  const double stretch = argc > 2 ? atof(argv[2]) : 1.0;
+  make_mock_space(s, stretch);
 
   /* Flag that we are running a zoom. */
   s->with_zoom_region = 1;
@@ -241,6 +252,11 @@ int main(int argc, char *argv[]) {
 
   /* Run the regridding. */
   space_regrid(s, /*verbose*/ 0);
+
+  /* A stretched particle distribution must give a non-cubic zoom region. */
+  if (stretch > 1.0) {
+    assert(s->zoom_props->cdim[2] > s->zoom_props->cdim[0]);
+  }
 
   /* Ensure forced neighbour splitting is exercised, even with sparse gparts. */
   if (s->zoom_props->nr_neighbour_cells > 0) {

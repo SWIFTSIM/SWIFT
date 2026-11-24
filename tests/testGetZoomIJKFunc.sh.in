@@ -1,3 +1,9 @@
 #!/bin/bash
 
+# Stop at the first failing case, otherwise only the last one is reported.
+set -e
+
 ./testGetZoomIJKFunc @srcdir@/zoom_params_small.yml
+
+# Stretch the high resolution particles along z to get a non-cubic zoom region.
+./testGetZoomIJKFunc @srcdir@/zoom_params_small.yml 6
