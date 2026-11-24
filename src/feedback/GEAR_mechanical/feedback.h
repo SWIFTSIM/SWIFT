@@ -38,13 +38,6 @@ void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
 void feedback_end_density(struct part *p, struct xpart *xp,
                           const struct engine *e);
-void feedback_end_gradient(struct part *p, const struct engine *e);
-void feedback_end_force(struct part *p, const struct engine *e);
-float feedback_compute_part_timestep(const struct part *restrict p,
-                                     const struct engine *e);
-void feedback_reset_part(struct part *p, struct xpart *xp,
-                         const struct engine *e);
-void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
 int feedback_should_inject_wind_feedback(const struct spart *sp);
