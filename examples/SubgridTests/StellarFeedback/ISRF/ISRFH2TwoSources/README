@@ -5,7 +5,7 @@ Two 29.7 Msun stars in a periodic box of molecular gas, with the ISRF transport 
 shadows star A. Star B sits in clear gas on the other side of the slab. A reception slot
 spans about 90 degrees, and two lights share a slot only where their directions fall in
 the same slot. Where the two lights fall in different slots (the check verifies this and
-voids the run otherwise), they do not interact: the field of the two-star run must equal
+stops otherwise), they do not interact: the field of the two-star run must equal
 the sum of the fields of two runs with one star each. The check tests that, tests the
 carried H2 column of each star against the straight ray through the slab, and tests the
 column of the two-star run against the one-star columns.

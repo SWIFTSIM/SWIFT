@@ -127,3 +127,14 @@ given.
 The rate check accepts `--steps-per-window N` (1 for the shipped output lists) and
 `--cooling-response <Lambda' dt>`, which set the bar from the window and from the response
 of the cooling to the heating; `--help` and the script docstring describe both.
+For the Wolfire model on the shipped fixture (`pe_model=wolfire1995` with free
+electrons, heating-off run as reference):
+```
+python3 isrf_photoelectric_heating_check.py \
+    --on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
+    --off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --rate-on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
+    --rate-off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --pe-model grackle-wolfire1995 \
+    --steps-per-window 1 --cooling-response 4.2436e-4
+```
