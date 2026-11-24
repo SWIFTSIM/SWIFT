@@ -31,7 +31,7 @@ cooling library from the binary.
 |-------|---------------|
 | `grackle_0` | Not supported: `run.sh` stops. The Grackle grain recombination term returns NaN for gas without free electrons, and this mode estimates none for cold gas. Use `grackle_1` or higher, or geajay. |
 | `grackle_1` and above | `constant` (default, Wolfire et al. 1995 Eq. 1 with efficiency 0.05), `wolfire1995` (efficiency from the grain charge, needs free electrons) |
-| `geajay_N` | `none`, `fixed_rate`, `constant_efficiency` (default), `grain_charge_epsilon`, `density_epsilon`; `run.sh` then reads `params_geajay.yml` and sets the network N from the build (tested with `geajay_3`) |
+| `geajay_N` | `none`, `fixed_rate`, `constant_efficiency` (default), `grain_charge_epsilon`, `density_epsilon`; `run.sh` then reads `params_geajay.yml` and sets the network N from the build |
 
 `wolfire1995` and `grain_charge_epsilon` heat through the free electron
 fraction. The initial gas is neutral, so their heating is negligible here and
@@ -124,39 +124,6 @@ docstring gives it. The check fails if the heating is too small to resolve.
 Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
 given.
 
-The check judges with a bar derived from the mechanism: the response of the
-cooling to the heating, plus a bound on the float32 rounding of the internal
-energy (see the docstring). Give it the number of steps in the window,
-`--steps-per-window N` (1 for the shipped output lists), and
-`--cooling-response <Lambda' dt>`, the derivative of the net cooling rate with
-respect to the internal energy times the window (dimensionless). The
-script refuses a value outside [0, 0.5) and a missing or zero `N`. With `N`
-given, the allowed lead of the heating run at the window start is 2/N unless
-`--lead-tol` says otherwise.
-
-For the Wolfire model on the shipped fixture (`pe_model=wolfire1995` with free
-electrons, heating-off run as reference):
-```
-python3 isrf_photoelectric_heating_check.py \
-    --on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
-    --off-snapshot "rate_off/snap/snapshot_*.hdf5" \
-    --rate-on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
-    --rate-off-snapshot "rate_off/snap/snapshot_*.hdf5" \
-    --pe-model grackle-wolfire1995 \
-    --steps-per-window 1 --cooling-response 4.2436e-4
-```
-Values of `--cooling-response` for this fixture (`dt_max=6e-10`, the shipped
-output lists, Grackle `official` build):
-
-| Model | `--cooling-response` |
-|-------|----------------------|
-| `grackle-wolfire1995` | 4.2436e-4 |
-| `grackle-constant` (reference run with ISRF on, `--reference-field on`) | 4.2762e-4 |
-| `geajay-fixed-rate` | 4.2718e-4 |
-
-They come from a one-zone call of the Grackle library, with the same switches
-as the run, on the reference run's state at the window start: take the net
-cooling rate at `u (1 +- h)` for each particle (`h = 1e-3`), form
-`Lambda' = -(edot(1+h) - edot(1-h)) / (2 h u)`, multiply by the window length
-and take the median over the illuminated particles. Another fixture, cadence
-or library build needs its own values.
+The rate check accepts `--steps-per-window N` (1 for the shipped output lists) and
+`--cooling-response <Lambda' dt>`, which set the bar from the window and from the response
+of the cooling to the heating; `--help` and the script docstring describe both.

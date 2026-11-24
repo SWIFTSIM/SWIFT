@@ -22,7 +22,7 @@ in `params.yml` skips the cooling update, so the example needs no thermal
 evolution.
 
 ## Metallicity
-`initial_metallicity: 0` in `params.yml` is the default leg.
+`initial_metallicity: 0` in `params.yml` is the default run.
 `metallicity=<Z> ./run.sh` runs the same box at a nonzero metal mass fraction
 (absolute, not solar: `run.sh` turns `scale_initial_metallicity` off with it)
 and switches the check to the extinction identities (see Checking).
@@ -65,14 +65,14 @@ over all illuminated gas particles and compares against `Delta_t *
 PELuminosities` (`--tol`, default relative error 1e-5).
 
 At nonzero metallicity `run.sh` passes `--dusty`, which checks two
-extinction identities instead: the per-particle band ratio (gate G2) and a
-bracket on the weighted mean of `exp(-tau)` (gate G1). `--dust-tol` overrides
-the G2 bar, and a negative value reports the residual without gating.
+extinction identities instead: the per-particle band ratio and a
+bracket on the weighted mean of `exp(-tau)`. `--dust-tol` overrides
+the band-ratio bar, and a negative value reports the residual with no pass or fail.
 `--dusty` reads `GEARFeedback:ISRF_extinction_path` from `used_parameters.yml`
 and rebuilds that mechanism's column. `--kernel-gamma` (default Wendland C2 in
 3D) and `--extinction-path <R>` apply to `constant_kernel_path`.
 `temperature_capped_jeans` is refused. Without `--dusty` a nonzero metallicity
-is an error. The gates and their derivation are in the script docstring.
+is an error. Their derivation is in the script docstring.
 
 With the light transported, `run.sh` runs `isrf_emitted_total_check.py` instead:
 ```
