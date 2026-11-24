@@ -601,6 +601,33 @@ int zoom_get_void_geometry(struct space *s, const double region_dim[3]) {
   for (int i = 0; i < 3; i++) {
     int lower = (int)floor(lower_bounds[i] * s->iwidth[i]);
     int upper = (int)floor(upper_bounds[i] * s->iwidth[i]);
+
+    /* The zoom region can never extend beyond the box. */
+    if (lower < 0 || upper >= s->cdim[i]) {
+      error(
+          "The zoom region is larger than the box along axis %d (region "
+          "bounds: [%f, %f], box size: %f). Decrease "
+          "ZoomRegion:region_pad_factor.",
+          i, lower_bounds[i], upper_bounds[i], s->dim[i]);
+    }
+
+    /* Nor can it reach the edge of a periodic box, since zoom cells are not
+     * periodic and those on opposite faces of the box would never interact
+     * across the boundary. */
+    /* TODO: The zoom cells must be made periodic along any axis on which the
+     * zoom region spans the box, so that an elongated region (e.g. a filament
+     * crossing the whole volume) can be simulated. Note that the zoom cells
+     * would then be periodic along some axes but not others, which has to be
+     * accounted for everywhere the zoom cells are assumed to be non-periodic
+     * (task creation, proxies and the domain decomposition). */
+    if (s->periodic && (lower == 0 || upper == s->cdim[i] - 1)) {
+      error(
+          "The zoom region spans the box along axis %d (region bounds: [%f, "
+          "%f], box size: %f). This is not supported since zoom cells are "
+          "not periodic. Decrease ZoomRegion:region_pad_factor or increase "
+          "ZoomRegion:bkg_top_level_cells.",
+          i, lower_bounds[i], upper_bounds[i], s->dim[i]);
+    }
     void_lower_bounds[i] = lower * s->width[i];
     void_upper_bounds[i] = (upper + 1) * s->width[i];
   }
