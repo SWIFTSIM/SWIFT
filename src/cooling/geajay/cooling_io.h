@@ -1266,8 +1266,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GeajayCooling:primordial_chemistry_network is %i, but this SWIFT is "
         "configured with --with-cooling=geajay_%i. Lower the key to %i or "
         "below, or reconfigure with --with-cooling=geajay_%i.",
-        cooling->primordial_chemistry, COOLING_GEAJAY_MODE,
-        COOLING_GEAJAY_MODE, cooling->primordial_chemistry);
+        cooling->primordial_chemistry, COOLING_GEAJAY_MODE, COOLING_GEAJAY_MODE,
+        cooling->primordial_chemistry);
 
   cooling->H2_three_body_rate =
       cooling_read_choice(parameter_file, "GeajayCooling:h2_three_body_fit",
