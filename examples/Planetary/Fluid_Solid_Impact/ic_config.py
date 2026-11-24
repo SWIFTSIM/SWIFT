@@ -11,6 +11,7 @@ class Config:
 
     # Resolution
     particles_per_projectile_radius = 5
+    impactor_radius_padding = 0.2  # extra carving radius in units of particle separation
     lattice_type = "cubic"  # "cubic" or "bcc"
 
     # Domain

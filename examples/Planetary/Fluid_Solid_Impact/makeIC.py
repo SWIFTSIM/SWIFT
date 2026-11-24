@@ -224,8 +224,18 @@ class ImpactICs:
         if cfg.lattice_type == "bcc":
             cube["pos"] += 0.25 * delta
 
-        inside_sphere = np.linalg.norm(cube["pos"], axis=1) <= r + 1e-6 * delta
+        # Carve with a slightly larger radius so the surface is rounded, rather
+        # than having single lattice particles poking out along the axes
+        r_cut = r + cfg.impactor_radius_padding * delta
+        inside_sphere = np.linalg.norm(cube["pos"], axis=1) <= r_cut
         self.impactor = {k: v[inside_sphere] for k, v in cube.items()}
+
+        # Report the volume-equivalent radius of the particle sphere
+        r_eff = np.cbrt(
+            3 * self.impactor["m"].sum() / (4 * np.pi * cfg.density_impactor)
+        )
+        print(f"Impactor particles : {len(self.impactor['m']):,}")
+        print(f"Impactor effective radius : {r_eff:.4g} m ({r_eff / r:.3f} r)")
 
         # Place impactor with offset
         self.impactor["pos"][:, 0] += cfg.impactor_x_offset
