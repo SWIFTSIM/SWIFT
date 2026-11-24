@@ -114,6 +114,11 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
     mesh->active_min[i] = covered_min - tol;
     mesh->active_max[i] = covered_min + covered_dim + tol;
   }
+  /* TODO: The zoom mesh must be adapted to handle non-cubic zoom regions. The
+   * zoom cells themselves have to be cubic, but nothing requires the region
+   * they tile to be. The mesh only needs an isotropic cell spacing (a single
+   * cell_fac and r_s), so it could have a different side length along each
+   * axis rather than demanding a cubic domain. */
   if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2]) {
     error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
   }
