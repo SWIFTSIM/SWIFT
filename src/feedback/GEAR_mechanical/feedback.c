@@ -377,7 +377,10 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                       star_age_beg_step, dt, time, ti_begin,
                                       with_cosmology);
 
-  if (feedback_props->ISRF_propagation)
+  /* A star with no light skips the radiation part of the feedback loop, so
+     it books no emission either. */
+  if (feedback_props->ISRF_propagation &&
+      feedback_should_inject_radiation_feedback(sp, feedback_props))
     radiation_packet_star_book_emission(sp, (float)dt);
 }
 
