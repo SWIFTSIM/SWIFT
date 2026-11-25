@@ -151,7 +151,7 @@ radiation_h2_shielding_factor(const double N, const double alpha,
  *
  * @param N H2 column in cm^-2, positive and at most
  * #RADIATION_H2_SHIELDING_COLUMN_CAP_CM2.
- * @param alpha Exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param alpha Positive exponent of the fit (#radiation_h2_shielding_exponent).
  * @param b5 Thermal line width of H2 in km/s. Positive.
  * @param slope (return) d ln S / d ln N, negative.
  * @return ln S, without the cap of the factor at 1.
@@ -260,7 +260,7 @@ radiation_h2_shielding_inverse_from(const double t, const double alpha,
  * (#radiation_h2_shielding_inverse_from without a first guess).
  *
  * @param t Transmission.
- * @param alpha Exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param alpha Positive exponent of the fit (#radiation_h2_shielding_exponent).
  * @param b5 Thermal line width of H2 in km/s. Positive.
  * @return The column in cm^-2.
  */
