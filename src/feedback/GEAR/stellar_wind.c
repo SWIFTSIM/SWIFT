@@ -243,7 +243,8 @@ void stellar_wind_read_yields_array(
       interp, log_metallicity_min, log_metallicity_max, interpolation_size_z,
       log_mass_min, log_mass_max, interpolation_size_m, log_metallicity_min,
       log_mass_min, step_size_z, step_size_m, Nz, Nm, data,
-      boundary_condition_const, boundary_condition_const);
+      boundary_condition_const, boundary_condition_const,
+      /*edge_interpolates_inside_axis=*/0);
 
   /* Cleanup the memory */
   free(data);

@@ -830,7 +830,8 @@ static void radiation_build_tables(
                         grid->n_metallicity, log_mass_min_out, log_mass_max_out,
                         interpolation_size_mass, grid->log_mass_min,
                         grid->mass_step, grid->n_mass, log_data_double,
-                        boundary_condition_const, boundary_condition_mass);
+                        boundary_condition_const, boundary_condition_mass,
+                        /*edge_interpolates_inside_axis=*/1);
 
     free(log_data_double);
     free(log_data);
@@ -890,7 +891,8 @@ static void radiation_build_tables(
                         log_mass_max_out, interpolation_size_mass,
                         grid->log_mass_min, grid->mass_step, grid->n_mass,
                         integrated_data_double, boundary_condition_const,
-                        boundary_condition_const);
+                        boundary_condition_const,
+                        /*edge_interpolates_inside_axis=*/1);
 
     free(integrated_data_double);
     free(integrated_data);
@@ -1365,7 +1367,8 @@ void radiation_read_main_sequence_lifetime_inverse_array(
                       grid->n_metallicity, log_z_nodes, grid->n_metallicity,
                       log_age_min, log_age_max, na, log_age_min, (float)da, na,
                       log_data_double, boundary_condition_const,
-                      boundary_condition_const);
+                      boundary_condition_const,
+                      /*edge_interpolates_inside_axis=*/1);
 
   free(log_z_nodes);
   free(log_data_double);
