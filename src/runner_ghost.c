@@ -1029,6 +1029,7 @@ void runner_do_chemistry_flux_ghost(struct runner *r, struct cell *c,
                                     int timer) {
 
   const struct chemistry_global_data *chemistry = r->e->chemistry;
+  const integertime_t ti_current = r->e->ti_current;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -1043,7 +1044,7 @@ void runner_do_chemistry_flux_ghost(struct runner *r, struct cell *c,
 
     /* Loop over ALL the parts in this cell (see note above). */
     for (int i = 0; i < count; i++) {
-      chemistry_end_flux_prep(&parts[i], chemistry);
+      chemistry_end_flux_prep(&parts[i], chemistry, ti_current);
     }
   }
 

@@ -1204,7 +1204,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       }
       break;
     case task_subtype_chemistry_flux_prep:
-      strcpy(cluster, "ChemistryFluxPrep");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "ChemistryFluxPrep");
+      }
       break;
     case task_subtype_sink_density:
       strcpy(cluster, "SinkDensity");

@@ -469,6 +469,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_chemistry_flux_prep) {
+            free(t->buff);
           } else if (t->subtype == task_subtype_gpart) {
             free(t->buff);
           } else if (t->subtype == task_subtype_fof) {
@@ -504,7 +506,8 @@ void *runner_main(void *data) {
             cell_unpack_bpart_swallow(ci,
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
-          } else if (t->subtype == task_subtype_limiter) {
+          } else if (t->subtype == task_subtype_limiter ||
+                     t->subtype == task_subtype_chemistry_flux_prep) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
@@ -529,6 +532,9 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_limiter) {
             runner_do_pack_limiter(r, ci, &t->buff, 1);
             task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_chemistry_flux_prep) {
+            runner_do_pack_chemistry_flux_prep(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_pack_gpart(r, ci, &t->buff, 1);
             task_get_unique_dependent(t)->buff = t->buff;
@@ -542,6 +548,8 @@ void *runner_main(void *data) {
         case task_type_unpack:
           if (t->subtype == task_subtype_limiter) {
             runner_do_unpack_limiter(r, ci, t->buff, 1);
+          } else if (t->subtype == task_subtype_chemistry_flux_prep) {
+            runner_do_unpack_chemistry_flux_prep(r, ci, t->buff, 1);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

@@ -31,6 +31,7 @@
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "engine.h"
 #include "timeline.h"
 #include "timers.h"
@@ -110,6 +111,47 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
   /* The time-bins we just overwrote may have woken particles up; make sure
      h_max_active reflects that before the limiter task reads it. */
   cell_update_hydro_h_max_active(c, r->e);
+
+  free(buffer);
+}
+
+/**
+ * @brief Pack the flux prep data of the chemistry prior to sending
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param buffer The array to allocate and fill.
+ * @param timer Are we timing this ?
+ */
+void runner_do_pack_chemistry_flux_prep(struct runner *r, struct cell *c,
+                                        void **buffer, const int timer) {
+
+  const size_t size = chemistry_flux_theta_size();
+  if (posix_memalign(buffer, SWIFT_CACHE_ALIGNMENT, c->hydro.count * size) != 0)
+    error("Error allocating chemistry flux prep send buffer");
+
+  char *buff = (char *)*buffer;
+  const struct part *parts = c->hydro.parts;
+  for (int k = 0; k < c->hydro.count; k++)
+    chemistry_pack_flux_theta(&parts[k], buff + k * size);
+}
+
+/**
+ * @brief UnPack the flux prep data of the chemistry after receiving it
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param buffer The array to read from and free.
+ * @param timer Are we timing this ?
+ */
+void runner_do_unpack_chemistry_flux_prep(struct runner *r, struct cell *c,
+                                          void *buffer, const int timer) {
+
+  const size_t size = chemistry_flux_theta_size();
+  const char *buff = (const char *)buffer;
+  struct part *parts = c->hydro.parts;
+  for (int k = 0; k < c->hydro.count; k++)
+    chemistry_unpack_flux_theta(&parts[k], buff + k * size);
 
   free(buffer);
 }

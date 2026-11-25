@@ -171,9 +171,46 @@ static INLINE int chemistry_need_flux_prep_loop(
  *
  * @param p The #part.
  * @param cd The global chemistry information.
+ * @param ti_current The current integer time.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
-    struct part *restrict p, const struct chemistry_global_data *cd) {}
+    struct part *restrict p, const struct chemistry_global_data *cd,
+    const integertime_t ti_current) {}
+
+/**
+ * @brief Size in bytes of the flux prep data of one particle in the message
+ * to the other ranks.
+ */
+__attribute__((always_inline)) INLINE static size_t chemistry_flux_theta_size(
+    void) {
+  return 0;
+}
+
+/**
+ * @brief Pack the flux prep data of a particle for the other ranks.
+ *
+ * @param p The #part.
+ * @param buffer Where to write chemistry_flux_theta_size() bytes.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_pack_flux_theta(
+    const struct part *restrict p, char *restrict buffer) {}
+
+/**
+ * @brief Unpack the flux prep data of a foreign particle.
+ *
+ * @param p The #part.
+ * @param buffer Where to read chemistry_flux_theta_size() bytes.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_unpack_flux_theta(
+    struct part *restrict p, const char *restrict buffer) {}
+
+/**
+ * @brief Mark the flux prep data of a foreign particle as not received.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_mark_flux_theta_stale(struct part *restrict p) {}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.

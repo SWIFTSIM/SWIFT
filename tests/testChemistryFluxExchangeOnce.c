@@ -125,6 +125,8 @@ static void init_particle(struct part *p, struct xpart *xp, const double m,
     ch->fct_theta[k] = 1.0;
     ch->metal_mass[k] = m * 1e-3 * random_uniform(0., 1.);
   }
+  /* A foreign copy holds the theta of this step, as after its message. */
+  ch->ti_fct_theta = TI_CURRENT;
 
   /* Each particle applied its fluxes last at the start of its step. */
   ch->flux.ti_flux_last =

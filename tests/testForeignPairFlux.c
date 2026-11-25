@@ -62,6 +62,11 @@
  *
  * The FVPM chemistry adds the metal mass flux of the first element. The
  * positivity limiter is off, so the flux does not depend on the prep loop.
+ * A second set of FVPM cases turns it on, with one binding donor in ci, and
+ * sends the theta of each rank's local cell to the other with the theta
+ * message; each rank must then give every particle of cj the same flux, bit
+ * for bit (do_theta_case()). A second argument plants a fault in the theta
+ * exchange: skip_unpack, stale_pack, theta_ulp or dx_outside_max.
  *
  * A bare configure skips this test (exit 77), and so does a build where no
  * loop updates inactive neighbours. Run it by hand in a debug build, with
@@ -90,6 +95,11 @@
 void runner_dosub_pair2_force(struct runner *r, struct cell *ci,
                               struct cell *cj, const float h_hi,
                               const int gettimer);
+#if chemistry_flux_updates_inactive_neighbours
+void runner_dosub_pair2_chemistry_flux_prep(struct runner *r, struct cell *ci,
+                                            struct cell *cj, const float h_hi,
+                                            const int gettimer);
+#endif
 void runner_dosub_pair2_rt_transport(struct runner *r, struct cell *ci,
                                      struct cell *cj, const float h_hi,
                                      const int gettimer);
@@ -835,6 +845,281 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
   return n_fail;
 }
 
+#if chemistry_flux_updates_inactive_neighbours
+
+/* A fault planted in the theta exchange, to show that the checks see it. */
+enum theta_plant {
+  plant_none,
+  plant_skip_unpack,
+  plant_stale_pack,
+  plant_theta_ulp,
+  plant_dx_outside_max
+};
+
+static const char *plant_name[5] = {"none", "skip_unpack", "stale_pack",
+                                    "theta_ulp", "dx_outside_max"};
+
+static void set_tree_properties(struct cell *c, const struct engine *e) {
+  if (c->split)
+    for (int k = 0; k < 8; k++) set_tree_properties(c->progeny[k], e);
+  set_cell_properties(c, e);
+}
+
+/**
+ * @brief Send the theta of a local cell to the copy of the other rank, with
+ * the pack and unpack of the theta message.
+ */
+static void send_theta(struct runner *r, struct cell *local, struct cell *copy,
+                       const enum theta_plant plant) {
+  void *buffer = NULL;
+  runner_do_pack_chemistry_flux_prep(r, local, &buffer, /*timer=*/0);
+  if (plant == plant_skip_unpack) {
+    free(buffer);
+    return;
+  }
+  runner_do_unpack_chemistry_flux_prep(r, copy, buffer, /*timer=*/0);
+}
+
+/**
+ * @brief Make one particle of ci active and a donor with an outflow to cj, and
+ * return its index. All other particles are inactive.
+ *
+ * The candidates are taken by decreasing number of neighbours in cj, those
+ * whose h is below the top band first, so that a different dx_outside_max
+ * moves their pairs to another level of the tree. A candidate is kept if the
+ * prep loop of the pair gives it an outflow. Its metal mass is ten times that
+ * of the others. The cells must be sorted.
+ */
+static int make_donor(struct runner *r, struct cell *ci, struct cell *cj,
+                      const struct engine *e) {
+  const struct space *s = e->s;
+  const int n = ci->hydro.count;
+  int *score = checked_malloc(n * sizeof(int));
+  for (int i = 0; i < n; i++) {
+    const struct part *p = &ci->hydro.parts[i];
+    int count = 0;
+    for (int j = 0; j < cj->hydro.count; j++) {
+      const struct part *q = &cj->hydro.parts[j];
+      double r2 = 0.;
+      for (int d = 0; d < 3; d++) {
+        const double dx_d = p->x[d] - q->x[d];
+        const double dx = s->periodic ? nearest(dx_d, s->dim[d]) : dx_d;
+        r2 += dx * dx;
+      }
+      const double h = max(p->h, q->h);
+      count += (r2 < h * h * kernel_gamma2);
+    }
+    score[i] = count + (p->h < 0.5 / kernel_gamma ? n * N_LEAF : 0);
+    if (count == 0) score[i] = 0;
+  }
+
+  struct part *si = checked_malloc(n * sizeof(struct part));
+  struct part *sj = checked_malloc(n * sizeof(struct part));
+  int donor = -1;
+  while (donor < 0) {
+    int best = -1;
+    for (int i = 0; i < n; i++)
+      if (score[i] > 0 && (best < 0 || score[i] > score[best])) best = i;
+    if (best < 0) error("No particle of ci has an outflow to cj.");
+    score[best] = 0;
+
+    struct part *p = &ci->hydro.parts[best];
+    const struct part p_inactive = *p;
+    const struct xpart xp_inactive = ci->hydro.xparts[best];
+    init_particle(p, &ci->hydro.xparts[best], 1.0 / n, 1, e);
+    for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++)
+      p->chemistry_data.metal_mass[k] *= 10.;
+    set_tree_properties(ci, e);
+
+    memcpy(si, ci->hydro.parts, n * sizeof(struct part));
+    memcpy(sj, cj->hydro.parts, n * sizeof(struct part));
+    runner_dosub_pair2_chemistry_flux_prep(r, ci, cj, /*h_hi=*/FLT_MAX,
+                                           /*gettimer=*/0);
+    if (p->chemistry_data.fct_sum_out[0] > 0.) donor = best;
+    memcpy(ci->hydro.parts, si, n * sizeof(struct part));
+    memcpy(cj->hydro.parts, sj, n * sizeof(struct part));
+    if (donor < 0) {
+      *p = p_inactive;
+      ci->hydro.xparts[best] = xp_inactive;
+      set_tree_properties(ci, e);
+    }
+  }
+  free(score);
+  free(si);
+  free(sj);
+  return donor;
+}
+
+/**
+ * @brief Leave the donor half of its prospective outflow, with a flux of an
+ * earlier step of its window, so that its theta is about 0.5.
+ */
+static void bind_donor_limiter(struct runner *r, struct cell *ci,
+                               struct cell *cj, struct part *si,
+                               const int donor) {
+  runner_dosub_pair2_chemistry_flux_prep(r, ci, cj, /*h_hi=*/FLT_MAX,
+                                         /*gettimer=*/0);
+  struct chemistry_part_data *ch = &si[donor].chemistry_data;
+  const double *sum_out = ci->hydro.parts[donor].chemistry_data.fct_sum_out;
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++)
+    ch->flux.metal_mass[k] = -(ch->metal_mass[k] - 0.5 * sum_out[k]);
+}
+
+static void get_metal_flux(const struct cell *c, double *f) {
+  for (int k = 0; k < c->hydro.count; k++)
+    f[k] = c->hydro.parts[k].chemistry_data.flux.metal_mass[0];
+}
+
+/**
+ * @brief Run the prep loop, the chemistry flux ghost and the force loop of a
+ * pair with the positivity limiter on, with both cells local and as each of
+ * the two ranks does, with the theta message between the ghost and the force
+ * loop. Store the metal flux of the particles of both cells.
+ *
+ * @param cell_i The first cell of the pair on this rank.
+ * @param cell_j The second cell of the pair on this rank.
+ * @param local The local cell whose theta is sent, or NULL if both are local.
+ * @param copy The copy of the local cell that the other rank holds.
+ */
+static void run_limited_pair(struct runner *r, struct cell *cell_i,
+                             struct cell *cell_j, struct cell *local,
+                             struct cell *copy, const int split,
+                             const enum theta_plant plant) {
+  cell_i->split = cell_j->split = split;
+  runner_dosub_pair2_chemistry_flux_prep(r, cell_i, cell_j, /*h_hi=*/FLT_MAX,
+                                         /*gettimer=*/0);
+  if (local == NULL) {
+    runner_do_chemistry_flux_ghost(r, cell_i, /*timer=*/0);
+    runner_do_chemistry_flux_ghost(r, cell_j, /*timer=*/0);
+    return;
+  }
+  if (plant == plant_stale_pack) send_theta(r, local, copy, plant);
+  runner_do_chemistry_flux_ghost(r, local, /*timer=*/0);
+  if (plant != plant_stale_pack) send_theta(r, local, copy, plant);
+}
+
+/**
+ * @brief Check the metal flux of a pair with the positivity limiter on, when
+ * each rank holds one cell and a copy of the other.
+ *
+ * One particle of ci is active and its limiter binds; the rest is inactive.
+ * Each particle of cj then gets one pair term, from that donor. Rank 0 holds
+ * ci and a copy of cj, rank 1 a copy of ci and cj, and each sends the theta
+ * of its local cell to the other. Rank 0 updates its copy of an inactive
+ * particle of cj as rank 1 updates the particle itself, so the two must be
+ * equal bit for bit. Both must equal the run with both cells local, within the
+ * bar of the other checks, and the donor must lose what cj gains.
+ *
+ * @return The number of failed checks.
+ */
+static int do_theta_case(const struct pair_case *pc, struct runner *r,
+                         struct engine *e, const enum theta_plant plant) {
+
+  e->s->periodic = pc->periodic;
+  const double origin[3] = {0., 0., 0.};
+  struct cell *ci = make_cell(origin, pc->depth, pc->p_level, 0., e);
+  struct cell *cj = make_cell(pc->offset, pc->depth, pc->p_level, 0., e);
+  set_node(ci, 0);
+  set_node(cj, 0);
+  runner_do_hydro_sort(r, ci, 0x1FFF, 0, 0, 0, 0);
+  runner_do_hydro_sort(r, cj, 0x1FFF, 0, 0, 0, 0);
+  const int donor = make_donor(r, ci, cj, e);
+
+  const int n = ci->hydro.count;
+  struct part *si = checked_malloc(n * sizeof(struct part));
+  struct part *sj = checked_malloc(n * sizeof(struct part));
+  memcpy(si, ci->hydro.parts, n * sizeof(struct part));
+  memcpy(sj, cj->hydro.parts, n * sizeof(struct part));
+  bind_donor_limiter(r, ci, cj, si, donor);
+  const double donor_flux0 = si[donor].chemistry_data.flux.metal_mass[0];
+
+  double *ref_i = checked_malloc(n * sizeof(double));
+  double *ref_j = checked_malloc(n * sizeof(double));
+  double *f0_i = checked_malloc(n * sizeof(double));
+  double *f0_j = checked_malloc(n * sizeof(double));
+  double *f1_j = checked_malloc(n * sizeof(double));
+
+  int n_fail = 0;
+  for (int split = 0; split < 2; split++) {
+
+    /* Both cells local. */
+    memcpy(ci->hydro.parts, si, n * sizeof(struct part));
+    memcpy(cj->hydro.parts, sj, n * sizeof(struct part));
+    run_limited_pair(r, ci, cj, NULL, NULL, split, plant_none);
+    runner_dosub_pair2_force(r, ci, cj, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
+    get_metal_flux(ci, ref_i);
+    get_metal_flux(cj, ref_j);
+
+    /* The copies are taken before the prep loop, as the xv message. */
+    memcpy(ci->hydro.parts, si, n * sizeof(struct part));
+    memcpy(cj->hydro.parts, sj, n * sizeof(struct part));
+    struct cell *ci_copy = make_foreign_copy(r, ci, si, pc->depth, split);
+    struct cell *cj_copy = make_foreign_copy(r, cj, sj, pc->depth, split);
+    if (plant == plant_dx_outside_max) ci_copy->hydro.dx_outside_max = 0.25f;
+
+    /* Rank 0, then rank 1: prep loop, ghost and theta message. */
+    run_limited_pair(r, ci, cj_copy, ci, ci_copy, split, plant);
+    run_limited_pair(r, ci_copy, cj, cj, cj_copy, split, plant);
+    const double theta = ci->hydro.parts[donor].chemistry_data.fct_theta[0];
+    if (plant == plant_theta_ulp) {
+      double *th = &ci_copy->hydro.parts[donor].chemistry_data.fct_theta[0];
+      *th = nextafter(*th, 0.);
+    }
+
+    /* The force loop of each rank. */
+    runner_dosub_pair2_force(r, ci, cj_copy, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
+    runner_dosub_pair2_force(r, ci_copy, cj, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
+    get_metal_flux(ci, f0_i);
+    get_metal_flux(cj_copy, f0_j);
+    get_metal_flux(cj, f1_j);
+    free_foreign_copy(ci_copy);
+    free_foreign_copy(cj_copy);
+
+    int n_terms = 0, n_differ = 0, n_bad_ref = 0;
+    double scale = 0., sum = 0., sum_abs = 0., max_rel = 0.;
+    for (int k = 0; k < n; k++) {
+      scale = max(scale, fabs(ref_j[k]));
+      sum_abs += fabs(ref_j[k]);
+    }
+    for (int k = 0; k < n; k++) {
+      n_terms += (f1_j[k] != 0.);
+      n_differ += !(f0_j[k] == f1_j[k]);
+      sum += f1_j[k];
+      const double rel = scale > 0. ? fabs(f1_j[k] - ref_j[k]) / scale : 0.;
+      if (!is_finite(f1_j[k]) || rel > REL_TOL) n_bad_ref++;
+      max_rel = max(max_rel, rel);
+    }
+    const double donor_gain = f0_i[donor] - donor_flux0;
+    const double rel_donor =
+        fabs(donor_gain - (ref_i[donor] - donor_flux0)) / max(sum_abs, 1e-300);
+    const double rel_sum = fabs(donor_gain + sum) / max(sum_abs, 1e-300);
+
+    message(
+        "theta %s, plant %s, %-7s: donor theta %.3e, pair terms %d, rank 0 "
+        "and rank 1 differ on %d | vs all local: %d bad (max %.1e), donor "
+        "%.1e | |donor + cj| / n max %.1e",
+        pc->label, plant_name[plant], split ? "split" : "unsplit", theta,
+        n_terms, n_differ, n_bad_ref, max_rel, rel_donor, rel_sum);
+
+    /* The fixture must have pair terms and a binding limiter. */
+    n_fail += (n_terms == 0) + !(theta < 1.);
+    n_fail += (n_differ > 0) + (n_bad_ref > 0) + !(rel_donor <= REL_TOL) +
+              !(rel_sum <= REL_TOL);
+  }
+
+  free(si);
+  free(sj);
+  free(ref_i);
+  free(ref_j);
+  free(f0_i);
+  free(f0_j);
+  free(f1_j);
+  free_cell(ci);
+  free_cell(cj);
+  return n_fail;
+}
+#endif
+
 #if rt_transport_updates_inactive_neighbours
 /**
  * @brief Run the RT gradient self task on one cell with all the gas
@@ -900,6 +1185,19 @@ int main(int argc, char *argv[]) {
   const unsigned int seed = (argc > 1) ? atoi(argv[1]) : 1234;
   srand(seed);
   message("Seed: %u", seed);
+
+#if chemistry_flux_updates_inactive_neighbours
+  enum theta_plant plant = plant_none;
+  if (argc > 2) {
+    int found = 0;
+    for (int k = 0; k < 5; k++)
+      if (strcmp(argv[2], plant_name[k]) == 0) {
+        plant = (enum theta_plant)k;
+        found = 1;
+      }
+    if (!found) error("Unknown planted fault '%s'.", argv[2]);
+  }
+#endif
 
   struct space space;
   bzero(&space, sizeof(struct space));
@@ -987,6 +1285,12 @@ int main(int argc, char *argv[]) {
   int n_fail = 0;
   for (int c = 0; c < n_cases; c++)
     n_fail += do_case(&cases[c], loop_force, &runner, &engine);
+#if chemistry_flux_updates_inactive_neighbours
+  chem_data.use_positivity_limiter = 1;
+  for (int c = 0; c < n_cases; c++)
+    n_fail += do_theta_case(&cases[c], &runner, &engine, plant);
+  chem_data.use_positivity_limiter = 0;
+#endif
 #if rt_transport_updates_inactive_neighbours
   for (int c = 0; c < n_cases; c++)
     n_fail += do_case(&cases[c], loop_rt_transport, &runner, &engine);

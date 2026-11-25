@@ -708,6 +708,7 @@ void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_unskip_rt_sub_cycle(struct engine *e);
+void engine_check_chemistry_flux_prep_comm_activation(const struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles,
                       const int init_particles);
 void engine_init_all_particles(struct engine *e);

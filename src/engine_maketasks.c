@@ -197,6 +197,12 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param t_gradient The send_gradient #task, if already created.
  * @param t_prep1 The send_prep1 #task, if it has already been created.
  * @param t_limiter The send_limiter #task, if it has already been created.
+ * @param t_pack_limiter The pack_limiter #task, if it has already been
+ * created.
+ * @param t_chem_flux_prep The send #task of the chemistry flux prep data, if
+ * it has already been created.
+ * @param t_pack_chem_flux_prep The pack #task of the chemistry flux prep
+ * data, if it has already been created.
  * @param t_rt_gradient The send_rt_gradient #task, if it has already been
  * created.
  * @param t_rt_transport The send_rt_transport #task, if it has already been
@@ -205,20 +211,23 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param with_sync Are we running with time-step synchronization?
  * @param with_rt Are we running with radiative transfer?
  */
-void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_xv,
-                                struct task *t_rho, struct task *t_gradient,
-                                struct task *t_prep1, struct task *t_limiter,
-                                struct task *t_pack_limiter,
-                                struct task *t_rt_gradient,
-                                struct task *t_rt_transport,
-                                const int with_feedback, const int with_limiter,
-                                const int with_sync, const int with_rt) {
+void engine_addtasks_send_hydro(
+    struct engine *e, struct cell *ci, struct cell *cj, struct task *t_xv,
+    struct task *t_rho, struct task *t_gradient, struct task *t_prep1,
+    struct task *t_limiter, struct task *t_pack_limiter,
+    struct task *t_chem_flux_prep, struct task *t_pack_chem_flux_prep,
+    struct task *t_rt_gradient, struct task *t_rt_transport,
+    const int with_feedback, const int with_limiter, const int with_sync,
+    const int with_rt) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+#ifdef EXTRA_HYDRO_LOOP
+  const int with_chem_flux_prep_comm =
+      chemistry_need_flux_prep_loop(e->chemistry);
+#endif
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
@@ -248,6 +257,16 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->mpi.tag, 0, ci, cj);
       scheduler_addunlock(s, t_rho, t_gradient);
+
+      if (with_chem_flux_prep_comm) {
+        t_chem_flux_prep = scheduler_addtask(s, task_type_send,
+                                             task_subtype_chemistry_flux_prep,
+                                             ci->mpi.tag, 0, ci, cj);
+        t_pack_chem_flux_prep = scheduler_addtask(
+            s, task_type_pack, task_subtype_chemistry_flux_prep, 0, 0, ci, cj);
+
+        scheduler_addunlock(s, t_pack_chem_flux_prep, t_chem_flux_prep);
+      }
 #endif
 
       if (with_limiter) {
@@ -292,6 +311,12 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
       /* The send_xv task should unlock the super_hydro-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
+
+      /* The whole-part messages can leave before the chemistry flux ghost;
+         the flux prep data are final only after it. */
+      if (with_chem_flux_prep_comm)
+        scheduler_addunlock(s, ci->hydro.super->hydro.chemistry_flux_ghost,
+                            t_pack_chem_flux_prep);
 
 #else
       /* The send_rho task should unlock the super_hydro-cell's kick task. */
@@ -360,6 +385,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     engine_addlink(e, &ci->mpi.send, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->mpi.send, t_gradient);
+    if (with_chem_flux_prep_comm) {
+      engine_addlink(e, &ci->mpi.send, t_chem_flux_prep);
+      engine_addlink(e, &ci->mpi.pack, t_pack_chem_flux_prep);
+    }
 #endif
     if (with_limiter) {
       engine_addlink(e, &ci->mpi.send, t_limiter);
@@ -382,8 +411,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_hydro(
             e, ci->progeny[k], cj, t_xv, t_rho, t_gradient, t_prep1, t_limiter,
-            t_pack_limiter, t_rt_gradient, t_rt_transport, with_feedback,
-            with_limiter, with_sync, with_rt);
+            t_pack_limiter, t_chem_flux_prep, t_pack_chem_flux_prep,
+            t_rt_gradient, t_rt_transport, with_feedback, with_limiter,
+            with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -665,6 +695,10 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
  * @param t_limiter The recv_limiter #task, if it has already been created.
  * @param t_unpack_limiter The unpack_limiter #task, if it has already been
  * created.
+ * @param t_chem_flux_prep The recv #task of the chemistry flux prep data, if
+ * it has already been created.
+ * @param t_unpack_chem_flux_prep The unpack #task of the chemistry flux prep
+ * data, if it has already been created.
  * @param t_rt_gradient The recv_rt_gradient #task, if it has already been
  * created.
  * @param t_rt_transport The recv_rt_transport #task, if it has already been
@@ -681,7 +715,8 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 void engine_addtasks_recv_hydro(
     struct engine *e, struct cell *c, struct task *t_xv, struct task *t_rho,
     struct task *t_gradient, struct task *t_prep1, struct task *t_limiter,
-    struct task *t_unpack_limiter, struct task *t_rt_gradient,
+    struct task *t_unpack_limiter, struct task *t_chem_flux_prep,
+    struct task *t_unpack_chem_flux_prep, struct task *t_rt_gradient,
     struct task *t_rt_transport, struct task *t_rt_sorts,
     struct task *const tend, const int with_feedback,
     const int with_black_holes, const int with_sinks, const int with_limiter,
@@ -694,6 +729,10 @@ void engine_addtasks_recv_hydro(
   }
 #endif
   struct scheduler *s = &e->sched;
+#ifdef EXTRA_HYDRO_LOOP
+  const int with_chem_flux_prep_comm =
+      chemistry_need_flux_prep_loop(e->chemistry);
+#endif
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -719,6 +758,23 @@ void engine_addtasks_recv_hydro(
                                    c->mpi.tag, 0, c, NULL);
     scheduler_addunlock(s, t_xv, t_gradient);
     scheduler_addunlock(s, t_rho, t_gradient);
+
+    if (with_chem_flux_prep_comm) {
+      t_chem_flux_prep =
+          scheduler_addtask(s, task_type_recv, task_subtype_chemistry_flux_prep,
+                            c->mpi.tag, 0, c, NULL);
+      t_unpack_chem_flux_prep = scheduler_addtask(
+          s, task_type_unpack, task_subtype_chemistry_flux_prep, 0, 0, c, NULL);
+
+      scheduler_addunlock(s, t_chem_flux_prep, t_unpack_chem_flux_prep);
+
+      /* The whole-part messages also carry the flux prep data, which must
+         not overwrite the received ones. The stars activate rho without the
+         gradient. */
+      scheduler_addunlock(s, t_xv, t_unpack_chem_flux_prep);
+      scheduler_addunlock(s, t_rho, t_unpack_chem_flux_prep);
+      scheduler_addunlock(s, t_gradient, t_unpack_chem_flux_prep);
+    }
 #endif
 
     if (with_limiter) {
@@ -804,6 +860,10 @@ void engine_addtasks_recv_hydro(
     engine_addlink(e, &c->mpi.recv, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &c->mpi.recv, t_gradient);
+    if (with_chem_flux_prep_comm) {
+      engine_addlink(e, &c->mpi.recv, t_chem_flux_prep);
+      engine_addlink(e, &c->mpi.unpack, t_unpack_chem_flux_prep);
+    }
 #endif
     if (with_limiter) {
       engine_addlink(e, &c->mpi.recv, t_limiter);
@@ -834,6 +894,8 @@ void engine_addtasks_recv_hydro(
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
       scheduler_addunlock(s, l->t, tend);
+      if (with_chem_flux_prep_comm)
+        scheduler_addunlock(s, t_unpack_chem_flux_prep, l->t);
     }
     /* The prep pass must read the same foreign particles as the force loop.
        Only xv is received for an inactive foreign cell. */
@@ -926,9 +988,9 @@ void engine_addtasks_recv_hydro(
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_hydro(
             e, c->progeny[k], t_xv, t_rho, t_gradient, t_prep1, t_limiter,
-            t_unpack_limiter, t_rt_gradient, t_rt_transport, t_rt_sorts, tend,
-            with_feedback, with_black_holes, with_sinks, with_limiter,
-            with_sync, with_rt);
+            t_unpack_limiter, t_chem_flux_prep, t_unpack_chem_flux_prep,
+            t_rt_gradient, t_rt_transport, t_rt_sorts, tend, with_feedback,
+            with_black_holes, with_sinks, with_limiter, with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -3277,8 +3339,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              with_timestep_limiter);
       }
 
-      /* TODO(MPI): the force loop reads the theta of a foreign donor, but no
-         task sends it after the chemistry flux ghost of its rank. */
+      /* The flux prep data of a foreign particle come with their own
+         message, after the chemistry flux ghost of its rank
+         (engine_addtasks_send_hydro()). */
       if (with_chemistry_flux_prep)
         engine_make_chemistry_flux_prep_task(e, ci, cj, flags, t_force);
 #else
@@ -3896,6 +3959,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_rho=*/NULL, /*t_gradient=*/NULL,
                                  /*t_prep1=*/NULL,
                                  /*t_limiter=*/NULL, /*t_pack_limiter=*/NULL,
+                                 /*t_chem_flux_prep=*/NULL,
+                                 /*t_pack_chem_flux_prep=*/NULL,
                                  /*t_rt_gradient=*/NULL,
                                  /*t_rt_transport=*/NULL, with_feedback,
                                  with_limiter, with_sync, with_rt);
@@ -4008,6 +4073,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       engine_addtasks_recv_hydro(
           e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL, /*t_gradient=*/NULL,
           /*t_prep1=*/NULL, /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
+          /*t_chem_flux_prep=*/NULL, /*t_unpack_chem_flux_prep=*/NULL,
           /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
           /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes,
           with_sinks, with_limiter, with_sync, with_rt);

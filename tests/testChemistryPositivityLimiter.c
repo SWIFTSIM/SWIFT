@@ -182,8 +182,9 @@ static int run_fixture(const struct chemistry_global_data *cd,
     expected_theta[m] = available * (1.0 - 1e-6) / sum_out;
   }
 
-  chemistry_end_flux_prep(&donor, cd);
-  for (int n = 0; n < N_NEIGHBOURS; n++) chemistry_end_flux_prep(&ngb[n], cd);
+  chemistry_end_flux_prep(&donor, cd, TI_CURRENT);
+  for (int n = 0; n < N_NEIGHBOURS; n++)
+    chemistry_end_flux_prep(&ngb[n], cd, TI_CURRENT);
 
   /* Three roundings (the factor, the product, the quotient) of at most
      DBL_EPSILON / 2 each, so 4 * DBL_EPSILON bounds the difference. */

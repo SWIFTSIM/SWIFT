@@ -193,6 +193,10 @@ static void init_part(struct part *p, long long id, float h, float mass,
   /* TEST_METAL gets exactly the requested fraction (no per-element jitter),
    * since that is the element the residual is computed on. */
   ch->metal_mass[TEST_METAL] = mass * metal_mass_frac;
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /* A foreign copy holds the theta of this step, as after its message. */
+  ch->ti_fct_theta = TI_CURRENT;
+#endif
 }
 
 static void set_geometry(struct part *p, enum test_geometry g) {
