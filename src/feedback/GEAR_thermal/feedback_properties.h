@@ -882,6 +882,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       error(
           "GEARFeedback:ISRF_cooling_reads_own_field must be 0 or 1 (got %d).",
           own_field);
+    if (own_field && !fp->ISRF_propagation)
+      error(
+          "GEARFeedback:ISRF_cooling_reads_own_field: 1 acts on the "
+          "transported light, which needs GEARFeedback:ISRF_propagation: 1.");
     packet_constants->cooling_reads_own_field = own_field;
 
     const int H2_line_absorption = parser_get_opt_param_int(
