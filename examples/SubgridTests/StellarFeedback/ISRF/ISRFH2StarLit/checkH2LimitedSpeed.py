@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the H2 line absorption of the ISRF transport at a limited light speed.
 
-Both checks read runs of the star-lit box (`ISRFH2StarLit`) with `ISRF_packet_light_speed: cap`,
+All checks read runs of the star-lit box (`ISRFH2StarLit`) with `ISRF_packet_light_speed: cap`,
 a non-periodic box and `--temperature` instead of `--cooling`. The cooling is initialised but never
 called, so the species and the temperature stay exactly at their initial values. The light then
 settles to a steady state once its front has passed, whatever its delay.
@@ -11,6 +11,8 @@ Subcommands
 limited   Line transmission of the steady light against the shielding function at the straight-ray
           column (`--run DIR`, the directory of one leg).
 ripple    Time structure of the light of a star that steps coarsely (`--coarse DIR --fine DIR`).
+front     Arrival of the light that switches on at the start of a leg (`--run DIR`): no particle is
+          lit before the light travel time r / (f c) at the limited speed f c.
 
 Exit codes
 ----------
@@ -60,6 +62,14 @@ revision of the two start-up logs are compared. A difference, or a line that one
 voids the run. `limited` prints the revisions it finds and cannot check them against an expected
 value.
 
+Bar of `front`. The star is dark at the start and lights at its first step, so the source
+luminosity steps from 0 to L. Light that moves at most at f c cannot reach a particle at distance r
+before t = r / (f c), whatever the gas, the hops or the star step: every hop path is at least as long
+as the straight distance. The snapshot that first shows light in a particle is written at or after
+the arrival, so the time of that snapshot over r / (f c) is at least 1. The bar is a lower bound
+only. The delay above it (about one gas step per hop, plus up to one star step for a coarse star)
+has no derived upper bound in the check: it is printed as a reading in snapshot intervals per shell (gas steps only while each step writes one snapshot).
+
 Far-light warning. The start-up log of `cap_coarse` and `cap_half` prints that more than 3 per cent
 of the light was booked in far arrival cells. That limit was chosen for light that crosses a
 smoothing length in 2 to 3 gas steps. At 0.99 c the light needs about 2.8 gas steps, at 0.5 c about
@@ -85,6 +95,8 @@ GateExit = base.GateExit
 Report = base.Report
 
 UNIT_PC_CGS = 3.0856775814913673e18
+SPEED_OF_LIGHT_CGS = 2.99792458e10
+FRONT_SHELL_EDGES_PC = np.arange(0.5, 2.2, 0.3)
 HYDROGEN_MASS_FRACTION = 0.76
 H2_FLOAT_REL = 2.0**-23
 PLANT_SIZE = 0.05
@@ -642,6 +654,67 @@ def gate_ripple(args: argparse.Namespace) -> int:
     return rep.exit_code()
 
 
+def gate_front(args: argparse.Namespace) -> int:
+    """Check that no particle is lit before the light travel time at the limited speed.
+
+    Premises (each a void run): the parameters of a limited-speed leg; the first snapshot is at time
+    0 and holds no light; every read particle is lit in the last snapshot; every value is finite.
+
+    Bar. See the module docstring: for each read particle, the time of its first lit snapshot over
+    r / (f c) is at least 1. The reading per shell (median delay above r / (f c), in snapshot intervals) is
+    printed and not gated.
+    """
+    rep = Report()
+    run = args.run
+    n_last = last_snapshot_index(run)
+    fix = base.load_json(os.path.join(run, "fixture.json"), "geometry file")
+    params = base.read_params(os.path.join(run, "used_parameters.yml"))
+    premise_parameters(params, rep, os.path.join(run, "output.log"))
+    fraction = float(
+        params.get("GEARFeedback:ISRF_packet_light_speed_fraction_of_c", 0.99)
+    )
+    static, energies, times = load_series(run, list(range(n_last + 1)))
+    gas = base.load_snapshot(snapshot_path(run, n_last), base.REQUIRED_GAS)
+    base.require_finite("last snapshot", **{k: gas[k] for k in base.REQUIRED_GAS})
+    r, _, mask = base.probe_geometry(gas, np.array(fix["star_kpc"]))
+    if times[0] != 0.0 or np.any(energies[0] != 0.0):
+        raise GateExit(
+            EXIT_VOID, "void run, the first snapshot is not at time 0 with no light"
+        )
+    lit = energies > 0.0
+    if not lit[-1][mask].all():
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, {int((~lit[-1][mask]).sum())} read particles are not lit at the end",
+        )
+    first = np.argmax(lit, axis=0)
+    arrival = (times[first] - times[0]) * static["unit_time"]
+    if args.plant_speed is not None:
+        arrival = arrival / args.plant_speed
+        rep.info("plant", f"every arrival time divided by {args.plant_speed:g}")
+    travel = r / (fraction * SPEED_OF_LIGHT_CGS)
+    ratio = arrival[mask] / travel[mask]
+    base.require_finite("arrival over travel time", ratio=ratio)
+    step = float(np.median(np.diff(times))) * static["unit_time"]
+    pc = r[mask] / UNIT_PC_CGS
+    for lo, hi in zip(FRONT_SHELL_EDGES_PC[:-1], FRONT_SHELL_EDGES_PC[1:]):
+        sel = (pc >= lo) & (pc < hi)
+        if sel.any():
+            lag = (arrival[mask][sel] - travel[mask][sel]) / step
+            rep.info(
+                "delay above the light travel time",
+                f"shell {lo:.1f} to {hi:.1f} pc: median {float(np.median(lag)):.1f} snapshot intervals "
+                "(reading, not gated)",
+            )
+    rep.check(
+        "no light before r / (f c)",
+        bool(ratio.min() >= 1.0),
+        f"{int((ratio < 1.0).sum())} of {ratio.size} particles lit early; smallest arrival over "
+        f"travel time {float(ratio.min()):.4g} (bar 1)",
+    )
+    return rep.exit_code()
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
@@ -686,6 +759,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="offline plant: modulation amplitude at the star period",
     )
     sp.set_defaults(func=gate_ripple)
+    sp = sub.add_parser(
+        "front", help="arrival of the light that switches on at the start"
+    )
+    sp.add_argument("--run", required=True, help="leg directory")
+    sp.add_argument(
+        "--plant-speed",
+        type=float,
+        default=None,
+        help="offline plant: the light arrives this factor faster",
+    )
+    sp.set_defaults(func=gate_front)
     return p
 
 
