@@ -457,14 +457,20 @@ void space_map_cells_pre(struct space *s, int full,
 /**
  * @brief Get a new empty (sub-)#cell.
  *
- * If there are cells in the buffer, use the one at the end of the linked list.
- * If we have no cells, allocate a new chunk of memory and pick one from there.
+ * The cells (and their multipoles) are taken from the head of the buffer of
+ * thread @c tpid. If that buffer is empty, a new chunk of memory is allocated
+ * and the cells are picked from there.
+ *
+ * The buffers are not locked: a thread may only use its own buffer, i.e.
+ * pass its threadpool id as @c tpid from within a #threadpool mapper. Outside
+ * of a mapper, the main thread may use any buffer.
  *
  * @param s The #space.
  * @param nr_cells Number of #cell to pick up.
  * @param cells Array of @c nr_cells #cell pointers in which to store the
  *        new cells.
- * @param tpid ID of threadpool threadpool associated with cells_sub.
+ * @param tpid ID of the threadpool thread whose buffer (cells_sub and
+ *        multipoles_sub) is used.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tpid) {
@@ -515,7 +521,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     }
   }
 
-  /* Unlock the space. */
+  /* Count the new cells. */
   atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
