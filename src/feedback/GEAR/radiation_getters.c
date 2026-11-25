@@ -88,10 +88,10 @@ float radiation_get_log_metallicity(float Z) {
  * @brief Nudge a log-mass query strictly inside a 2D IMF-integrated table's
  * top edge.
  *
- * A query exactly at the top edge takes #interpolate_2d's out-of-range branch,
- * which snaps the Z axis to the nearest row instead of blending. That case is
- * common: the upper mass bound is clamped to sm->imf.mass_max for an early-age
- * population. The nudge is a #RADIATION_2D_EDGE_EPS fraction of the mass span.
+ * A query exactly at the top edge takes #interpolate_2d's out-of-range branch.
+ * That case is common: the upper mass bound is clamped to sm->imf.mass_max for
+ * an early-age population. The nudge keeps it on the bilinear branch, and is a
+ * #RADIATION_2D_EDGE_EPS fraction of the mass span.
  *
  * @param interp The 2D IMF-integrated table the caller is about to query.
  * @param log_m The mass-axis query, in log10.
