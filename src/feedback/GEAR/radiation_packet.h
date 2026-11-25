@@ -677,12 +677,12 @@ radiation_packet_add_saturated(const float sum, const double x) {
  * bin: the part in `[E, last]` keeps its times and the early part follows it at
  * the same rate. With a steady star the windows of successive steps then tile
  * with no gap and no overlap, and the light arrives at a steady rate, for a
- * star step up to about 16 steps of the receiver and a fixed receiver step.
- * Beyond that the moved window reaches past the near bins and the two base far
- * cells, so the far cells of the receiver stay widened to about the star step
- * while the star shines, and the far-share warning can fire. Without a speed
- * limit the reservoir does the same by releasing the light over the next step
- * of the star.
+ * star step up to 16 steps of the receiver and a fixed receiver step. From 32
+ * steps the moved window reaches past the near bins and the two base far cells,
+ * so the far cells widen again at each booking. A widened cell holds its light
+ * until its end or a change of its lattice, so the field pulses once per star
+ * step. Without a speed limit the reservoir releases the light over the next
+ * step of the star instead.
  *
  * Nothing changes for a receiver that has no step yet, nor when the light
  * arrives after `E` or all at once.

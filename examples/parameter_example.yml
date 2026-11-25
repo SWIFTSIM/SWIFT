@@ -1096,6 +1096,7 @@ GEARFeedback:
                                                            # kernel per gas step at most, so the gas step sets its
                                                            # speed, far below c. fixed: step bounded by the crossing
                                                            # time (many steps). unlimited: debug.
+                                                           # cap and fixed: a star step above 16 gas steps pulses the light.
                                                            # cap and fixed need ISRF_propagation 1. (Default: cap with ISRF_propagation 1, unlimited with 0)
   ISRF_packet_light_speed_fraction_of_c: 0.99              # Limit speed as a fraction of c, in (0, 1]. (Default: 0.99)
   ISRF_packet_cone_power: 4                                # Power p >= 1 of the transmission cone, larger is narrower. (Default: 4)
