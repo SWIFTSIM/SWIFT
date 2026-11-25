@@ -3396,11 +3396,11 @@ transport needs the HEALPix C library (\code{--with-chealpix}).
 
 \paragraph{Coupling to Grackle (Sec.~\ref{sec:isrf-problem}).} $G_0$,
 Eq.~\eqref{eq:isrf-G0}, is \code{radiation\_get\_part\_isrf\_habing}
-(\code{src/feedback/GEAR/radiation\_gas.c:736-755}), and $k_{\rm diss}$,
+(\code{src/feedback/GEAR/radiation\_gas.c:739-758}), and $k_{\rm diss}$,
 Eq.~\eqref{eq:isrf-kdiss}, is
-\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:773-794). Each
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:776-797). Each
 band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
-(:704-719). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
+(:707-722). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
 \code{RADIATION\_HABING\_FLUX\_CGS} and
 \code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}
 (\code{src/feedback/GEAR/radiation.h:104}, :113). Grackle reads the two rates

@@ -1026,7 +1026,7 @@ struct feedback_spart_data {
     /*! Tree reach (cell_radiation_tree_reach()) of the last pass stopped
         because the tree covered no more gas. Positive: its unspent photons
         wait in N_ion_budget_pix for the next pass. Negative: they were
-        released. 0: no such stop. */
+        released or already spent. 0: no such stop. */
     float HII_carry_tree_reach;
 
     /*! Number of active angular pixels this star is currently using

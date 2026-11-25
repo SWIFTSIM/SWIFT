@@ -322,9 +322,12 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
 __attribute__((always_inline)) INLINE void
 radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 
-  /* The carry is used once. A negative value records a release and stays. */
+  /* The carry is used once; its tree reach stays, with the release sign, for
+     the next coverage stop. */
   const int with_carry = sp->feedback_data.radiation.HII_carry_tree_reach > 0.f;
-  if (with_carry) sp->feedback_data.radiation.HII_carry_tree_reach = 0.f;
+  if (with_carry)
+    sp->feedback_data.radiation.HII_carry_tree_reach =
+        -sp->feedback_data.radiation.HII_carry_tree_reach;
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   /* All pixels share one rate, so log once per star. */

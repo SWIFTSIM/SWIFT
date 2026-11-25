@@ -1307,8 +1307,8 @@ void feedback_reset_star_HII_mass(struct spart *sp) {
 
 /**
  * @brief Tree reach of the last coverage stop of this star: positive if its
- * photons are carried to the next pass, negative if they were released, 0 if
- * none.
+ * photons are carried to the next pass, negative if they were released or
+ * spent, 0 if none.
  *
  * @param sp The star.
  */
