@@ -87,19 +87,20 @@ hydro_strength_state_store_drift(struct part *restrict p,
                                  const struct mat_params *mp) {
 
   p->phase = strength_state_get_phase(s, mp);
-  p->strength_data.P_min = strength_state_get_P_min(s, mp);
   p->strength_data.stress_tensor = strength_state_get_stress_tensor(s, mp);
 
+#ifdef STRENGTH_ARTIFICIAL_STRESS_BASIS_INDEPENDENT
   const float *principal_stresses =
       strength_state_get_principal_stresses(s, mp);
-  p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
-  p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
-  p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
+  p->strength_data.max_principal_stress =
+      fmaxf(principal_stresses[0],
+            fmaxf(principal_stresses[1], principal_stresses[2]));
+#endif
 }
 
 /**
- * @brief Limits the tension of a pressure from the EoS, by the minimum pressure
- * from the strength state and by damage, depending on the yield stress method.
+ * @brief Gets the pressure from the strength state, with tension limited by
+ * the minimum pressure and by damage, depending on the yield stress method.
  *
  * @param p The particle of interest.
  * @param pressure The pressure from the EoS.
@@ -108,15 +109,12 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_pressure_strength(const struct part *restrict p,
                                      const float pressure) {
 
-  float limited_pressure = fmaxf(pressure, p->strength_data.P_min);
-
   /* Strength state from the drifted values. */
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
-  strength_modify_pressure_in_tension(&limited_pressure, &s, mp);
 
-  return limited_pressure;
+  return strength_state_get_pressure(&s, mp);
 }
 
 /**

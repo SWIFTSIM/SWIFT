@@ -96,15 +96,8 @@ artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
                           (1.f - eta_ab / eta_crit)));
 
   /* Get max principal stresses for particles i and j. */
-  const float max_principal_stress_i =
-      fmaxf(pi->strength_data.principal_stress_eigen[0],
-            fmaxf(pi->strength_data.principal_stress_eigen[1],
-                  pi->strength_data.principal_stress_eigen[2]));
-
-  const float max_principal_stress_j =
-      fmaxf(pj->strength_data.principal_stress_eigen[0],
-            fmaxf(pj->strength_data.principal_stress_eigen[1],
-                  pj->strength_data.principal_stress_eigen[2]));
+  const float max_principal_stress_i = pi->strength_data.max_principal_stress;
+  const float max_principal_stress_j = pj->strength_data.max_principal_stress;
 
   /* Apply artificial stress. */
   if (max_principal_stress_i > 0.f) {

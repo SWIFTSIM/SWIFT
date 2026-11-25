@@ -156,7 +156,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     float pressure =
         gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
     pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
-    strength_modify_pressure_in_tension(&pressure, s, mp);
+    if (pressure < 0.f) {
+      yield_apply_damage_to_tensile_pressure(&pressure, s, mp);
+    }
     s->cache.pressure = pressure;
     s->cache.pressure_computed = true;
   }

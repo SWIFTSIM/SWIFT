@@ -52,25 +52,6 @@ strength_compute_max_wave_speed_stress_tensor(float *wave_speed,
 }
 
 /**
- * @brief Modify the pressure when in tension.
- *
- * Negative pressures are modified by damage, depending on the yield stress
- * method.
- *
- * @param pressure The pressure, to be modified if negative.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static void
-strength_modify_pressure_in_tension(float *pressure, struct strength_state *s,
-                                    const struct mat_params *mp) {
-
-  if (*pressure < 0.f) {
-    yield_apply_damage_to_tensile_pressure(pressure, s, mp);
-  }
-}
-
-/**
  * @brief Calculates the pairwise stress tensors for the force interaction.
  *
  * The stress tensors used for the force interaction between a specific pair of
