@@ -1767,8 +1767,8 @@ $n_{{\rm H}_2,s}$ otherwise:
 \end{itemize}
 The value $n_{{\rm H}_2,s}$ is read from the sender, which the pair task only
 reads; under MPI it is the copy of the home rank's value of the same drift,
-as for the slot. Both factors use the fit of the receiver, so a hop costs two
-evaluations of $\mathcal S$ and no inverse. Since $\mathcal S$ falls with
+as for the slot. Both factors use the fit of the receiver, and a hop needs no
+inverse (``Numerics of the hop'' gives the cost). Since $\mathcal S$ falls with
 $\Sigma$, the ratio is at most 1, and the $\min\{1,\cdot\}$ removes only a
 rounding excess. The ratio is the one of ``The factor along a ray''
 (Section~\ref{sec:packet-h2-physics}), with the fit of the receiver standing in
@@ -1780,6 +1780,28 @@ it. The error at a density step is in ``Gas of the hop''
 with no H$_2$ and a sender with H$_2$ still gain the sender's half, provided the
 receiver has a line width ($T>0$); without one the hop returns early and adds
 nothing.
+
+\paragraph{Numerics of the hop.} Write $x=\Sigma/\Sigma_0$ and $r=\sqrt{1+x}$
+for the column before the hop, and $x'$, $r'$ after it. The two terms of
+Eq.~\eqref{eq:h2-factor} after the hop are the terms before it times two
+ratios,
+\begin{equation}
+  (1+\delta)^{-\alpha}, \quad \delta=\frac{x'-x}{b_5+x}, \qquad
+  \frac{r}{r'}\,\exp\!\big[-8.5\times10^{-4}(r'-r)\big], \quad
+  r'-r=\frac{x'-x}{r+r'}.
+  \label{eq:h2-hop-ratios}
+\end{equation}
+Both are exact. For $\delta\le1/8$ the hop takes $\mathcal S(\Sigma')$ from
+them, with $\ln(1+\delta)=2\,{\rm artanh}\,z$, $z=\delta/(2+\delta)\le1/17$,
+summed to $z^{13}$: the relative truncation is below $10^{-18}$. A larger
+$\delta$ evaluates $\mathcal S(\Sigma')$ directly. Every exponential
+$e^{-y}$ of the factor, here and in every other evaluation of
+Eq.~\eqref{eq:h2-factor}, is its Taylor series to $y^{12}$ for
+$|y|\le1/4$ (relative truncation below $5\times10^{-18}$) and the library
+exponential otherwise. Both truncations are far below the rounding of a
+double, so the factor equals the direct evaluation to rounding. A hop thus
+evaluates the factor before it in full, and the factor after it with no
+logarithm and, for small arguments, no exponential.
 
 \paragraph{The sums of a slot.} Let share $s$ land in slot $k$ of the receiver
 with the values $(\mathcal T_s,\Sigma_s,\Delta v_s)$ of Eq.~\eqref{eq:h2-hop}.
@@ -3691,34 +3713,40 @@ bytes took about 7 per cent more CPU time than without the padding. That timing
 had no line absorption, so the cost with the switch on is not measured.
 
 The fit and the hop are in \code{src/feedback/GEAR/radiation\_h2\_shielding.h}.
-The constants of the fit are at :38-68: the clamps of $T$ and $n$, $\Sigma_0$,
+The constants of the fit are at :38-76: the clamps of $T$ and $n$, $\Sigma_0$,
 $\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the factor 3 of $\Delta v_{\max}$, in
-Doppler parameters, the tolerance $2^{-26}$ of the inverse in $\ln\Sigma$ and
-its largest number of iterations, 64.
+Doppler parameters, the tolerance $2^{-26}$ of the inverse in $\ln\Sigma$, its
+largest number of iterations, 64, and the limits $1/8$ and $1/4$ of the series
+of ``Numerics of the hop''.
 Eq.~\eqref{eq:h2-exponent} is \code{radiation\_h2\_shielding\_exponent}
-(:82-96). Its density factor is the natural exponential (:94), and $T$ is
+(:90-104). Its density factor is the natural exponential (:102), and $T$ is
 clamped to $100$ to $8000$\,K and $n$ to at most $10^7$\,cm$^{-3}$, as in
-Grackle (\code{solve\_rate\_cool\_g.F}) and geajay (\code{src/h2.h}). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
-(:140-146), with its two terms in \code{radiation\_h2\_shielding\_factor\_terms}
-(:116-127, the cap on the column at :121-122). $\mathcal S_0$ is
-\code{radiation\_h2\_shielding\_factor\_at\_zero} (:179-181). The inverse is
-\code{radiation\_h2\_shielding\_inverse\_from} (:205-256), with the two limits at
-:207-213, the first guess at :219-231 and the Newton steps at :233-255. The
+Grackle (\code{solve\_rate\_cool\_g.F}) and geajay (\code{src/h2.h}). The series
+of $\ln(1+\delta)$ is \code{radiation\_h2\_shielding\_log1p\_small} (:115-123),
+and that of $e^{-y}$ is \code{radiation\_h2\_shielding\_exp\_neg} (:134-149, the
+library exponential at :135). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
+(:193-199), with its two terms in \code{radiation\_h2\_shielding\_factor\_terms}
+(:169-180, the cap on the column at :174-175). $\mathcal S_0$ is
+\code{radiation\_h2\_shielding\_factor\_at\_zero} (:232-234). The inverse is
+\code{radiation\_h2\_shielding\_inverse\_from} (:258-309), with the two limits at
+:260-266, the first guess at :272-284 and the Newton steps at :286-308. The
 logarithm of the factor and its slope are
-\code{radiation\_h2\_shielding\_log\_factor\_slope} (:160-170). The hop of Eq.~\eqref{eq:h2-hop} is
-\code{radiation\_h2\_shielding\_hop\_factor} (:291-306). For a receiver with no
+\code{radiation\_h2\_shielding\_log\_factor\_slope} (:213-223). The hop of Eq.~\eqref{eq:h2-hop} is
+\code{radiation\_h2\_shielding\_hop\_factor} (:344-385). For a receiver with no
 line width, or when both $\Sigma$ and $\Delta\Sigma$ are 0, it leaves the share
-as it is and returns $\mathcal S_0$ (:293-294). For $\Delta\Sigma\le0$ it
-returns $\mathcal S(\Sigma)$ (:295). Otherwise it clamps the ratio at 1
-(:302-303) and returns the factor of the new column, which $\mathcal B_k$
-divides by.
+as it is and returns $\mathcal S_0$ (:346-347). For $\Delta\Sigma\le0$ it
+returns $\mathcal S(\Sigma)$ (:348). Otherwise it takes the factor after the hop
+from the ratios of Eq.~\eqref{eq:h2-hop-ratios} for $\delta\le1/8$ (:369-377),
+with both columns clamped at 0 as in the factor (:364-365),
+and directly otherwise (:378-380), clamps the ratio at 1 (:381-382) and
+returns the factor of the new column, which $\mathcal B_k$ divides by.
 
 The velocity step and the reset of Eq.~\eqref{eq:h2-shift} are
-\code{radiation\_h2\_shielding\_shift} (:339-351). The gas of a receiver gives
+\code{radiation\_h2\_shielding\_shift} (:418-430). The gas of a receiver gives
 $\Delta\Sigma$ per unit of path, $\alpha$, $b_5$ and $\Delta v_{\max}$ through
-\code{radiation\_h2\_shielding\_receiver\_cache} (:418-439). There $n_{{\rm H}_2}$
-is at :426, the exponent at :430, $b_5$ at :435 and the velocity limit at
-:436-437.
+\code{radiation\_h2\_shielding\_receiver\_cache} (:497-518). There $n_{{\rm H}_2}$
+is at :505, the exponent at :509, $b_5$ at :514 and the velocity limit at
+:515-516.
 
 The fit of a particle is cached by \code{radiation\_cache\_H2\_line\_absorption}
 (\code{radiation\_isrf.c:134-170}). The column per length is written at every
