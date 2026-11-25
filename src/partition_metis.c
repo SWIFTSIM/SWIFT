@@ -42,7 +42,6 @@
 /* Local headers. */
 #include "engine.h"
 #include "error.h"
-#include "minmax.h"
 #include "partition.h"
 #include "sort_part.h"
 #include "space.h"
@@ -1482,47 +1481,27 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
 /**
  * @brief Compute the volume weights of the top-level cells.
  *
- * The weight of a cell is the number of gravity mesh cells it covers. When
- * using the distributed mesh a rank allocates a mesh patch spanning the
- * particles of each of its cells, so this is an estimate of the size of that
- * patch (exact for a cell with particles throughout, too large for a cell
- * that is empty or nearly so). Balancing these stops ranks with a large
- * volume and few particles being handed an unbounded fraction of the mesh.
- *
- * The weights are rescaled so that their sum is in the range of idx_t.
+ * METIS weights are integers, so the volumes are given in units of the
+ * top-level cell volume.
  *
  * @param s the space of cells.
  * @param weights (return) the volume weights, sizeof number of cells.
  */
 void partition_volume_weights(const struct space *s, double *weights) {
 
-  /* Without a mesh there is nothing to balance (N is zero when not running
-   * with periodic self-gravity). */
-  const int N = s->e->mesh->N;
-  if (N <= 0) {
-    error(
-        "DomainDecomposition:volume_weights requires a periodic gravity mesh.");
+  /* Convert to units of the top-level cell volume. The factor of 2 is needed
+   * as the pick functions zero weights that are not larger than 1. */
+  double scale = 2.0 / (s->width[0] * s->width[1] * s->width[2]);
+
+  /* Unless that would take the sum out of the range of idx_t. */
+  const double sum = s->dim[0] * s->dim[1] * s->dim[2];
+  if (sum * scale > (double)IDX_MAX) {
+    scale = (double)(IDX_MAX - 1000) / sum;
   }
 
-  /* Number of mesh cells per unit volume. */
-  const double fac = ((double)N / s->dim[0]) * ((double)N / s->dim[1]) *
-                     ((double)N / s->dim[2]);
-
-  /* Volume of each top-level cell in mesh cells. We use the width of the
-   * cell itself so this does not assume the cells are all the same size. */
-  double sum = 0.0;
   for (int k = 0; k < s->nr_cells; k++) {
     const struct cell *c = &s->cells_top[k];
-    weights[k] = c->width[0] * c->width[1] * c->width[2] * fac;
-    sum += weights[k];
-  }
-
-  /* Keep the sum in the range of idx_t. Note the pick functions zero vertex
-   * weights that are not larger than 1, so also keep above that. */
-  const double scale =
-      (sum > (double)IDX_MAX) ? (double)(IDX_MAX - 1000) / sum : 1.0;
-  for (int k = 0; k < s->nr_cells; k++) {
-    weights[k] = max(weights[k] * scale, 2.0);
+    weights[k] = c->width[0] * c->width[1] * c->width[2] * scale;
   }
 }
 
