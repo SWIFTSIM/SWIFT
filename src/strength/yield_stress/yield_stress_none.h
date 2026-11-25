@@ -60,6 +60,23 @@ __attribute__((always_inline)) INLINE static float yield_damage_factor(
 }
 
 /**
+ * @brief Apply damage to the pressure in tension.
+ *
+ * Negative pressures are scaled by the damage factor.
+ *
+ * @param pressure The pressure, negative in tension, to be modified.
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static void
+yield_apply_damage_to_tensile_pressure(float *pressure,
+                                       struct strength_state *s,
+                                       const struct mat_params *mp) {
+
+  *pressure *= yield_damage_factor(s, mp);
+}
+
+/**
  * @brief Apply the yield stress to a symmetric matrix.
  *
  * Empty function when configuring without yield stress method.

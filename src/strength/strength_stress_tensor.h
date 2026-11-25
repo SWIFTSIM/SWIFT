@@ -54,7 +54,7 @@ strength_compute_max_wave_speed_stress_tensor(float *wave_speed,
 /**
  * @brief Modify the pressure when in tension.
  *
- * Damage scales negative pressures by the damage factor of the yield stress
+ * Negative pressures are modified by damage, depending on the yield stress
  * method.
  *
  * @param pressure The pressure, to be modified if negative.
@@ -66,7 +66,7 @@ strength_modify_pressure_in_tension(float *pressure, struct strength_state *s,
                                     const struct mat_params *mp) {
 
   if (*pressure < 0.f) {
-    *pressure *= yield_damage_factor(s, mp);
+    yield_apply_damage_to_tensile_pressure(pressure, s, mp);
   }
 }
 

@@ -59,6 +59,23 @@ __attribute__((always_inline)) INLINE static float yield_damage_factor(
 }
 
 /**
+ * @brief Apply damage to the pressure in tension.
+ *
+ * Negative pressures are scaled by the damage factor.
+ *
+ * @param pressure The pressure, negative in tension, to be modified.
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static void
+yield_apply_damage_to_tensile_pressure(float *pressure,
+                                       struct strength_state *s,
+                                       const struct mat_params *mp) {
+
+  *pressure *= yield_damage_factor(s, mp);
+}
+
+/**
  * @brief Compute damaged yield stress.
  *
  * With the Benz&Asphaug95 yield stress method, damage does not affect the yield

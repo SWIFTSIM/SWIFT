@@ -28,6 +28,8 @@
 #include "const.h"
 #include "math.h"
 
+#include <float.h>
+
 /**
  * @brief Sets the yield stress properties of the strength state from the
  * particle.
@@ -46,8 +48,8 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
  * @brief Returns the damage factor by which damage scales the stress and
  * pressure.
  *
- * Damage does not scale the stress. It is instead applied to the yield stress,
- * and tension is limited by the minimum pressure.
+ * Damage does not scale the stress or pressure. It is instead applied to the
+ * yield stress and to the pressure in tension.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -56,6 +58,37 @@ __attribute__((always_inline)) INLINE static float yield_damage_factor(
     struct strength_state *s, const struct mat_params *mp) {
 
   return 1.f;
+}
+
+/**
+ * @brief Apply damage to the pressure in tension.
+ *
+ * Combines the pressures of fully intact and fully damaged material, like the
+ * yield stress. Intact material keeps the tension, while fully damaged
+ * material supports tension only down to where its yield stress reaches zero.
+ *
+ * @param pressure The pressure, negative in tension, to be modified.
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static void
+yield_apply_damage_to_tensile_pressure(float *pressure,
+                                       struct strength_state *s,
+                                       const struct mat_params *mp) {
+
+  const float mu_d = mp->yield_stress_collins_mu_d;
+  const float Y_0d = mp->yield_stress_collins_Y_0d;
+
+  float pressure_zero_damaged = 0.f;
+  if (Y_0d > 0.f) {
+    pressure_zero_damaged = (mu_d > 0.f) ? -Y_0d / mu_d : -FLT_MAX;
+  }
+
+  const float pressure_fully_intact = *pressure;
+  const float pressure_fully_damaged = fmaxf(*pressure, pressure_zero_damaged);
+
+  *pressure = (1.f - s->damage.total) * pressure_fully_intact +
+              s->damage.total * pressure_fully_damaged;
 }
 
 /**

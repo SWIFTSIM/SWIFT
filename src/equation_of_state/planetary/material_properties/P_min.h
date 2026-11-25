@@ -48,49 +48,30 @@ __attribute__((always_inline)) INLINE static float material_P_min_constant(
 
 /**
  * @brief The yield-envelope scheme for the minimum pressure, which uses the
- * pressure at which the yield stress reaches zero in tension.
+ * pressure at which the yield stress of intact material reaches zero in
+ * tension.
+ *
+ * Damage is applied to the pressure in tension separately, by the yield stress
+ * method.
  *
  * @param mp The material parameters.
- * @param damage The total damage.
  * @param mat_id The material ID.
  */
 __attribute__((always_inline)) INLINE static float
-material_P_min_yield_envelope(const struct mat_params *mp, const float damage,
+material_P_min_yield_envelope(const struct mat_params *mp,
                               const enum eos_planetary_material_id mat_id) {
 
 #if defined(STRENGTH_YIELD_STRESS_COLLINS)
   const float Y_0i = mp->yield_stress_collins_Y_0i;
   const float Y_Mi = mp->yield_stress_collins_Y_Mi;
   const float mu_i = mp->yield_stress_collins_mu_i;
-  const float Y_0d = mp->yield_stress_collins_Y_0d;
-  const float mu_d = mp->yield_stress_collins_mu_d;
-  const float D = damage;
 
-  /* The yield stress is Y = (1 - D) Y_i + D Y_d, with Y_d not capped at zero
-   * but capped at Y_i. Find the pressure at which Y is zero. */
-
-  /* Constant Y_i = Y_0i, when it does not depend on pressure. Intact material
-   * then never reaches zero, and otherwise the zero is linear in P. */
+  /* A pressure-independent intact yield stress never reaches zero. */
   if ((Y_Mi <= Y_0i) || (mu_i == 0.f)) {
-    if (D * mu_d <= 0.f) {
-      return -FLT_MAX;
-    }
-    return -((1.f - D) * Y_0i + D * Y_0d) / (D * mu_d);
+    return -FLT_MAX;
   }
 
-  /* Solve quadratic equation for P. */
-  const float k = mu_i / (Y_Mi - Y_0i);
-  const float a = D * mu_d * k;
-  const float b = (1.f - D) * (mu_i + Y_0i * k) + D * (mu_d + Y_0d * k);
-  const float c = (1.f - D) * Y_0i + D * Y_0d;
-
-  /* Use the larger root, the first zero reached in tension down from P = 0:
-   * (-b + sqrt(b^2 - 4 a c)) / (2 a), rewritten to avoid dividing by a. */
-  const float P_zero = -2.f * c / (b + sqrtf(fmaxf(b * b - 4.f * a * c, 0.f)));
-
-  /* Y_d is capped at Y_i, so Y also reaches zero no later than Y_i does. */
-  const float P_zero_intact = -Y_0i * (Y_Mi - Y_0i) / (mu_i * Y_Mi);
-  return fmaxf(P_zero, P_zero_intact);
+  return -Y_0i * (Y_Mi - Y_0i) / (mu_i * Y_Mi);
 #else
   error(
       "Material %d: P_min_scheme yield_envelope needs the Collins yield "
