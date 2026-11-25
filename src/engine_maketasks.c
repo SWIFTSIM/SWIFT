@@ -1617,9 +1617,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
           /* zoom.init_out -> void.init_out */
           /* Avoids void level MM tasks interacting zoom top level multipoles
-           * which have not yet been initialised. */
+           * which have not yet been initialised. Note that only top level
+           * zoom cells have a void_parent, so go via the top level cell in
+           * case the super level is below it. */
           scheduler_addunlock(s, c->grav.init_out,
-                              c->void_parent->grav.init_out);
+                              c->top->void_parent->grav.init_out);
 
           /* void.down -> zoom.down_in */
           scheduler_addunlock(s, c->void_super->grav.down, c->grav.down_in);
