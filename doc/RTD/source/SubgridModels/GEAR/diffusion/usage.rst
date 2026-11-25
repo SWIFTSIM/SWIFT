@@ -103,20 +103,24 @@ MPI support
 ~~~~~~~~~~~~
 
 .. warning::
-   Running with more than one MPI rank is **not currently supported** for
-   either the parabolic or the hyperbolic FVPM diffusion scheme, and this
-   is enforced by an explicit, unconditional error at start-up, whatever
-   the value of ``GEARChemistry:use_positivity_limiter``. Two parts of the
-   exchange across ranks are missing. With an SPH hydro scheme (e.g.
-   SPHENIX), a local inactive particle gets no flux from an active
-   neighbour on another rank, so the metal mass is not conserved. With the
-   positivity limiter, the flux uses the limiter factor of a donor on
-   another rank, and no task sends this factor between ranks.
+   Both the parabolic and the hyperbolic FVPM diffusion schemes run on more
+   than one MPI rank only under all of the following conditions. SWIFT stops
+   at start-up otherwise.
 
-   In short: **configure and run single-node/single-rank** (e.g. with
-   ``--disable-mpi``, or by launching ``swift`` rather than ``swift_mpi``,
-   or ``swift_mpi`` on a single rank) when using either FVPM diffusion
-   scheme.
+   * ``GEARChemistry:use_positivity_limiter`` is ``0``. With the limiter on,
+     the flux of a pair uses the limiter factor of a donor on another rank,
+     and no task sends this factor between ranks.
+   * The hydro scheme is SPHENIX or Gizmo MFM. These are the only schemes
+     tested on several ranks. Gizmo MFV and every other scheme are refused.
+   * Sinks are not used. Sinks are not supported on several ranks.
+
+   With these conditions, the metal mass is conserved to round-off and the
+   flux of every pair across a rank boundary is the same on both ranks.
+   Without the limiter, a particle can give away more metal than it holds,
+   so a negative metal mass can appear. The limiter-off runs tested
+   reproduce the negative counts of the one-rank run. For a run that needs
+   the limiter, use a single rank (e.g. ``swift``, or ``swift_mpi`` on one
+   rank).
 
 Worked examples
 ~~~~~~~~~~~~~~~~

@@ -941,11 +941,12 @@ cooling, ever observes it.
 
 \textbf{MPI.}
 The donor-side sums of Eq.~\eqref{eq:fct-sum} are purely local: a
-particle's neighbours across a rank boundary do not currently contribute
-to its $\Sigma_{\rm out}$. Rather than silently drop this correction on
-multi-rank runs, the code raises a hard error at start-up when run on
-more than one MPI rank; distributed
-accumulation is not yet implemented.
+particle's neighbours across a rank boundary do not contribute to its
+$\Sigma_{\rm out}$, and the factor $\theta$ of a donor on another rank is
+not communicated. Rather than silently drop this correction on multi-rank
+runs, the code raises a hard error at start-up when run on more than one
+MPI rank with the limiter on. With the limiter off, runs on several ranks
+are allowed for the SPHENIX and Gizmo MFM hydro schemes only.
 
 \section{Time Integration}
 \label{sec:time-integration}

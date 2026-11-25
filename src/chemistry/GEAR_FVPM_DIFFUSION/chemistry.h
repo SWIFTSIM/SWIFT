@@ -49,6 +49,13 @@
 #error "The GEAR FVPM chemistry needs a hydro scheme with a gradient loop."
 #endif
 
+/*! Is the hydro scheme tested on more than one MPI rank? */
+#if defined(SPHENIX_SPH) || defined(GIZMO_MFM_SPH)
+static const int chemistry_mpi_tested_hydro = 1;
+#else
+static const int chemistry_mpi_tested_hydro = 0;
+#endif
+
 /* Some constants */
 #define GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR 0.8
 #define GEAR_FVPM_DIFFUSION_NORMALISATION_DEFAULT 1.0
@@ -367,15 +374,18 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 #ifdef WITH_MPI
   int nr_ranks = 1;
   MPI_Comm_size(MPI_COMM_WORLD, &nr_ranks);
-  if (nr_ranks > 1)
-    error(
-        "The GEAR FVPM chemistry does not support runs on more than one MPI "
-        "rank yet. With SPH (e.g. SPHENIX), a local inactive particle gets no "
-        "flux from a foreign active neighbour, so the metal mass is not "
-        "conserved. "
-        "With the positivity limiter, the flux uses the theta of a foreign "
-        "donor, and no task sends theta between the prep and the apply "
-        "pass.");
+  if (nr_ranks > 1) {
+    if (!chemistry_mpi_tested_hydro)
+      error(
+          "The GEAR FVPM chemistry is tested on more than one MPI rank only "
+          "with the SPHENIX and the Gizmo MFM hydro schemes.");
+    if (data->use_positivity_limiter)
+      error(
+          "With the positivity limiter, the flux uses the theta of a foreign "
+          "donor, and no task sends it between the prep and the apply pass. "
+          "Set GEARChemistry:use_positivity_limiter: 0 to run on several "
+          "ranks.");
+  }
 #endif
 
   /***************************************************************************/
