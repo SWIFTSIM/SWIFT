@@ -1141,7 +1141,8 @@ static void space_split_subtrees_mapper(void *map_data, int num_elements,
  * @param s The #space.
  * @param large_cells The indices of the large top-level cells, which must all
  * need to be split.
- * @param nr_large The number of large cells.
+ * @param nr_large The number of large cells. It may be 0, in which case the
+ * small cells are only split whole, largest first.
  * @param small_cells The indices of the other top-level cells.
  * @param nr_small The number of other cells.
  */
@@ -1195,13 +1196,19 @@ static void space_split_large_cells(struct space *s, const int *large_cells,
   }
 
   /* Keep the buffers of the large cells to free them at the end */
-  struct space_split_item *tops = (struct space_split_item *)malloc(
-      nr_large * sizeof(struct space_split_item));
-  if (tops == NULL) error("Failed to allocate the split work list.");
-  memcpy(tops, level, nr_large * sizeof(struct space_split_item));
+  struct space_split_item *tops = NULL;
+  if (nr_large > 0) {
+    tops = (struct space_split_item *)malloc(nr_large *
+                                             sizeof(struct space_split_item));
+    if (tops == NULL) error("Failed to allocate the split work list.");
+    memcpy(tops, level, nr_large * sizeof(struct space_split_item));
 
-  /* Largest first, then the small cells, largest first, split whole */
-  qsort(level, nr_large, sizeof(struct space_split_item), space_split_item_cmp);
+    /* Largest first */
+    qsort(level, nr_large, sizeof(struct space_split_item),
+          space_split_item_cmp);
+  }
+
+  /* Then the small cells, largest first, split whole */
   for (int k = 0; k < nr_small; k++) {
     struct space_split_item item;
     bzero(&item, sizeof(item));
@@ -1316,7 +1323,7 @@ static void space_split_large_cells(struct space *s, const int *large_cells,
  * cost (see space_split_cell_cost()) exceeds space_split_large_cell_factor
  * times a thread's share of the total cost are split together by all the
  * threads in space_split_large_cells(). All the other cells are split whole,
- * each by a single thread.
+ * each by a single thread, largest first.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1364,16 +1371,16 @@ void space_split(struct space *s, int verbose) {
     }
   }
 
-  if (nr_large == 0) {
+  if (nr_threads == 1 || nr_cells == 0) {
 
-    /* All the cells are split by one thread each */
+    /* All the cells are split in turn */
     threadpool_map(&s->e->threadpool, space_split_mapper, small_cells, nr_small,
                    sizeof(int), threadpool_auto_chunk_size, s);
 
   } else {
 
-    /* The large cells are split together using all the threads, the
-     * small ones alongside */
+    /* The large cells (if any) are split together using all the threads, the
+     * small ones alongside, whole and largest first */
     space_split_large_cells(s, large_cells, nr_large, small_cells, nr_small);
 
     /* Check the trees and collect their global information */
