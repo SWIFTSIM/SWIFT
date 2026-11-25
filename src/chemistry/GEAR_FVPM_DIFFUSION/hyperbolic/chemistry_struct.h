@@ -89,6 +89,11 @@ struct chemistry_part_data {
    * outflow sum; frozen during the flux exchange. */
   double fct_theta[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /*! Integer time at which fct_theta was computed; -1 if not received. */
+  integertime_t ti_fct_theta;
+#endif
+
   struct {
     /*! Counts the successive number of times this particle was negative */
     unsigned int negativity_counter[GEAR_CHEMISTRY_ELEMENT_COUNT];

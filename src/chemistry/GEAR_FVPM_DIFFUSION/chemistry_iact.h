@@ -432,6 +432,24 @@ chemistry_debug_count_pair_interval(struct part *restrict pi,
     pj->chemistry_data.flux_catch_up_count += catch_up;
   }
 }
+
+/**
+ * @brief Stop if the theta of a foreign particle is not the one its rank
+ * computed in this step.
+ *
+ * @param p The foreign #part.
+ * @param t_current The current integer time.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_debug_check_foreign_theta(const struct part *restrict p,
+                                    const integertime_t t_current) {
+  if (p->chemistry_data.ti_fct_theta != t_current)
+    error(
+        "The positivity limiter factor of the foreign particle %lld is from "
+        "ti=%lld, not from the current step ti=%lld: its theta message was "
+        "not unpacked before the force loop.",
+        p->id, p->chemistry_data.ti_fct_theta, t_current);
+}
 #endif
 
 /**
@@ -637,6 +655,10 @@ runner_iact_chemistry_flux_exchange(
   if (chemistry_part_is_flux_inactive(pi, max_active_bin))
     error("The first particle of the flux exchange (id %lld) is inactive.",
           pi->id);
+  if (pass == chemistry_flux_pass_apply && chem_data->use_positivity_limiter) {
+    if (!local_first) chemistry_debug_check_foreign_theta(pi, t_current);
+    if (!local_second) chemistry_debug_check_foreign_theta(pj, t_current);
+  }
 #endif
 
   if (both_updatable_here) {

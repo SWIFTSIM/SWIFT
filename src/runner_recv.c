@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "chemistry.h"
 #include "engine.h"
 #include "feedback.h"
 #include "timers.h"
@@ -104,6 +105,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
       dx_outside_max =
           max(dx_outside_max, cell_distance_outside_box(c, parts[k].x));
       parts[k].gpart = NULL;
+      chemistry_mark_flux_theta_stale(&parts[k]);
       if (parts[k].time_bin <= max_active_bin)
         h_max_active = max(h_max_active, parts[k].h);
     }

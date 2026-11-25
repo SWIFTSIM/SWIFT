@@ -594,11 +594,16 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  *
  * @param p The particle to act upon.
  * @param cd The global chemistry information.
+ * @param ti_current The current integer time.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
-    struct part *restrict p, const struct chemistry_global_data *cd) {
+    struct part *restrict p, const struct chemistry_global_data *cd,
+    const integertime_t ti_current) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  chd->ti_fct_theta = ti_current;
+#endif
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double sum_out = chd->fct_sum_out[i];
@@ -617,6 +622,66 @@ __attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
     }
     chd->fct_sum_out[i] = 0.0;
   }
+}
+
+/**
+ * @brief Size in bytes of the positivity limiter data of one particle in the
+ * message to the other ranks.
+ */
+__attribute__((always_inline)) INLINE static size_t chemistry_flux_theta_size(
+    void) {
+  size_t size = GEAR_CHEMISTRY_ELEMENT_COUNT * sizeof(double);
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  size += sizeof(integertime_t);
+#endif
+  return size;
+}
+
+/**
+ * @brief Pack the positivity limiter data of a particle for the other ranks.
+ *
+ * @param p The #part.
+ * @param buffer Where to write chemistry_flux_theta_size() bytes.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_pack_flux_theta(
+    const struct part *restrict p, char *restrict buffer) {
+
+  const struct chemistry_part_data *chd = &p->chemistry_data;
+  memcpy(buffer, chd->fct_theta, sizeof(chd->fct_theta));
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  memcpy(buffer + sizeof(chd->fct_theta), &chd->ti_fct_theta,
+         sizeof(chd->ti_fct_theta));
+#endif
+}
+
+/**
+ * @brief Unpack the positivity limiter data of a foreign particle.
+ *
+ * @param p The #part.
+ * @param buffer Where to read chemistry_flux_theta_size() bytes.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_unpack_flux_theta(
+    struct part *restrict p, const char *restrict buffer) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+  memcpy(chd->fct_theta, buffer, sizeof(chd->fct_theta));
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  memcpy(&chd->ti_fct_theta, buffer + sizeof(chd->fct_theta),
+         sizeof(chd->ti_fct_theta));
+#endif
+}
+
+/**
+ * @brief Mark the theta of a foreign particle as not received, after a
+ * message overwrote the whole particle.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_mark_flux_theta_stale(struct part *restrict p) {
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  p->chemistry_data.ti_fct_theta = -1;
+#endif
 }
 
 /**
@@ -779,6 +844,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->chemistry_data.flux_exchange_count[1] = 0;
   p->chemistry_data.flux_coverage_ticks = 0;
   p->chemistry_data.flux_catch_up_count = 0;
+  p->chemistry_data.ti_fct_theta = -1;
 #endif
 
   /* Runs start at ti = 0. */

@@ -41,6 +41,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "chemistry.h"
 #include "cycle.h"
 #include "engine.h"
 #include "error.h"
@@ -743,7 +744,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_pack:
       case task_type_unpack:
-        if (t->subtype == task_subtype_limiter)
+        if (t->subtype == task_subtype_limiter ||
+            t->subtype == task_subtype_chemistry_flux_prep)
           cost = wscale * count_i;
         else if (t->subtype == task_subtype_gpart)
           cost = wscale * gcount_i;
@@ -872,6 +874,19 @@ void scheduler_start(struct scheduler *s) {
   pthread_mutex_unlock(&s->sleep_mutex);
 }
 
+#ifdef WITH_MPI
+/**
+ * @brief Size in bytes of the data of one gas particle in a packed message.
+ *
+ * @param t The send or recv #task of the limiter or of the chemistry flux
+ * prep loop.
+ */
+static size_t scheduler_packed_part_size(const struct task *t) {
+  if (t->subtype == task_subtype_limiter) return sizeof(timebin_t);
+  return chemistry_flux_theta_size();
+}
+#endif
+
 /**
  * @brief Put a task on one of the queues.
  *
@@ -997,11 +1012,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
 
-        } else if (t->subtype == task_subtype_limiter) {
+        } else if (t->subtype == task_subtype_limiter ||
+                   t->subtype == task_subtype_chemistry_flux_prep) {
 
-          size = count = t->ci->hydro.count * sizeof(timebin_t);
+          size = count = t->ci->hydro.count * scheduler_packed_part_size(t);
           if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
-            error("Error allocating timebin recv buffer");
+            error("Error allocating %s recv buffer",
+                  subtaskID_names[t->subtype]);
           type = MPI_BYTE;
           t->buff = buff;
           task_get_unique_dependent(t)->buff = buff;
@@ -1118,9 +1135,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
 
-        } else if (t->subtype == task_subtype_limiter) {
+        } else if (t->subtype == task_subtype_limiter ||
+                   t->subtype == task_subtype_chemistry_flux_prep) {
 
-          size = count = t->ci->hydro.count * sizeof(timebin_t);
+          size = count = t->ci->hydro.count * scheduler_packed_part_size(t);
           type = MPI_BYTE;
           buff = t->buff;
 
