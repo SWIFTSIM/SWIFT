@@ -68,7 +68,7 @@ before t = r / (f c), whatever the gas, the hops or the star step: every hop pat
 as the straight distance. The snapshot that first shows light in a particle is written at or after
 the arrival, so the time of that snapshot over r / (f c) is at least 1. The bar is a lower bound
 only. The delay above it (about one gas step per hop, plus up to one star step for a coarse star)
-has no derived upper bound in the check: it is printed as a reading in gas steps per shell.
+has no derived upper bound in the check: it is printed as a reading in snapshot intervals per shell (gas steps only while each step writes one snapshot).
 
 Far-light warning. The start-up log of `cap_coarse` and `cap_half` prints that more than 3 per cent
 of the light was booked in far arrival cells. That limit was chosen for light that crosses a
@@ -661,7 +661,7 @@ def gate_front(args: argparse.Namespace) -> int:
     0 and holds no light; every read particle is lit in the last snapshot; every value is finite.
 
     Bar. See the module docstring: for each read particle, the time of its first lit snapshot over
-    r / (f c) is at least 1. The reading per shell (median delay above r / (f c), in gas steps) is
+    r / (f c) is at least 1. The reading per shell (median delay above r / (f c), in snapshot intervals) is
     printed and not gated.
     """
     rep = Report()
@@ -703,7 +703,7 @@ def gate_front(args: argparse.Namespace) -> int:
             lag = (arrival[mask][sel] - travel[mask][sel]) / step
             rep.info(
                 "delay above the light travel time",
-                f"shell {lo:.1f} to {hi:.1f} pc: median {float(np.median(lag)):.1f} gas steps "
+                f"shell {lo:.1f} to {hi:.1f} pc: median {float(np.median(lag)):.1f} snapshot intervals "
                 "(reading, not gated)",
             )
     rep.check(
