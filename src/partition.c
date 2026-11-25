@@ -533,6 +533,20 @@ void partition_init(struct partition *partition,
       parser_get_opt_param_int(params, "DomainDecomposition:metis_seed", -1);
   partition->metis_seed = repartition->metis_seed;
 
+  /* Balance the volume of the domains as well as the usual weights? */
+  repartition->volume_weights =
+      parser_get_opt_param_int(params, "DomainDecomposition:volume_weights", 0);
+  partition->volume_weights = repartition->volume_weights;
+
+  /* Imbalance tolerance of the volume constraint. */
+  repartition->volume_imbalance = parser_get_opt_param_float(
+      params, "DomainDecomposition:volume_imbalance", 2.0f);
+  if (repartition->volume_imbalance <= 1.f) {
+    error(
+        "Invalid DomainDecomposition:volume_imbalance, must be greater than 1");
+  }
+  partition->volume_imbalance = repartition->volume_imbalance;
+
   /* Use adaptive or simple refinement when repartitioning. */
   repartition->adaptive =
       parser_get_opt_param_int(params, "DomainDecomposition:adaptive", 1);

@@ -56,6 +56,8 @@ struct partition {
   int grid[3];
   int usemetis;
   int metis_seed;
+  int volume_weights;
+  float volume_imbalance;
 };
 
 /* Repartition type to use. */
@@ -76,6 +78,8 @@ struct repartition {
   int usemetis;
   int metis_seed;
   int adaptive;
+  int volume_weights;
+  float volume_imbalance;
 
   int use_fixed_costs;
   int use_ticks;
