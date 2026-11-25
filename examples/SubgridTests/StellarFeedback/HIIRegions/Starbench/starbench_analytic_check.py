@@ -29,10 +29,14 @@ agree with high-resolution simulations to <~2%:
   Eqn 8  (Raga-I):  the exact pressure-driven thin-shell ODE (Spitzer's
                      closed-form solution is what you get by dropping the
                      small mu_i*T_o/(mu_o*T_i) term from this).
-  Eqn 12 (Raga-II): Hosokawa & Inutsuka (2006)'s shell-inertia solution in
-                     its first-integral form, the one the paper's figures and
-                     Table 4 follow. It starts at R_St and stops at the
-                     stagnation radius R_STAG, where its square root reaches 0.
+  Eqn 12 (Raga-II): Hosokawa & Inutsuka (2006)'s shell-inertia solution as
+                     printed in the paper. It is not the exact first integral
+                     of Eqn 11 (that has -c_o^2 where Eqn 12 has -c_o^2/2, and
+                     stalls near 2.80 pc for the paper's inputs; Eqn 12 stalls
+                     at 4.452 pc). The paper's text names Eqn 11, but its
+                     figures and Table 4 follow Eqn 12, so this check does too.
+                     The curve starts at R_St and stops at the stagnation
+                     radius R_STAG, where its square root reaches 0.
   Eqn 28: R_SB = R_II + f_SB * (R_I - R_II)
   Eqn 29: f_SB = 1 - 0.733 * exp(-t / 1 Myr)
 
@@ -96,6 +100,7 @@ import glob
 import os
 import re
 import sys
+from typing import List, Optional, Sequence, Tuple
 
 import h5py
 import numpy as np
@@ -132,8 +137,8 @@ def alpha_b_hui_gnedin(T):
 # -----------------------------------------------------------------------------
 # STARBENCH semi-empirical formula (Bisbas et al. 2015)
 # -----------------------------------------------------------------------------
-def stagnation_radius_pc(R_St_pc, c_i_km_s, c_o_km_s):
-    """Stagnation radius of Eqn 12, R_STAG = R_St (8/3)^(2/3) (c_i/c_o)^(4/3).
+def stagnation_radius_pc(R_St_pc: float, c_i_km_s: float, c_o_km_s: float) -> float:
+    """Return the stagnation radius of Eqn 12, R_STAG = R_St (8/3)^(2/3) (c_i/c_o)^(4/3).
 
     @param R_St_pc Initial Stromgren radius (pc).
     @param c_i_km_s, c_o_km_s Ionized/neutral isothermal sound speeds (km/s).
@@ -618,10 +623,15 @@ def resolve_composition(files, uses_neutral):
 # medians of its shells agree within this fraction.
 FAR_SHELL_EDGES = (0.5, 0.6, 0.8, 1.0, 1.2, 1.8)
 FAR_FIELD_UNIFORMITY = 0.02
+# Largest change of the far-field temperature between successive snapshots for
+# the gas to count as warmed.
+PLATEAU_CHANGE = 0.01
 
 
-def never_tagged_far_field_temperatures_K(filename: str, min_count: int = 20):
-    """Temperatures of the never-tagged gas in the far-field shells.
+def never_tagged_far_field_temperatures_K(
+    filename: str, min_count: int = 20
+) -> Tuple[Optional[List[np.ndarray]], bool]:
+    """Return the temperatures of the never-tagged gas in the far-field shells.
 
     A particle is never-tagged when its HIIStarIDs entry matches no star of
     the snapshot. Its temperature uses its own mean molecular weight from the
@@ -669,38 +679,49 @@ def never_tagged_far_field_temperatures_K(filename: str, min_count: int = 20):
         return shells, mu_measured
 
 
-def measure_neutral_temperature_K(files, min_count=20):
-    """Median temperature of the never-tagged gas far from the front, in the
+def measure_neutral_temperature_K(
+    files: Sequence[str], min_count: int = 20
+) -> Tuple[Optional[float], Optional[str]]:
+    """Measure the median temperature of the never-tagged far-field gas, in the
     last snapshot before the shell wave reaches it.
 
-    The neutral gas relaxes uniformly from its initial temperature, then a
-    density and temperature wave from the shell crosses the box. The wave
+    The neutral gas warms for about 0.3 Myr from its initial temperature, then
+    a density and temperature wave from the shell crosses the box. The wave
     arrival is the first snapshot where the shell medians of the far field
     differ by more than FAR_FIELD_UNIFORMITY; the snapshot before it is used.
+    A snapshot qualifies only on the warm plateau: its temperature differs
+    from the previous snapshot's by at most PLATEAU_CHANGE. The first snapshot
+    (initial temperature) never qualifies, so a series too sparse to show the
+    plateau gives no value.
 
     @param files Snapshot filenames, in time order.
     @param min_count Fewest particles each far-field shell must hold.
-    @return (median T [K] over the far field, whether mu came from species
-    arrays, source filename), or (None, False, None) when no snapshot is
-    uniform or a shell median is not finite.
+    @return (median T [K] over the far field, source filename), or
+    (None, None) when no snapshot is on the plateau or a shell median is not
+    finite.
     """
-    chosen = None
+    chosen = (None, None)
+    previous_K = None
     for filename in files:
-        shells, mu_measured = never_tagged_far_field_temperatures_K(filename, min_count)
+        shells, _ = never_tagged_far_field_temperatures_K(filename, min_count)
         if shells is None:
+            previous_K = None
             continue
         medians = np.array([np.median(s) for s in shells])
         if not np.all(np.isfinite(medians)) or np.any(medians <= 0.0):
-            return None, False, None
+            return None, None
         if np.max(medians) / np.min(medians) - 1.0 > FAR_FIELD_UNIFORMITY:
             break
-        chosen = (float(np.median(np.concatenate(shells))), mu_measured, filename)
-    if chosen is None:
-        return None, False, None
+        T_K = float(np.median(np.concatenate(shells)))
+        if previous_K is not None and abs(T_K / previous_K - 1.0) <= PLATEAU_CHANGE:
+            chosen = (T_K, filename)
+        previous_K = T_K
     return chosen
 
 
-def resolve_T_neutral_K(requested_K, files):
+def resolve_T_neutral_K(
+    requested_K: Optional[float], files: Sequence[str]
+) -> Tuple[float, str]:
     """Return (T_o [K] the reference is computed at, verdict marker).
 
     None (the default) means "measure it from the run's own never-tagged gas".
@@ -712,12 +733,13 @@ def resolve_T_neutral_K(requested_K, files):
     @param files Snapshot filenames, in time order.
     @return (T_o [K], "" or a " (T_o MISMATCH: ...)" verdict marker).
     """
-    T_measured_K, _, source = measure_neutral_temperature_K(files)
+    T_measured_K, source = measure_neutral_temperature_K(files)
     if requested_K is None:
         if T_measured_K is None:
             raise RuntimeError(
-                "Could not measure T_o (no snapshot holds uniform far-field "
-                "gas); pass --T-neutral-K explicitly."
+                "Could not measure T_o: no snapshot holds uniform far-field "
+                "gas on the warm plateau (the series needs snapshots at most "
+                "0.05 Myr apart up to 0.3 Myr). Pass --T-neutral-K explicitly."
             )
         print(
             f"T_neutral          : {T_measured_K:.4g} K "
@@ -744,8 +766,8 @@ def resolve_T_neutral_K(requested_K, files):
     return requested_K, ""
 
 
-def verdict_for(rel_error, tol):
-    """ "PASS" when rel_error is finite and within tol; a NaN or inf is "FAIL"."""
+def verdict_for(rel_error: float, tol: float) -> str:
+    """Return "PASS" when rel_error is finite and within tol, else "FAIL"."""
     if not np.isfinite(rel_error):
         return "FAIL"
     return "PASS" if rel_error <= tol else "FAIL"
