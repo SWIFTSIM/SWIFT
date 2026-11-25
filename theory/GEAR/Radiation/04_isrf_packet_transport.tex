@@ -955,9 +955,9 @@ Right: 8 and 16 slots (octants, halved octants).}
 \end{equation}
 with $\theta_x,\theta_y,\theta_z$ three run-time angles, default
 $(24^\circ,36^\circ,66^\circ)$. The default keeps every cell border at least
-$10^\circ$ from the six box axes for $K=12$ ($19^\circ$ for $K=8$, $6^\circ$
+$10^\circ$ from the six box axes for $K=12$ ($18.9^\circ$ for $K=8$, $5.9^\circ$
 for $K=16$, $24$ and $48$). Box diagonals can lie on a border: the $(1,1,1)$ directions are
-$0.01^\circ$ from one at $K=12$. A source or beam exactly along a box diagonal
+$0.01^\circ$ from one at $K=12$, $24$ and $48$, $0.13^\circ$ at $K=16$ and $5.8^\circ$ at $K=8$. A source or beam exactly along a box diagonal
 then gets an arbitrary but deterministic slot; rotate the frame for such a
 setup. A positive run-time seed offset multiplies $R$ on the left by a rotation drawn uniformly from that seed
 \citep{Shoemake1992}, so that repeats of a run use independent frames. The
@@ -2142,7 +2142,7 @@ memory against the delays held exactly: up to $N_{\rm n}$ receiver steps
 (Section~\ref{sec:isrf-far-limit}). $N_{\rm n}$ is the compile-time constant
 \code{RADIATION\_PACKET\_BINS}, 8 by default and set with
 \code{CFLAGS="-DRADIATION\_PACKET\_BINS=<n>"} from 1 to 31. Each bin costs 20
-bytes in every slot, so $20\,N_{\rm slots}$ bytes in every gas particle. The
+bytes in every slot, so $20K$ bytes in every gas particle. The
 light of a hop of length $r$ arrives $r/(v\,\Delta t_r)+s$ receiver steps after
 the departure of the sender, with $s$ the ratio of the step of the sender to
 that of the receiver. With $q=v\,\Delta t_r/h_r$ and $r_h$ the smoothing length
@@ -3530,7 +3530,7 @@ slot struct is \code{feedback\_isrf\_packet\_slot\_data}
 (\code{feedback\_struct.h:386-482}); the packet is
 \code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:484-540}).
 Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
-\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:291-298}).
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:295-302}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
 (\code{src/feedback/GEAR/radiation.h:463-484}, the ratio at :484). The
@@ -3648,7 +3648,7 @@ $\boldsymbol{n}_k$ at :3430, and the fallback direction at :3435-3437. The
 merge returns before any change of origin when the slot received no energy
 (:3794). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
-\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:386-478}).
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:386-482}).
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
