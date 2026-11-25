@@ -14,9 +14,10 @@ fixed.
 ./run.sh                       # cloud at 10 widths: expect the reset
 widths=1 run_name=control ./run.sh   # cloud at 1 width: expect no reset
 ```
-The run lasts 16 steps (`n_steps`, passed to swift as `-n`), whatever the size of the step: the
-light crosses one cell per step, so the number of steps sets how far it reaches. The light then
-crosses the cloud face by several hops and the check reads the last snapshot.
+The run lasts 16 steps (`n_steps`, passed to swift as `-n`), not a fixed end time: the
+light makes one hop per step, so the number of steps sets how far it reaches. The light then
+crosses the cloud face by several hops and the check reads the last snapshot. Keep `n_steps` at
+16 or below, and `dt_max` below `time_end / 16`, or the run reaches `time_end` first.
 `makeIC.py --widths` sets the radial speed of the cloud in units of `b`. The check picks
 the expected case from the speed written in `fixture.json`: more than 3 widths gives the
 reset.

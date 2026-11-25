@@ -1938,8 +1938,7 @@ def gate_velocity(args: argparse.Namespace) -> int:
     particles inside the cloud and compares their line transmission with the bar of the
     reset (the column of the cloud alone) or of no reset (the column of all the gas from
     the star). The expected case follows the speed written in fixture.json: more than 3
-    widths gives the reset. The run lasts 16 steps (run.sh passes -n 15, whatever the step
-    size), so that the light crosses the cloud face by several hops and the light of the
+    widths gives the reset. The run lasts 16 steps (run.sh passes -n 15), so that the light crosses the cloud face by several hops and the light of the
     periodic images of the star has not yet reached the probes.
 
     Bar. Per particle in the cloud at r < L/2 - 2h, with d the path from the cloud face to
