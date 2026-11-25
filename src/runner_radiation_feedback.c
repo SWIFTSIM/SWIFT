@@ -1289,7 +1289,9 @@ static void runner_hii_claim_and_retry(
         /* Only the cell layout stops this star, so ask the next passes,
            and the rebuild check once the radius outgrows the wired
            neighbours, for the radius it would have tried next. The
-           unspent photons wait for the next pass, after that rebuild. */
+           unspent photons are kept for the next pass if the tree reach grew
+           since the last coverage stop, else released as escaped. That pass
+           may run before any rebuild. */
         si->h_hii_request = runner_hii_requested_radius(dynamic_search_radius,
                                                         radius_expansion_factor,
                                                         max_search_radius) /

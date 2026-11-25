@@ -71,7 +71,7 @@ implementation splits the work into two different kinds of task:
 
 \code{cell\_can\_split\_pair\_radiation\_subgrid\_task} /
 \code{cell\_can\_split\_self\_radiation\_subgrid\_task}
-(\code{cell.h:1643-1693}, \code{1421-1440}) are radiation's own splitting
+(\code{cell.h:1643-1693}, \code{1702-1721}) are radiation's own splitting
 criteria, structurally identical to the hydro ones but with an extra
 term: a cell stops splitting (and \code{radiation\_level} is pinned
 there) once
@@ -224,7 +224,7 @@ would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:1406}).
+(\code{runner\_radiation\_feedback.c:1408}).
 
 \begin{figure}[h]
   \centering
@@ -457,11 +457,12 @@ and is not visited (\code{cell\_radiation\_covered\_radius} in
 task graph never wired, and the region is never cut flat at a cell face.
 
 A pass stopped at $r_{\rm cov}$ with photons left asks for a wider tree
-through its search request (\code{h\_hii\_request}) and keeps its unspent
-photons for the next scheduled pass of the star, which runs after the
-rebuild (\code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop},
-Section~\ref{sec:budget-carry}). The outer
-shell then grows one rebuild interval later; no photon is lost.
+through its search request (\code{h\_hii\_request}). Its unspent photons
+are kept for the next pass of the star only if the tree reach grew since
+the star's last coverage stop; otherwise they are released and counted as
+escaped (\code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop},
+Section~\ref{sec:budget-carry}). No rebuild is guaranteed before that next
+pass. The outer shell grows only once a rebuild has widened the tree.
 
 \begin{figure}
   \centering
@@ -494,9 +495,10 @@ stencil before the geometric gap can be exploited; (3) the in-pass
 clamp above, the covered radius of Eq.~\eqref{eq:hii-covered-radius},
 stops a single pass from probing past what the \emph{current} stencil
 can reach, so a pass never silently drops a candidate it can see
-geometrically but cannot walk to: the outer shell it cannot yet reach,
-and the photons for it, are deferred to the next pass after the tree
-rebuild.
+geometrically but cannot walk to: the outer shell it cannot yet reach is
+left to a later pass, once a rebuild has widened the tree. The photons for
+it are carried to the next pass only if the tree reach grew since the
+star's last coverage stop, and are otherwise released as escaped.
 
 \begin{figure}
   \centering
