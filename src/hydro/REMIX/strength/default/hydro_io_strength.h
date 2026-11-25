@@ -103,6 +103,11 @@ INLINE static void hydro_write_particles_strength(const struct part *parts,
                                                   int *num_fields) {
 
   list[*num_fields] = io_make_output_field(
+      "Phases", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, phase,
+      "Phases of the particles (unset=0, fluid=1, solid=2)");
+  *num_fields += 1;
+
+  list[*num_fields] = io_make_output_field(
       "DeviatoricStressTensors", FLOAT, 6, UNIT_CONV_PRESSURE,
       -3.f * hydro_gamma, parts, strength_data.deviatoric_stress_tensor,
       "Deviatoric stress tensors of the particles (xx, yy, zz, xy, xz, yz)");
