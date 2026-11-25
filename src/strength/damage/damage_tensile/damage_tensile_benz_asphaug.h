@@ -128,10 +128,9 @@ damage_tensile_compute_cbrtD_dt(struct strength_damage_rates *damage_rates,
   const float bulk_mod = mp->bulk_mod;
   const float E = 9.f * bulk_mod * shear_mod / (3.f * bulk_mod + shear_mod);
 
-  /* Compute local scalar strain, Benz&Asphaug95 Eqn. 21. Damage reduces the
-   * stress for a given strain by the damage factor, so divide it back out. */
+  /* Compute local scalar strain, Benz&Asphaug95 Eqn. 21. */
   const float local_scalar_strain =
-      max_principal_stress / (yield_damage_factor(s, mp) * E);
+      max_principal_stress / ((1.f - s->damage.total) * E);
 
   /* The number of activated flaws is defined as the number of flaws for which
    * the local scalar strain has reached or exceeded the flaw's activation

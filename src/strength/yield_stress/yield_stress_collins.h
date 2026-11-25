@@ -45,20 +45,19 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
     const struct mat_params *mp) {}
 
 /**
- * @brief Returns the damage factor by which damage scales the stress and
- * pressure.
+ * @brief Apply damage to the deviatoric stress tensor.
  *
- * Damage does not scale the stress or pressure. It is instead applied to the
- * yield stress and to the pressure in tension.
+ * Damage does not scale the deviatoric stress tensor. It is instead applied to
+ * the yield stress and to the pressure in tension.
  *
+ * @param S The deviatoric stress tensor, to be modified.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float yield_damage_factor(
-    struct strength_state *s, const struct mat_params *mp) {
-
-  return 1.f;
-}
+__attribute__((always_inline)) INLINE static void
+yield_apply_damage_to_deviatoric_stress(struct sym_matrix *S,
+                                        struct strength_state *s,
+                                        const struct mat_params *mp) {}
 
 /**
  * @brief Apply damage to the pressure in tension.
@@ -192,7 +191,9 @@ yield_compute_yield_stress_fully_damaged(struct strength_state *s,
   const float yield_stress_fully_intact =
       yield_compute_yield_stress_fully_intact(s, mp);
 
-  return fminf(fminf(Y_0d + mu_d * pressure, Y_Md), yield_stress_fully_intact);
+  return fmaxf(
+      fminf(fminf(Y_0d + mu_d * pressure, Y_Md), yield_stress_fully_intact),
+      0.f);
 }
 
 /**

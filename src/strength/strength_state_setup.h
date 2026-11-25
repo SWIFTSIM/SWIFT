@@ -311,17 +311,14 @@ strength_state_get_stress_tensor(struct strength_state *s,
                                  const struct mat_params *mp) {
 
   if (!s->cache.stress_tensor_computed) {
-    /* Damage scales the deviatoric stress tensor by the damage factor, and is
-     * already applied to the pressure. */
-    const float damage_factor = yield_damage_factor(s, mp);
+    /* Damage is applied to the deviatoric stress tensor depending on the yield
+     * stress method, and is already applied to the pressure. */
     const float pressure = strength_state_get_pressure(s, mp);
     struct sym_matrix stress_tensor = s->deviatoric_stress_tensor;
-    stress_tensor.xx = damage_factor * stress_tensor.xx - pressure;
-    stress_tensor.yy = damage_factor * stress_tensor.yy - pressure;
-    stress_tensor.zz = damage_factor * stress_tensor.zz - pressure;
-    stress_tensor.xy *= damage_factor;
-    stress_tensor.xz *= damage_factor;
-    stress_tensor.yz *= damage_factor;
+    yield_apply_damage_to_deviatoric_stress(&stress_tensor, s, mp);
+    stress_tensor.xx -= pressure;
+    stress_tensor.yy -= pressure;
+    stress_tensor.zz -= pressure;
     s->cache.stress_tensor = stress_tensor;
     s->cache.stress_tensor_computed = true;
   }

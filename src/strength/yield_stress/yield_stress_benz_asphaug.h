@@ -43,25 +43,34 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
     const struct mat_params *mp) {}
 
 /**
- * @brief Returns the damage factor by which damage scales the stress and
- * pressure.
+ * @brief Apply damage to the deviatoric stress tensor.
  *
- * Damage scales the deviatoric stress tensor and negative pressures by (1 - D),
- * so that fully damaged material acts as a fluid. See Benz&Asphaug95 Eqn. 13.
+ * Damage scales the deviatoric stress tensor by (1 - D), so that fully damaged
+ * material acts as a fluid. See Benz&Asphaug95 Eqn. 13.
  *
+ * @param S The deviatoric stress tensor, to be modified.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float yield_damage_factor(
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void
+yield_apply_damage_to_deviatoric_stress(struct sym_matrix *S,
+                                        struct strength_state *s,
+                                        const struct mat_params *mp) {
 
-  return 1.f - s->damage.total;
+  const float factor = 1.f - s->damage.total;
+  S->xx *= factor;
+  S->yy *= factor;
+  S->zz *= factor;
+  S->xy *= factor;
+  S->xz *= factor;
+  S->yz *= factor;
 }
 
 /**
  * @brief Apply damage to the pressure in tension.
  *
- * Negative pressures are scaled by the damage factor.
+ * Negative pressures are scaled by (1 - D), so that fully damaged material
+ * supports no tension. See Benz&Asphaug95 Eqn. 13.
  *
  * @param pressure The pressure, negative in tension, to be modified.
  * @param s The strength state of the particle.
@@ -72,7 +81,7 @@ yield_apply_damage_to_tensile_pressure(float *pressure,
                                        struct strength_state *s,
                                        const struct mat_params *mp) {
 
-  *pressure *= yield_damage_factor(s, mp);
+  *pressure *= 1.f - s->damage.total;
 }
 
 /**
