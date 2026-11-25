@@ -82,7 +82,10 @@ with_pe_heating=0 run_name=rate_off time_end=4e-9 dt_max=6e-10 extra_args="$list
 ```
 `rate_output_list.txt` opens the measuring window one step after the field
 first reaches the gas, so that the two runs start the window with the same
-energy. Its times hold for these `time_end` and `dt_max` values only.
+energy. The window opens at 1.5e-9 because the star, born at t = 0, has light
+in its first step and the field reaches the gas at the end of the second
+step (t = 1e-9). The same list serves every model, Grackle and geajay. Its times hold
+for these `time_end` and `dt_max` values only.
 The ISRF also adds a small dust cooling, so the reference run should carry
 the ISRF too. With geajay, run the reference as `with_pe_heating=1
 pe_model=none`, so that both runs carry the same ISRF, and the difference is
@@ -121,7 +124,7 @@ docstring gives it. The check fails if the heating is too small to resolve.
 Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
 given.
 
-The rate check accepts `--steps-per-window N` (1 for the shipped output lists) and
+The rate check accepts `--steps-per-window N` (1 for the shipped output list) and
 `--cooling-response <Lambda' dt>`, which set the bar from the window and from the response
 of the cooling to the heating; `--help` and the script docstring describe both.
 For the Wolfire model on the shipped fixture (`pe_model=wolfire1995` with free
@@ -135,6 +138,6 @@ python3 isrf_photoelectric_heating_check.py \
     --pe-model grackle-wolfire1995 \
     --steps-per-window 1 --cooling-response 4.2436e-4
 ```
-The value 4.2436e-4 holds for this fixture only: `time_end=4e-9`, `dt_max=6e-10`, the shipped
-output lists and the official Grackle build. Another fixture, cadence or build needs its own
+The value 4.2436e-4 holds for this fixture only: `time_end=4e-9`, `dt_max=6e-10` and the
+official Grackle build. It was not derived at the window start of `rate_output_list.txt` (1.5e-9). Another fixture, cadence or build needs its own
 value, from a one-zone call of the cooling library at the start of the window.
