@@ -396,20 +396,40 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
+  /* Add the volume weights as a second balance constraint, if requested. */
+  double *vertexw = weights_v;
+  int ncon = 1;
+  if (repartition->volume_weights) {
+    double *volumew = NULL;
+    if ((volumew = (double *)malloc(sizeof(double) * nr_cells)) == NULL) {
+      error("Failed to allocate volume weights buffer.");
+    }
+    if ((vertexw = (double *)malloc(sizeof(double) * 2 * nr_cells)) == NULL) {
+      error("Failed to allocate packed vertex weights buffer.");
+    }
+    partition_volume_weights(s, volumew);
+    partition_interleave_weights(weights_v, volumew, nr_cells, vertexw);
+    free(volumew);
+    ncon = 2;
+  }
+
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+    partition_pick_metis(nodeID, s, nr_nodes, vertexw, ncon,
+                         repartition->volume_imbalance, weights_e,
                          repartition->metis_seed, s->e->verbose,
                          repartition->celllist, cell_edge_offsets, nadjcny);
   } else {
-    partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+    partition_pick_parmetis(nodeID, s, nr_nodes, vertexw, ncon,
+                            repartition->volume_imbalance, weights_e, refine,
                             repartition->adaptive, repartition->itr,
                             repartition->metis_seed, s->e->verbose,
                             repartition->celllist, cell_edge_offsets, nadjcny);
   }
 #else
-  partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+  partition_pick_metis(nodeID, s, nr_nodes, vertexw, ncon,
+                       repartition->volume_imbalance, weights_e,
                        repartition->metis_seed, s->e->verbose,
                        repartition->celllist, cell_edge_offsets, nadjcny);
 #endif
@@ -453,6 +473,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Clean up. */
   swift_free("partition_adjncy", inds);
   free(xadj);
+  if (ncon == 2) free(vertexw);
   if (vweights) free(weights_v);
   if (eweights) swift_free("partition_edge_weights", weights_e);
 }
@@ -507,26 +528,48 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   if (cell_edge_offsets == NULL) error("Failed to allocate cell_edge_offsets");
   int nadjcny = partition_count_edges(s, s->periodic, 0, cell_edge_offsets);
 
+  /* Add the volume weights as a second balance constraint, if requested. */
+  double *vertexw = weights;
+  int ncon = 1;
+  if (repartition->volume_weights) {
+    double *volumew = NULL;
+    if ((volumew = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL) {
+      error("Failed to allocate volume weights buffer.");
+    }
+    if ((vertexw = (double *)malloc(sizeof(double) * 2 * s->nr_cells)) ==
+        NULL) {
+      error("Failed to allocate packed vertex weights buffer.");
+    }
+    partition_volume_weights(s, volumew);
+    partition_interleave_weights(weights, volumew, s->nr_cells, vertexw);
+    free(volumew);
+    ncon = 2;
+  }
+
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
+    partition_pick_metis(nodeID, s, nr_nodes, vertexw, ncon,
+                         repartition->volume_imbalance, NULL,
                          repartition->metis_seed, s->e->verbose,
                          repartition->celllist, cell_edge_offsets, nadjcny);
   } else {
-    partition_pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
+    partition_pick_parmetis(nodeID, s, nr_nodes, vertexw, ncon,
+                            repartition->volume_imbalance, NULL, refine,
                             repartition->adaptive, repartition->itr,
                             repartition->metis_seed, s->e->verbose,
                             repartition->celllist, cell_edge_offsets, nadjcny);
   }
 #else
-  partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
+  partition_pick_metis(nodeID, s, nr_nodes, vertexw, ncon,
+                       repartition->volume_imbalance, NULL,
                        repartition->metis_seed, s->e->verbose,
                        repartition->celllist, cell_edge_offsets, nadjcny);
 #endif
 
   /* Clean up edge info */
   free(cell_edge_offsets);
+  if (ncon == 2) free(vertexw);
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
