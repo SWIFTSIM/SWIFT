@@ -123,6 +123,12 @@ MPI support
    a particle can give away more metal than it holds, so a negative metal
    mass can appear.
 
+   With the limiter on, the extra loop and its message add links between the
+   cells and their tasks. A rank with few tasks and many boundary cells can
+   then fill the link table: SWIFT stops with ``Link table overflow``. Raise
+   ``Scheduler:links_per_tasks`` (default ``25``) in the parameter file, for
+   example to ``50``.
+
 Worked examples
 ~~~~~~~~~~~~~~~~
 

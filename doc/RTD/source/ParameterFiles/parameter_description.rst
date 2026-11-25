@@ -1615,7 +1615,7 @@ pre-allocated, but cannot be pre-calculated, so we have the two parameters:
 .. code:: YAML
 
   tasks_per_cell:            0.0
-  links_per_tasks:           10
+  links_per_tasks:           25
 
 which are guesses at the mean numbers of tasks per cell and number of links
 per task. The tasks_per_cell value will be conservatively guessed when set to
@@ -1625,7 +1625,9 @@ and check for the lines that report the ```per cell``` or with MPI ``maximum
 per cell``` values. This number can vary as the balance between MPI ranks
 does, so it is probably best to leave some head room.
 
-If these are exceeded you should get an obvious error message.
+If these are exceeded you should get an obvious error message. The link table
+is sized before the extra-loop and communication tasks exist, so a rank with
+few tasks and many boundary cells needs a larger ``links_per_tasks``.
 
 Finally the parameter:
 

@@ -163,7 +163,7 @@ Scheduler:
   cell_extra_sinks:          0         # (Optional) Number of spare sinks per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
-  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
+  links_per_tasks:           25        # (Optional) The average number of links per task, counted before the extra-loop and communication tasks exist. If too small, the run stops with a link table overflow: raise it (e.g. 50). Defaults to 25.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
