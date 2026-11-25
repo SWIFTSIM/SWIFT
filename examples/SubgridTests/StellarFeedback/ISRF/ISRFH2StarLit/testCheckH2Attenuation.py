@@ -49,7 +49,7 @@ U_L = 3.0856775814913673e21
 def run_gate(argv):
     if argv[0] in GATES and "--startup-log" not in argv:
         argv = [*argv, "--startup-log", START_UP_LOG]
-    if argv[0] == "starlit" and "--timesteps" not in argv:
+    if argv[0] in ("starlit", "twosource") and "--timesteps" not in argv:
         argv = [*argv, "--timesteps", TIMESTEPS]
     out = io.StringIO()
     with contextlib.redirect_stdout(out):

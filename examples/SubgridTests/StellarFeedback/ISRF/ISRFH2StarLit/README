@@ -18,7 +18,10 @@ The check reads the end of a short run in which H2 and the temperature stay froz
 parameters therefore switch off photoionization, stellar winds and supernovae, and set the
 light speed to `unlimited`. The light crosses one hop per step, so it needs several steps to
 reach the whole box. The steps are short so that the H2 stays frozen while the light
-arrives; the run stops after 8 steps and the check reads the last snapshot.
+arrives. `run.sh` stops the run after `n_steps` steps (default 6) and the check reads the
+last snapshot. A snapshot is written every `dt_max` (every second step at half `dt_max`),
+1e-18 after a step end, so each snapshot holds the state after a whole number of steps. The
+check takes the number of light hops from `timesteps.txt`.
 The check refuses a run that departs from these settings.
 Only particles at `r < L/2 - 2h` are read, so that the nearest periodic
 image of the star is the right one.
@@ -82,7 +85,7 @@ table that carries `L_LW_dissociating`, it is also multiplied by the dissociatio
 the dissociating energy at the largest factor of the table times the LW energy; `starlit`
 reads that bound from the line `ISRF LW dissociation factor bound` of the start-up log.
 
-`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log --timesteps timesteps.txt`
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0006.hdf5 --startup-log output.log --timesteps timesteps.txt`
 
 The reference is `snapshot_0001`, the first snapshot written after the first step and
 before any probe is lit. The check compares, for every probe, the transmission of the

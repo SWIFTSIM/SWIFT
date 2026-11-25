@@ -17,7 +17,8 @@ run_name=${run_name:=$leg}
 ic_file=ICs_isrf_h2_star_lit.hdf5
 params=params.yml
 extra_ic_args=""
-extra_swift_args=""
+n_steps=${n_steps:=6}   # Steps of the main and switch_off legs; swift -n N runs N+1 steps
+extra_swift_args="-n $((n_steps - 1))"
 stale_key_arg=""
 mode_flag="--cooling"   # the limited-speed legs run --temperature: the species stay at their start values
 

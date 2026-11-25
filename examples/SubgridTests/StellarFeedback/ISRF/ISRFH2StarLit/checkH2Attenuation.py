@@ -586,19 +586,58 @@ def hop_length(counters: dict, h_cm: np.ndarray, rep: Report) -> np.ndarray:
     return h_cm
 
 
-def light_hops(first: dict, last: dict) -> int:
-    """Return the number of light hops between the two snapshots, Time_last / Time_first.
+def read_timestep_rows(path: str) -> List[Tuple[int, float, float, int]]:
+    """Return (step, time, time step, updates) for each row of a timesteps.txt.
 
-    The first snapshot is written after step 1, so the time ratio is the step count of the
-    last snapshot when the step is constant (dt_max below the step the particles ask for).
+    Raises
+    ------
+    GateExit
+        With EXIT_MISSING if the file is unreadable.
+    """
+    rows = []
+    try:
+        with open(path) as f:
+            for line in f:
+                tok = line.split()
+                if tok and not tok[0].startswith("#") and len(tok) >= 8:
+                    rows.append(
+                        (int(tok[0]), float(tok[1]), float(tok[4]), int(tok[7]))
+                    )
+    except (OSError, ValueError) as err:
+        raise GateExit(EXIT_MISSING, f"timesteps file {path} is unreadable: {err}")
+    return rows
+
+
+def light_hops(first: dict, last: dict, timesteps: Optional[str] = None) -> int:
+    """Return the number of light hops up to the last snapshot, one per step.
+
+    With the timesteps file of the run (timesteps.txt), the count is the number of the
+    step that ends at the last snapshot time. Without it, the count is Time_last /
+    Time_first, which holds only if the first snapshot is written after step 1 and
+    the step is constant. That ratio is wrong when the step is shorter than the snapshot
+    interval (a step of half dt_max gives half the count), so every run script passes the file.
     This assumes that every gas particle sits on one time bin: a particle on a shorter bin
     forwards the light more than once per base step, and the gate does not check it.
 
     Raises
     ------
     GateExit
-        EXIT_VOID when the ratio is not within 1e-3 of an integer of at least 2.
+        EXIT_VOID when no step ends at the last snapshot time, or when the count is not
+        an integer of at least 2 (ratio of the snapshot times, without the file).
     """
+    if timesteps:
+        t_last = last["time"]
+        hit = [
+            k
+            for k, t, _, _ in read_timestep_rows(timesteps)
+            if abs(t - t_last) <= TIME_RTOL * max(abs(t_last), 1e-300)
+        ]
+        if not hit or hit[-1] < 2:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, no step of at least 2 in {timesteps} ends at the snapshot time {t_last:.7g}",
+            )
+        return int(hit[-1])
     ratio = last["time"] / first["time"]
     require_finite("snapshot times", time_ratio=np.array([ratio]))
     n = round(ratio)
@@ -817,15 +856,7 @@ def step_premises(path: Optional[str], snap: dict, rep: Report) -> float:
             EXIT_VOID,
             "the kernel-mean check needs --timesteps (timesteps.txt of the run)",
         )
-    rows = []
-    try:
-        with open(path) as f:
-            for line in f:
-                tok = line.split()
-                if tok and not tok[0].startswith("#") and len(tok) >= 8:
-                    rows.append((float(tok[1]), float(tok[4]), int(tok[7])))
-    except (OSError, ValueError) as err:
-        raise GateExit(EXIT_MISSING, f"timesteps file {path} is unreadable: {err}")
+    rows = [(t, dt, up) for _, t, dt, up in read_timestep_rows(path)]
     t_snap = snap["time"]
     hit = [
         r for r in rows if abs(r[0] - t_snap) <= TIME_RTOL * max(abs(t_snap), 1e-300)
@@ -1269,7 +1300,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
         )
 
     # Lit set: the light moves one hop per step, so the lit probes fill a ball.
-    n_hops = light_hops(first, last)
+    n_hops = light_hops(first, last, args.timesteps)
     h_dom = h[mask]
     r_full = (n_hops - 1) * float(h_dom.min())
     r_reach = n_hops * KERNEL_GAMMA * float(h_dom.max())
@@ -1763,7 +1794,7 @@ def gate_twosource(args: argparse.Namespace) -> int:
             "the sum of the one-star runs is not the reference there",
         )
 
-    steps = float(light_hops(first, ab))
+    steps = float(light_hops(first, ab, args.timesteps))
     ngb = kernel_neighbours(ab)
     k_terms = max(len(n) for n in ngb)
     p_power = float(params.get("GEARFeedback:ISRF_packet_cone_power", 4.0)) + 4.0
@@ -2256,11 +2287,11 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         sp = sub.add_parser(name)
         common(sp, counters=name != "twosource")
-        if name == "starlit":
+        if name in ("starlit", "twosource"):
             sp.add_argument(
                 "--timesteps",
                 default=None,
-                help="timesteps.txt of the run, for the premises of the kernel-mean check",
+                help="timesteps.txt of the run: the hop count, and the premises of the kernel-mean check",
             )
         if name == "velocity":
             sp.add_argument(
