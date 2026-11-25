@@ -1896,19 +1896,25 @@ cell_need_rebuild_for_radiation_pair(const struct cell *ci,
 
 /**
  * @brief Width of the thinnest of a radiation_level cell and the cells linked
- * to it by its HII tasks.
+ * to it by its HII tasks, and the largest gas displacement of those partners.
  *
  * @param level The radiation_level #cell.
+ * @param partner_drift (return) The largest hydro.dx_max_part of the linked
+ * cells, 0 if there are none.
+ * @return The thinnest width.
  */
 __attribute__((always_inline, nonnull)) INLINE static float
-cell_radiation_thinnest_partner_width(const struct cell *level) {
+cell_radiation_thinnest_partner_width(const struct cell *level,
+                                      float *partner_drift) {
 
   float width = level->dmin;
+  *partner_drift = 0.f;
   for (const struct link *l = level->stars.radiation_in; l != NULL;
        l = l->next) {
     if (l->t->type == task_type_self) continue;
     const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
     width = min(width, partner->dmin);
+    *partner_drift = max(*partner_drift, partner->hydro.dx_max_part);
   }
   return width;
 }
@@ -1928,7 +1934,9 @@ __attribute__((always_inline, nonnull)) INLINE static float
 cell_radiation_tree_reach(const struct cell *c) {
 
   const struct cell *level = c->stars.radiation_level;
-  return level->dmin + cell_radiation_thinnest_partner_width(level);
+  float partner_drift;
+  return level->dmin +
+         cell_radiation_thinnest_partner_width(level, &partner_drift);
 }
 
 /**
@@ -1955,14 +1963,9 @@ cell_radiation_covered_radius(const struct cell *c, const double x[3],
 
   const struct cell *level = c->stars.radiation_level;
 
-  const float partner_width = cell_radiation_thinnest_partner_width(level);
-  float partner_drift = 0.f;
-  for (const struct link *l = level->stars.radiation_in; l != NULL;
-       l = l->next) {
-    if (l->t->type == task_type_self) continue;
-    const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
-    partner_drift = max(partner_drift, partner->hydro.dx_max_part);
-  }
+  float partner_drift;
+  const float partner_width =
+      cell_radiation_thinnest_partner_width(level, &partner_drift);
 
   double face_distance = DBL_MAX;
   for (int k = 0; k < 3; k++) {
