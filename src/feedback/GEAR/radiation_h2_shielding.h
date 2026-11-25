@@ -361,7 +361,8 @@ radiation_h2_shielding_hop_factor(double *t, double *N, const double dN,
   /* For a small step, the terms after the hop are those before it times
      (1 + step)^-alpha and (root_old / root_new) e^(-8.5e-4 (root_new -
      root_old)), both evaluated by series. */
-  const double x_new = N_new / RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2;
+  const double x_new =
+      (N_new > 0. ? N_new : 0.) / RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2;
   const double dx = x_new - x_old;
   const double step = dx / (b5 + x_old);
   double f_new;

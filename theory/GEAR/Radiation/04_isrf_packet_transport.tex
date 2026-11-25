@@ -3732,20 +3732,21 @@ library exponential at :135). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_s
 :260-266, the first guess at :272-284 and the Newton steps at :286-308. The
 logarithm of the factor and its slope are
 \code{radiation\_h2\_shielding\_log\_factor\_slope} (:213-223). The hop of Eq.~\eqref{eq:h2-hop} is
-\code{radiation\_h2\_shielding\_hop\_factor} (:344-384). For a receiver with no
+\code{radiation\_h2\_shielding\_hop\_factor} (:344-385). For a receiver with no
 line width, or when both $\Sigma$ and $\Delta\Sigma$ are 0, it leaves the share
 as it is and returns $\mathcal S_0$ (:346-347). For $\Delta\Sigma\le0$ it
 returns $\mathcal S(\Sigma)$ (:348). Otherwise it takes the factor after the hop
-from the ratios of Eq.~\eqref{eq:h2-hop-ratios} for $\delta\le1/8$ (:368-376)
-and directly otherwise (:377-379), clamps the ratio at 1 (:380-381) and
+from the ratios of Eq.~\eqref{eq:h2-hop-ratios} for $\delta\le1/8$ (:369-377),
+with both columns clamped at 0 as in the factor (:364-365),
+and directly otherwise (:378-380), clamps the ratio at 1 (:381-382) and
 returns the factor of the new column, which $\mathcal B_k$ divides by.
 
 The velocity step and the reset of Eq.~\eqref{eq:h2-shift} are
-\code{radiation\_h2\_shielding\_shift} (:417-429). The gas of a receiver gives
+\code{radiation\_h2\_shielding\_shift} (:418-430). The gas of a receiver gives
 $\Delta\Sigma$ per unit of path, $\alpha$, $b_5$ and $\Delta v_{\max}$ through
-\code{radiation\_h2\_shielding\_receiver\_cache} (:496-517). There $n_{{\rm H}_2}$
-is at :504, the exponent at :508, $b_5$ at :513 and the velocity limit at
-:514-515.
+\code{radiation\_h2\_shielding\_receiver\_cache} (:497-518). There $n_{{\rm H}_2}$
+is at :505, the exponent at :509, $b_5$ at :514 and the velocity limit at
+:515-516.
 
 The fit of a particle is cached by \code{radiation\_cache\_H2\_line\_absorption}
 (\code{radiation\_isrf.c:134-170}). The column per length is written at every
