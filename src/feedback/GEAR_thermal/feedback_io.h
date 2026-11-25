@@ -520,7 +520,8 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
         parts, xparts, convert_part_u_LW_own,
         "Lyman-Werner-band specific energy of the light that crosses the "
         "particle itself, before the kernel mean that gives "
-        "LWSpecificEnergies. Physical.");
+        "LWSpecificEnergies (equal to it with "
+        "GEARFeedback:ISRF_cooling_reads_own_field 1). Physical.");
 
     list[num++] = io_make_output_field_convert_part(
         "LWOwnDissociatingSpecificEnergies", FLOAT, 1,

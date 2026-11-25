@@ -155,6 +155,10 @@ struct radiation_packet_constants {
       models: the bound of the dissociating over the LW energy of any light.
       Exactly 1 without #LW_population_track. */
   float LW_dissociating_factor_max;
+
+  /*! Does the cooling read the particle's own field, not its kernel mean?
+      Set by GEARFeedback:ISRF_cooling_reads_own_field. */
+  int cooling_reads_own_field;
 };
 
 /*! Reception slots of the packet of a gas particle: one per cell of an

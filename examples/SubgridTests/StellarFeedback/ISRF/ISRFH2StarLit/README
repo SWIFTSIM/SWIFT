@@ -115,5 +115,9 @@ positive control is not met):
   peak-to-peak range of the fine series in the same shell. The run is void unless the two legs
   differ only in `Stars:max_timestep_young_Myr`, come from the same SWIFT revision, configure line
   and geajay revision, and keep H2 and the internal energy bit-equal.
-- `--plant-t-scale F` (`limited`), `--plant-coarse-energy F` and `--plant-ripple A` (`ripple`) apply
-  an error to the arrays read from the snapshots, to show that the check fails on it.
+- `front --run cap_fine` tests the light that switches on at the start. No particle may hold light
+  before the travel time `r / (f c)` at the limited speed `f c`. It prints the median delay
+  per shell in snapshot intervals.
+- `--plant-t-scale F` (`limited`), `--plant-coarse-energy F` and `--plant-ripple A` (`ripple`), and
+  `--plant-speed F` (`front`), apply an error to the arrays read from the snapshots, to show that the
+  check fails on it.

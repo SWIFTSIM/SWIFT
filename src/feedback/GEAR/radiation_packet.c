@@ -3523,12 +3523,14 @@ static double radiation_packet_waiting_LW_energy(
  * flushed share gets a column at least its own, several in one slot get less.
  * @param alpha Exponent of the fit.
  * @param b5 Thermal line width of H2 of the fit in km/s.
+ * @param N_guess First guess of the column in cm^-2, or 0 for none.
  * @return The column in cm^-2.
  */
 static double radiation_packet_line_harmonic_column(const double dissociating,
                                                     double over_factor,
                                                     const double alpha,
-                                                    const double b5) {
+                                                    const double b5,
+                                                    const double N_guess) {
   if (!(b5 > 0.)) return 0.;
   /* A sum of 0 means a flushed float sum: the column cannot be recovered. */
   if (!(over_factor > 0.)) over_factor = FLT_MIN;
@@ -3536,7 +3538,7 @@ static double radiation_packet_line_harmonic_column(const double dissociating,
   if (f >= radiation_h2_shielding_factor_at_zero() *
                (1. - RADIATION_PACKET_LINE_CLEAR_TOLERANCE))
     return 0.;
-  return radiation_h2_shielding_inverse(f, alpha, b5);
+  return radiation_h2_shielding_inverse_from(f, alpha, b5, N_guess);
 }
 
 /**
@@ -3648,7 +3650,7 @@ static void radiation_packet_line_end(
       else
         N = radiation_packet_line_harmonic_column(
             released_dissociating, released_over_factor,
-            fd->H2_shielding_exponent, fd->H2_line_width_km_s);
+            fd->H2_shielding_exponent, fd->H2_line_width_km_s, st->held_column);
     }
   }
   sl->H2_transmission = (float)t;
@@ -3681,7 +3683,7 @@ void radiation_packet_line_refit(struct part *p, const float old_alpha,
     const double B = sl->H2_waiting_energy_over_factor;
     if (!(A > 0.) || !(B > 0.) || !(B < (double)FLT_MAX)) continue;
     const double N =
-        radiation_packet_line_harmonic_column(A, B, old_alpha, old_b5);
+        radiation_packet_line_harmonic_column(A, B, old_alpha, old_b5, 0.);
     if (!(N > 0.)) continue;
     const double f = b5 > 0. ? radiation_h2_shielding_factor(N, alpha, b5)
                              : radiation_h2_shielding_factor_at_zero();
@@ -4303,7 +4305,9 @@ void radiation_packet_end_force(struct part *p) {
  * @brief Write the kernel mean of the own field into the band moments: PE to
  * PE and LW to LW, which the cooling reads, and the LW photon number
  * (`N E_lo`) to LW_PHOTON, which only the snapshot output reads. Also set the
- * LW energy that dissociates H2.
+ * LW energy that dissociates H2. With
+ * #radiation_packet_constants.cooling_reads_own_field the particle's own field
+ * replaces the kernel mean in all of them.
  *
  * Overwrites the moments, including any value from the initial conditions. Call
  * after #radiation_packet_end_force.
@@ -4315,21 +4319,27 @@ void radiation_packet_couple_field(
     struct part *p, const struct radiation_packet_constants *constants) {
 
   const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const int own = constants->cooling_reads_own_field;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     p->feedback_data.isrf_moment[radiation_isrf_operator_owner[b]].u =
-        (double)pk->band[b].ngb_mean_field_energy;
+        own ? (double)pk->band[b].field_energy
+            : (double)pk->band[b].ngb_mean_field_energy;
 
   p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
-      (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
+      own ? (double)pk->band[ISRF_OPERATOR_LW].field_photons
+          : (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
 
   /* The LW sum is in float and can flush to 0 where the double sum does not:
      the lines remove light, they never add it, and no star has a factor above
      the bound. */
-  const double lw = (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
+  const double lw =
+      own ? (double)pk->band[ISRF_OPERATOR_LW].field_energy
+          : (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
   const double dissociating_max =
       (double)constants->LW_dissociating_factor_max * lw;
-  double dissociating = pk->ngb_mean_field_dissociating_energy;
+  double dissociating = own ? (double)pk->field_dissociating_energy
+                            : pk->ngb_mean_field_dissociating_energy;
   if (dissociating > dissociating_max) dissociating = dissociating_max;
   p->feedback_data.LW_dissociating_u = dissociating;
 }
