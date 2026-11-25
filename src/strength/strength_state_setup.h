@@ -267,10 +267,12 @@ __attribute__((always_inline)) INLINE static float strength_state_get_P_min(
 
       case P_min_scheme_constant:
         s->cache.P_min = material_P_min_constant(mp);
+        yield_weakening_apply_to_yield_stress(&s->cache.P_min, s, mp);
         break;
 
       case P_min_scheme_yield_envelope:
         s->cache.P_min = material_P_min_yield_envelope(mp, s->mat_id);
+        yield_weakening_apply_to_yield_stress(&s->cache.P_min, s, mp);
         break;
 
       default:

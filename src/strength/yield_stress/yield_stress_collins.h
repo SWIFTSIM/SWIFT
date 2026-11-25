@@ -84,6 +84,9 @@ yield_apply_damage_to_tensile_pressure(float *pressure,
     pressure_zero_damaged = (mu_d > 0.f) ? -Y_0d / mu_d : -FLT_MAX;
   }
 
+  /* Tensile strength weakens like the yield stress. */
+  yield_weakening_apply_to_yield_stress(&pressure_zero_damaged, s, mp);
+
   const float pressure_fully_intact = *pressure;
   const float pressure_fully_damaged = fmaxf(*pressure, pressure_zero_damaged);
 
