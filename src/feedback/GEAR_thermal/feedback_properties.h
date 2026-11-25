@@ -411,6 +411,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
                                                                       : "OFF");
     message("ISRF LW dissociation factor bound                          = %.6g",
             feedback_props->ISRF_packet_constants.LW_dissociating_factor_max);
+    message("ISRF cooling reads                                         = %s",
+            feedback_props->ISRF_packet_constants.cooling_reads_own_field
+                ? "own field"
+                : "kernel mean");
     if (feedback_props->ISRF_propagation) {
       message(
           "ISRF transport                                             = packet "
@@ -839,6 +843,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       &fp->ISRF_packet_constants;
   packet_constants->LW_population_track = 0;
   packet_constants->LW_dissociating_factor_max = 1.f;
+  packet_constants->cooling_reads_own_field = 0;
 
   if (with_interstellar_radiation_field) {
     fp->radiation_policy |= radiation_policy_isrf;
@@ -870,6 +875,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         packet_constants->LW_dissociating_factor_max != 1.f)
       error("The LW dissociation factor bound is %g without the factor.",
             packet_constants->LW_dissociating_factor_max);
+
+    const int own_field = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_cooling_reads_own_field", 0);
+    if (own_field != 0 && own_field != 1)
+      error(
+          "GEARFeedback:ISRF_cooling_reads_own_field must be 0 or 1 (got %d).",
+          own_field);
+    if (own_field && !fp->ISRF_propagation)
+      error(
+          "GEARFeedback:ISRF_cooling_reads_own_field: 1 acts on the "
+          "transported light, which needs GEARFeedback:ISRF_propagation: 1.");
+    packet_constants->cooling_reads_own_field = own_field;
 
     const int H2_line_absorption = parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_H2_line_absorption", 0);
