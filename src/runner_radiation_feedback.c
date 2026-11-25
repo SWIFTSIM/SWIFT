@@ -1006,8 +1006,7 @@ double runner_hii_carry_at_coverage_stop(
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
       "Star %lld: tree reach %e (last coverage stop %e), carried %.17g, "
-      "released "
-      "%.17g.",
+      "released %.17g.",
       si->id, cell_radiation_tree_reach(c), last_tree_reach,
       carried ? feedback_get_star_ionization_budget_total(si) : 0., released);
 #endif

@@ -1914,8 +1914,9 @@ cell_radiation_thinnest_partner_width(const struct cell *level) {
 }
 
 /**
- * @brief Largest covered radius the current tree gives a star of this
- * working-level cell: the width of its radiation_level cell plus the thinnest
+ * @brief Upper bound of the covered radius the current tree gives a star of
+ * this working-level cell: the width of its radiation_level cell plus the
+ * thinnest linked width. The real maximum is half that width plus the thinnest
  * linked width.
  *
  * Unlike cell_radiation_covered_radius(), it does not depend on where the star

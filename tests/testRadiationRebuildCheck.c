@@ -212,16 +212,8 @@ static void test_clamped_search_request(void) {
   struct task t_self, t_pair;
   struct link l_self, l_pair;
 
-  /* The old rule's margin is the thinnest of the leaf and its partners. */
   setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
-                1.f, 0.5f, 1.f);
-  if (old_neighbour_margin(&leaf) != 0.5f)
-    error("Neighbour margin %g, expected the leaf width 0.5.",
-          old_neighbour_margin(&leaf));
-  partner.dmin = 0.25f;
-  if (old_neighbour_margin(&leaf) != 0.25f)
-    error("Neighbour margin %g, expected the finer partner width 0.25.",
-          old_neighbour_margin(&leaf));
+                1.f, 0.5f, 0.25f);
 
   /* The covered radius is the face distance plus the thinnest partner. */
   const float r_centre = place_star(&level, &leaf, 0.5);
