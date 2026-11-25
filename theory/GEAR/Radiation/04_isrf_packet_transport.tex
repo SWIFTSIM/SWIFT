@@ -269,7 +269,11 @@ power-law fits of the luminosity and the radius. $\bar E_b$ is $L_b$ over the
 band photon rate of the same spectrum.
 
 A particle that stands for one star reads $L_b$ and $\bar E_b$ at its mass, and also at its
-metallicity if the table has a metallicity axis. The table has no age axis, so
+metallicity if the table has a metallicity axis. A star outside the table on
+one axis, such as a star of zero metallicity below the first row, reads that
+axis at its edge node. Where the table's edge policy for that field says
+zero, the value is zero instead. Otherwise the other axis is still
+interpolated; no axis is extrapolated. The table has no age axis, so
 the light of a single star is constant while it emits. A particle that stands
 for a stellar population integrates the table over the initial mass function,
 from its lowest mass to the largest mass still alive in the step, and
