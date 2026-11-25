@@ -1840,7 +1840,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
       /* A foreign active pi that the chemistry flux exchange must still
          visit: an inactive pj only exchanges the flux, as on the rank of pi.
          A separate walk leaves the hydro loop above unchanged. */
-      if (LOOP_VISITS_INACTIVE_NEIGHBOURS && PART_IS_ACTIVE(pi, e)) {
+      if (LOOP_VISITS_INACTIVE_NEIGHBOURS &&
+          !LOOP_UPDATES_INACTIVE_NEIGHBOURS && PART_IS_ACTIVE(pi, e)) {
         for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
           struct part *pj = &parts_j[sort_j[pjd].i];
           if (part_is_inhibited(pj, e) || PART_IS_ACTIVE(pj, e)) continue;
@@ -2141,7 +2142,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #if CHEMISTRY_FLUX_LOOP
       /* Same for a foreign active pj and an inactive pi */
-      if (LOOP_VISITS_INACTIVE_NEIGHBOURS && PART_IS_ACTIVE(pj, e)) {
+      if (LOOP_VISITS_INACTIVE_NEIGHBOURS &&
+          !LOOP_UPDATES_INACTIVE_NEIGHBOURS && PART_IS_ACTIVE(pj, e)) {
         for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
              pid--) {
           struct part *pi = &parts_i[sort_i[pid].i];
