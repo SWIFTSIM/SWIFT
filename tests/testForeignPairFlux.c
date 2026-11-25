@@ -42,7 +42,9 @@
  * Two adjacent top-level cells of width 1 are split into a tree of depth 1
  * or 2. Each particle has an h that puts its pairs at one level of the tree.
  * The pair is run three times: with both cells local, with the second cell
- * foreign and with the first cell foreign. The flux that each local particle
+ * foreign and with the first cell foreign. A foreign cell is a separate copy
+ * whose cell data are rebuilt by runner_do_recv_part() and which is sorted
+ * again, as on the receiving rank. The flux that each local particle
  * receives must equal the flux it receives when both cells are local, and a
  * brute-force sum over the pairs of the two cells. Each case runs with the
  * top-level cells split and unsplit.
@@ -481,6 +483,61 @@ static void set_node(struct cell *c, const int node_id) {
 }
 
 /**
+ * @brief Make the copy of a tree that the other rank holds: its own cells and
+ * particles, with the cell data rebuilt by runner_do_recv_part() and its own
+ * sorts.
+ *
+ * @param c The tree (its cells follow it in one allocation).
+ * @param src The particles to send.
+ * @param depth The depth of the leaves.
+ * @param split Is the top-level cell split?
+ */
+static struct cell *make_foreign_copy(struct runner *r, const struct cell *c,
+                                      const struct part *src, const int depth,
+                                      const int split) {
+  const int n_cells = tree_size(depth);
+  const int count = c->hydro.count;
+  struct cell *copy = NULL;
+  struct part *parts = NULL;
+  if (posix_memalign((void **)&copy, cell_align,
+                     n_cells * sizeof(struct cell)) != 0 ||
+      posix_memalign((void **)&parts, part_align,
+                     count * sizeof(struct part)) != 0)
+    error("Failed to allocate the foreign copy.");
+  memcpy(copy, c, n_cells * sizeof(struct cell));
+  memcpy(parts, src, count * sizeof(struct part));
+
+  for (int k = 0; k < n_cells; k++) {
+    struct cell *cp = &copy[k];
+    for (int p = 0; p < 8; p++)
+      if (c[k].progeny[p] != NULL)
+        cp->progeny[p] = copy + (c[k].progeny[p] - c);
+    if (c[k].parent != NULL) cp->parent = copy + (c[k].parent - c);
+    cp->top = copy;
+    cp->hydro.super = copy;
+    cp->hydro.parts = parts + (c[k].hydro.parts - c->hydro.parts);
+    cp->hydro.xparts = NULL;
+    cp->hydro.sort = NULL;
+    cp->nodeID = 1;
+  }
+
+  /* The receiving rank holds the whole tree; the pair task may then treat
+     the top-level cell as unsplit */
+  copy->split = 1;
+  runner_do_recv_part(r, copy, /*clear_sorts=*/1, /*timer=*/0);
+  runner_do_hydro_sort(r, copy, 0x1FFF, 0, 0, 0, 0);
+  copy->split = split;
+  return copy;
+}
+
+static void free_foreign_copy(struct cell *copy) {
+  copy->split = 1;
+  free_sorts(copy);
+  free(copy->hydro.parts);
+  free(copy);
+}
+
+/**
  * @brief Make all the gas of a tree hydro-inactive, as on an RT sub-cycle.
  */
 static void set_hydro_inactive(struct cell *c, const struct engine *e) {
@@ -713,8 +770,9 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
 
     /* cj foreign: the fluxes of ci are this rank's. */
     double rel_i = 0., rel_i_bf = 0.;
-    set_node(cj, 1);
-    run_pair(r, ci, cj, si, sj, split, loop, fi, fj);
+    struct cell *cj_copy = make_foreign_copy(r, cj, sj, pc->depth, split);
+    run_pair(r, ci, cj_copy, si, sj, split, loop, fi, fj);
+    free_foreign_copy(cj_copy);
     const int bad_i = compare(n, fi, ref_i, bf_i, &rel_i);
     const int bad_i_bf = compare(n, fi, bfi, bf_i, &rel_i_bf);
     double sum[N_FLUX] = {0.}, sum_abs[N_FLUX] = {0.};
@@ -726,9 +784,9 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
 
     /* ci foreign: the fluxes of cj are this rank's. */
     double rel_j = 0., rel_j_bf = 0.;
-    set_node(cj, 0);
-    set_node(ci, 1);
-    run_pair(r, ci, cj, si, sj, split, loop, fi, fj);
+    struct cell *ci_copy = make_foreign_copy(r, ci, si, pc->depth, split);
+    run_pair(r, ci_copy, cj, si, sj, split, loop, fi, fj);
+    free_foreign_copy(ci_copy);
     const int bad_j = compare(n, fj, ref_j, bf_j, &rel_j);
     const int bad_j_bf = compare(n, fj, bfj, bf_j, &rel_j_bf);
     for (int k = 0; k < n; k++)
@@ -736,7 +794,6 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
         sum[d] += fj[k][d];
         sum_abs[d] += bf_j[k].abs_sum[d];
       }
-    set_node(ci, 0);
 
     /* The first four components of a flux and the metal flux are conserved
      * when the two ranks add up (the fifth one is the internal energy flux of

@@ -102,9 +102,16 @@ static void engine_check_chemistry_flux_prep_activation(
         break;
       }
     }
+    const struct cell *ci = t->ci;
+    const struct cell *cj = t->cj != NULL ? t->cj : t->ci;
     if (prep == NULL || prep->skip)
-      error("An active %s force task has no active chemistry flux prep task.",
-            taskID_names[t->type]);
+      error(
+          "An active %s force task has no active chemistry flux prep task "
+          "(ci: loc=[%g %g %g] depth=%d node=%d; cj: loc=[%g %g %g] depth=%d "
+          "node=%d).",
+          taskID_names[t->type], ci->loc[0], ci->loc[1], ci->loc[2], ci->depth,
+          ci->nodeID, cj->loc[0], cj->loc[1], cj->loc[2], cj->depth,
+          cj->nodeID);
 
     const struct cell *cells[2] = {t->ci, t->cj};
     for (int n = 0; n < 2; n++) {
@@ -113,9 +120,10 @@ static void engine_check_chemistry_flux_prep_activation(
       const struct task *ghost = c->hydro.super->hydro.chemistry_flux_ghost;
       if (ghost != NULL && ghost->skip)
         error(
-            "An active %s force task has a skipped chemistry flux ghost on "
-            "its local cell.",
-            taskID_names[t->type]);
+            "An active %s force task has a skipped chemistry flux ghost on its "
+            "local cell (loc=[%g %g %g] depth=%d, super depth=%d).",
+            taskID_names[t->type], c->loc[0], c->loc[1], c->loc[2], c->depth,
+            c->hydro.super->depth);
     }
   }
 }

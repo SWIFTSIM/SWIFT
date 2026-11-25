@@ -1854,6 +1854,21 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           const float pjz = pj->x[2] - shift_j[2];
           const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (fabsf(pix) > shift_threshold_x ||
+              fabsf(piy) > shift_threshold_y ||
+              fabsf(piz) > shift_threshold_z ||
+              fabsf(pjx) > shift_threshold_x ||
+              fabsf(pjy) > shift_threshold_y || fabsf(pjz) > shift_threshold_z)
+            error("Invalid particle position (pi=%e %e %e, pj=%e %e %e)", pix,
+                  piy, piz, pjx, pjy, pjz);
+#if defined(DO_DRIFT_DEBUG_CHECKS)
+          if (pi->ti_drift != e->ti_current || pj->ti_drift != e->ti_current)
+            error("Particle pi or pj not drifted to current time");
+#endif
+#endif
+
           if (r2 < hig2)
             IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
                                 /*local_first=*/local_i,
@@ -2156,6 +2171,21 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           const float piz = pi->x[2] - shift_i[2];
           const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (fabsf(pix) > shift_threshold_x ||
+              fabsf(piy) > shift_threshold_y ||
+              fabsf(piz) > shift_threshold_z ||
+              fabsf(pjx) > shift_threshold_x ||
+              fabsf(pjy) > shift_threshold_y || fabsf(pjz) > shift_threshold_z)
+            error("Invalid particle position (pi=%e %e %e, pj=%e %e %e)", pix,
+                  piy, piz, pjx, pjy, pjz);
+#if defined(DO_DRIFT_DEBUG_CHECKS)
+          if (pi->ti_drift != e->ti_current || pj->ti_drift != e->ti_current)
+            error("Particle pi or pj not drifted to current time");
+#endif
+#endif
+
           if (r2 < hjg2 && r2 >= hig2)
             IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
                                 /*local_first=*/local_j,

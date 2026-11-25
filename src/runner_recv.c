@@ -43,10 +43,12 @@
  * @param c The cell.
  * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
+ *
+ * No MPI call is made here, so the tests can rebuild a foreign copy without
+ * MPI.
  */
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer) {
-#ifdef WITH_MPI
 
   struct part *restrict parts = c->hydro.parts;
   const size_t nr_parts = c->hydro.count;
@@ -143,10 +145,6 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   c->hydro.h_max_active = h_max_active;
 
   if (timer) TIMER_TOC(timer_dorecv_part);
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
 }
 
 /**
