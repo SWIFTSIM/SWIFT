@@ -1749,11 +1749,11 @@ static void cell_activate_chemistry_flux_prep(struct task *t,
 
 #ifdef WITH_MPI
 /**
- * @brief Activate the receive of the xv data of a foreign cell, and of the
- * theta of its chemistry flux prep loop.
+ * @brief Activate the receive of the xv data of a foreign cell, and of its
+ * chemistry flux prep data.
  *
- * Both ranks activate the theta messages with the xv messages, so each send
- * has its receive.
+ * Both ranks activate the flux prep messages with the xv messages, so each
+ * send has its receive.
  *
  * @param c The foreign #cell.
  * @param s The #scheduler.
@@ -1770,8 +1770,8 @@ static void cell_activate_recv_xv(struct cell *c, struct scheduler *s) {
 }
 
 /**
- * @brief Activate the send of the xv data of a local cell, and of the theta
- * of its chemistry flux prep loop.
+ * @brief Activate the send of the xv data of a local cell, and of its
+ * chemistry flux prep data.
  *
  * @param c The local #cell.
  * @param s The #scheduler.
@@ -2137,7 +2137,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     /* The flux ghost of the inactive local cell must also run, so that the
        force pair waits for the outflow of this prep pair, and so that its
-       theta message carries the theta of this step. */
+       flux prep message carries the data of this step. */
     for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
          l = l->next) {
       if (cell_pair_is_local_inactive_foreign_active(l->t, e))

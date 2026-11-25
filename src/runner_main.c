@@ -533,7 +533,7 @@ void *runner_main(void *data) {
             runner_do_pack_limiter(r, ci, &t->buff, 1);
             task_get_unique_dependent(t)->buff = t->buff;
           } else if (t->subtype == task_subtype_chemistry_flux_prep) {
-            runner_do_pack_flux_theta(r, ci, &t->buff, 1);
+            runner_do_pack_chemistry_flux_prep(r, ci, &t->buff, 1);
             task_get_unique_dependent(t)->buff = t->buff;
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_pack_gpart(r, ci, &t->buff, 1);
@@ -549,7 +549,7 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_limiter) {
             runner_do_unpack_limiter(r, ci, t->buff, 1);
           } else if (t->subtype == task_subtype_chemistry_flux_prep) {
-            runner_do_unpack_flux_theta(r, ci, t->buff, 1);
+            runner_do_unpack_chemistry_flux_prep(r, ci, t->buff, 1);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

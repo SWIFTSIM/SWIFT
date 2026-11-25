@@ -116,20 +116,19 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
 }
 
 /**
- * @brief Pack the positivity limiter data of the chemistry flux prep loop
- * prior to sending
+ * @brief Pack the flux prep data of the chemistry prior to sending
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param buffer The array to allocate and fill.
  * @param timer Are we timing this ?
  */
-void runner_do_pack_flux_theta(struct runner *r, struct cell *c, void **buffer,
-                               const int timer) {
+void runner_do_pack_chemistry_flux_prep(struct runner *r, struct cell *c,
+                                        void **buffer, const int timer) {
 
   const size_t size = chemistry_flux_theta_size();
   if (posix_memalign(buffer, SWIFT_CACHE_ALIGNMENT, c->hydro.count * size) != 0)
-    error("Error allocating flux theta send buffer");
+    error("Error allocating chemistry flux prep send buffer");
 
   char *buff = (char *)*buffer;
   const struct part *parts = c->hydro.parts;
@@ -138,16 +137,15 @@ void runner_do_pack_flux_theta(struct runner *r, struct cell *c, void **buffer,
 }
 
 /**
- * @brief UnPack the positivity limiter data of the chemistry flux prep loop
- * after receiving it
+ * @brief UnPack the flux prep data of the chemistry after receiving it
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param buffer The array to read from and free.
  * @param timer Are we timing this ?
  */
-void runner_do_unpack_flux_theta(struct runner *r, struct cell *c, void *buffer,
-                                 const int timer) {
+void runner_do_unpack_chemistry_flux_prep(struct runner *r, struct cell *c,
+                                          void *buffer, const int timer) {
 
   const size_t size = chemistry_flux_theta_size();
   const char *buff = (const char *)buffer;

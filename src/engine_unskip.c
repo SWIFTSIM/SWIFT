@@ -132,14 +132,14 @@ static void engine_check_chemistry_flux_prep_activation(
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI) && \
     defined(EXTRA_HYDRO_LOOP)
 /**
- * @brief Find the communication task of the chemistry flux prep theta in a
+ * @brief Find the communication task of the chemistry flux prep data in a
  * list of links.
  *
  * @param l The first link of the list.
  * @param type The task type (send, recv, pack or unpack).
  * @param nodeID The rank the task sends to, or -1 for a recv or an unpack.
  */
-static const struct task *engine_find_flux_theta_task(
+static const struct task *engine_find_chemistry_flux_prep_comm(
     const struct link *l, const enum task_types type, const int nodeID) {
   for (; l != NULL; l = l->next) {
     const struct task *t = l->t;
@@ -152,18 +152,18 @@ static const struct task *engine_find_flux_theta_task(
 #endif
 
 /**
- * @brief Check that the theta messages of the chemistry flux prep loop are
- * active wherever the force loop needs them, on both sides.
+ * @brief Check that the messages of the chemistry flux prep data are active
+ * wherever the force loop needs them, on both sides.
  *
- * A force pair with a foreign cell reads the theta of the foreign donors.
- * The scheduler ignores a skipped dependency, so a skipped receive, unpack,
- * pack or chemistry flux ghost would let it read an old theta, with no error.
- * A send without its receive on the other rank would hang. This compares the
- * counts of the two ranks, so it must be called on all ranks.
+ * A force pair with a foreign cell reads the flux prep data of the foreign
+ * particles. The scheduler ignores a skipped dependency, so a skipped receive,
+ * unpack, pack or chemistry flux ghost would let it read old data, with no
+ * error. A send without its receive on the other rank would hang. This
+ * compares the counts of the two ranks, so it must be called on all ranks.
  *
  * @param e The #engine.
  */
-void engine_check_chemistry_flux_theta_activation(const struct engine *e) {
+void engine_check_chemistry_flux_prep_comm_activation(const struct engine *e) {
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI) && \
     defined(EXTRA_HYDRO_LOOP)
@@ -176,7 +176,7 @@ void engine_check_chemistry_flux_theta_activation(const struct engine *e) {
   int *n_recv = (int *)calloc(nr_nodes, sizeof(int));
   int *n_sent_here = (int *)calloc(nr_nodes, sizeof(int));
   if (n_send == NULL || n_recv == NULL || n_sent_here == NULL)
-    error("Failed to allocate the theta message counts.");
+    error("Failed to allocate the chemistry flux prep message counts.");
 
   for (int k = 0; k < s->nr_tasks; k++) {
     const struct task *t = &s->tasks[k];
@@ -186,13 +186,13 @@ void engine_check_chemistry_flux_theta_activation(const struct engine *e) {
         t->type == task_type_send) {
       const struct cell *c = t->ci;
       n_send[t->cj->nodeID]++;
-      const struct task *pack = engine_find_flux_theta_task(
+      const struct task *pack = engine_find_chemistry_flux_prep_comm(
           c->mpi.pack, task_type_pack, t->cj->nodeID);
       const struct task *ghost = c->hydro.super->hydro.chemistry_flux_ghost;
       if (pack == NULL || pack->skip || ghost == NULL || ghost->skip)
         error(
-            "An active theta send to rank %d has a skipped pack or chemistry "
-            "flux ghost (cell loc=[%g %g %g] depth=%d).",
+            "An active chemistry flux prep send to rank %d has a skipped pack "
+            "or chemistry flux ghost (cell loc=[%g %g %g] depth=%d).",
             t->cj->nodeID, c->loc[0], c->loc[1], c->loc[2], c->depth);
 
     } else if (t->subtype == task_subtype_chemistry_flux_prep &&
@@ -200,8 +200,8 @@ void engine_check_chemistry_flux_theta_activation(const struct engine *e) {
       n_recv[t->ci->nodeID]++;
       if (t->nr_unlock_tasks != 1 || t->unlock_tasks[0]->skip)
         error(
-            "An active theta recv from rank %d has no active unpack (cell "
-            "loc=[%g %g %g] depth=%d).",
+            "An active chemistry flux prep recv from rank %d has no active "
+            "unpack (cell loc=[%g %g %g] depth=%d).",
             t->ci->nodeID, t->ci->loc[0], t->ci->loc[1], t->ci->loc[2],
             t->ci->depth);
 
@@ -210,14 +210,15 @@ void engine_check_chemistry_flux_theta_activation(const struct engine *e) {
       const int ci_local = t->ci->nodeID == e->nodeID;
       const struct cell *local = ci_local ? t->ci : t->cj;
       const struct cell *foreign = ci_local ? t->cj : t->ci;
-      const struct task *send = engine_find_flux_theta_task(
+      const struct task *send = engine_find_chemistry_flux_prep_comm(
           local->mpi.send, task_type_send, foreign->nodeID);
-      const struct task *recv =
-          engine_find_flux_theta_task(foreign->mpi.recv, task_type_recv, -1);
+      const struct task *recv = engine_find_chemistry_flux_prep_comm(
+          foreign->mpi.recv, task_type_recv, -1);
       if (send == NULL || send->skip || recv == NULL || recv->skip)
         error(
-            "An active cross-rank force pair has a skipped theta send or recv "
-            "(local cell loc=[%g %g %g] depth=%d; foreign cell loc=[%g %g %g] "
+            "An active cross-rank force pair has a skipped chemistry flux prep "
+            "send or recv (local cell loc=[%g %g %g] depth=%d; foreign cell "
+            "loc=[%g %g %g] "
             "depth=%d node=%d).",
             local->loc[0], local->loc[1], local->loc[2], local->depth,
             foreign->loc[0], foreign->loc[1], foreign->loc[2], foreign->depth,
@@ -225,13 +226,13 @@ void engine_check_chemistry_flux_theta_activation(const struct engine *e) {
     }
   }
 
-  /* Each rank tells every other one how many theta messages it sends it. */
+  /* Each rank tells every other one how many messages it sends it. */
   MPI_Alltoall(n_send, 1, MPI_INT, n_sent_here, 1, MPI_INT, MPI_COMM_WORLD);
   for (int n = 0; n < nr_nodes; n++)
     if (n_sent_here[n] != n_recv[n])
       error(
-          "Rank %d activated %d theta sends to rank %d, which activated %d "
-          "theta recvs from it.",
+          "Rank %d activated %d chemistry flux prep sends to rank %d, which "
+          "activated %d recvs from it.",
           n, n_sent_here[n], e->nodeID, n_recv[n]);
 
   free(n_send);

@@ -1197,7 +1197,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* chemistry flux prep: 1 self + 26/2 pairs, 1 flux ghost | 15 */
     if (chemistry_need_flux_prep_loop(e->chemistry)) n1 += 15;
 #ifdef WITH_MPI
-    /* theta message: pack, send, recv, unpack | 4 */
+    /* flux prep message: pack, send, recv, unpack | 4 */
     if (chemistry_need_flux_prep_loop(e->chemistry)) n1 += 4;
 #endif
 #endif
@@ -1702,7 +1702,7 @@ int engine_prepare(struct engine *e) {
 #endif
 
   /* After the unskip and any rebuild, on all ranks. */
-  engine_check_chemistry_flux_theta_activation(e);
+  engine_check_chemistry_flux_prep_comm_activation(e);
 
   /* Re-rank the tasks every now and then. XXX this never executes. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2428,7 +2428,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Construct all cells again for a new round (need to update h_max) */
   engine_rebuild(e, 0, 0);
-  engine_check_chemistry_flux_theta_activation(e);
+  engine_check_chemistry_flux_prep_comm_activation(e);
 
   /* No drift this time */
   engine_skip_drift(e);

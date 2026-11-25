@@ -174,10 +174,10 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
                             const int timer);
 void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer);
-void runner_do_pack_flux_theta(struct runner *r, struct cell *c, void **buffer,
-                               const int timer);
-void runner_do_unpack_flux_theta(struct runner *r, struct cell *c, void *buffer,
-                                 const int timer);
+void runner_do_pack_chemistry_flux_prep(struct runner *r, struct cell *c,
+                                        void **buffer, const int timer);
+void runner_do_unpack_chemistry_flux_prep(struct runner *r, struct cell *c,
+                                          void *buffer, const int timer);
 void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
                           const int timer);
 void runner_do_pack_fof(struct runner *r, struct cell *c, void **buffer,
