@@ -250,14 +250,14 @@ def tool_args(cmd, d, last, first, params, extra=()):
     ]
 
 
-def write_timesteps(d, n_gas, updates=None, name="timesteps.txt"):
-    """Write a timesteps.txt with one step per unit of time, 8 steps, each updating all gas."""
+def write_timesteps(d, n_gas, updates=None, name="timesteps.txt", step=1.0):
+    """Write a timesteps.txt of 8 steps of length step, each updating all gas."""
     path = os.path.join(d, name)
     with open(path, "w") as f:
         f.write("#   Step  Time Scale-factor Redshift Time-step Time-bins Updates\n")
         for k in range(9):
             f.write(
-                f"{k:7d} {float(k):.6e} 1.0 0.0 1.0e+00 1 1 "
+                f"{k:7d} {k * step:.6e} 1.0 0.0 {step:.6e} 1 1 "
                 f"{n_gas if updates is None else updates} 0 0\n"
             )
     return path
@@ -506,6 +506,57 @@ def starlit_cases(work):
         args(snap_with("reach.hdf5", good, time=2.0)),
         "FAIL  lit count",
     )
+    half = write_timesteps(d, len(pos), name="timesteps_half.txt", step=0.5)
+    t_first, t_last = {"time": 1.0}, {"time": 3.0}
+    ROWS.append(
+        (
+            "H1 step 0.5, snapshots at 1 and 3: the timesteps file gives 6 hops",
+            6,
+            gate.light_hops(t_first, t_last, half),
+            "step number of the row that ends at the snapshot time",
+        )
+    )
+    ROWS.append(
+        (
+            "H2 same run, time ratio of the snapshots (old fallback): 3 hops, wrong",
+            3,
+            gate.light_hops(t_first, t_last),
+            "ratio of the snapshot times",
+        )
+    )
+    record(
+        "H3 step 0.5, 6 hops, only the 3-hop ball lit: incomplete",
+        1,
+        [
+            *args(
+                snap_with(
+                    "half.hdf5", good, lw=np.where(r < r_full3, lw, 0.0), time=3.0
+                )
+            ),
+            "--timesteps",
+            half,
+        ],
+        "FAIL  lit set complete",
+    )
+    try:
+        with contextlib.redirect_stderr(io.StringIO()):
+            gate.main(
+                [
+                    "starlit",
+                    "--first",
+                    first,
+                    "--last",
+                    first,
+                    "--fixture",
+                    os.path.join(d, "fixture.json"),
+                    "--params",
+                    params,
+                ]
+            )
+        missing = 0
+    except SystemExit as e:
+        missing = e.code
+    ROWS.append(("H4 starlit without --timesteps", 2, missing, "required option"))
     record(
         "void run: no LW light",
         4,
