@@ -1,0 +1,43 @@
+# Intro
+One 29.7 Msun star in an isolated, dust-free box of cold (50 K), H2-poor gas, with the ISRF
+transport on (`ISRF_propagation: 1`). The star's Lyman-Werner (LW) light dissociates the H2 in
+the box. The box is thin: the H2 column is too small for the lines to absorb a visible part
+of the light. The check compares the star's luminosity with the radiation table and the
+H2 dissociation rate with the field that the cooling is given.
+
+The run uses geajay cooling with `ISRF_H2_line_absorption: 1` and
+`ISRF_packet_light_speed: unlimited` (one hop per step). Official Grackle refuses the
+line absorption.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The radiation table must carry the `Data/Radiation` group; see the README of
+`ISRFH2Photodissociation` for how to obtain it.
+
+# Run
+```
+./run.sh
+```
+`level` (resolution, N = (2^level)^3 gas particles), `gas_density`, `gas_mass`, `star_mass`,
+`n_threads` and `force=1` (remove an existing `snap/` and `thin/`)
+override the defaults. The run takes a few minutes on 4 threads and writes a snapshot every
+1e-10 time units (about 0.1 yr) to `thin/snap`. `run.sh` prints the command of the check.
+
+# Check
+```
+python3 check_h2_thin_absolute.py thin/snap --radiation-table PopII_parsec_spectral.hdf5
+```
+Two tests gate the run, and the exit status is 0 when both pass:
+- the star's `LWLuminosities` against the luminosity that SWIFT reads from the radiation
+  table for the star's mass and metallicity;
+- the rate identity: the H2 dissociation rate of every particle equals the LW field that the
+  cooling is given, times the Draine-field rate coefficient, in each radial shell.
+
+The check also prints, without a bar, the LW energy density in each shell over the thin-limit
+value `L / (4 pi r^2 c)` (`Q`) and the dissociation rate over the thin-limit kernel mean.
+Exit status 1 is a failed test, 2 a missing file, 3 a value that is not finite, 4 a run that
+does not meet the conditions of the check (one star, no dust, no periodic images, unlimited
+light speed).
