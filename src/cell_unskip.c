@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "chemistry.h"
 #include "engine.h"
 #include "feedback.h"
 #include "space_getsid.h"
@@ -1746,6 +1747,50 @@ static void cell_activate_chemistry_flux_prep(struct task *t,
     scheduler_activate(s, cj->hydro.super->hydro.chemistry_flux_ghost);
 }
 
+#ifdef WITH_MPI
+/**
+ * @brief Activate the receive of the xv data of a foreign cell, and of the
+ * theta of its chemistry flux prep loop.
+ *
+ * Both ranks activate the theta messages with the xv messages, so each send
+ * has its receive.
+ *
+ * @param c The foreign #cell.
+ * @param s The #scheduler.
+ */
+static void cell_activate_recv_xv(struct cell *c, struct scheduler *s) {
+  scheduler_activate_recv(s, c->mpi.recv, task_subtype_xv);
+#ifdef EXTRA_HYDRO_LOOP
+  if (chemistry_need_flux_prep_loop(s->space->e->chemistry)) {
+    scheduler_activate_recv(s, c->mpi.recv, task_subtype_chemistry_flux_prep);
+    scheduler_activate_unpack(s, c->mpi.unpack,
+                              task_subtype_chemistry_flux_prep);
+  }
+#endif
+}
+
+/**
+ * @brief Activate the send of the xv data of a local cell, and of the theta
+ * of its chemistry flux prep loop.
+ *
+ * @param c The local #cell.
+ * @param s The #scheduler.
+ * @param nodeID The rank to send to.
+ */
+static void cell_activate_send_xv(struct cell *c, struct scheduler *s,
+                                  const int nodeID) {
+  scheduler_activate_send(s, c->mpi.send, task_subtype_xv, nodeID);
+#ifdef EXTRA_HYDRO_LOOP
+  if (chemistry_need_flux_prep_loop(s->space->e->chemistry)) {
+    scheduler_activate_send(s, c->mpi.send, task_subtype_chemistry_flux_prep,
+                            nodeID);
+    scheduler_activate_pack(s, c->mpi.pack, task_subtype_chemistry_flux_prep,
+                            nodeID);
+  }
+#endif
+}
+#endif
+
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
 /**
  * @brief Is this a pair task between an inactive local cell and an active
@@ -1847,7 +1892,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          cell_activate_recv_xv(ci, s);
           if (ci_active) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
@@ -1868,7 +1913,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
            * the node of the inactive cell, so sending over the xv and
            * gradient suffices. If at any point the commutications change, we
            * should probably also send over the rho separately. */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          cell_activate_recv_xv(ci, s);
 #ifndef EXTRA_HYDRO_LOOP
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 #else
@@ -1887,7 +1932,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          cell_activate_send_xv(cj, s, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -1911,7 +1956,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         else if (cj_active) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* See NOTE on line 1542 */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          cell_activate_send_xv(cj, s, ci_nodeID);
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
@@ -1946,7 +1991,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          cell_activate_recv_xv(cj, s);
           if (cj_active) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
@@ -1961,7 +2006,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         else if (cj_active) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* See NOTE on line 1542. */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          cell_activate_recv_xv(cj, s);
 #ifndef EXTRA_HYDRO_LOOP
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 #else
@@ -1980,7 +2025,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          cell_activate_send_xv(ci, s, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -2005,7 +2050,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         else if (ci_active) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* See NOTE on line 1542. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          cell_activate_send_xv(ci, s, cj_nodeID);
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
@@ -2091,9 +2136,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
 
     /* The flux ghost of the inactive local cell must also run, so that the
-       force pair waits for the outflow of this prep pair. TODO(MPI): no task
-       sends the theta of a foreign donor between the prep and the force
-       loop. */
+       force pair waits for the outflow of this prep pair, and so that its
+       theta message carries the theta of this step. */
     for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
          l = l->next) {
       if (cell_pair_is_local_inactive_foreign_active(l->t, e))
