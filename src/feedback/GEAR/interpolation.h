@@ -881,11 +881,12 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       return 0;
     }
 
+    int x_lo, x_hi, y_lo, y_hi;
+    float fx_edge, fy_edge;
+    interpolate_axis_bracket_clamped(i, Nx, &x_lo, &x_hi, &fx_edge);
+    interpolate_axis_bracket_clamped(j, Ny, &y_lo, &y_hi, &fy_edge);
+
     if (interp->edge_interpolates_inside_axis) {
-      int x_lo, x_hi, y_lo, y_hi;
-      float fx_edge, fy_edge;
-      interpolate_axis_bracket_clamped(i, Nx, &x_lo, &x_hi, &fx_edge);
-      interpolate_axis_bracket_clamped(j, Ny, &y_lo, &y_hi, &fy_edge);
       const float fx1 = interp->data[x_lo * Ny + y_lo] * (1. - fx_edge) +
                         interp->data[x_hi * Ny + y_lo] * fx_edge;
       const float fx2 = interp->data[x_lo * Ny + y_hi] * (1. - fx_edge) +
@@ -893,10 +894,9 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       return fx1 * (1. - fy_edge) + fx2 * fy_edge;
     }
 
-    const int midx = max(idx, 0);
-    const int midy = max(idy, 0);
-    const int row = min(midx, Nx - 1);
-    const int col = min(midy, Ny - 1);
+    /* The stored node at the lower bracketing index of each axis. */
+    const int row = x_lo;
+    const int col = y_lo;
     const int cell_to_get = row * Ny + col;
     if (cell_to_get >= array_size) {
       error("Index %d is out of boundary for the target data", cell_to_get);
