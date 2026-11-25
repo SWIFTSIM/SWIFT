@@ -2796,25 +2796,38 @@ int engine_step(struct engine *e) {
 #endif
 
     /* A pass stopped at the edge of the gas the tree covers asks for a wider
-     * tree. Released photons mean the rebuild could not widen it. Cut
-     * held-gas searches alone do not print a line. */
+     * tree. Released photons mean the rebuild could not widen it. Cut start
+     * radii alone do not print a line. Photons left at one-probe stops
+     * escape: their share of the issued photons measures the search stall. */
     const struct radiation_hii_coverage_stats *cov = &e->radiation_hii_coverage;
     const struct radiation_hii_coverage_stats *cov_last =
         &e->radiation_hii_coverage_last_step;
-    if (cov->carried_passes + cov->released_passes >
-        cov_last->carried_passes + cov_last->released_passes) {
+    const int new_coverage_stops =
+        cov->carried_passes + cov->released_passes >
+        cov_last->carried_passes + cov_last->released_passes;
+    const int new_one_probe_stops =
+        cov->one_probe_stops > cov_last->one_probe_stops;
+    if (new_coverage_stops)
       message(
           "HII coverage stops: %.0f carried (+%.0f), %.0f released (+%.0f) "
-          "with %.3e photons (+%.3e), %.0f held-gas searches cut (+%.0f).",
+          "with %.3e photons (+%.3e), %.0f start radii cut (+%.0f).",
           cov->carried_passes, cov->carried_passes - cov_last->carried_passes,
           cov->released_passes,
           cov->released_passes - cov_last->released_passes,
           cov->released_photons,
           cov->released_photons - cov_last->released_photons,
-          cov->held_search_cuts,
-          cov->held_search_cuts - cov_last->held_search_cuts);
+          cov->start_radius_cuts,
+          cov->start_radius_cuts - cov_last->start_radius_cuts);
+    if (new_one_probe_stops)
+      message(
+          "HII one-probe stops with photons left: %.0f (+%.0f) with %.3e "
+          "photons (+%.3e).",
+          cov->one_probe_stops,
+          cov->one_probe_stops - cov_last->one_probe_stops,
+          cov->one_probe_photons,
+          cov->one_probe_photons - cov_last->one_probe_photons);
+    if (new_coverage_stops || new_one_probe_stops)
       e->radiation_hii_coverage_last_step = *cov;
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Two ranks' stars both reaching the same boundary gas is expected

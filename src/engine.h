@@ -144,7 +144,8 @@ extern int engine_current_step;
 
 /**
  * @brief Counts of the HII passes stopped at the edge of the gas the tree
- * covers. Doubles only, so that the ranks sum them in one reduction.
+ * covers or by the one empty probe. Doubles only, so that the ranks sum them
+ * in one reduction.
  */
 struct radiation_hii_coverage_stats {
 
@@ -155,12 +156,20 @@ struct radiation_hii_coverage_stats {
   double released_passes;
 
   /*! Photons released by those passes. Only coverage stops count here:
-      photons left at any other stop escape uncounted, carried ones included,
-      and so does a carry cleared at death or at the end of the age window. */
+      photons left at a one-probe stop count in one_probe_photons; at any
+      other stop they escape uncounted, carried ones included, and so does a
+      carry cleared at death or at the end of the age window. */
   double released_photons;
 
-  /*! Held-gas searches whose start radius was cut to the covered radius. */
-  double held_search_cuts;
+  /*! Claim walks whose start radius was cut to the covered radius. */
+  double start_radius_cuts;
+
+  /*! Passes of a star holding gas that ended on its one empty probe with
+      photons left. */
+  double one_probe_stops;
+
+  /*! Photons left, and escaped, at those stops. */
+  double one_probe_photons;
 };
 
 /* Data structure for the engine. */

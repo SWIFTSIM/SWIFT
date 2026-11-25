@@ -28,6 +28,7 @@
 #endif
 
 /* Local headers. */
+#include "cell_stars.h"
 #include "error.h"
 #include "feedback.h"
 #include "hydro.h"
@@ -167,6 +168,45 @@ runner_hii_search_stop(const float radius, const float max_search_radius,
   if (probe_used) return hii_search_stop_one_probe;
   if (radius >= covered_radius) return hii_search_stop_covered_radius;
   return hii_search_grow;
+}
+
+/**
+ * @brief Radius out to which an HII pass gathers the gas its star holds.
+ *
+ * The covered radius, not the start radius: held gas that flowed beyond the
+ * start radius is still charged and still sets the extent. The ceiling also
+ * bounds the region; held gas beyond it lapses.
+ *
+ * @param covered_radius The radius inside which the pass visits every cell
+ * that held gas at the last rebuild (cell_radiation_covered_radius()).
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static float
+runner_hii_held_search_radius(const float covered_radius,
+                              const float max_search_radius) {
+  return min(covered_radius, max_search_radius);
+}
+
+/**
+ * @brief Radius at which the claim walk of an HII pass starts, before the
+ * cut to the covered radius.
+ *
+ * The walk starts beyond all the gas the star holds. Held gas is tagged and
+ * so is no candidate: a walk that starts inside the region finds nothing new
+ * there, and a star holding gas then stops after its one empty probe.
+ *
+ * @param interaction_limit The start radius of the working-level cell.
+ * @param held_radius Distance to the star of the farthest gas it holds, 0 if
+ * it holds none.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static float
+runner_hii_claim_start_radius(const float interaction_limit,
+                              const float held_radius,
+                              const float max_search_radius) {
+  const float beyond_held = radiation_search_radius_factor * held_radius;
+  const float start = max(interaction_limit, beyond_held);
+  return min(start, max_search_radius);
 }
 
 /**

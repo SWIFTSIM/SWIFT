@@ -224,7 +224,7 @@ would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:1326}).
+(\code{runner\_radiation\_feedback.c:1400}).
 
 \begin{figure}[h]
   \centering
@@ -237,7 +237,9 @@ needed to contain the current interaction limit: then hands off to
   \label{fig:traversal-structure}
 \end{figure}
 
-For each active star at that level:
+For each active star at that level, after the upkeep of its held gas
+(Section~\ref{sec:hii-claim-start} of the algorithm document), which sets the
+first search radius $r_0$ beyond that gas:
 \begin{enumerate}
   \item Gather candidates within the current search radius via
     \code{runner\_do(self/dopair)\_stars\_hii\_ionization\_feedback},
@@ -274,7 +276,7 @@ For each active star at that level:
     \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
     \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:1076-1099}); the
+    the comment at \code{runner\_radiation\_feedback.c:1142-1165}); the
     loop breaks once the budget is exhausted or both retry budgets run
     out.
 \end{enumerate}
