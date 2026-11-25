@@ -40,7 +40,8 @@ Three tests gate the run, and the exit status is 0 when all pass:
   the transport, using the cone power and the star smoothing length of the snapshots, and takes
   the expected `Q` in each shell with a margin of 3 standard deviations over random emission
   frames. The check takes about one minute. It needs scipy. It does not depend on the number
-  of reception slots.
+  of reception slots. The bar applies to `level=5` and `star_mass=29.7`; with other values
+  this test prints `VOID` and the check exits with 4.
 
 The check also prints the LW energy density in each shell over the thin-limit
 value `L / (4 pi r^2 c)` (`Q`) and the dissociation rate over the thin-limit kernel mean,

@@ -6,9 +6,9 @@ luminosity L of the star from the radiation table, not from the transported fiel
 Three tests gate the run. Two other numbers are reported without a bar.
 
 Luminosity (gate). The star's LWLuminosities against the table L_LW as SWIFT reads
-it. For Z = 0, below the first table row, SWIFT takes the first row and the node of its
-own mass grid below the star's mass, with no interpolation in mass (interpolate_2d,
-constant boundary branch). SWIFT's mass grid runs from the IMF minimum to the IMF
+it. For Z = 0, below the first table row, SWIFT takes the first row and interpolates
+log10 L linearly in log M between the two nodes of its own mass grid around the star's
+mass (interpolate_2d, clamped on the Z axis). SWIFT's mass grid runs from the IMF minimum to the IMF
 maximum mass of the table in GEARRadiation:interpolation_size_mass steps. The check
 follows that rule where this grid equals the mass grid of the table file. Where the two
 differ, the run is void (exit 4). The bar is 8 float32 ulp of log10 L (a chosen margin
@@ -54,10 +54,11 @@ receiver; l [pc] the weighted mean advance r mu of the hops of one particle; E
      normalised to 1 and form the matrix Phi.
   2. Emission per step: the gas with r < 0.95 gamma h_s gets the tent weight
      V (1 - r / (0.95 gamma h_s)) (star_gas_weights.h). The weights are summed in the 12
-     HEALPix cells (nside 1) of a frame rotated at random each step, and each cell sum
-     is normalised to 1 / 12. A cell whose sum is below the cone floor
-     0.5 (pi / 3) (0.95 gamma h_s)^3 / 12 sends the missing fraction out of the box.
-     This gives the emission vector e.
+     HEALPix cells (nside 1) of a frame rotated at random each step. A cell whose sum is
+     below the cone floor 0.5 (pi / 3) (0.95 gamma h_s)^3 / 12 sends the missing fraction
+     of its 1 / 12 out of the box. The delivered light, 1 minus that escaped fraction, is
+     shared over all receivers in proportion to their weight (star_gas_global_share in
+     star_gas_weights.h). This gives the emission vector e.
   3. One step: E <- Phi E + e (unlimited light speed: one hop per step). The stored
      energy of a particle gives Q = 4 pi r^2 E l / V (the field formula of the transport).
   4. A snapshot sees E after the steps that ended at or before its time. Q of a shell is
@@ -76,9 +77,9 @@ What a PASS proves: the star's table luminosity matches the SWIFT value, the H2
 dissociation follows the field that the cooling is given with no further factor (no
 second shielding), and the stored light of the thin box equals the geometry model to 3
 sigma per shell (a scale error of Q of about 1 per cent is rejected). What it does not
-prove: that the model itself is right where it was not tested. The model is checked
-against runs of 12 reception slots at cone powers 2, 4 and 8; no run at another slot
-count was checked. A loss of light that grows with the H2
+prove: that the model itself is right where it was not tested. The Q bar is a limit of
+the model: it is gated only at resolution level 5 and a star of 29.7 Msun, and other
+levels, star masses and slot counts are void or untested. A loss of light that grows with the H2
 column or the dust is not tested (the box is thin and dust-free), nor are errors that
 appear only with a limited light speed or several stars. The rate identity alone does
 not see a scale error of the LW field, because the rate and the field scale together;
@@ -116,6 +117,8 @@ N_LIT = 4
 N_MIN = 100
 N_BOOT = 300
 N_SEQUENCE = 24
+BAR_LEVEL = 5
+BAR_STAR_MASS_MSUN = 29.7
 BAR_SIGMA = 3.0
 BAR_SHELLS_H = (5.6, 7.7, 9.2, 11.2)
 MU_MIN = 1e-3
@@ -336,12 +339,33 @@ def measured_window_q(snaps: list[dict], window: list[int], l_table: float) -> A
     return np.mean(rows, axis=0)
 
 
+def bar_void_reasons(s: dict) -> list[str]:
+    """Return why the Q geometry bar is not gated for this run (empty if it is).
+
+    The bar is gated only at resolution level BAR_LEVEL and for a star of
+    BAR_STAR_MASS_MSUN.
+    """
+    out = []
+    level = np.log2(len(s["mass"])) / 3.0
+    if abs(level - BAR_LEVEL) > 1e-9:
+        out.append(
+            f"{len(s['mass'])} gas particles: level {level:.3g}, not {BAR_LEVEL}"
+        )
+    mass = s["star_mass"] / MSUN
+    if abs(mass - BAR_STAR_MASS_MSUN) > 0.005 * BAR_STAR_MASS_MSUN:
+        out.append(f"star mass {mass:.4g} Msun, not {BAR_STAR_MASS_MSUN}")
+    return out
+
+
 def window_steps(snaps: list[dict], steps: Arr) -> tuple[list[int], list[int]]:
-    """Return the window snapshot indices and the number of steps done at each of them."""
+    """Return the window snapshot indices and the number of steps done at each of them.
+
+    The first row of timesteps.txt is step 0, the initial state: it is not a step.
+    """
     n = len(snaps)
     window = list(range(max(12, n // 3), n - 1, 2))
     tol = 1e-6 * float(steps[-1])
-    done = [int((steps <= snaps[k]["time_code"] + tol).sum()) for k in window]
+    done = [int((steps[1:] <= snaps[k]["time_code"] + tol).sum()) for k in window]
     return window, done
 
 
@@ -443,11 +467,12 @@ def table_luminosity(
     IMF maximum mass (Data/IMF Mmin and Mmax) in interpolation_size_mass nodes
     (src/feedback/GEAR/radiation_table_io.c), and interpolates log L bilinearly in
     log Z and log M. A metallicity below the first row of the table (here Z = 0)
-    takes the constant boundary branch of interpolate_2d
-    (src/feedback/GEAR/interpolation.h): the first row, and the node of the
-    resampled grid below the star's mass, with no interpolation in mass. This
-    function follows that branch, with the index formed in float32 as SWIFT does,
-    when the resampled grid equals the grid of the file.
+    is clamped to the first row, and log10 L is interpolated linearly in log M
+    between the two nodes of the resampled grid around the star's mass
+    (interpolate_axis_bracket_clamped in src/feedback/GEAR/interpolation.h, with
+    edge_interpolates_inside_axis = 1 for the radiation tables). This function
+    follows that rule, with the index and its fraction formed in float32 as SWIFT
+    does, when the resampled grid equals the grid of the file.
 
     The bar is 8 float32 ulp of log10 L as a relative error: 8 is a chosen margin
     on the one ulp, eps * |log10 L| * ln 10, which the float32 readout cannot resolve.
@@ -497,7 +522,14 @@ def table_luminosity(
     index = int((log_m - grid_min) / grid_step)
     if index < 0 or index >= n_mass - 1:
         raise ValueError(f"log10 mass {float(log_m):.4f} is outside the table")
-    value = float(lum[index])
+    frac = float(np.float32((log_m - grid_min) / grid_step) - np.float32(index))
+    value = float(
+        10.0
+        ** (
+            (1.0 - frac) * np.log10(float(lum[index]))
+            + frac * np.log10(float(lum[index + 1]))
+        )
+    )
     bar = 8.0 * float(np.finfo(np.float32).eps) * abs(np.log10(value)) * np.log(10.0)
     return value, bar
 
@@ -857,6 +889,10 @@ def main() -> int:
         f"{'r[pc]':>6} {'N':>6} {'Q mean':>8} {'Q med':>8} {'se':>7} | {'2b':>8} {'se':>7} | {'ln r4':>10} {'bar':>9}"
     )
     status = EXIT_PASS if lum["ok"] else EXIT_FAIL
+    void_q = bar_void_reasons(snaps[-1])
+    if void_q:
+        print("VOID: the Q geometry bar is not gated here:\n  " + "\n  ".join(void_q))
+        return EXIT_VOID
     window, done = window_steps(snaps, steps)
     bar = geometry_bar(snaps[-1], done)
     q_win = measured_window_q(snaps, window, lum["table_erg_s"])
@@ -907,6 +943,9 @@ def main() -> int:
         f"{snaps[-1]['cone_power']:g}, model {N_SEQUENCE} frame sequences, bar centre +- {BAR_SIGMA:g} sigma"
     )
     print(f"{'r[pc]':>10} {'Q window':>9} {'centre':>8} {'sigma':>7} {'(Q-c)/sig':>10}")
+    if not (np.all(np.isfinite(bar["sigma"])) and np.all(bar["sigma"] > 0.0)):
+        print("NON-FINITE or not positive sigma of the geometry bar")
+        return EXIT_NONFINITE
     for (lo, hi), q, c, sg in zip(
         bar_shells(snaps[-1]), q_win, bar["centre"], bar["sigma"]
     ):
