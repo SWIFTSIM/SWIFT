@@ -766,8 +766,10 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_flux_theta, t_unpack_flux_theta);
 
       /* The whole-part messages also carry a theta, which must not
-         overwrite the received one. */
+         overwrite the received one. The stars activate rho without the
+         gradient. */
       scheduler_addunlock(s, t_xv, t_unpack_flux_theta);
+      scheduler_addunlock(s, t_rho, t_unpack_flux_theta);
       scheduler_addunlock(s, t_gradient, t_unpack_flux_theta);
     }
 #endif
