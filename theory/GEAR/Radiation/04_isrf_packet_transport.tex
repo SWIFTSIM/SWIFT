@@ -97,7 +97,10 @@ with $\rho$ the physical gas density and
 $\sigma_{\rm H_2}/\bar E_{\rm LW}=1.4425\times10^{-7}$\,cm$^2$\,erg$^{-1}$,
 derived below for the Draine field (section~\ref{sec:isrf-lw-coefficient}).
 The code holds this value as a compile-time constant, not read from the yields
-table.
+table. A table with the dissociating LW luminosity must carry the attribute
+\code{h2\_dissociation\_reference}, and the code stops if it differs from the
+constant by more than $10^{-6}$ in relative terms
+(\code{src/feedback/GEAR/radiation\_table\_io.c:1150-1182}).
 The cooling library computes the photoelectric heating from $G_0$, with the
 efficiency law chosen in its parameters. The library is Grackle or geajay, and
 SWIFT is built with one chemical network of it. The networks are numbered 0
@@ -919,7 +922,7 @@ lies on a border.
 \centering
 \includegraphics{figures/isrf_slots.pdf}
 \caption{The reception slots on the sphere of directions, in the slot frame
-$(y_0,y_1,y_2)$. Left: the 12 slots, front and back, coloured by the axis $m$
+$(y_0,y_1,y_2)$. The 12 slots, front and back, coloured by the axis $m$
 of Eq.~\eqref{eq:packet-slot12} and numbered by $k$: convex cones of equal
 solid angle. Dots: the box axes, each at least $10^\circ$ from a border.}
 \label{fig:isrf-slots}
@@ -1214,13 +1217,17 @@ $r=|\boldsymbol{o}|$ (Section~\ref{sec:packet-absorption}). The cell sums
 $S_c$ and the shares use the same weights, so the shares and the escaped
 fractions sum to one.
 
-\paragraph{The modes of delivery.} The shares and the escaped fractions do not
-depend on how fast the light moves. Four settings decide when a share
-reaches the gas.
+\paragraph{The modes of delivery.} Four settings decide how the light of a
+star reaches the gas. The shares and the escaped fractions above belong to the
+transport and do not depend on how fast the light moves.
 \begin{itemize}
-  \item With \code{GEARFeedback:ISRF\_propagation} $=0$ there is no transport:
-    the star adds the share to its receivers in the current step, attenuated
-    as described above under ``Without transport''.
+  \item With \code{GEARFeedback:ISRF\_propagation} $=0$ there is no transport
+    and the emission cells are not used. The star gives the light of its step
+    to each receiver in the feedback loop, with the kernel weight of the pair
+    times $e^{-\kappa_b\ell}$, as described above under ``Without transport''
+    (\code{src/feedback/GEAR/radiation\_iact.h:280-300}). The shares
+    $\varphi_j$ and the escaped fraction of Eq.~\eqref{eq:packet-escape} do
+    not apply, and no light escapes.
   \item With the transport and \code{ISRF\_packet\_light\_speed} $=$
     \code{cap} (the default), the share waits in the near bins and far cells
     of the receiver, with the delay of Section~\ref{sec:packet-lightspeed}.
@@ -3400,12 +3407,12 @@ LW rate is resolved for a particle with extra data, in the preparation of the
 library inputs (\code{src/cooling/geajay/cooling.c:1262-1290}). The Grackle
 switches \code{dust\_chemistry},
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
-\code{cooling.c:1830-1835}. The H$_2$ self-shielding option of
+\code{src/cooling/grackle/cooling.c:1830-1835}. The H$_2$ self-shielding option of
 Sec.~\ref{sec:packet-absorb-summary} is \code{GrackleCooling:H2\_self\_shielding}
 (\code{src/cooling/grackle/cooling\_io.h:400-413}). Its values, not to be
 confused with the build modes, are 0 (off, the default), 2 (the kernel-support
 length) and 3 (the Jeans length). The length for the value 2 is set at
-\code{cooling.c:925-937}. The option is read in every
+\code{src/cooling/grackle/cooling.c:925-937}. The option is read in every
 build mode, but it acts on $k_{\rm diss}$, which is zero below
 \code{grackle\_2}, so it has an effect only in \code{grackle\_2} and
 \code{grackle\_3}. The LW photon
@@ -3438,7 +3445,7 @@ deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
 (\code{src/feedback/GEAR/radiation\_isrf\_extinction.h:68-111}, :206-222). The switch
 \code{GEARFeedback:ISRF\_propagation} (0 off, 1 the transport) is parsed at
-\code{src/feedback/GEAR\_thermal/feedback\_properties.h:832-833}, and the
+\code{src/feedback/GEAR\_thermal/feedback\_properties.h:846-847}, and the
 choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
 :784-785.
 
@@ -3459,33 +3466,35 @@ computed from the integrated table by
 (\code{radiation.h:167-169}) when radiation is inactive or a luminosity
 vanishes. They are stored as \code{band\_edge\_weight\_pe},
 \code{band\_edge\_weight\_lw} and \code{band\_edge\_photon\_weight\_lw}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:186-188}).
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:188-190}).
 
 \paragraph{The packet and its slots (Sec.~\ref{sec:packet-state}).} The slot
-count is \code{RADIATION\_PACKET\_SLOTS}, 12
-(\code{src/feedback/GEAR\_thermal/feedback\_struct.h:169}). The
+count is \code{RADIATION\_PACKET\_SLOTS}, 12. The theory describes only 12 slots.
+The code still takes the configure option \code{--with-isrf-packet-slots=<N>}
+(\code{configure.ac:3113-3121}, \code{src/feedback/GEAR\_thermal/feedback\_struct.h:214-217}),
+which accepts other counts. The
 slot struct is \code{feedback\_isrf\_packet\_slot\_data}
-(\code{feedback\_struct.h:376-468}); the packet is
-\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:474-526}).
+(\code{feedback\_struct.h:386-478}); the packet is
+\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:484-536}).
 Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
-\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:282-289}).
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:299-338}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
 (\code{src/feedback/GEAR/radiation.h:463-484}, the ratio at :484). The
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:973-981}).
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:988-995}).
 Eq.~\eqref{eq:packet-slot12} is \code{radiation\_packet\_slot}
 (\code{src/feedback/GEAR/radiation\_packet.c:1341-1380}, the 12-slot branch at
-:1372-1377).
+:1372-1378).
 Eq.~\eqref{eq:packet-frame} is \code{radiation\_packet\_build\_octant\_frame}
 (\code{radiation\_packet.c:1436-1488}). Its angles are
 \code{GEARFeedback:ISRF\_packet\_octant\_frame\_angles\_deg} and its seed offset
 \code{GEARFeedback:ISRF\_packet\_octant\_frame\_seed\_offset}
-(\code{feedback\_properties.h:889-893}). The frame, the cone power and the
+(\code{feedback\_properties.h:938-946}). The frame, the cone power and the
 light speed switch are run constants in \code{struct radiation\_packet\_constants}
 (\code{feedback\_struct.h:137-148}), the member \code{ISRF\_packet\_constants} of
-\code{feedback\_props} (\code{feedback\_properties.h:218}). They are set when the
+\code{feedback\_props} (\code{feedback\_properties.h:220}). They are set when the
 parameters are read and come back with \code{feedback\_props} after a restart.
 The pair loops pass a pointer to them to the hop
 (\code{feedback\_get\_radiation\_packet\_constants},
@@ -3497,7 +3506,7 @@ border distance of the debug check is
 \code{radiation\_packet\_slot\_border\_distance} (\code{radiation\_packet.c:1395-1423}).
 \code{tests/testRadiationPacketSlotGeometry.c} checks the convexity and the
 equal solid angle of the cells against the nearest of $K$ generator directions.
-Every gas particle holds the $K=12$ slots (\code{feedback\_struct.h:480}), so
+Every gas particle holds the $K=12$ slots (\code{feedback\_struct.h:490}), so
 its size grows by 304 bytes per slot (paragraph on memory below). The gradient and the force loops visit
 every non-empty slot of the sender (\code{radiation\_packet.h:544}, :1039), so
 the work of a hop grows with the number of lit slots, at most 12. Two
@@ -3543,8 +3552,8 @@ set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 \code{radiation\_packet.c:4271-4300}). The escape of a slot with $S_{i,k}=0$ is
 at \code{radiation\_packet.c:4237-4244}. The parameter $p$ is
 \code{radiation\_packet\_constants.cone\_power} (read at \code{radiation\_packet.h:507}, in
-\code{radiation\_packet\_slot\_weight}, which the gradient and the force loop share), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:908-910}
-and checked at :970-972.
+\code{radiation\_packet\_slot\_weight}, which the gradient and the force loop share), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:923-925}
+and checked at :985-987.
 
 \paragraph{The reach (Sec.~\ref{sec:isrf-reach}).} The membership test is
 \code{radiation\_packet\_in\_reach} (\code{radiation\_packet.c:1192-1206}) and the
@@ -3572,7 +3581,7 @@ $\boldsymbol{n}_k$ at :3430, and the fallback direction at :3435-3437. The
 merge returns before any change of origin when the slot received no energy
 (:3792). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
-\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:376-468}).
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:386-478}).
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
@@ -3611,7 +3620,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:1096-1145}).
 \code{radiation\_packet\_deliver\_share} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
-(\code{radiation\_packet.h:793-795}; fields at \code{feedback\_struct.h:319-326}).
+(\code{radiation\_packet.h:793-795}; fields at \code{feedback\_struct.h:332-336}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:1130}
 for a hop, :1421 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:161-165}, :199-213) and from
@@ -3658,7 +3667,7 @@ The reset that keeps $f_\star$ is
 
 \paragraph{H$_2$ line absorption (Secs.~\ref{sec:packet-h2}, \ref{sec:packet-h2-limits}).}
 The switch is \code{GEARFeedback:ISRF\_H2\_line\_absorption}. Its start-up
-checks are at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:860-888}.
+checks are at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:874-891}.
 It needs \code{GEARFeedback:ISRF\_propagation}, the ISRF and a cooling network
 that tracks H$_2$ (level 2 or above), checked by
 \code{radiation\_selection\_refuse\_H2\_line\_absorption}
@@ -3667,7 +3676,7 @@ that supplies $X_{{\rm H}_2}$, $T$ and $\mu$ is then geajay. A Grackle build
 compiles the line absorption but refuses the switch at start-up
 (\code{src/cooling/grackle/cooling\_io.h:289-292}), because Grackle shields the
 transported LW rate with its own factor. The switch also stops a build whose
-\code{struct part} is 4096 bytes (\code{feedback\_properties.h:847-854}). In a one-thread timing of a short
+\code{struct part} is 4096 bytes (\code{feedback\_properties.h:895-903}). In a one-thread timing of a short
 packet run, the same code with its particle padded to a stride of exactly 4096
 bytes took about 7 per cent more CPU time than without the padding. That timing
 had no line absorption, so the cost with the switch on is not measured.
@@ -3724,10 +3733,10 @@ $\mathcal V_k$ are doubles. The slot fields are \code{H2\_transmission},
 \code{H2\_waiting\_energy\_over\_factor} ($\mathcal B_k$),
 \code{H2\_waiting\_dissociating\_energy} ($\mathcal A_k$) and
 \code{H2\_waiting\_velocity\_sum} ($\mathcal V_k$). All six are declared at
-\code{feedback\_struct.h:401-425}. The fit and the cached column of a particle
+\code{feedback\_struct.h:411-435}. The fit and the cached column of a particle
 are \code{H2\_column\_per\_length}, \code{H2\_shielding\_exponent},
 \code{H2\_line\_width\_km\_s} and \code{H2\_velocity\_limit}
-(\code{feedback\_struct.h:672-687}).
+(\code{feedback\_struct.h:682-697}).
 
 The merge of Eq.~\eqref{eq:h2-merge} is split around the merge of the slot.
 Before it, \code{radiation\_packet\_line\_begin}
@@ -3765,7 +3774,7 @@ The own fields of Eq.~\eqref{eq:h2-own} are formed at the end of the gradient
 loop by \code{radiation\_packet\_end\_gradient} (:4048-4127). The field factor
 is at :4085, and the weights and sums are at :4091-4097. The running mean of
 the dissociating field is at :4121-4122. $\Sigma^{\rm own}$ is at :4123-4125,
-stored in \code{LW\_line\_H2\_column} (\code{feedback\_struct.h:728}). The
+stored in \code{LW\_line\_H2\_column} (\code{feedback\_struct.h:743}). The
 snapshot field \code{LWLineH2ColumnDensities} is declared at
 \code{feedback\_io.h:531-535}. Its converter (:400-407) multiplies by the square
 of the length unit, so that the inverse-area unit attribute gives cm$^{-2}$.
@@ -3796,13 +3805,13 @@ is \code{GEARFeedback:ISRF\_packet\_light\_speed\_fraction\_of\_c}. Both are
 parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:496-568}.
 The margin $f_{\Delta t}$ is
 \code{GEARFeedback:ISRF\_packet\_light\_speed\_time\_step\_margin}
-(:865-891); the code accepts values in $(0,\sqrt{2/0.70}]$, about $(0,1.69]$,
+(:906-915); the code accepts values in $(0,\sqrt{2/0.70}]$, about $(0,1.69]$,
 a range check that the packet transport does not derive. The cap 100 on
 $v/(v-u_j)$ is \code{RADIATION\_PACKET\_RECEDING\_MAX\_FACTOR}
 (\code{radiation\_packet.h:62}). The near bins and the two far cells are
 \code{RADIATION\_PACKET\_BINS} and \code{RADIATION\_PACKET\_FAR\_CELLS}
-(\code{feedback\_struct.h:186}, :192); the fixed far width $2^3$ is
-\code{RADIATION\_PACKET\_FAR\_SCALE} (:201).
+(\code{feedback\_struct.h:196}, :202); the fixed far width $2^3$ is
+\code{RADIATION\_PACKET\_FAR\_SCALE} (:211).
 
 The delay is
 \code{radiation\_packet\_arrival\_delay} and
@@ -3848,7 +3857,7 @@ speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:385-390}),
 applied at \code{radiation\_packet.c:4250-4254}; $\tau_{\rm m}$ is
 \code{GEARFeedback:ISRF\_packet\_read\_mean\_time\_Myr}
-(\code{feedback\_properties.h:876-883}). The sums of
+(\code{feedback\_properties.h:926-931}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1205-1230}, called at
 \code{radiation\_propagation\_iact.h:166-167}, :200). The self term and the
@@ -3873,17 +3882,17 @@ booked at \code{radiation\_packet.h:840-860}.
 
 \paragraph{Ledgers (Sec.~\ref{sec:packet-ledger}).} The ledgers are compiled
 only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
-\code{--enable-isrf-debugging-checks} (\code{configure.ac:3058-3070}), the
+\code{--enable-isrf-debugging-checks} (\code{configure.ac:3126-3135}), the
 diagnostic build. The per-band ledger of a gas
 particle is \code{feedback\_isrf\_packet\_band\_data}
-(\code{feedback\_struct.h:289-328}: \code{absorbed\_energy},
+(\code{feedback\_struct.h:299-338}:\code{absorbed\_energy},
 \code{absorbed\_photons}, \code{escaped\_energy}, \code{escaped\_photons},
 \code{redshifted\_energy}, \code{redshifted\_photons}). The ledger of a star or
 a sink is \code{feedback\_isrf\_packet\_removed\_data}
-(\code{feedback\_struct.h:536-550}). The emission and escape of a star are
+(\code{feedback\_struct.h:546-560}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:1013-1058}). The emission is booked by
+(\code{feedback\_struct.h:1069-1114}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
 (\code{radiation\_packet.c:4347-4378}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:606}. The removal is
@@ -3933,7 +3942,7 @@ is used for the weight sum (:551) and for the inbox and the reservoir
 $\Sigma$ and $\Delta v$, 4 bytes for $\mathcal B$ and $2\times8$ bytes for
 $\mathcal A$ and $\mathcal V$. Without
 \code{--enable-isrf-debugging-checks} the gas particle is 4256 bytes with 12
-slots (the default) and 10 chemistry elements. The particle holds the 4 bytes
+slots and 10 chemistry elements. The particle holds the 4 bytes
 of the weighted column $\Sigma^{\rm own}$ and 28 bytes of padding
 (\code{ISRF\_packet\_stride\_padding}). A particle of 4096 bytes was measured to
 run 7 per cent slower. With H$_2$ line absorption on, the start-up stops a build
