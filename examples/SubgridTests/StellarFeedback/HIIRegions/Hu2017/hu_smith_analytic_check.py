@@ -410,9 +410,9 @@ def resolve_n_H(n_H_true, n_H_sph, X_H, X_H_source, source, override):
     The true mean is the default. The SPH estimate of random initial
     positions sits about 1.4 times above it (kernel self-weight and
     clumping), so the two differ by more than 5 per cent on every run of this
-    example's initial conditions: that is expected, not a fault. An explicit
-    --n-H that differs from the true mean by more than 5 per cent is flagged
-    in the verdict.
+    example's initial conditions: a NOTE line says so, it is not a fault. An
+    explicit --n-H that differs from the true mean by more than 5 per cent is
+    flagged in the verdict.
 
     @param n_H_true True mean hydrogen density [1/cm3].
     @param n_H_sph Mean SPH density times X_H [1/cm3], for information.
@@ -432,6 +432,12 @@ def resolve_n_H(n_H_true, n_H_sph, X_H, X_H_source, source, override):
         f"n_H (SPH estimate) : {sph:.4g}  (information only; {sph / true:.3f} "
         f"times the true mean, which is expected for random particle positions)"
     )
+    if abs(sph / true - 1.0) > 0.05:
+        print(
+            "  NOTE: the SPH estimate differs from the true mean by more than "
+            "5%. Expected for random initial positions; the curves use the "
+            "true mean."
+        )
     if override is None:
         return n_H_true, ""
     print(f"n_H (override)     : {override:.4g}  (--n-H, used for the curves)")
