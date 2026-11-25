@@ -388,7 +388,7 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
-    if (ncon == 2) free(vertexw); /* Only ours when packed. */
+    if (ncon == 2) free(vertexw);
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) swift_free("partition_edge_weights", weights_e);
     free(celllist);

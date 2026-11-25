@@ -1751,11 +1751,12 @@ its share of the distributed gravity mesh. The optional::
     volume_imbalance: 2.0
 
 parameters guard against this (defaults shown). Setting ``volume_weights`` to
-1 makes METIS or ParMETIS also balance the volume of the domains, in the
-initial partition and in all repartitions. ``volume_imbalance`` is the largest
-volume a domain may cover as a multiple of the mean domain volume, and must be
-greater than 1. Smaller values give a better volume balance at the cost of the
-particle or work balance.
+1 makes METIS or ParMETIS also balance the volume of the domains. This applies
+to the *memory*, *edgememory* and *region* initial partitions (not *grid* or
+*vectorized*) and to all the repartition types. ``volume_imbalance`` is the
+largest volume a domain may cover as a multiple of the mean domain volume, and
+must be greater than 1. Smaller values give a better volume balance at the
+cost of the particle or work balance.
 
 Repartitioning:
 ^^^^^^^^^^^^^^^

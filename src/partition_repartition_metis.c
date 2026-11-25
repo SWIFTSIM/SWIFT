@@ -476,7 +476,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Clean up. */
   swift_free("partition_adjncy", inds);
   free(xadj);
-  if (ncon == 2) free(vertexw); /* Only ours when packed. */
+  if (ncon == 2) free(vertexw);
   if (vweights) free(weights_v);
   if (eweights) swift_free("partition_edge_weights", weights_e);
 }
@@ -575,7 +575,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 
   /* Clean up edge info */
   free(cell_edge_offsets);
-  if (ncon == 2) free(vertexw); /* Only ours when packed. */
+  if (ncon == 2) free(vertexw);
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
