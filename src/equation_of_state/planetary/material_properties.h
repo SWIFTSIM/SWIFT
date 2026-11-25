@@ -395,6 +395,14 @@ INLINE static void check_material_params(
         mat_id);
 #endif
 
+#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+  if (mat_params->P_min_scheme != P_min_scheme_none)
+    error(
+        "Material %d: tensile damage sets the tensile strength, so needs "
+        "Material:P_min_scheme none",
+        mat_id);
+#endif
+
 // Yield stress
 #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
   if (mat_params->yield_stress_benz_asphaug_Y_0 < 0.f)
