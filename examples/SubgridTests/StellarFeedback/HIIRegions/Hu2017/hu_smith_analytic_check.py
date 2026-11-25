@@ -66,22 +66,25 @@ their source. See resolve_composition().
 n_H is the true mean of the box: gas mass x X_H / volume / m_p, with X_H read
 from the cooling parameters of the snapshot. See resolve_n_H().
 
-r_hii is read the same way as stromgren_analytic_check.py's corrected
-measure: the current position of every gas particle *any* of the n_stars
-co-located sources has ever tagged (HIIStarIDs), not any star's frozen
-HIIRegionRadii (h_hii) -- generalizing the single-star version to Hu et
-al.'s own r_HII definition ("the maximum radius where a gas particle with
-an ionization fraction x_H+ > 0.95 can be found", i.e. a single front
-radius for the whole source cluster, not per-star). The reported extent is
-outlier-rejected, not the max, of these ever-tagged distances: since
-HIIStarIDs is never cleared on tag expiry, a single particle that lapsed
-early and advected outward for several Myr can inflate a plain max() by
-double digits percent. robust_ever_tagged_radius() rejects such a particle
-only when it is detached from the population both radially and in its own
-direction, which leaves a smooth shell edge exact and keeps a genuinely
-anisotropic front (a leading HEALPix cone at HII_angular_nside > 0, a
-breakout finger) intact. The true max is still reported as a secondary
-diagnostic.
+r_hii follows Hu et al.'s own r_HII definition ("the maximum radius where a
+gas particle with an ionization fraction x_H+ > 0.95 can be found", i.e. a
+single front radius for the whole source cluster, not per-star):
+
+    r_hii = max over gas particles j with IsIonizedFlags[j] != 0 of
+            | minimum_image(x_j - x_c) |,
+
+with x_j the gas particle position [kpc], x_c the mean position of the
+n_stars co-located sources [kpc] and the box periodic. IsIonizedFlags is the
+snapshot field the HII algorithm sets on the particles it currently holds
+ionized. A lapsed particle has flag 0, so no outlier rejection is needed and
+none is applied. The result is in kpc and is printed in pc.
+
+The older estimator is kept behind --front-estimator ever-tagged: the
+farthest particle that any source has ever tagged (HIIStarIDs, a one-way
+stamp that is never cleared), after robust_ever_tagged_radius() has rejected
+particles detached radially and in direction. That filter also removes
+particles that are still ionized, so it is not the default. Both radii and
+the raw ever-tagged maximum are printed on every row.
 
 Scope and limits: the box size of 100 pc and HII_max_search_radius of 40 pc give a margin of 1.5 to 2 over the
 Raga-II prediction of about 26 pc at t=8 Myr. At the natural T_i~47500 K of the plain build the equivalent radius
@@ -238,6 +241,9 @@ ANGULAR_SUPPORT_RADIUS_FRACTION = 0.95
 GAP_MAX_REJECT_FRACTION = 0.02
 GAP_MIN_REJECT = 3
 GAP_MAX_REJECT = 32
+# Exit status when a radius or error is not finite: a NaN compares false
+# against every bar, so it must stop the check before any comparison.
+NONFINITE_EXIT_CODE = 3
 # Below this many ever-tagged particles there are too few points to estimate
 # a spacing scale at all; trust the max unmodified.
 GAP_MIN_POINTS = 10
@@ -348,6 +354,23 @@ def robust_ever_tagged_radius(offsets_kpc):
     if cut < 0:
         return true_max, true_max
     return float(r_sorted[cut + 1]), true_max
+
+
+def largest_ionized_radius(offsets_kpc):
+    """Largest distance of a currently ionized gas particle from the source.
+
+    @param offsets_kpc (N, 3) offsets [kpc] of the particles with
+    IsIonizedFlags != 0, minimum-imaged about the source.
+    @return the largest radius [kpc]; NaN when N is 0.
+    @raise ValueError if any offset is not finite.
+    """
+    offsets = np.asarray(offsets_kpc, dtype=np.float64)
+    if len(offsets) == 0:
+        return float("nan")
+    radii = np.linalg.norm(offsets, axis=1)
+    if not np.all(np.isfinite(radii)):
+        raise ValueError("non-finite ionized particle offset")
+    return float(radii.max())
 
 
 # Keys that hold the hydrogen mass fraction the cooling module uses, in the
@@ -463,7 +486,7 @@ def resolve_n_H(n_H_true, n_H_sph, X_H, X_H_source, source, override):
 # single ID match), matching Hu et al.'s own r_HII definition -- one front
 # radius for the whole source cluster, not per-star.
 # -----------------------------------------------------------------------------
-def read_simulated_r_hii(snapshot_glob, X_H_override=None):
+def read_simulated_r_hii(snapshot_glob, X_H_override=None, estimator="ionized"):
     if sw is None:
         raise RuntimeError("swiftsimio is required to read the snapshots.")
 
@@ -472,6 +495,7 @@ def read_simulated_r_hii(snapshot_glob, X_H_override=None):
         raise RuntimeError(f"No snapshots found matching {snapshot_glob!r}.")
 
     times, r_hii, r_hii_max, r_now = [], [], [], []
+    r_ionized, r_filtered = [], []
     star_mass_msun = None
     n_stars_found = None
     n_H_atom_cc = None
@@ -500,19 +524,31 @@ def read_simulated_r_hii(snapshot_glob, X_H_override=None):
 
         star_ids = data.stars.particle_ids.value.astype(np.int64)
         ever_tagged = np.isin(data.gas.hiistar_ids, star_ids)
+        with h5py.File(f, "r") as h:
+            ionized = h["PartType0/IsIonizedFlags"][:] != 0
+        # Co-located sources: use the mean position as the common center.
+        cluster_pos = data.stars.coordinates.to("kpc").value.mean(axis=0)
+        box_kpc = data.metadata.boxsize.to("kpc").value
+        gas_pos_all = data.gas.coordinates.to("kpc").value
+
+        def offsets_of(mask):
+            dx = gas_pos_all[mask] - cluster_pos
+            return dx - box_kpc * np.round(dx / box_kpc)
+
+        r_ion = r_now[-1]
+        if np.any(ionized):
+            try:
+                r_ion = largest_ionized_radius(offsets_of(ionized))
+            except ValueError as err:
+                print(f"NONFINITE: {f}: {err}")
+                sys.exit(NONFINITE_EXIT_CODE)
+        r_old, r_max = r_now[-1], r_now[-1]
         if np.any(ever_tagged):
-            # Co-located sources: use the mean position as the common center.
-            cluster_pos = data.stars.coordinates.to("kpc").value.mean(axis=0)
-            gas_pos = data.gas.coordinates[ever_tagged].to("kpc").value
-            box_kpc = data.metadata.boxsize.to("kpc").value
-            dx = gas_pos - cluster_pos
-            dx -= box_kpc * np.round(dx / box_kpc)
-            r_robust, r_max = robust_ever_tagged_radius(dx)
-            r_hii.append(r_robust)
-            r_hii_max.append(r_max)
-        else:
-            r_hii.append(r_now[-1])
-            r_hii_max.append(r_now[-1])
+            r_old, r_max = robust_ever_tagged_radius(offsets_of(ever_tagged))
+        r_hii.append(r_ion if estimator == "ionized" else r_old)
+        r_hii_max.append(r_max)
+        r_ionized.append(r_ion)
+        r_filtered.append(r_old)
 
         if star_mass_msun is None:
             n_stars_found = len(data.stars.masses)
@@ -538,6 +574,8 @@ def read_simulated_r_hii(snapshot_glob, X_H_override=None):
         u.Quantity(r_hii, u.kpc),
         u.Quantity(r_hii_max, u.kpc),
         u.Quantity(r_now, u.kpc),
+        u.Quantity(r_ionized, u.kpc),
+        u.Quantity(r_filtered, u.kpc),
         star_mass_msun,
         n_stars_found,
         n_H_atom_cc,
@@ -885,6 +923,14 @@ def main():
         "references to within their own ~15-25%% systematic spread. See "
         "README.",
     )
+    parser.add_argument(
+        "--front-estimator",
+        choices=["ionized", "ever-tagged"],
+        default="ionized",
+        dest="front_estimator",
+        help="Radius the verdict uses: the largest currently ionized "
+        "radius (default) or the outlier-filtered ever-tagged radius.",
+    )
     args = parser.parse_args()
 
     (
@@ -892,6 +938,8 @@ def main():
         r_sim,
         r_sim_max,
         r_now,
+        r_ionized,
+        r_filtered,
         star_mass_msun,
         n_stars,
         n_H,
@@ -901,7 +949,9 @@ def main():
         n_H_sph,
         X_H,
         X_H_source,
-    ) = read_simulated_r_hii(args.snapshot_glob, args.hydrogen_mass_fraction)
+    ) = read_simulated_r_hii(
+        args.snapshot_glob, args.hydrogen_mass_fraction, args.front_estimator
+    )
     n_H, n_H_marker = resolve_n_H(n_H, n_H_sph, X_H, X_H_source, n_H_source, args.n_H)
     box_half_width = 0.5 * boxsize
     T_ionized_K, T_i_marker = resolve_T_ionized_K(args.T_ionized_K, files)
@@ -975,8 +1025,14 @@ def main():
     r_max_w = r_sim_max_pc[window]
     R_ref_w = R_ref_at_t_sim[window]
     rel_error_w = np.abs(r_w - R_ref_w) / R_ref_w
+    if not (np.all(np.isfinite(r_w)) and np.all(np.isfinite(rel_error_w))):
+        print("NONFINITE: a window radius or relative error is not finite")
+        sys.exit(NONFINITE_EXIT_CODE)
+    r_ion_w = r_ionized.to(u.pc).value[window]
+    r_old_w = r_filtered.to(u.pc).value[window]
 
     print(f"\nReference curve: {ref_label}")
+    print(f"Front estimator: {args.front_estimator} (r_sim column)")
     print(
         f"Comparison window: t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] "
         f"({len(window)} snapshots), fixed T_o={args.T_neutral_K:.0f} K"
@@ -1002,13 +1058,18 @@ def main():
         )
     print(
         f"{'t [Myr]':>9} {'r_sim [pc]':>11} {'R_ref [pc]':>11} {'rel_error':>10} "
-        f"{'r_max [pc]':>11}"
+        f"{'r_max [pc]':>11} {'r_ion [pc]':>11} {'r_old [pc]':>11}"
     )
-    for tt, rr, RR, ee, mm in zip(t_w, r_w, R_ref_w, rel_error_w, r_max_w):
-        print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g}")
+    for tt, rr, RR, ee, mm, ri, ro in zip(
+        t_w, r_w, R_ref_w, rel_error_w, r_max_w, r_ion_w, r_old_w
+    ):
+        print(
+            f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g} "
+            f"{ri:11.4g} {ro:11.4g}"
+        )
     print(
-        "  (r_max is the secondary diagnostic: the true, non-outlier-rejected "
-        "max ever-tagged extent, not the r_sim value above)"
+        "  (r_max: raw ever-tagged maximum. r_ion: largest currently ionized "
+        "radius. r_old: outlier-filtered ever-tagged radius.)"
     )
     n_pass = np.sum(rel_error_w <= args.tol)
     median_error = np.median(rel_error_w)
@@ -1097,7 +1158,7 @@ def main():
         "o-",
         color="#d62728",
         markersize=4,
-        label="Simulation (ever-tagged $r_{\\rm HII}$)",
+        label="Simulation ($r_{\\rm HII}$)",
     )
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
     ax.plot(t_grid, R_II, "-", color="black", label="Raga-II (Eqn 11)")
