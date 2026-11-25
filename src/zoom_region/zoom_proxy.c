@@ -284,6 +284,71 @@ static void zoom_make_proxies_self_recursive(struct engine *e,
   }
 }
 
+/**
+ * @brief Make sure the ranks with zoom cells in a void cell get the tree of a
+ * background cell that void cell interacts with.
+ *
+ * The pair recursion only makes a proxy where a zoom cell <-> background pair
+ * survives to the zoom level. A void <-> background pair task is however made
+ * and split as soon as the top-level pair is in range, and wherever that
+ * splitting stops the M-M interactions use the progeny of the background
+ * cell. Its tree is therefore needed by every rank with a zoom cell in the
+ * void cell, whatever the nested levels decide.
+ *
+ * Only the background cell is added here, the zoom cells are left to the
+ * recursion.
+ *
+ * @param e The #engine.
+ * @param s The #space.
+ * @param void_cell The top-level void cell.
+ * @param bkg_cell The top-level background cell.
+ */
+static void zoom_make_proxies_void_bkg_tree(struct engine *e,
+                                            const struct space *s,
+                                            const struct cell *void_cell,
+                                            struct cell *bkg_cell) {
+
+  /* Nothing to do if the top-level pair is out of range. */
+  const int proxy_type =
+      zoom_get_proxy_type(e, void_cell->loc, bkg_cell->loc, void_cell->width,
+                          cell_type_zoom, bkg_cell->type);
+  if (proxy_type == proxy_cell_type_none) return;
+
+  const int nodeID = e->nodeID;
+  const double *zoom_width = s->zoom_props->width;
+
+  /* Number of zoom cells along each axis of the void cell. */
+  const int n = 1 << s->zoom_props->zoom_cell_depth;
+
+  /* Loop over the zoom cells in this void cell. */
+  for (int i = 0; i < n; i++) {
+    const double x = void_cell->loc[0] + (i + 0.5) * zoom_width[0];
+    for (int j = 0; j < n; j++) {
+      const double y = void_cell->loc[1] + (j + 0.5) * zoom_width[1];
+      for (int k = 0; k < n; k++) {
+        const double z = void_cell->loc[2] + (k + 0.5) * zoom_width[2];
+        const struct cell *zoom_cell =
+            &s->cells_top[cell_getid_from_pos(s, x, y, z)];
+
+        /* Which node is at the other end of this proxy (if any)? */
+        const int receiving = (zoom_cell->nodeID == nodeID);
+        const int sending = (bkg_cell->nodeID == nodeID);
+        if (receiving == sending) continue;
+        const int foreignID = receiving ? bkg_cell->nodeID : zoom_cell->nodeID;
+        const int proxy_id = engine_get_proxy_id(e, foreignID);
+
+        /* Add the background cell to the proxy */
+        if (receiving) {
+          proxy_addcell_in(&e->proxies[proxy_id], bkg_cell, proxy_type);
+        } else {
+          proxy_addcell_out(&e->proxies[proxy_id], bkg_cell, proxy_type);
+          bkg_cell->mpi.sendto |= (1ULL << proxy_id);
+        }
+      }
+    }
+  }
+}
+
 #endif /* WITH_MPI */
 
 /**
@@ -432,6 +497,13 @@ void zoom_engine_makeproxies(struct engine *e) {
                     e, s, ci->loc, cj->loc, ci->width,
                     ci_is_void ? cell_type_zoom : ci->type,
                     cj_is_void ? cell_type_zoom : cj->type, /*depth=*/0);
+
+                /* The ranks with zoom cells in a void cell need the tree of
+                 * its background partner whatever the recursion found. */
+                if (ci_is_void != cj_is_void) {
+                  zoom_make_proxies_void_bkg_tree(e, s, ci_is_void ? ci : cj,
+                                                  ci_is_void ? cj : ci);
+                }
               }
             }
           }
