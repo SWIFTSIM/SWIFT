@@ -1,5 +1,5 @@
 # Intro
-Reproduces the D-type expansion convergence test from Hu et al. (2017, MNRAS 471, 2151), Appendix A. Four star particles co-located at the box center, each `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun`), `1e49` photons/s combined. Uniform pure-hydrogen medium, `n_H = 100 cm^-3`. Reuses `../ClumpSmith2021/`'s `makeIC_clump.py` with `clump_radius_pc=0` (degenerates to a uniform box, 0 clump particles).
+Reproduces the D-type expansion convergence test from Hu et al. (2017, MNRAS 471, 2151), Appendix A. Four star particles co-located at the box center, each `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun`), `1e49` photons/s combined. Uniform pure-hydrogen medium, `n_H = 100 cm^-3`. Uses `makeIC_clump.py` (the same file as in `../ClumpSmith2021/`) with `clump_radius_pc=0` (degenerates to a uniform box, 0 clump particles).
 
 This example uses the uniform (`nside=0`) budget-splitting scheme. `../ClumpSmith2021/` (clump intact) runs both the uniform and the angular (`nside=1`) scheme.
 
@@ -16,7 +16,7 @@ Hu et al. (2017) and Smith et al. (2021, Fig. 1) both plot a late-time curve lab
 Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, 0.0078125 Msun (each 8x finer). `gas_mass=4.0` (default) is their coarsest, ~618k particles at this box size.
 
 ## Gravity
-`--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching both papers' purely hydrodynamical test.
+`--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force, matching both papers' purely hydrodynamical test.
 
 ## Cadence
 `HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
@@ -40,7 +40,7 @@ reproduce the papers' `T_i=1e4 K` convention (see Temperature above).
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh` -- see `run.sh` for the full list.
+Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh`. See `run.sh` for the full list.
 
 # Checking
 ```

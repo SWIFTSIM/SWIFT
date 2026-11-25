@@ -61,6 +61,7 @@ GEARChemistry:
 
 GeajayCooling:
   dust_to_gas_model: linear                    # Dust-to-gas ratio model (required)
+  isrf_habing: 1.7                             # G_0 [Habing], required: the ISRF turns the dust on. The solve reads the ISRF G_0 of each particle instead
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
   primordial_chemistry_network: H_He_H2        # H2 is tracked
   with_uv_background: 0                        # No metagalactic background: the star is the only LW source

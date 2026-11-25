@@ -61,21 +61,19 @@ field=none run_name=control ./run.sh        # no field: the gas cools to the CMB
 links, using the flags SWIFT sets. Build it as described in its header, then:
 ```
 python3 isrf_photoelectric_equilibrium_check.py <run directory> --onezone ./onezone_grackle \
-    --table CloudyData_UVB=HM2012.h5 --control control --self-test
+    --table CloudyData_UVB=HM2012.h5 --control control
 ```
 The check assumes `--network 1` and `--pe-model 2` (constant efficiency). For `grackle_2` or
 `grackle_3` pass `--network 2` or `3`; for `wolfire1995` pass `--pe-model 3`. Add
 `--clean-library-path` if an old Grackle is on `LD_LIBRARY_PATH`.
 The check measures the median density, field and metallicity of the last
 snapshot, runs the one-zone program there up to the end time of the run, and reports
-five gates: the median specific energy is steady over the last 20 per cent of the run,
+five checks: the median specific energy is steady over the last 20 per cent of the run,
 it equals the one-zone value, that value is settled (the run is long enough to compare
 an equilibrium), the seeded field is nonzero and unchanged, and the run without field is at
 least ten times colder. It also prints the spread of the specific energy over the
 particles: a 95th to 5th percentile ratio above 1.5 means the box split into two phases.
-The equilibrium bar includes a float32 stall ceiling of the integrator; the
-script docstring derives it. `--self-test` adds inputs that must fail. Use
-`--constant-g0 <G0>` for a run with `field=background`.
+Use `--constant-g0 <G0>` for a run with `field=background`.
 
 For a density scan, name the run directories `n<density>_hot` and `n<density>_cold`
 and write each run's check output to `<run>/check.txt`. Then run

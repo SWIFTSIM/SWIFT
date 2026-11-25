@@ -27,7 +27,7 @@ directly from each snapshot's `EnrichmentWeight`/`GradRhoStar`/`ZStar`
 star fields and reports how much it drifts over the run, rather than
 assuming it stays at its literature fiducial value. Those fields only
 exist in a build configured with `--enable-debug-interactions-stars` (see
-Configure below) -- without it, the check script raises an error asking
+Configure below). Without it, the check script raises an error asking
 for a rebuild.
 
 ## SPH:h_max
@@ -47,7 +47,7 @@ make -j
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var, e.g. `gas_density=1e5 ./run.sh` -- see `run.sh` for the full list.
+Override any parameter via the matching env var, e.g. `gas_density=1e5 ./run.sh`. See `run.sh` for the full list.
 
 # Checking
 ```

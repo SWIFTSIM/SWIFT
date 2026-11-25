@@ -28,19 +28,25 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Import the right RT definition */
+/* Import the right RT definition.
+ * rt_transport_updates_inactive_neighbours: does the non-symmetric transport
+ * interaction also write an inactive pj? */
 #if defined(RT_NONE)
 #include "./rt/none/rt.h"
 #include "./rt/none/rt_iact.h"
+#define rt_transport_updates_inactive_neighbours 0
 #elif defined(RT_DEBUG)
 #include "./rt/debug/rt.h"
 #include "./rt/debug/rt_iact.h"
+#define rt_transport_updates_inactive_neighbours 0
 #elif defined(RT_GEAR)
 #include "./rt/GEAR/rt.h"
 #include "./rt/GEAR/rt_iact.h"
+#define rt_transport_updates_inactive_neighbours 1
 #elif defined(RT_SPHM1RT)
 #include "./rt/SPHM1RT/rt.h"
 #include "./rt/SPHM1RT/rt_iact.h"
+#define rt_transport_updates_inactive_neighbours 0
 #else
 #error "Invalid choice of radiation scheme"
 #endif

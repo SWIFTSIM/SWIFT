@@ -5,7 +5,7 @@ Reproduces STARBENCH's (Bisbas et al. 2015, MNRAS 453, 1324, arXiv:1507.05621) l
 STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This code computes `T_i` from metallicity instead; at `Z=0` (this example's default) it gives `T_i~47500 K`. To match STARBENCH's own convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
 
 ## Star mass
-`star_mass=26.75 Msun` gives `Q_H=1e49 s^-1` in SWIFT-GEAR '''mass-luminosity fit.
+`star_mass=26.75 Msun` gives `Q_H=1e49 s^-1` in the SWIFT-GEAR mass-luminosity fit.
 
 ## Resolution
 `gas_mass=0.1 Msun` (default), ~770k particles.
@@ -38,7 +38,7 @@ not reproduce STARBENCH's `T_i=1e4 K` convention (see Temperature above).
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var, e.g. `gas_mass=0.05 ./run.sh` -- see `run.sh` for the full list.
+Override any parameter via the matching env var, e.g. `gas_mass=0.05 ./run.sh`. See `run.sh` for the full list.
 
 # Checking
 ```

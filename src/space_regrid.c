@@ -478,19 +478,30 @@ void space_regrid(struct space *s, int verbose) {
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (s->cells_top != NULL && (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
-                               cdim[2] != s->cdim[2])) {
 
-    /* Capture state of current space. h_max_no_hii_hwm's ratchet (see
-       above) means cdim can now also come out larger (finer) than before
-       -- only ever via the star radiation term (h_hii or a star's own h)
-       shrinking, never via ordinary hydro/black-hole/sink physics -- so
-       this capture must trigger on any change, not just a decrease. It
-       still requires an existing grid: on the first call (from
-       space_init) and on restart, s->cells_top is NULL while s->cdim may
-       already differ, and both the capture loop and the repartition it
-       triggers need live cells and a live engine. Those cases go through
-       the no_regrid path below instead. */
+  /* On restart no cells exist yet: the saved owners can stand in for them
+   * when the grid is not finer than the saved one. */
+  const int restart_can_map =
+      s->cells_top == NULL && s->e != NULL && s->e->reparttype != NULL &&
+      s->e->reparttype->ncelllist == s->nr_cells && cdim[0] <= s->cdim[0] &&
+      cdim[1] <= s->cdim[1] && cdim[2] <= s->cdim[2];
+
+  if ((s->cells_top != NULL &&
+       (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
+        cdim[2] != s->cdim[2])) ||
+      (restart_can_map && (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+                           cdim[2] < s->cdim[2]))) {
+
+    /* Capture state of current space. With a live grid this triggers on any
+       change, not just a decrease: h_max_no_hii_hwm's ratchet (see above)
+       lets cdim come out finer only when the star radiation term (h_hii or
+       a star's own h) shrinks, never through ordinary hydro/black-hole/sink
+       physics. On restart the saved owners are captured only for a coarser
+       grid, so it is partitioned as it would be without the restart. An
+       unchanged or finer grid at restart, and the first call from
+       space_init, capture nothing and go through the no_regrid path below,
+       which restores the saved owners or makes a fresh partition when the
+       cell count differs. */
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
     oldcdim[2] = s->cdim[2];
@@ -507,7 +518,9 @@ void space_regrid(struct space *s, int verbose) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
           cid = cell_getid(oldcdim, i, j, k);
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+          oldnodeIDs[cid] = (s->cells_top != NULL)
+                                ? s->cells_top[cid].nodeID
+                                : s->e->reparttype->celllist[cid];
         }
       }
     }
@@ -696,14 +709,7 @@ void space_regrid(struct space *s, int verbose) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
-        struct partition initial_partition;
-#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
-        initial_partition.type = INITPART_METIS_NOWEIGHT;
-#else
-        initial_partition.type = INITPART_VECTORIZE;
-#endif
-        partition_initial_partition(&initial_partition, s->e->nodeID,
-                                    s->e->nr_nodes, s);
+        partition_unweighted_partition(s->e->nodeID, s->e->nr_nodes, s);
       }
 
       /* Re-distribute the particles to their new nodes. */

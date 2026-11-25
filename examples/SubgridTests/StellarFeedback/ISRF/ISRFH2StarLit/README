@@ -18,9 +18,10 @@ The check reads the end of a short run in which H2 and the temperature stay froz
 parameters therefore switch off photoionization, stellar winds and supernovae, and set the
 light speed to `unlimited`. The light crosses one hop per step, so it needs several steps to
 reach the whole box. The steps are short so that the H2 stays frozen while the light
-arrives; the run stops after 8 steps and the check reads the last snapshot. The check
-refuses a run that departs from these settings. Only particles at `r < L/2 - 2h` are read,
-so that the nearest periodic image of the star is the right one.
+arrives; the run stops after 8 steps and the check reads the last snapshot.
+The check refuses a run that departs from these settings.
+Only particles at `r < L/2 - 2h` are read, so that the nearest periodic
+image of the star is the right one.
 
 # Configure
 ```
@@ -35,15 +36,36 @@ transport needs a radiation table whose `Data/Radiation` group carries
 
 # Run
 ```
-./run.sh                      # main leg, then the check
-leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
-leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
-ranks=2 run_name=two_ranks ./run.sh
-leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
+./run.sh                      # the run, then the check
+leg=cap_fine ./run.sh         # limited light speed (cap), isolated box, the star steps every gas step
+leg=cap_coarse ./run.sh       # as cap_fine, the star steps every 8 gas steps
+leg=cap_half ./run.sh         # as cap_fine at half the light speed
 ```
-`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`), `n_threads` and `ranks`
+(MPI ranks; more than 1 needs an MPI build named `swift_mpi`)
 override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
 about 2e18 cm^-2 over the box.
+
+# Limited light speed
+The legs `cap_fine`, `cap_coarse` and `cap_half` run the same box with `ISRF_packet_light_speed: cap`
+(`params_limited.yml`). The box is isolated (`InitialConditions:periodic: 0`), so no light of periodic
+images reaches the gas, and the runs use `--temperature` in place of `--cooling`: SWIFT initialises the
+cooling but never calls it, so H2 and the temperature stay at their start values while the light
+arrives. Once the light front has passed, the light is in a steady state and the line transmission
+of every particle follows the shielding function at its column `n_H2 r`. The gas step is the
+power-of-two time bin of 2.34375e-10 (set through `SPH:CFL_condition`, so that it does not depend on
+the star), and the legs write one snapshot per gas step.
+
+| Leg | Light speed | Star step | Last snapshot |
+|---|---|---|---|
+| `cap_fine` | 0.99 c | every gas step | 73 |
+| `cap_coarse` | 0.99 c | every 8 gas steps (`Stars:max_timestep_young_Myr: 1.84e-6`) | 73 |
+| `cap_half` | 0.5 c | every gas step | 110 |
+
+Each leg takes about 1.5 to 2.5 minutes on 4 threads. `run.sh` runs `checkH2LimitedSpeed.py limited` on
+every leg, and on `cap_coarse` also `ripple` against `cap_fine`. `run.sh` stops with a refusal
+(status 4) when `cap_coarse` finishes and no `cap_fine` directory exists. These legs need a geajay
+library that reads the key `GeajayCooling:isrf_habing` and a SWIFT built with it.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
@@ -68,20 +90,30 @@ own LW light with the shielding function at the column `n_H2 r`, the kernel mean
 transmission and of the LW energies that the cooling reads, the number and extent of the lit
 probes, and the carried H2 column.
 
-The exit class of the check is 0 for a pass, 1 for a failed bar, 2 for a missing file,
-field or key, 3 for a non-finite value and 4 for a void run (a premise or a positive
-control is not met). A void run never passes. `parity` alone also returns 5 for a pass
-without a counters file.
+The check exits with a non-zero status when it fails.
 
-Two runs are compared particle by particle with `parity`, on `LWSpecificEnergies`,
-`LWDissociatingSpecificEnergies` and `LWLineH2ColumnDensities`:
-```
-python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5
-python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --first one/snap/snapshot_0001.hdf5 --params one/used_parameters.yml
-```
-- `restart`: every `LW` and `Packet` field must be equal bit for bit (same binary, same
-  rank count, one thread).
-- `ranks`: the float sums run in another order, so the fields agree within a round-off bar.
+`checkH2LimitedSpeed.py` reads one leg directory (`snap/`, `used_parameters.yml`, `output.log`,
+`timesteps.txt`, `fixture.json`). Its exit status is 0 for a pass, 1 for a failed bar, 2 for a
+missing file or field, 3 for a value that is not finite and 4 for a void run (a premise or a
+positive control is not met):
 
-`testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
-error in each case, and prints the exit class of each.
+`python3 checkH2LimitedSpeed.py limited --run cap_fine`
+
+`python3 checkH2LimitedSpeed.py ripple --coarse cap_coarse --fine cap_fine`
+
+- `limited` compares the transmission of the own LW light of every particle with the shielding
+  function at the column `n_H2 r`. The run is void unless H2 and the internal energy are bit-equal
+  in the first and last snapshot and H2 is at its start value, every read particle is lit, and the
+  transmission of every particle is steady over the last two intervals. The bar of a particle is the
+  spread of `n_H2` over the read domain, as in `starlit`, plus the float rounding of the fit and
+  the largest change of the transmission over the last two intervals.
+- `ripple` compares `cap_coarse` with `cap_fine` of the same binary, so it sees only faults that
+  depend on the star step. It reads the shell means of the own LW energy over the last 16
+  snapshots (two star steps of `cap_coarse`). The time-mean energy ratio must be 1 within the
+  peak-to-peak range of the fine series. The coarse series must not vary more than the fine
+  series. The amplitude of the coarse series at the star-step period must stay below the half
+  peak-to-peak range of the fine series in the same shell. The run is void unless the two legs
+  differ only in `Stars:max_timestep_young_Myr`, come from the same SWIFT revision, configure line
+  and geajay revision, and keep H2 and the internal energy bit-equal.
+- `--plant-t-scale F` (`limited`), `--plant-coarse-energy F` and `--plant-ripple A` (`ripple`) apply
+  an error to the arrays read from the snapshots, to show that the check fails on it.

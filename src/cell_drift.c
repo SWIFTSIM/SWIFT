@@ -408,7 +408,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* A particle was inside its cell at the last rebuild. */
-    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+    if (dx_outside_max > 1.0001f * dx_max + cell_face_tolerance(c))
       error("Particle further outside its cell than it moved: %e > %e",
             dx_outside_max, dx_max);
 #endif
@@ -821,7 +821,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* A particle was inside its cell at the last rebuild. */
-    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+    if (dx_outside_max > 1.0001f * dx_max + cell_face_tolerance(c))
       error("Particle further outside its cell than it moved: %e > %e",
             dx_outside_max, dx_max);
 #endif
@@ -1039,7 +1039,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* A particle was inside its cell at the last rebuild. */
-    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+    if (dx_outside_max > 1.0001f * dx_max + cell_face_tolerance(c))
       error("Particle further outside its cell than it moved: %e > %e",
             dx_outside_max, dx_max);
 #endif

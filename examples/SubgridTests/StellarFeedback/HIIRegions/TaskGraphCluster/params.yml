@@ -129,7 +129,7 @@ GEARFeedback:
 
   # HII regions
   with_photoionization: 1                                   # Subgrid photoionization switch
-  HII_min_density_Hpcm3: 0.01                               # Minimum density for HII eligibility, H/cm^3
+  HII_min_density_Hpcm3: 0.01                               # Minimum density for HII eligibility (in nucleons/cm^3: the density divided by the proton mass)
   HII_max_age_Myr: 50
   HII_rebuild_time_Myr: 0.5
   HII_angular_nside: 0                                      # HEALPix splitting of HII budget, 0=spherical (default)
@@ -142,7 +142,9 @@ Stars:
   timestep_age_threshold_Myr:           7.   # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               0.5  # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1    # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
-  min_star_timestep_Myr: 1e-4                # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
+  min_star_timestep_Myr: 1e-4                # Floor (in Myr) applied to the star's final time-step, after combining the
+                                             # age-based bound above with the feedback module's own criteria
+                                             # (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
   HII_max_search_radius: 0.1                 # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
   HII_max_retry_full_buffer: 30              # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. Increased from the default (10): at gas_mass=0.01 resolution, a single new shell of gas can hold
                                              # several thousand particles -- far more than one pass of the (compile-time) neighbour buffer can hold -- so more retries are needed to actually cover it. (Default: 10)

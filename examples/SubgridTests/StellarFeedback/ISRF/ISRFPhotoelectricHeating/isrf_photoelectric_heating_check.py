@@ -111,7 +111,10 @@ unchanged between the two snapshots of the window to float32 precision: a
 linear, cadence-converged regime.
 
 The window must also open when the field arrives. The field is first stored
-at the end of step 3, and the cooling uses it from step 4. A window that
+at the end of step 2, and the cooling uses it from step 3: the star of the
+shipped fixture is born at t = 0 and has light in its first step, so the
+field reaches the gas one step earlier than for a star lit one step after
+its birth. A window that
 opens later starts with the heating run ahead of the reference by the
 heating of the steps before it, and the cooling of the heating run responds
 to that lead. A snapshot's ``u`` also carries half a step of the rate in
@@ -125,11 +128,7 @@ against the heating of a step. The check measures the lead ``L``, the energy
 difference of the two runs at the window start in units of the window's
 heating, and fails if ``|L|`` is above ``--lead-tol``. A correct window reads
 ``1.5 / N``, a window one step late ``2.5 / N``; the harness sets
-``--lead-tol`` to ``2 / N`` (default 2, for ``N = 1``). The heating of
-``geajay-fixed-rate`` does not wait for the field: it starts in step 2.
-``rate_output_list_fixed_rate.txt`` opens its window at the second snapshot,
-one step after that start, and the check selects its particles with the
-field at the window end. This
+``--lead-tol`` to ``2 / N`` (default 2, for ``N = 1``). This
 is a SEPARATE run pair from Tier 1's equilibrium `heating_on`/
 `heating_off` (`--rate-on-snapshot`/`--rate-off-snapshot`; Tier 2 is
 skipped, not failed, when these are not given -- see README), since
@@ -205,8 +204,7 @@ Wolfire leg the check cannot see an error of about -0.06 to +0.21 per cent of
 the heating, and an error of about 1 per cent in ``G0``. The margins are
 thin on two legs: 6 per cent on ``grackle-constant`` and 3 per cent on
 ``geajay-density-epsilon``, so a 5 per cent error in ``Lambda' dt`` would
-fail them. The ``fixed_rate`` bar is 4 per cent: the check resolves an error
-of that size only. Scaling the whole reference is resolved at 0.3 per cent on
+fail them. Scaling the whole reference is resolved at 0.3 per cent on
 the other legs. The hydrogen density is ``HI + HII + H2I + H2II`` as in
 Grackle's ``rhoH`` (H- is not counted), and the gas-grain term assumes
 Grackle's default ``local_dust_to_gas_ratio`` (0.009387): with another value
@@ -214,8 +212,11 @@ of ``GrackleCooling:local_dust_to_gas_ratio`` the Hollenbach & McKee term
 scales by that ratio over the default, while the heating does not.
 
 ``--reference-scale`` and ``--inject-nan`` are positive controls: a scaled
-reference, a reference of another model and a NaN in a measured value must
-each fail.
+reference and a NaN in a measured value must each fail, and so must the
+reference of another model, except among ``grackle-constant``,
+``geajay-constant-efficiency`` and ``geajay-fixed-rate``. Their reference rates
+are equal (8.5e-26 / 1.7 equals 0.05 x 1e-24, both library constants), so the
+check cannot tell these three models apart.
 """
 
 import argparse
@@ -281,8 +282,7 @@ PE_MODELS = (
     "geajay-density-epsilon",
 )
 GEAJAY_FIXED_RATE_CGS = 8.5e-26  # erg/s per H atom at the reference dust-to-gas ratio
-# Heating models that do not read the field, so their heating starts before it arrives
-FIELD_INDEPENDENT_MODELS = ("geajay-fixed-rate",)
+GEAJAY_FIXED_RATE_G0 = 1.7  # G0 at which the fixed rate is defined
 FLOAT32_EPS = 2.0**-24  # relative spacing of the snapshot floats, half ulp
 RESOLVABLE_BAR_MAX = 0.5  # a bar this large cannot tell a model from its absence
 
@@ -684,7 +684,7 @@ def pe_rate_over_rho_predicted(
     if model in ("grackle-constant", "geajay-constant-efficiency"):
         heating = GRACKLE_GAMMA_HA_CGS * GRACKLE_EPSILON * g0 * n_h * z_prime
     elif model == "geajay-fixed-rate":
-        heating = GEAJAY_FIXED_RATE_CGS * n_h * z_prime
+        heating = GEAJAY_FIXED_RATE_CGS * (g0 / GEAJAY_FIXED_RATE_G0) * n_h * z_prime
     elif model == "geajay-density-epsilon":
         epsilon = np.minimum(0.07, 0.0149 * n_h**0.235)
         heating = 1.3e-24 * epsilon * g0 * n_h * z_prime
@@ -948,10 +948,6 @@ def main():
                 if np.nanmax(g0) > 0.0:
                     start_index = index
                     break
-            # Heating that does not depend on the field starts before it;
-            # snapshot 0 precedes that heating and opens the precondition.
-            if opt.pe_model in FIELD_INDEPENDENT_MODELS and len(on_snaps) > 2:
-                start_index = 1
             on1 = off1 = None
             if start_index is None:
                 rate_failures.append(
@@ -1000,23 +996,10 @@ def main():
                 * (on0["u_pe_cgs"] + on0["u_lw_cgs"])
                 / RADIATION_HABING_FLUX_CGS
             )
-            # A field-independent model's window can open before the field
-            # arrives; its particles are those the field reaches by the end.
-            g0_select = g0_0
-            if opt.pe_model in FIELD_INDEPENDENT_MODELS and on1 is not None:
-                g0_select = (
-                    C_LIGHT_CGS
-                    * on1["density_cgs"]
-                    * (on1["u_pe_cgs"] + on1["u_lw_cgs"])
-                    / RADIATION_HABING_FLUX_CGS
-                )
-
             # Illuminated, sub-cutoff particles only: same field-threshold
             # convention as the Tier 1 bins, applied per particle, plus
             # the igammah=2 temperature cutoff.
-            illuminated_particles = g0_select > opt.field_threshold * np.nanmax(
-                g0_select
-            )
+            illuminated_particles = g0_0 > opt.field_threshold * np.nanmax(g0_0)
             below_cutoff = on0["temperature"] < GAMMAH_TEMPERATURE_CEILING_K
             selected = illuminated_particles & below_cutoff
             n_selected = int(selected.sum())

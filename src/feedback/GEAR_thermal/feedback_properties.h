@@ -284,6 +284,18 @@ feedback_props_needs_cooling_initialized(
 }
 
 /**
+ * @brief Do the stars build HII regions (GEARFeedback:with_photoionization)?
+ *
+ * @param feedback_props The #feedback_props.
+ * @return True if the HII photoionization is on.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_do_photoionization(const struct feedback_props *feedback_props) {
+  return (feedback_props->radiation_policy &
+          radiation_policy_photoionization) != 0;
+}
+
+/**
  * @brief Print the feedback model.
  *
  * @param feedback_props The #feedback_props
@@ -1047,10 +1059,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     if (fp->HII_rebuild_floor_Myr <= 0.f)
       error(
           "GEARFeedback:HII_rebuild_floor_Myr must be > 0 (got %g): it "
-          "floors the interval every per-pass ionizing photon budget is "
-          "integrated over, in every cadence mode: <= 0 silently zeroes "
-          "every star's first-pass budget.",
+          "sets the interval a star's first HII pass issues ahead: <= 0 "
+          "silently zeroes every star's first-pass budget.",
           fp->HII_rebuild_floor_Myr);
+    if (fp->HII_rebuild_time > 0.f &&
+        fp->HII_rebuild_floor_Myr > fp->HII_rebuild_time)
+      error(
+          "GEARFeedback:HII_rebuild_floor_Myr (%g) must not exceed "
+          "GEARFeedback:HII_rebuild_time_Myr (%g): the first pass issues the "
+          "floor interval ahead, so it must fit inside one rebuild interval "
+          "(above twice the rebuild time, photons are lost).",
+          fp->HII_rebuild_floor_Myr, fp->HII_rebuild_time);
 
     const int carry_photons = parser_get_opt_param_int(
         params, "GEARFeedback:HII_carry_photons_at_coverage_stop",

@@ -666,6 +666,44 @@ radiation_packet_add_saturated(const float sum, const double x) {
 }
 
 /**
+ * @brief Move the part of the light of a star step that has already arrived to
+ * just after the last light.
+ *
+ * A star books the light of a step at the end of the step, so the part whose
+ * arrival is by the end of the first arrival bin of the receiver would leave
+ * at its next merge, all at once. A star step longer than the step of the gas
+ * then makes the field pulse once per star step. The window of the light
+ * `[first, last]` becomes `[E, E + (last - first)]`, with `E` the end of that
+ * bin: the part in `[E, last]` keeps its times and the early part follows it at
+ * the same rate. With a steady star the windows of successive steps then tile
+ * with no gap and no overlap, and the light arrives at a steady rate, for a
+ * star step up to about 16 steps of the receiver and a fixed receiver step.
+ * Beyond that the moved window reaches past the near bins and the two base far
+ * cells, so the far cells of the receiver stay widened to about the star step
+ * while the star shines, and the far-share warning can fire. Without a speed
+ * limit the reservoir does the same by releasing the light over the next step
+ * of the star.
+ *
+ * Nothing changes for a receiver that has no step yet, nor when the light
+ * arrives after `E` or all at once.
+ *
+ * @param pk The packet of the receiver.
+ * @param first (in/out) First arrival time of the share.
+ * @param last (in/out) Last arrival time of the share.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_spread_past_window(const struct feedback_isrf_packet_data *pk,
+                                    double *first, double *last) {
+  if (pk->step_ti <= 0 || !(*last > *first)) return;
+
+  const double end = (double)radiation_packet_bin_end(pk, 0);
+  if (!(*first < end)) return;
+
+  *last = radiation_packet_time_later(end + (*last - *first));
+  *first = end;
+}
+
+/**
  * @brief Deliver one share to a receiver: absorb it in dust over the path, then
  * add it to the inbox (the reservoir, if the source has the coarser step) of
  * the slot that holds the direction from the share's origin.
@@ -710,9 +748,13 @@ radiation_packet_add_saturated(const float sum, const double x) {
  * @param line_energy_over_factor @p line_transmission over the shielding
  * factor of the column of the share after the hop, in the fit of the
  * receiver. Read only with H2 line absorption.
+ * @param spread_past Is the share the light of a star step? With a speed limit
+ * and a coarser source, the part of such a share that arrives by the end of the
+ * receiver's bin 0 is then moved to just after the last light
+ * (#radiation_packet_spread_past_window).
  */
 __attribute__((always_inline)) INLINE static void
-radiation_packet_deliver_with_lines(
+radiation_packet_deliver_share(
     struct part *restrict receiver,
     const struct radiation_packet_constants *constants,
     const double energy[ISRF_OPERATOR_COUNT],
@@ -721,7 +763,7 @@ radiation_packet_deliver_with_lines(
     const integertime_t source_step_end_ti, const double arrival,
     const double arrival_last, const int with_lines,
     const float line_transmission, const float line_shift,
-    const double line_energy_over_factor) {
+    const double line_energy_over_factor, const int spread_past) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   radiation_packet_check_deliver(receiver, constants->octant_frame);
@@ -782,10 +824,14 @@ radiation_packet_deliver_with_lines(
   if (constants->light_speed_limited) {
     /* The light waits in its arrival bin until the receiver's merge at or
        after the end of the bin. */
+    double first = arrival;
+    double last = arrival_last;
+    if (spread_past && to_reservoir)
+      radiation_packet_spread_past_window(receiver_packet, &first, &last);
+
     if (delivered_energy > 0.f)
       radiation_packet_deposit(receiver_packet, sl, transmitted_energy_b,
-                               transmitted_photons_b, arrival, arrival_last,
-                               salt);
+                               transmitted_photons_b, first, last, salt);
 
     for (int k = 0; k < 3; k++)
       sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
@@ -817,6 +863,49 @@ radiation_packet_deliver_with_lines(
 #ifdef SWIFT_DEBUG_CHECKS
   receiver_packet->shares_received++;
 #endif
+}
+
+/**
+ * @brief Deliver one share that is not the light of a star step: the delivery
+ * of #radiation_packet_deliver_share without the move of the past part.
+ *
+ * @param receiver The receiver.
+ * @param constants The #radiation_packet_constants.
+ * @param energy Energy of the share per band, before absorption.
+ * @param photons Photon number of the share per band, as `N E_lo`.
+ * @param offset Comoving offset from the receiver to the share's origin.
+ * @param path_phys Physical path length over which the share is absorbed.
+ * @param H Current Hubble rate. 0 or less for a static box.
+ * @param to_reservoir Is the source's step coarser than the receiver's?
+ * @param source_step_end_ti End of the source's step.
+ * @param arrival Integer time at which the first light of the share reaches
+ * the receiver.
+ * @param arrival_last Integer time at which the last light of the share
+ * reaches the receiver.
+ * @param with_lines Is the dissociating energy tracked?
+ * @param line_transmission Fraction of the LW light that the H2 lines let
+ * through. Read only when @p with_lines is set.
+ * @param line_shift Velocity shift of the share after the hop. Read only with
+ * H2 line absorption.
+ * @param line_energy_over_factor @p line_transmission over the shielding
+ * factor of the column of the share after the hop. Read only with H2 line
+ * absorption.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_deliver_with_lines(
+    struct part *restrict receiver,
+    const struct radiation_packet_constants *constants,
+    const double energy[ISRF_OPERATOR_COUNT],
+    const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
+    const float path_phys, const float H, const int to_reservoir,
+    const integertime_t source_step_end_ti, const double arrival,
+    const double arrival_last, const int with_lines,
+    const float line_transmission, const float line_shift,
+    const double line_energy_over_factor) {
+  radiation_packet_deliver_share(
+      receiver, constants, energy, photons, offset, path_phys, H, to_reservoir,
+      source_step_end_ti, arrival, arrival_last, with_lines, line_transmission,
+      line_shift, line_energy_over_factor, 0);
 }
 
 /**
@@ -1326,14 +1415,15 @@ radiation_packet_star_emit_body(
         0., a * r, &line_transmission, &line_shift, &line_energy_over_factor);
 
   /* Without a limit the reservoir spreads the light over the star's next
-     step; with one, the arrival times below are used. */
-  radiation_packet_deliver_with_lines(
+     step; with one, the arrival times below are used, and the part that
+     arrives too early is moved to just after the last light. */
+  radiation_packet_deliver_share(
       pj, constants, energy, photons, offset, a * r, H,
       si->time_bin > pj->time_bin, ti_current + ti_step,
       radiation_packet_time_later((double)(ti_current - ti_step) + delay),
       radiation_packet_time_later((double)ti_current + delay),
-      with_dissociating, line_transmission, line_shift,
-      line_energy_over_factor);
+      with_dissociating, line_transmission, line_shift, line_energy_over_factor,
+      1);
 }
 
 /**
