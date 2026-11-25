@@ -1,5 +1,5 @@
 # Intro
-Reproduces STARBENCH's (Bisbas et al. 2015, MNRAS 453, 1324, arXiv:1507.05621) late-phase D-type expansion test: a single ionizing source at the center of a uniform pure-hydrogen medium (`n_H ~ 3115 cm^-3`, `Q_H = 1e49` photons/s). The check script compares with STARBENCH's semi-empirical solution (Eqns 8, 11, 28, 29: a blend of the pressure-driven and shell-inertia ODEs), not the classical Spitzer (1978) formula the sibling `../StromgrenSphere/` example uses.
+Reproduces STARBENCH's (Bisbas et al. 2015, MNRAS 453, 1324, arXiv:1507.05621) late-phase D-type expansion test: a single ionizing source at the center of a uniform pure-hydrogen medium (`n_H ~ 3115 cm^-3`, `Q_H = 1e49` photons/s). The check script compares with STARBENCH's semi-empirical solution (Eqns 8, 12, 28, 29: a blend of the pressure-driven ODE and the shell-inertia solution, which stops at the stagnation radius), not the classical Spitzer (1978) formula the sibling `../StromgrenSphere/` example uses.
 
 ## Temperature
 STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This code computes `T_i` from metallicity instead; at `Z=0` (this example's default) it gives `T_i~47500 K`. To match STARBENCH's own convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
@@ -44,6 +44,15 @@ Override any parameter via the matching env var, e.g. `gas_mass=0.05 ./run.sh`. 
 ```
 python3 starbench_analytic_check.py -s "snap/snapshot_*.hdf5"
 ```
-T_i is measured from the run's own tagged gas, so the same command is
-correct with or without the CFLAGS forcing flag above; pass
-`--T-ionized-K` only to override the measurement (it warns on mismatch).
+The script measures both temperatures from the run, so the same command is
+correct with or without the CFLAGS forcing flag above:
+- `T_i` is the median temperature of the tagged gas.
+- `T_o` is the median temperature of the never-tagged gas far from the star, in
+  the last snapshot before the wave from the shell reaches it. Keep the early
+  snapshots: with a series that starts late the script cannot measure it.
+
+Pass `--T-ionized-K` or `--T-neutral-K` only to override a measurement; the
+script warns when the value differs from the measured one by more than 10 per cent.
+The output lists both temperatures, the mean molecular weights, `R_St`, the
+stagnation radius `R_STAG`, and the relative error of the ever-tagged and
+instantaneous fronts against the reference at the comparison time, with a plot.
