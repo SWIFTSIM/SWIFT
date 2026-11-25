@@ -129,6 +129,44 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 }
 
 /**
+ * @brief Get the index of the proxy with a foreign node, creating it if
+ * we don't already have a relationship with that node.
+ *
+ * @param e The #engine.
+ * @param nodeID The foreign node.
+ *
+ * @return The proxy index.
+ */
+int engine_get_proxy_id(struct engine *e, const int nodeID) {
+#ifdef WITH_MPI
+  /* Do we already have a relationship with this node? */
+  int proxy_id = e->proxy_ind[nodeID];
+  if (proxy_id >= 0) return proxy_id;
+
+  if (e->nr_proxies == engine_maxproxies)
+    error("Maximum number of proxies exceeded.");
+
+  /* Ok, start a new proxy for this pair of nodes */
+  proxy_init(&e->proxies[e->nr_proxies], e->nodeID, nodeID);
+
+  /* Store the information */
+  e->proxy_ind[nodeID] = e->nr_proxies;
+  proxy_id = e->nr_proxies;
+  e->nr_proxies += 1;
+
+  /* Check the maximal proxy limit */
+  if ((size_t)proxy_id > 8 * sizeof(long long))
+    error("Created more than %zd proxies. cell.mpi.sendto will overflow.",
+          8 * sizeof(long long));
+
+  return proxy_id;
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return -1;
+#endif
+}
+
+/**
  * @brief Add a proxy to the engine.
  *
  * @param e The #engine.
@@ -146,27 +184,7 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
   /* Add to proxies? */
   if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
-    /* Do we already have a relationship with this node? */
-    int proxy_id = e->proxy_ind[cj->nodeID];
-    if (proxy_id < 0) {
-      if (e->nr_proxies == engine_maxproxies)
-        error("Maximum number of proxies exceeded.");
-
-      /* Ok, start a new proxy for this pair of nodes */
-      proxy_init(&proxies[e->nr_proxies], e->nodeID, cj->nodeID);
-
-      /* Store the information */
-      e->proxy_ind[cj->nodeID] = e->nr_proxies;
-      proxy_id = e->nr_proxies;
-      e->nr_proxies += 1;
-
-      /* Check the maximal proxy limit */
-      if ((size_t)proxy_id > 8 * sizeof(long long))
-        error(
-            "Created more than %zd proxies. cell.mpi.sendto will "
-            "overflow.",
-            8 * sizeof(long long));
-    }
+    const int proxy_id = engine_get_proxy_id(e, cj->nodeID);
 
     /* Add the cell to the proxy */
     proxy_addcell_in(&proxies[proxy_id], cj, proxy_type);
@@ -179,27 +197,7 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
   /* Same for the symmetric case? */
   if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
 
-    /* Do we already have a relationship with this node? */
-    int proxy_id = e->proxy_ind[ci->nodeID];
-    if (proxy_id < 0) {
-      if (e->nr_proxies == engine_maxproxies)
-        error("Maximum number of proxies exceeded.");
-
-      /* Ok, start a new proxy for this pair of nodes */
-      proxy_init(&proxies[e->nr_proxies], e->nodeID, ci->nodeID);
-
-      /* Store the information */
-      e->proxy_ind[ci->nodeID] = e->nr_proxies;
-      proxy_id = e->nr_proxies;
-      e->nr_proxies += 1;
-
-      /* Check the maximal proxy limit */
-      if ((size_t)proxy_id > 8 * sizeof(long long))
-        error(
-            "Created more than %zd proxies. cell.mpi.sendto will "
-            "overflow.",
-            8 * sizeof(long long));
-    }
+    const int proxy_id = engine_get_proxy_id(e, ci->nodeID);
 
     /* Add the cell to the proxy */
     proxy_addcell_in(&proxies[proxy_id], ci, proxy_type);
