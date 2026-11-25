@@ -38,6 +38,13 @@ max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:HII_max_radi
 radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override
 run_name=${run_name:=""}
 restart=${restart:=0}
+hydrogen_mass_fraction=${hydrogen_mass_fraction:=} # Empty keeps params.yml (0.76); 1 = the paper's pure hydrogen. Also sets SPH:H_mass_fraction
+hydrogen_key=${hydrogen_key:=GrackleCooling:HydrogenFractionByMass} # Use GeajayCooling:hydrogen_mass_fraction on a geajay build
+
+hydrogen_args=()
+if [ -n "$hydrogen_mass_fraction" ]; then
+    hydrogen_args=(-P "$hydrogen_key:$hydrogen_mass_fraction" -P "SPH:H_mass_fraction:$hydrogen_mass_fraction")
+fi
 
 if [ -e ICs_husmith.hdf5 ]
 then
@@ -104,6 +111,7 @@ if [ "$with_cooling" -eq 1 ]; then
                -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
                -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
+               "${hydrogen_args[@]}" \
                params.yml 2>&1 | tee output.log
 else
 ../../../../../swift --hydro --stars --external-gravity --feedback \
@@ -118,6 +126,7 @@ else
                -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
                -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
+               "${hydrogen_args[@]}" \
                params.yml 2>&1 | tee output.log
 fi
 

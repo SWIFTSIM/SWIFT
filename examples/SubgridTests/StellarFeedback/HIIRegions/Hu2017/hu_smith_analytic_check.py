@@ -59,9 +59,12 @@ The same applies to composition. These solutions are parameterised by n_H,
 T_i, T_o, Q_H and the mean molecular weights, none of which is tied to the
 papers' own setup, so the curves are evaluated at the run's OWN measured
 mu_i and mu_o rather than at the papers' pure-hydrogen convention
-(mu_i=0.5, mu_o=1), which this run does not have: it carries helium and
-Grackle sets the ionization state. Both values are printed with their
-source. See resolve_composition().
+(mu_i=0.5, mu_o=1), which a run with helium does not have (run.sh
+hydrogen_mass_fraction=1 gives that medium). Both values are printed with
+their source. See resolve_composition().
+
+n_H is the true mean of the box: gas mass x X_H / volume / m_p, with X_H read
+from the cooling parameters of the snapshot. See resolve_n_H().
 
 r_hii is read the same way as stromgren_analytic_check.py's corrected
 measure: the current position of every gas particle *any* of the n_stars
@@ -93,7 +96,6 @@ Usage:
 import argparse
 import glob
 import os
-import re
 import sys
 
 import h5py
@@ -348,38 +350,103 @@ def robust_ever_tagged_radius(offsets_kpc):
     return float(r_sorted[cut + 1]), true_max
 
 
-def snapshot_index(filename):
-    """Trailing integer of a snapshot filename (snapshot_0007.hdf5 -> 7), or
-    None when the stem carries no such index."""
-    stem = os.path.splitext(os.path.basename(filename))[0]
-    match = re.search(r"(\d+)$", stem)
-    return int(match.group(1)) if match else None
+# Keys that hold the hydrogen mass fraction the cooling module uses, in the
+# order tried.
+HYDROGEN_FRACTION_KEYS = (
+    "GrackleCooling:HydrogenFractionByMass",
+    "GeajayCooling:hydrogen_mass_fraction",
+)
 
 
-def print_n_H_with_source(n_H, source, files, label="n_H"):
-    """Print n_H together with the snapshot it was measured in, and warn when
-    that snapshot is not the run's own first one.
+def read_hydrogen_mass_fraction(parameters, override=None):
+    """Return (X_H, source) of the cooling module of the run.
 
-    n_H is read once, from the first snapshot of the glob that holds a live
-    star, and never revisited. A glob that skips the run's early snapshots
-    samples a post-expansion, shell-biased density instead of the initial
-    uniform one, which shifts every reference curve computed from it -- so
-    the source has to be visible in the output rather than implicit.
+    A geajay value of -1 means "the library's own value", which the snapshot
+    does not record, so it is refused instead of guessed.
+
+    @param parameters Snapshot parameter dictionary (metadata.parameters).
+    @param override X_H given on the command line, or None.
     """
-    print(f"{label:<19}: {n_H:.4g}  (measured in {source})")
-    if source != files[0]:
-        print(
-            f"  NOTE: not the earliest snapshot in the glob ({files[0]}); "
-            f"that one holds no live star yet."
-        )
-    first_index = snapshot_index(files[0])
-    if first_index is not None and first_index != 0:
-        print(
-            f"  WARNING: the snapshot glob starts at index {first_index}, not "
-            f"0. n_H is then measured after the region has already expanded, "
-            f"so it is a shell-biased density and every reference curve below "
-            f"is shifted. Re-run against the complete snapshot series."
-        )
+    if override is not None:
+        return float(override), "--hydrogen-mass-fraction"
+    for key in HYDROGEN_FRACTION_KEYS:
+        raw = parameters.get(key)
+        if raw is None:
+            continue
+        value = float(raw)
+        if value > 0.0:
+            return value, key
+    raise RuntimeError(
+        "The snapshot records no positive hydrogen mass fraction under "
+        f"{' or '.join(HYDROGEN_FRACTION_KEYS)} (a geajay value of -1 takes "
+        "the library's own value, which the snapshot does not record). "
+        "Pass --hydrogen-mass-fraction."
+    )
+
+
+def mean_hydrogen_density(data, X_H):
+    """Return the true mean hydrogen number density of the box in 1/cm3.
+
+    Total gas mass times X_H over the box volume and the proton mass: the
+    density the initial conditions describe. The SPH estimate of the mean
+    density is higher on randomly placed particles and is not used here.
+
+    @param data swiftsimio dataset of a snapshot.
+    @param X_H Hydrogen mass fraction of the gas.
+    """
+    # float64 sums and Msun, kpc units: the cgs total overflows float32
+    mass_g = float(np.sum(data.gas.masses.to("Msun").value, dtype=np.float64))
+    mass_g *= const.M_sun.cgs.value
+    volume_cm3 = (
+        float(np.prod(data.metadata.boxsize.to("kpc").value.astype(np.float64)))
+        * const.kpc.cgs.value**3
+    )
+    return (mass_g * X_H / volume_cm3 / const.m_p.cgs.value) / u.cm**3
+
+
+def resolve_n_H(n_H_true, n_H_sph, X_H, X_H_source, source, override):
+    """Return (n_H the curves use, verdict marker) and print both estimates.
+
+    The true mean is the default. The SPH estimate of random initial
+    positions sits about 1.4 times above it (kernel self-weight and
+    clumping), so the two differ by more than 5 per cent on every run of this
+    example's initial conditions: that is expected, not a fault. An explicit
+    --n-H that differs from the true mean by more than 5 per cent is flagged
+    in the verdict.
+
+    @param n_H_true True mean hydrogen density [1/cm3].
+    @param n_H_sph Mean SPH density times X_H [1/cm3], for information.
+    @param X_H Hydrogen mass fraction used.
+    @param X_H_source Where X_H was read.
+    @param source Snapshot the density was read in.
+    @param override Explicit n_H [1/cm3], or None.
+    """
+    true = n_H_true.to(1 / u.cm**3).value
+    print(f"X_H                : {X_H:.4g}  (from {X_H_source})")
+    print(
+        f"n_H                : {true:.4g} 1/cm3  (true mean of the box: gas mass "
+        f"x X_H / volume / m_p, read in {source})"
+    )
+    sph = n_H_sph.to(1 / u.cm**3).value
+    print(
+        f"n_H (SPH estimate) : {sph:.4g}  (information only; {sph / true:.3f} "
+        f"times the true mean, which is expected for random particle positions)"
+    )
+    if override is None:
+        return n_H_true, ""
+    print(f"n_H (override)     : {override:.4g}  (--n-H, used for the curves)")
+    if abs(override / true - 1.0) <= 0.05:
+        return override / u.cm**3, ""
+    print("\n" + "!" * 72)
+    print(
+        f"WARNING: --n-H {override:.4g} differs by {override / true - 1.0:+.1%} "
+        f"from the true mean {true:.4g}. The reference curves are computed at a "
+        f"density the run does not have, so the verdict is not meaningful."
+    )
+    print("!" * 72 + "\n")
+    return override / u.cm**3, (
+        f" (n_H MISMATCH: reference {override:.4g} vs true {true:.4g} per cm3)"
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -390,7 +457,7 @@ def print_n_H_with_source(n_H, source, files, label="n_H"):
 # single ID match), matching Hu et al.'s own r_HII definition -- one front
 # radius for the whole source cluster, not per-star.
 # -----------------------------------------------------------------------------
-def read_simulated_r_hii(snapshot_glob):
+def read_simulated_r_hii(snapshot_glob, X_H_override=None):
     if sw is None:
         raise RuntimeError("swiftsimio is required to read the snapshots.")
 
@@ -402,6 +469,9 @@ def read_simulated_r_hii(snapshot_glob):
     star_mass_msun = None
     n_stars_found = None
     n_H_atom_cc = None
+    n_H_sph = None
+    X_H = None
+    X_H_source = None
     n_H_source = None
     boxsize_kpc = None
 
@@ -449,12 +519,12 @@ def read_simulated_r_hii(snapshot_glob):
                 )
             star_mass_msun = float(masses[0])
         if n_H_atom_cc is None:
-            rho_g_cm3 = float(np.mean(data.gas.densities).to("g/cm**3").value)
-            X_H_raw = data.metadata.parameters.get(
-                "GrackleCooling:HydrogenFractionByMass"
+            X_H, X_H_source = read_hydrogen_mass_fraction(
+                data.metadata.parameters, X_H_override
             )
-            X_H = float(X_H_raw) if X_H_raw is not None else 0.716
-            n_H_atom_cc = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
+            n_H_atom_cc = mean_hydrogen_density(data, X_H)
+            rho_g_cm3 = float(np.mean(data.gas.densities).to("g/cm**3").value)
+            n_H_sph = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
             n_H_source = f
 
     return (
@@ -468,6 +538,9 @@ def read_simulated_r_hii(snapshot_glob):
         n_H_source,
         boxsize_kpc * u.kpc,
         files,
+        n_H_sph,
+        X_H,
+        X_H_source,
     )
 
 
@@ -763,6 +836,25 @@ def main():
     )
     parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
     parser.add_argument(
+        "--n-H",
+        type=float,
+        default=None,
+        dest="n_H",
+        help="Hydrogen number density [1/cm3] the curves are computed at. "
+        "Default: the true mean of the box (gas mass x X_H / volume / m_p). "
+        "A value more than 5%% from it is flagged in the verdict.",
+    )
+    parser.add_argument(
+        "--hydrogen-mass-fraction",
+        type=float,
+        default=None,
+        dest="hydrogen_mass_fraction",
+        help="X_H of the run. Default: read from the snapshot parameters "
+        "(GrackleCooling:HydrogenFractionByMass or "
+        "GeajayCooling:hydrogen_mass_fraction); required for a geajay run "
+        "that left the value at -1.",
+    )
+    parser.add_argument(
         "--precursor-shell-pc",
         type=float,
         default=5.0,
@@ -800,11 +892,15 @@ def main():
         n_H_source,
         boxsize,
         files,
-    ) = read_simulated_r_hii(args.snapshot_glob)
+        n_H_sph,
+        X_H,
+        X_H_source,
+    ) = read_simulated_r_hii(args.snapshot_glob, args.hydrogen_mass_fraction)
+    n_H, n_H_marker = resolve_n_H(n_H, n_H_sph, X_H, X_H_source, n_H_source, args.n_H)
     box_half_width = 0.5 * boxsize
     T_ionized_K, T_i_marker = resolve_T_ionized_K(args.T_ionized_K, files)
     mu_i, mu_o, mu_marker = resolve_composition(files, uses_neutral=True)
-    verdict_marker = T_i_marker + mu_marker
+    verdict_marker = T_i_marker + mu_marker + n_H_marker
 
     # n_stars identical co-located sources: sum Q_H per star, not
     # Q_H(n_stars * mass) -- the table is nonlinear in mass.
@@ -819,7 +915,6 @@ def main():
     )
 
     print(f"Star mass (each)   : {star_mass_msun:.3f} Msun x {n_stars} sources")
-    print_n_H_with_source(n_H, n_H_source, files)
     print(f"Q_H (combined)     : {Q_H.to(1/u.s).value:.3e} 1/s")
     print(f"R_St               : {R_St:.4g}")
     print(f"c_i = {c_i:.4g} (mu_i={mu_i:.4f}), c_o = {c_o:.4g} (mu_o={mu_o:.4f})")
