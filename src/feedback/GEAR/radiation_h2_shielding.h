@@ -195,7 +195,7 @@ radiation_h2_shielding_factor_at_zero(void) {
  * included) gives that cap.
  *
  * @param t Transmission.
- * @param alpha Exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param alpha Positive exponent of the fit (#radiation_h2_shielding_exponent).
  * @param b5 Thermal line width of H2 in km/s. Positive.
  * @param N_guess First guess of the column in cm^-2. A guess outside the
  * bracket, 0 included, is replaced by the column of the power term alone.
