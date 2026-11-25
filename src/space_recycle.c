@@ -103,10 +103,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.dx_max_part = 0.0f;
     c->hydro.dx_outside_max = 0.f;
     c->hydro.dx_max_sort = 0.0f;
+    c->hydro.dx_max_sort_offset = 0.0f;
     c->sinks.dx_max_part = 0.f;
     c->stars.dx_max_part = 0.f;
     c->stars.dx_outside_max = 0.f;
     c->stars.dx_max_sort = 0.f;
+    c->stars.dx_max_sort_offset = 0.f;
     c->black_holes.dx_max_part = 0.f;
     c->black_holes.dx_outside_max = 0.f;
     c->hydro.sorted = 0;
