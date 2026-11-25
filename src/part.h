@@ -81,7 +81,9 @@ struct threadpool;
 #include "./hydro/Gizmo/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#ifndef MPI_SYMMETRIC_FORCE_INTERACTION
 #define MPI_SYMMETRIC_FORCE_INTERACTION
+#endif
 #define hydro_force_updates_inactive_neighbours 1
 #elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro_part.h"
@@ -116,6 +118,9 @@ struct threadpool;
 #else
 #error "Invalid choice of SPH variant"
 #endif
+
+/* The loop needs of the other users of the FVPM geometry. */
+#include "./fvpm_geometry/fvpm_loop_requirements.h"
 
 /* Import the right gravity particle definition */
 #if defined(DEFAULT_GRAVITY)

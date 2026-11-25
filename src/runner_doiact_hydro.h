@@ -200,7 +200,17 @@
 #error \
     "The hydro force loop writes inactive neighbours but MPI_SYMMETRIC_FORCE_INTERACTION is not defined: the rank of the inactive cell would never run the pair."
 #endif
+#if defined(WITH_MPI) && chemistry_flux_updates_inactive_neighbours && \
+    !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+#error \
+    "The chemistry flux exchange writes inactive neighbours but MPI_SYMMETRIC_FORCE_INTERACTION is not defined: the rank of the inactive cell would never run the pair."
+#endif
 #define LOOP_UPDATES_INACTIVE_NEIGHBOURS hydro_force_updates_inactive_neighbours
+/* Does the loop also visit an inactive pj? Only the chemistry flux exchange
+   writes it when the hydro does not. */
+#define LOOP_VISITS_INACTIVE_NEIGHBOURS       \
+  (hydro_force_updates_inactive_neighbours || \
+   chemistry_flux_updates_inactive_neighbours)
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
 #if rt_transport_updates_inactive_neighbours && \
     !defined(MPI_SYMMETRIC_FORCE_INTERACTION_RT)
@@ -209,8 +219,10 @@
 #endif
 #define LOOP_UPDATES_INACTIVE_NEIGHBOURS \
   rt_transport_updates_inactive_neighbours
+#define LOOP_VISITS_INACTIVE_NEIGHBOURS LOOP_UPDATES_INACTIVE_NEIGHBOURS
 #else
 #define LOOP_UPDATES_INACTIVE_NEIGHBOURS 0
+#define LOOP_VISITS_INACTIVE_NEIGHBOURS 0
 #endif
 
 #define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec, f)

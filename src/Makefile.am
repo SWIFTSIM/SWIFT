@@ -573,6 +573,7 @@ nobase_noinst_HEADERS += neutrino/Default/neutrino.h neutrino/Default/relativity
 nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default/neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_response.h
 nobase_noinst_HEADERS += fvpm_geometry.h fvpm_geometry_struct.h
+nobase_noinst_HEADERS += fvpm_geometry/fvpm_loop_requirements.h
 nobase_noinst_HEADERS += fvpm_geometry/None/fvpm_geometry.h fvpm_geometry/None/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/fvpm_geometry.h fvpm_geometry/Gizmo/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/MFM/fvpm_geometry.h fvpm_geometry/Gizmo/MFV/fvpm_geometry.h

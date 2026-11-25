@@ -1835,6 +1835,31 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 #endif
         }
       } /* loop over the active parts in cj. */
+
+#if CHEMISTRY_FLUX_LOOP
+      /* A foreign active pi that the chemistry flux exchange must still
+         visit: an inactive pj only exchanges the flux, as on the rank of pi.
+         A separate walk leaves the hydro loop above unchanged. */
+      if (LOOP_VISITS_INACTIVE_NEIGHBOURS && PART_IS_ACTIVE(pi, e)) {
+        for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+          struct part *pj = &parts_j[sort_j[pjd].i];
+          if (part_is_inhibited(pj, e) || PART_IS_ACTIVE(pj, e)) continue;
+
+          const float hj = pj->h;
+          if (hj < hj_lo || hj >= h_hi) continue;
+
+          const float pjx = pj->x[0] - shift_j[0];
+          const float pjy = pj->x[1] - shift_j[1];
+          const float pjz = pj->x[2] - shift_j[2];
+          const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+          if (r2 < hig2)
+            IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                                /*local_first=*/local_i,
+                                /*local_second=*/local_j);
+        }
+      }
+#endif
     }
 
     else { /* pi is active, we may need to update pi and pj */
@@ -2113,6 +2138,29 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 #endif
         }
       } /* loop over the active parts in ci. */
+
+#if CHEMISTRY_FLUX_LOOP
+      /* Same for a foreign active pj and an inactive pi */
+      if (LOOP_VISITS_INACTIVE_NEIGHBOURS && PART_IS_ACTIVE(pj, e)) {
+        for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
+             pid--) {
+          struct part *pi = &parts_i[sort_i[pid].i];
+          if (part_is_inhibited(pi, e) || PART_IS_ACTIVE(pi, e)) continue;
+
+          const float hi = pi->h;
+          const float hig2 = hi * hi * kernel_gamma2;
+          const float pix = pi->x[0] - shift_i[0];
+          const float piy = pi->x[1] - shift_i[1];
+          const float piz = pi->x[2] - shift_i[2];
+          const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+          if (r2 < hjg2 && r2 >= hig2)
+            IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                                /*local_first=*/local_j,
+                                /*local_second=*/local_i);
+        }
+      }
+#endif
     }
 
     else { /* pj is active, we may need to update pj and pi */
