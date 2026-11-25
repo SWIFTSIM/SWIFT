@@ -298,9 +298,10 @@ struct interpolation_2d {
   /* Type of boundary condition applied when y is out of the data range. */
   enum interpolate_boundary_condition boundary_condition_y;
 
-  /* Does a non-zero query outside the table on one axis still interpolate
-     along the other axis (see #interpolate_axis_bracket_clamped)? If 0, it
-     returns the stored node at the truncated index of the other axis. */
+  /* Does a query that no zero policy resolves, outside the table on one axis,
+     still interpolate along the other axis (see
+     #interpolate_axis_bracket_clamped)? If 0, it returns the stored node at the
+     truncated index of the other axis. */
   int edge_interpolates_inside_axis;
 };
 
@@ -400,8 +401,9 @@ interpolate_2d_boundary_is_zero(
  * Outside the axis, both bracketing indices are the edge node and the
  * fraction is 0: the axis is clamped, never extrapolated. Inside, they are
  * the two nodes around @p raw, so a bilinear blend still interpolates along
- * this axis. A NaN @p raw fails both range tests, and the integer check
- * catches its truncated index.
+ * this axis. The integer check on the truncated index is a backstop for a
+ * NaN @p raw: callers MUST pass a finite query, because C does not guarantee
+ * that a NaN fails both range tests under -ffast-math.
  *
  * @param raw The raw (untruncated) coordinate in index space.
  * @param n The number of nodes along the axis (at least 2).
