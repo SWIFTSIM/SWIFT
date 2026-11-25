@@ -872,58 +872,82 @@ static void set_tree_properties(struct cell *c, const struct engine *e) {
 static void send_theta(struct runner *r, struct cell *local, struct cell *copy,
                        const enum theta_plant plant) {
   void *buffer = NULL;
-  runner_do_pack_flux_theta(r, local, &buffer, /*timer=*/0);
+  runner_do_pack_chemistry_flux_prep(r, local, &buffer, /*timer=*/0);
   if (plant == plant_skip_unpack) {
     free(buffer);
     return;
   }
-  runner_do_unpack_flux_theta(r, copy, buffer, /*timer=*/0);
+  runner_do_unpack_chemistry_flux_prep(r, copy, buffer, /*timer=*/0);
 }
 
 /**
- * @brief Make one particle of ci active and a donor, and return its index.
- * All other particles are inactive.
+ * @brief Make one particle of ci active and a donor with an outflow to cj, and
+ * return its index. All other particles are inactive.
  *
- * The particle is the one with the most neighbours in cj among those whose h
- * is below the top band, so that a different dx_outside_max moves its pairs
- * to another level of the tree. Its metal mass is ten times that of the
- * others.
+ * The candidates are taken by decreasing number of neighbours in cj, those
+ * whose h is below the top band first, so that a different dx_outside_max
+ * moves their pairs to another level of the tree. A candidate is kept if the
+ * prep loop of the pair gives it an outflow. Its metal mass is ten times that
+ * of the others. The cells must be sorted.
  */
-static int make_donor(struct cell *ci, struct cell *cj,
+static int make_donor(struct runner *r, struct cell *ci, struct cell *cj,
                       const struct engine *e) {
   const struct space *s = e->s;
-  int best = -1, best_count = 0;
-  for (int pass = 0; pass < 2 && best < 0; pass++) {
-    for (int i = 0; i < ci->hydro.count; i++) {
-      const struct part *p = &ci->hydro.parts[i];
-      if (pass == 0 && p->h >= 0.5 / kernel_gamma) continue;
-      int n = 0;
-      for (int j = 0; j < cj->hydro.count; j++) {
-        const struct part *q = &cj->hydro.parts[j];
-        double r2 = 0.;
-        for (int d = 0; d < 3; d++) {
-          const double dx_d = p->x[d] - q->x[d];
-          const double dx = s->periodic ? nearest(dx_d, s->dim[d]) : dx_d;
-          r2 += dx * dx;
-        }
-        const double h = max(p->h, q->h);
-        n += (r2 < h * h * kernel_gamma2);
+  const int n = ci->hydro.count;
+  int *score = checked_malloc(n * sizeof(int));
+  for (int i = 0; i < n; i++) {
+    const struct part *p = &ci->hydro.parts[i];
+    int count = 0;
+    for (int j = 0; j < cj->hydro.count; j++) {
+      const struct part *q = &cj->hydro.parts[j];
+      double r2 = 0.;
+      for (int d = 0; d < 3; d++) {
+        const double dx_d = p->x[d] - q->x[d];
+        const double dx = s->periodic ? nearest(dx_d, s->dim[d]) : dx_d;
+        r2 += dx * dx;
       }
-      if (n > best_count) {
-        best_count = n;
-        best = i;
-      }
+      const double h = max(p->h, q->h);
+      count += (r2 < h * h * kernel_gamma2);
+    }
+    score[i] = count + (p->h < 0.5 / kernel_gamma ? n * N_LEAF : 0);
+    if (count == 0) score[i] = 0;
+  }
+
+  struct part *si = checked_malloc(n * sizeof(struct part));
+  struct part *sj = checked_malloc(n * sizeof(struct part));
+  int donor = -1;
+  while (donor < 0) {
+    int best = -1;
+    for (int i = 0; i < n; i++)
+      if (score[i] > 0 && (best < 0 || score[i] > score[best])) best = i;
+    if (best < 0) error("No particle of ci has an outflow to cj.");
+    score[best] = 0;
+
+    struct part *p = &ci->hydro.parts[best];
+    const struct part p_inactive = *p;
+    const struct xpart xp_inactive = ci->hydro.xparts[best];
+    init_particle(p, &ci->hydro.xparts[best], 1.0 / n, 1, e);
+    for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++)
+      p->chemistry_data.metal_mass[k] *= 10.;
+    set_tree_properties(ci, e);
+
+    memcpy(si, ci->hydro.parts, n * sizeof(struct part));
+    memcpy(sj, cj->hydro.parts, n * sizeof(struct part));
+    runner_dosub_pair2_chemistry_flux_prep(r, ci, cj, /*h_hi=*/FLT_MAX,
+                                           /*gettimer=*/0);
+    if (p->chemistry_data.fct_sum_out[0] > 0.) donor = best;
+    memcpy(ci->hydro.parts, si, n * sizeof(struct part));
+    memcpy(cj->hydro.parts, sj, n * sizeof(struct part));
+    if (donor < 0) {
+      *p = p_inactive;
+      ci->hydro.xparts[best] = xp_inactive;
+      set_tree_properties(ci, e);
     }
   }
-  if (best < 0) error("No particle of ci has a neighbour in cj.");
-
-  struct part *p = &ci->hydro.parts[best];
-  init_particle(p, &ci->hydro.xparts[best], 1.0 / ci->hydro.count, 1, e);
-  struct chemistry_part_data *ch = &p->chemistry_data;
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++)
-    ch->metal_mass[k] *= 10.;
-  set_tree_properties(ci, e);
-  return best;
+  free(score);
+  free(si);
+  free(sj);
+  return donor;
 }
 
 /**
@@ -995,11 +1019,11 @@ static int do_theta_case(const struct pair_case *pc, struct runner *r,
   const double origin[3] = {0., 0., 0.};
   struct cell *ci = make_cell(origin, pc->depth, pc->p_level, 0., e);
   struct cell *cj = make_cell(pc->offset, pc->depth, pc->p_level, 0., e);
-  const int donor = make_donor(ci, cj, e);
   set_node(ci, 0);
   set_node(cj, 0);
   runner_do_hydro_sort(r, ci, 0x1FFF, 0, 0, 0, 0);
   runner_do_hydro_sort(r, cj, 0x1FFF, 0, 0, 0, 0);
+  const int donor = make_donor(r, ci, cj, e);
 
   const int n = ci->hydro.count;
   struct part *si = checked_malloc(n * sizeof(struct part));
@@ -1162,6 +1186,19 @@ int main(int argc, char *argv[]) {
   srand(seed);
   message("Seed: %u", seed);
 
+#if chemistry_flux_updates_inactive_neighbours
+  enum theta_plant plant = plant_none;
+  if (argc > 2) {
+    int found = 0;
+    for (int k = 0; k < 5; k++)
+      if (strcmp(argv[2], plant_name[k]) == 0) {
+        plant = (enum theta_plant)k;
+        found = 1;
+      }
+    if (!found) error("Unknown planted fault '%s'.", argv[2]);
+  }
+#endif
+
   struct space space;
   bzero(&space, sizeof(struct space));
   space.dim[0] = space.dim[1] = space.dim[2] = 4.;
@@ -1249,9 +1286,6 @@ int main(int argc, char *argv[]) {
   for (int c = 0; c < n_cases; c++)
     n_fail += do_case(&cases[c], loop_force, &runner, &engine);
 #if chemistry_flux_updates_inactive_neighbours
-  enum theta_plant plant = plant_none;
-  for (int k = 0; argc > 2 && k < 5; k++)
-    if (strcmp(argv[2], plant_name[k]) == 0) plant = (enum theta_plant)k;
   chem_data.use_positivity_limiter = 1;
   for (int c = 0; c < n_cases; c++)
     n_fail += do_theta_case(&cases[c], &runner, &engine, plant);
