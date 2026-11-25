@@ -3396,11 +3396,11 @@ transport needs the HEALPix C library (\code{--with-chealpix}).
 
 \paragraph{Coupling to Grackle (Sec.~\ref{sec:isrf-problem}).} $G_0$,
 Eq.~\eqref{eq:isrf-G0}, is \code{radiation\_get\_part\_isrf\_habing}
-(\code{src/feedback/GEAR/radiation\_gas.c:737-756}), and $k_{\rm diss}$,
+(\code{src/feedback/GEAR/radiation\_gas.c:736-755}), and $k_{\rm diss}$,
 Eq.~\eqref{eq:isrf-kdiss}, is
-\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:774-795). Each
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:773-794). Each
 band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
-(:705-720). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
+(:704-719). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
 \code{RADIATION\_HABING\_FLUX\_CGS} and
 \code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}
 (\code{src/feedback/GEAR/radiation.h:104}, :113). Grackle reads the two rates
@@ -3906,7 +3906,7 @@ a sink is \code{feedback\_isrf\_packet\_removed\_data}
 (\code{feedback\_struct.h:546-560}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:1078-1123}). The emission is booked by
+(\code{feedback\_struct.h:1079-1124}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
 (\code{radiation\_packet.c:4358-4389}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:606}. The removal is
@@ -3915,10 +3915,10 @@ the inherited sum with the redshift ledger at :1795-1798). It is reached from
 \code{feedback\_book\_removed\_gas\_to\_spart},
 \code{feedback\_book\_removed\_gas\_to\_sink} and
 \code{feedback\_book\_sink\_merger}
-(\code{src/feedback/GEAR/feedback\_common.c:1591-1616}). Gas that leaves a
+(\code{src/feedback/GEAR/feedback\_common.c:1594-1619}). Gas that leaves a
 non-periodic box is booked by \code{radiation\_packet\_book\_gas\_left\_box}
 (\code{radiation\_packet.c:1833-1835}) through
-\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1624-1626},
+\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1627-1629},
 called at \code{src/cell\_drift.c:340}). The sum over the ranks is
 \code{radiation\_packet\_reduce\_left\_box} (\code{radiation\_packet.c:1891-1915}),
 and \code{feedback\_write\_flavour}

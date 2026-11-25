@@ -508,7 +508,7 @@ void feedback_will_do_HII_ionization(
   /* A star with no region can still hold a search request and a carry. */
   if (sp->feedback_data.is_dead || !is_HII_eligible) {
     sp->h_hii_request = 0.f;
-    sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
+    sp->feedback_data.radiation.HII_carry_tree_reach = 0.f;
   }
 }
 
@@ -1306,41 +1306,44 @@ void feedback_reset_star_HII_mass(struct spart *sp) {
 }
 
 /**
- * @brief Stop radius of the pass whose unspent photons the next pass of this
- * star receives, 0 if none.
+ * @brief Tree reach of the last coverage stop of this star: positive if its
+ * photons are carried to the next pass, negative if they were released, 0 if
+ * none.
  *
  * @param sp The star.
  */
-float feedback_get_star_HII_carry_stop_radius(const struct spart *sp) {
-  return sp->feedback_data.radiation.HII_carry_stop_radius;
+float feedback_get_star_HII_carry_tree_reach(const struct spart *sp) {
+  return sp->feedback_data.radiation.HII_carry_tree_reach;
 }
 
 /**
  * @brief Keep the unspent photons of a pass stopped at the edge of the gas
  * the tree covers, for the next pass of the star, or release them.
  *
- * The stop asks for a wider tree. The photons are kept only if this stop is
- * wider than the stop they were carried from: otherwise the rebuild did not
- * widen the coverage, and a further carry would pile them up.
+ * The stop asks for a wider tree. The photons are kept only if the tree reach
+ * is larger than at the star's last coverage stop, carried or released. The
+ * tree reach does not depend on where the star sits, so a star that drifts
+ * inside a tree that cannot widen releases its photons instead of piling them
+ * up or carrying every other pass.
  *
  * @param sp The star.
  * @param feedback_props The #feedback_props.
- * @param stop_radius Search radius at which this pass stopped.
- * @param carried_from_radius Stop radius of the pass whose photons this pass
- * received, 0 if none.
+ * @param tree_reach cell_radiation_tree_reach() of the cell of this pass.
+ * @param last_tree_reach feedback_get_star_HII_carry_tree_reach() before the
+ * budget of this pass opened.
  * @return The photons released (escaped), 0 if they are kept.
  */
 double feedback_carry_star_HII_unspent_photons(
     struct spart *sp, const struct feedback_props *feedback_props,
-    const float stop_radius, const float carried_from_radius) {
+    const float tree_reach, const float last_tree_reach) {
 
   if (feedback_props->HII_carry_photons_at_coverage_stop &&
-      stop_radius > carried_from_radius) {
-    sp->feedback_data.radiation.HII_carry_stop_radius = stop_radius;
+      tree_reach > fabsf(last_tree_reach)) {
+    sp->feedback_data.radiation.HII_carry_tree_reach = tree_reach;
     return 0.;
   }
 
-  sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
+  sp->feedback_data.radiation.HII_carry_tree_reach = -tree_reach;
   return feedback_get_star_ionization_budget_total(sp);
 }
 
@@ -1532,7 +1535,7 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
   for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
   }
-  sp->feedback_data.radiation.HII_carry_stop_radius = 0.f;
+  sp->feedback_data.radiation.HII_carry_tree_reach = 0.f;
 
   /* No previous pass to average against yet; -1 is the sentinel
      radiation_open_ionizing_photon_budget() checks for. */

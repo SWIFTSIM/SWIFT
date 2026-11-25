@@ -77,8 +77,8 @@ Section~\ref{sec:front-radius} relies on. ``Tagged'' below always
 means holding an active (not yet lapsed) claim.
 
 \paragraph{Implementation.} The tag is applied by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:435-451}) and reset by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:459-463}),
+(\code{src/feedback/GEAR/radiation\_gas.c:434-450}) and reset by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:458-462}),
 which leaves the star id in place.
 
 \subsubsection{Candidate Gating and the Recombination Rate}
@@ -455,7 +455,7 @@ differently; see Section~\ref{sec:front-radius}.
 gate recurs at line 125. The rate-coupled branch starts at line 101 and leaves the energy alone.
 $\Gamma_{\rm HI}$ is
 \code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
-(\code{src/feedback/GEAR/radiation\_gas.c:562-571}); the excess photon energy is
+(\code{src/feedback/GEAR/radiation\_gas.c:561-570}); the excess photon energy is
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
 (\code{src/feedback/GEAR/radiation\_getters.c:575-582}); the fields are handed to
 Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
@@ -579,18 +579,25 @@ unspent photons are kept per pixel and added to the next budget,
   \label{eq:budget-carry}
 \end{equation}
 where $N_{{\rm ion},p}^{\rm left}$ is the count pixel $p$ had at the end of
-the stopped pass. A carry is used once. If the next pass stops at the
-coverage again, the photons are kept only if its $r_{\rm cov}$ is larger
-than the one that created the carry; otherwise the rebuild did not widen
-the tree (for example the top-level grid cannot coarsen further) and the
-photons are counted as escaped at the coverage limit. Each pass therefore
+the stopped pass. A carry is used once. At every coverage stop, the photons
+are kept only if the tree reach $w_{\rm level} + w_{\rm min}$ is larger than
+at the star's last coverage stop, whether that stop carried or released;
+$w_{\rm level}$ is the width of the \code{radiation\_level} cell. Otherwise
+the rebuild did not widen the tree (for example the top-level grid cannot
+coarsen further) and the photons are counted as escaped at the coverage
+limit. The tree reach is compared, not $r_{\rm cov}$: $r_{\rm cov}$ grows
+when the star drifts away from a face of the same cell, and a carry on that
+growth would pile up the photons of every pass. In a tree that cannot widen
+a star therefore carries at most once. Each pass therefore
 closes the ledger issued plus carried in equals spent plus escaped plus
 carried out. A pass with no photons to issue and a gas-free skip both
 return before the budget opens, so they keep the carry. Birth, death and the end of
 the HII age window clear it. With
 \code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop}$\,=0$ the photons
 of a stopped pass escape. The step log reports the carried and released
-passes and the released photons.
+passes and the photons released at coverage stops. Photons left at any
+other stop escape uncounted there, carried ones included, and so does a
+carry cleared at death or at the end of the age window.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
@@ -697,7 +704,7 @@ ionized for ever, and a pixel whose Strömgren mass is below one
 particle would hold a whole particle permanently.
 
 \paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{src/runner\_radiation\_feedback.c:1295}), exempt from
+(\code{src/runner\_radiation\_feedback.c:1326}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
 (\code{src/feedback/GEAR/feedback\_common.c:743-777}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
@@ -743,7 +750,7 @@ spending draw from.
 (\code{src/feedback/GEAR/feedback\_common.c:946-1016}) passes the pixel index found
 for the particle's current direction when it was gathered to
 \code{radiation\_consume\_ionizing\_photons}
-(\code{src/feedback/GEAR/radiation\_gas.c:404-417}).
+(\code{src/feedback/GEAR/radiation\_gas.c:403-416}).
 
 \subsection{Front-radius measure}
 \label{sec:front-radius}
@@ -785,8 +792,8 @@ historical-extent measure would instead freeze at the historical
 maximum once the region starts to recede.
 
 \paragraph{Implementation.} The id is written by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:435-451}) and is left in place by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:459-463}).
+(\code{src/feedback/GEAR/radiation\_gas.c:434-450}) and is left in place by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:458-462}).
 
 \subsubsection{Robust Historical Extent: Gap-Aware Outlier Rejection}
 

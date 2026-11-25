@@ -154,7 +154,9 @@ struct radiation_hii_coverage_stats {
   /*! Passes that released their unspent photons as escaped. */
   double released_passes;
 
-  /*! Photons released by those passes. */
+  /*! Photons released by those passes. Only coverage stops count here:
+      photons left at any other stop escape uncounted, carried ones included,
+      and so does a carry cleared at death or at the end of the age window. */
   double released_photons;
 
   /*! Held-gas searches whose start radius was cut to the covered radius. */

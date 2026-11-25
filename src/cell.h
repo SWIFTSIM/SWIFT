@@ -1921,6 +1921,42 @@ cell_radiation_neighbour_margin(const struct cell *c) {
 }
 
 /**
+ * @brief Width of the thinnest of a radiation_level cell and the cells linked
+ * to it by its HII tasks.
+ *
+ * @param level The radiation_level #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_thinnest_partner_width(const struct cell *level) {
+
+  float width = level->dmin;
+  for (const struct link *l = level->stars.radiation_in; l != NULL;
+       l = l->next) {
+    if (l->t->type == task_type_self) continue;
+    const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
+    width = min(width, partner->dmin);
+  }
+  return width;
+}
+
+/**
+ * @brief Largest covered radius the current tree gives a star of this
+ * working-level cell: the width of its radiation_level cell plus the thinnest
+ * linked width.
+ *
+ * Unlike cell_radiation_covered_radius(), it does not depend on where the star
+ * sits, so it changes only when a rebuild changes the tree.
+ *
+ * @param c The working-level #cell holding the star.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_tree_reach(const struct cell *c) {
+
+  const struct cell *level = c->stars.radiation_level;
+  return level->dmin + cell_radiation_thinnest_partner_width(level);
+}
+
+/**
  * @brief Radius around a star inside which an HII pass sees all the gas.
  *
  * The pass visits the star's radiation_level cell and every cell linked to
@@ -1943,13 +1979,12 @@ cell_radiation_covered_radius(const struct cell *c, const double x[3],
 
   const struct cell *level = c->stars.radiation_level;
 
-  float partner_width = level->dmin;
+  const float partner_width = cell_radiation_thinnest_partner_width(level);
   float partner_drift = 0.f;
   for (const struct link *l = level->stars.radiation_in; l != NULL;
        l = l->next) {
     if (l->t->type == task_type_self) continue;
     const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
-    partner_width = min(partner_width, partner->dmin);
     partner_drift = max(partner_drift, partner->hydro.dx_max_part);
   }
 

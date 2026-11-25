@@ -706,9 +706,9 @@ struct hii_star_pass {
   /*! Number of passes the star made before this one. */
   int64_t pass_index;
 
-  /*! Stop radius of the pass whose unspent photons this pass received, 0 if
-      none. */
-  float carried_from_radius;
+  /*! feedback_get_star_HII_carry_tree_reach() before the budget opened:
+      the tree reach of the last coverage stop, signed. */
+  float last_tree_reach;
 };
 
 /**
@@ -798,7 +798,7 @@ static int runner_hii_open_star_pass(const struct engine *e,
       feedback_get_star_HII_nominal_interval(feedback_props, dt_enrichment);
   const double dt_ceiling = HII_DT_BACK_MAX_INTERVALS * dt_nominal;
   const double dt_back = min(dt_issued, dt_ceiling);
-  const float carried_from_radius = feedback_get_star_HII_carry_stop_radius(si);
+  const float last_tree_reach = feedback_get_star_HII_carry_tree_reach(si);
   feedback_open_star_ionizing_photon_budget(si, dt_back);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
@@ -821,7 +821,7 @@ static int runner_hii_open_star_pass(const struct engine *e,
   pass->dt_tag = min(dt_gap, dt_ceiling);
   pass->star_age_safe = star_age_safe;
   pass->pass_index = pass_index;
-  pass->carried_from_radius = carried_from_radius;
+  pass->last_tree_reach = last_tree_reach;
   return 1;
 }
 
@@ -972,6 +972,48 @@ static int runner_hii_maintain_held_region(
 }
 
 /**
+ * @brief Keep or release the unspent photons of a pass stopped at the covered
+ * radius, and count the outcome.
+ *
+ * The decision compares tree reaches (cell_radiation_tree_reach()), not stop
+ * radii: a stop radius moves with the star, the tree reach only at a rebuild.
+ *
+ * @param c The working-level #cell holding the star.
+ * @param si The #spart.
+ * @param feedback_props The #feedback_props.
+ * @param last_tree_reach feedback_get_star_HII_carry_tree_reach() before the
+ * budget of this pass opened.
+ * @param stats (return) The coverage-stop counters of this rank.
+ * @return The photons released (escaped), 0 if they are kept.
+ */
+double runner_hii_carry_at_coverage_stop(
+    const struct cell *c, struct spart *si,
+    const struct feedback_props *feedback_props, const float last_tree_reach,
+    struct radiation_hii_coverage_stats *stats) {
+
+  const double released = feedback_carry_star_HII_unspent_photons(
+      si, feedback_props, cell_radiation_tree_reach(c), last_tree_reach);
+
+  const int carried = feedback_get_star_HII_carry_tree_reach(si) > 0.f;
+  if (carried) {
+    atomic_add_d(&stats->carried_passes, 1.);
+  } else {
+    atomic_add_d(&stats->released_passes, 1.);
+    atomic_add_d(&stats->released_photons, released);
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  message(
+      "Star %lld: tree reach %e (last coverage stop %e), carried %.17g, "
+      "released "
+      "%.17g.",
+      si->id, cell_radiation_tree_reach(c), last_tree_reach,
+      carried ? feedback_get_star_ionization_budget_total(si) : 0., released);
+#endif
+  return released;
+}
+
+/**
  * @brief How the claim walk of a star pass ended.
  */
 struct hii_claim_summary {
@@ -1000,8 +1042,8 @@ struct hii_claim_summary {
  * @param interaction_limit The initial search range boundary.
  * @param covered_radius Radius inside which the pass sees all the gas; the
  * search never goes beyond it.
- * @param carried_from_radius Stop radius of the pass whose unspent photons
- * this pass received, 0 if none.
+ * @param last_tree_reach feedback_get_star_HII_carry_tree_reach() before the
+ * budget of this pass opened.
  * @param count_held Gas the star already held at the start of the pass.
  * @param diag The #hii_pass_diagnostics.
  * @param summary (return) How the walk ended.
@@ -1009,7 +1051,7 @@ struct hii_claim_summary {
 static void runner_hii_claim_and_retry(
     struct runner *r, struct cell *c, struct spart *si, const double *frame,
     const double dt_back, const double dt_tag, const float interaction_limit,
-    const float covered_radius, const float carried_from_radius,
+    const float covered_radius, const float last_tree_reach,
     const int count_held, struct hii_pass_diagnostics *diag,
     struct hii_claim_summary *summary) {
 
@@ -1175,26 +1217,15 @@ static void runner_hii_claim_and_retry(
                                                         radius_expansion_factor,
                                                         max_search_radius) /
                             (radiation_search_radius_factor * kernel_gamma);
-        const double released = feedback_carry_star_HII_unspent_photons(
-            si, feedback_props, dynamic_search_radius, carried_from_radius);
-        if (feedback_get_star_HII_carry_stop_radius(si) > 0.f) {
-          atomic_add_d(&e->radiation_hii_coverage_local.carried_passes, 1.);
-        } else {
-          atomic_add_d(&e->radiation_hii_coverage_local.released_passes, 1.);
-          atomic_add_d(&e->radiation_hii_coverage_local.released_photons,
-                       released);
-        }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
         message(
-            "Star %lld: search stopped at the covered radius %e (carried "
-            "from %e), requesting %e, carried %.17g, released %.17g.",
-            si->id, dynamic_search_radius, carried_from_radius,
-            kernel_gamma * si->h_hii_request,
-            feedback_get_star_HII_carry_stop_radius(si) > 0.f
-                ? feedback_get_star_ionization_budget_total(si)
-                : 0.,
-            released);
+            "Star %lld: search stopped at the covered radius %e, "
+            "requesting %e.",
+            si->id, dynamic_search_radius, kernel_gamma * si->h_hii_request);
 #endif
+        runner_hii_carry_at_coverage_stop(c, si, feedback_props,
+                                          last_tree_reach,
+                                          &e->radiation_hii_coverage_local);
       }
       if (stop != hii_search_grow) break;
 
@@ -1351,7 +1382,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     struct hii_claim_summary summary;
     runner_hii_claim_and_retry(
         r, c, si, frame, pass.dt_back, pass.dt_tag, interaction_limit,
-        covered_radius, pass.carried_from_radius, count_held, &diag, &summary);
+        covered_radius, pass.last_tree_reach, count_held, &diag, &summary);
 
     hii_pass_diagnostics_print(&diag, e, si, count_held);
     runner_hii_close_star_pass(c, si, pass.star_age_safe, &summary, &diag,

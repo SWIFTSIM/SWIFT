@@ -364,6 +364,14 @@ __attribute__((always_inline)) INLINE static void
 feedback_radiation_startup_diagnostics(const struct engine *e) {}
 #endif
 
+#ifdef IONIZATION_FEEDBACK_LOOP
+struct radiation_hii_coverage_stats;
+double runner_hii_carry_at_coverage_stop(
+    const struct cell *c, struct spart *si,
+    const struct feedback_props *feedback_props, const float last_tree_reach,
+    struct radiation_hii_coverage_stats *stats);
+#endif
+
 void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                                 struct cell *c,
                                                 const float interaction_limit);
