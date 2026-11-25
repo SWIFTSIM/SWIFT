@@ -3,8 +3,7 @@ One 29.7 Msun star in an isolated, dust-free box of cold (50 K), H2-poor gas, wi
 transport on (`ISRF_propagation: 1`). The star's Lyman-Werner (LW) light dissociates the H2 in
 the box. The box is thin: the H2 column is too small for the lines to absorb a visible part
 of the light. The check compares the star's luminosity with the radiation table and the
-H2 dissociation rate with the field that the cooling is given. The size of the LW field itself
-is printed by the check but not tested.
+H2 dissociation rate with the field that the cooling is given.
 
 The run uses geajay cooling with `ISRF_H2_line_absorption: 1` and
 `ISRF_packet_light_speed: unlimited` (one hop per step). Official Grackle refuses the
@@ -32,8 +31,8 @@ override the defaults. The run takes a few minutes on 4 threads and writes a sna
 python3 check_h2_thin_absolute.py thin/snap --radiation-table PopII_parsec_spectral.hdf5
 ```
 Two tests gate the run, and the exit status is 0 when both pass:
-- the star's `LWLuminosities` against the table luminosity at its mass, within the change of
-  the table between the two nodes that bracket the mass;
+- the star's `LWLuminosities` against the luminosity that SWIFT reads from the radiation
+  table for the star's mass and metallicity;
 - the rate identity: the H2 dissociation rate of every particle equals the LW field that the
   cooling is given, times the Draine-field rate coefficient, in each radial shell.
 

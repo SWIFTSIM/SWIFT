@@ -6,13 +6,15 @@ luminosity L of the star from the radiation table, not from the transported fiel
 Two tests gate the run. Two other numbers are reported without a bar.
 
 Luminosity (gate). The star's LWLuminosities against the table L_LW as SWIFT reads
-it. For Z = 0, below the first table row, SWIFT takes the first row and the mass node
-below the star's mass, with no interpolation in mass (interpolate_2d, constant
-boundary branch). That is why the snapshot value sits 0.98 per cent under the
-interpolated table value at 29.7 Msun. The check follows that rule, with a bar of 8
-float32 ulp of log10 L (about 1e-4 relative). It tests the readout of the table, not
-whether the boundary rule is the one the model wants. A star with Z inside the table
-range, or a mass outside it, is a void run.
+it. For Z = 0, below the first table row, SWIFT takes the first row and the node of its
+own mass grid below the star's mass, with no interpolation in mass (interpolate_2d,
+constant boundary branch). SWIFT's mass grid runs from the IMF minimum to the IMF
+maximum mass of the table in GEARRadiation:interpolation_size_mass steps. The check
+follows that rule where this grid equals the mass grid of the table file. Where the two
+differ, the run is void (exit 4). The bar is 8 float32 ulp of log10 L (a chosen margin
+on the one ulp that the float32 readout cannot resolve), as a relative error. The check
+tests the readout of the table, not whether the boundary rule is the one the model
+wants. A star with Z inside the table range, or a mass outside it, is a void run.
 
 Rate identity (gate, test 4). Per particle ln(k_meas / (kappa_D c rho u_diss)), with
 k_meas = -d ln x2 / dt from two snapshots, kappa_D = 1.4425e-7 cm^2 erg^-1 (the
@@ -31,16 +33,15 @@ particle's own LW energy before line absorption, over L / (4 pi r^2) is
 
     Q(r) = sum_i V_i c rho_i u_i / sum_i V_i L / (4 pi r_i^2),   V_i = m_i / rho_i.
 
-On the clean run Q is 0.978 to 0.9985 (against the luminosity SWIFT emits), with a size
-that depends on the cone power of the transport. No bar derived from the mechanism exists yet, so Q is printed with its
-bootstrap error and not gated. The ratio of the measured dissociation to the
+Q depends on the cone power of the transport. No bar derived from the mechanism exists,
+so Q is printed with its bootstrap error and not gated. The ratio of the measured dissociation to the
 kernel-mean thin limit (2b) is reported the same way: it carries the same Q.
 
 What a PASS proves: the star's table luminosity matches the SWIFT value, and the H2
 dissociation follows the field that the cooling is given with no further factor (no
 second shielding). What it does not prove: that the field itself has the right size.
 A scale error of the LW field is not detected, because the rate and the field scale
-together (a plant of x1.1 or x0.9 passes). A loss of light that grows with the H2
+together. A loss of light that grows with the H2
 column or the dust is not tested (the box is thin and dust-free), nor are errors that
 appear only with a limited light speed or several stars.
 
@@ -150,13 +151,20 @@ def read_snapshot(path: Path) -> dict:
         out["time_code"] = float(f["Header"].attrs["Time"][0])
         out["t_unit"] = ut
         out["box"] = float(f["Header"].attrs["BoxSize"][0]) * ul
-        s = f["PartType4"]
-        out["n_star"] = int(s["Coordinates"].shape[0])
-        out["star_pos"] = s["Coordinates"][0].astype(float) * ul
-        out["star_mass"] = float(s["Masses"][0]) * um
-        out["star_z"] = float(s["MetalMassFractions"][0][-1])
-        out["star_L"] = float(s["LWLuminosities"][0]) * um * ul**2 / ut**3
+        s = f["PartType4"] if "PartType4" in f else None
+        out["n_star"] = 0 if s is None else int(s["Coordinates"].shape[0])
+        if out["n_star"] > 0:
+            out["star_pos"] = s["Coordinates"][0].astype(float) * ul
+            out["star_mass"] = float(s["Masses"][0]) * um
+            out["star_z"] = float(s["MetalMassFractions"][0][-1])
+            out["star_L"] = float(s["LWLuminosities"][0]) * um * ul**2 / ut**3
+        else:
+            out["star_pos"] = np.zeros(3)
+            out["star_mass"] = out["star_z"] = out["star_L"] = 1.0
         par = f["Parameters"].attrs
+        out["interp_size_mass"] = int(
+            float(par.get("GEARRadiation:interpolation_size_mass", 0))
+        )
         out["solver"] = float(par.get("GeajayCooling:solver", np.nan))
         out["periodic"] = float(par.get("InitialConditions:periodic", np.nan))
         raw = par.get("GEARFeedback:ISRF_packet_light_speed", b"")
@@ -201,36 +209,67 @@ def jeans_length(temp: Arr, rho: Arr, mu: Arr) -> Arr:
     return np.sqrt((5.0 / 3.0) * np.pi * KB * temp / (GRAV * mu * MH * rho))
 
 
-def table_luminosity(path: Path, mass_msun: float, z: float) -> tuple[float, float]:
+def table_luminosity(
+    path: Path, mass_msun: float, z: float, interp_size: int
+) -> tuple[float, float]:
     """Return the LW luminosity [erg/s] that SWIFT reads from the table, and its bar.
 
-    SWIFT interpolates log L bilinearly in log Z and log M. A metallicity below the
-    first row of the table (here Z = 0) takes the constant boundary branch of
-    interpolate_2d (src/feedback/GEAR/interpolation.h): the first row, and the mass
-    node below the star's mass, with no interpolation in mass. This function follows
-    that branch, with the index formed in float32 as SWIFT does. A star inside the
-    metallicity range needs the resampled Z axis of SWIFT and is refused.
+    SWIFT resamples the table onto a uniform mass grid from the IMF minimum to the
+    IMF maximum mass (Data/IMF Mmin and Mmax) in interpolation_size_mass nodes
+    (src/feedback/GEAR/radiation_table_io.c), and interpolates log L bilinearly in
+    log Z and log M. A metallicity below the first row of the table (here Z = 0)
+    takes the constant boundary branch of interpolate_2d
+    (src/feedback/GEAR/interpolation.h): the first row, and the node of the
+    resampled grid below the star's mass, with no interpolation in mass. This
+    function follows that branch, with the index formed in float32 as SWIFT does,
+    when the resampled grid equals the grid of the file.
 
-    The bar is the float32 resolution of log10 L, 8 ulp of the value (the table is
-    read and the units are applied in float32), as a relative error.
+    The bar is 8 float32 ulp of log10 L as a relative error: 8 is a chosen margin
+    on the one ulp, eps * |log10 L| * ln 10, which the float32 readout cannot resolve.
+
+    Parameters
+    ----------
+    path
+        The radiation table.
+    mass_msun
+        The star mass [Msun].
+    z
+        The star metallicity.
+    interp_size
+        GEARRadiation:interpolation_size_mass of the run.
 
     Raises
     ------
     ValueError
-        If the mass is outside the table or the metallicity is inside its range.
+        If the mass is outside the table, the metallicity is inside its range or
+        the resampled mass grid differs from the grid of the file.
     """
     with h5py.File(path, "r") as f:
         g = f["Data/Radiation"]
         a = g.attrs
         m0, dm, n_mass = float(a["m0"]), float(a["dm"]), int(a["nm"])
+        imf = f["Data/IMF"].attrs
+        mass_min, mass_max = np.float32(imf["Mmin"]), np.float32(imf["Mmax"])
         z_first = float(g["Metallicity"][0])
         lum = g["L_LW"][0]
     if z >= z_first:
         raise ValueError(
             f"star metallicity {z:g} is not below the first table row {z_first:g}"
         )
+    grid_min = np.log10(mass_min)
+    grid_step = (np.log10(mass_max) - grid_min) / np.float32(interp_size - 1)
+    if (
+        interp_size != n_mass
+        or abs(grid_min - m0) > 1e-5
+        or abs(grid_step - dm) > 1e-5 * dm
+    ):
+        raise ValueError(
+            f"the resampled mass grid ({interp_size} nodes from {float(grid_min):.5f}, "
+            f"step {float(grid_step):.6f}) differs from the grid of the file "
+            f"({n_mass} nodes from {m0:.5f}, step {dm:.6f})"
+        )
     log_m = np.float32(np.log10(mass_msun))
-    index = int((log_m - np.float32(m0)) / np.float32(dm))
+    index = int((log_m - grid_min) / grid_step)
     if index < 0 or index >= n_mass - 1:
         raise ValueError(f"log10 mass {float(log_m):.4f} is outside the table")
     value = float(lum[index])
@@ -294,7 +333,12 @@ def plant_double_shielding(snaps: list[dict]) -> None:
 
 def luminosity_stats(s_last: dict, table: Path) -> dict:
     """Return the snapshot luminosity, the table luminosity and the bar."""
-    l_table, bar = table_luminosity(table, s_last["star_mass"] / MSUN, s_last["star_z"])
+    l_table, bar = table_luminosity(
+        table,
+        s_last["star_mass"] / MSUN,
+        s_last["star_z"],
+        s_last["interp_size_mass"],
+    )
     diff = s_last["star_L"] / l_table - 1.0
     return {
         "snapshot_erg_s": s_last["star_L"],
@@ -490,6 +534,12 @@ def main() -> int:
         help="plant: scale the star luminosity of the snapshot",
     )
     p.add_argument(
+        "--plant-interp-size",
+        type=int,
+        default=None,
+        help="plant: set GEARRadiation:interpolation_size_mass of the snapshot",
+    )
+    p.add_argument(
         "--plant-star-skip",
         action="store_true",
         help="plant: the star makes no update in one step",
@@ -528,6 +578,8 @@ def main() -> int:
     if bad:
         print("NON-FINITE:\n  " + "\n  ".join(bad))
         return EXIT_NONFINITE
+    if o.plant_interp_size is not None:
+        snaps[-1]["interp_size_mass"] = o.plant_interp_size
     if o.plant_star_skip:
         star_updates[len(star_updates) // 2] = 0.0
     void = void_reasons(snaps, steps, star_updates)
