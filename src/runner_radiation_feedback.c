@@ -840,7 +840,8 @@ static int runner_hii_open_star_pass(const struct engine *e,
  * @param dt_back Interval whose photons this pass issues.
  * @param dt_tag Gap since the star's previous pass, which tags outlive.
  * @param interaction_limit The initial search range boundary.
- * @param covered_radius Radius inside which the pass sees all the gas.
+ * @param covered_radius Radius inside which the pass visits every cell that
+ * held gas at the last rebuild.
  * @return Number of gas particles the star holds ionized.
  */
 static int runner_hii_maintain_held_region(
@@ -1040,8 +1041,8 @@ struct hii_claim_summary {
  * @param dt_back Interval whose photons this pass issues.
  * @param dt_tag Gap since the star's previous pass, which tags outlive.
  * @param interaction_limit The initial search range boundary.
- * @param covered_radius Radius inside which the pass sees all the gas; the
- * search never goes beyond it.
+ * @param covered_radius Radius inside which the pass visits every cell that
+ * held gas at the last rebuild; the search never goes beyond it.
  * @param last_tree_reach feedback_get_star_HII_carry_tree_reach() before the
  * budget of this pass opened.
  * @param count_held Gas the star already held at the start of the pass.
@@ -1208,7 +1209,7 @@ static void runner_hii_claim_and_retry(
           num_radius_expansions, max_radius_expansion_tries, count_found,
           count_held, num_empty_expansions);
 
-      if (stop == hii_search_stop_margin) {
+      if (stop == hii_search_stop_covered_radius) {
         /* Only the cell layout stops this star, so ask the next passes,
            and the rebuild check once the radius outgrows the wired
            neighbours, for the radius it would have tried next. The

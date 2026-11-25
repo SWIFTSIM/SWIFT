@@ -125,7 +125,7 @@ enum hii_search_stop {
 
   /*! The radius is at the edge of the gas the tree covers, and nothing else
       binds. */
-  hii_search_stop_margin = 3,
+  hii_search_stop_covered_radius = 3,
 
   /*! A star that holds gas has had its one empty probe. */
   hii_search_stop_one_probe = 4,
@@ -146,8 +146,8 @@ enum hii_search_stop {
  *
  * @param radius The radius just searched.
  * @param max_search_radius Stars:HII_max_search_radius.
- * @param max_reachable_radius The radius inside which the pass sees all the
- * gas (cell_radiation_covered_radius()).
+ * @param covered_radius The radius inside which the pass visits every cell
+ * that held gas at the last rebuild (cell_radiation_covered_radius()).
  * @param num_expansions Expansions done so far in this pass.
  * @param max_expansions Stars:HII_max_radius_expansion_tries.
  * @param count_found Candidates found at @p radius.
@@ -156,17 +156,16 @@ enum hii_search_stop {
  */
 __attribute__((always_inline)) INLINE static enum hii_search_stop
 runner_hii_search_stop(const float radius, const float max_search_radius,
-                       const float max_reachable_radius,
-                       const int num_expansions, const int max_expansions,
-                       const int count_found, const int count_held,
-                       const int num_empty_expansions) {
+                       const float covered_radius, const int num_expansions,
+                       const int max_expansions, const int count_found,
+                       const int count_held, const int num_empty_expansions) {
 
   if (num_expansions >= max_expansions) return hii_search_stop_tries;
   if (radius >= max_search_radius) return hii_search_stop_ceiling;
   const int probe_used =
       count_found == 0 && count_held > 0 && num_empty_expansions >= 1;
   if (probe_used) return hii_search_stop_one_probe;
-  if (radius >= max_reachable_radius) return hii_search_stop_margin;
+  if (radius >= covered_radius) return hii_search_stop_covered_radius;
   return hii_search_grow;
 }
 

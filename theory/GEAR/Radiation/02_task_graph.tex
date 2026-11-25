@@ -224,7 +224,7 @@ would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:1326}).
+(\code{runner\_radiation\_feedback.c:1327}).
 
 \begin{figure}[h]
   \centering
@@ -274,7 +274,7 @@ For each active star at that level:
     \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
     \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:1076-1099}); the
+    the comment at \code{runner\_radiation\_feedback.c:1077-1100}); the
     loop breaks once the budget is exhausted or both retry budgets run
     out.
 \end{enumerate}
@@ -435,8 +435,8 @@ Sorting narrows the scan within
 a visited cell; \emph{which} cells are visited remains governed by the
 \code{radiation\_in} stencil of Section~\ref{sec:runtime}. Every search
 of a pass, the first one and the held-gas search included, is clamped to
-the radius inside which the visited cells hold all the gas of the star's
-surroundings, the covered radius
+the radius inside which the pass visits every cell that held gas around the
+star at the last rebuild, the covered radius
 \begin{equation}
   r_{\rm cov} = d_{\rm face} + w_{\rm min} - \Delta x_{\rm max},
   \label{eq:hii-covered-radius}

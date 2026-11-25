@@ -99,7 +99,7 @@ static struct test_pass run_empty_pass(const float start_radius,
     out.stop = runner_hii_search_stop(radius, max_search_radius, max_reachable,
                                       num_expansions, test_expansion_tries,
                                       count_found, count_held, num_empty);
-    if (out.stop == hii_search_stop_margin && with_request)
+    if (out.stop == hii_search_stop_covered_radius && with_request)
       out.h_request = runner_hii_requested_radius(radius, test_expansion_factor,
                                                   max_search_radius) /
                       (radiation_search_radius_factor * kernel_gamma);
@@ -117,6 +117,24 @@ static struct test_pass run_empty_pass(const float start_radius,
 }
 
 /**
+ * @brief The margin of the code before the covered radius: the thinnest width
+ * of the leaf and the cells linked to its radiation level.
+ *
+ * @param leaf The working-level #cell holding the star.
+ */
+static float old_neighbour_margin(const struct cell *leaf) {
+  const struct cell *level = leaf->stars.radiation_level;
+  float margin = leaf->dmin;
+  for (const struct link *l = level->stars.radiation_in; l != NULL;
+       l = l->next) {
+    if (l->t->type == task_type_self) continue;
+    const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
+    margin = min(margin, partner->dmin);
+  }
+  return margin;
+}
+
+/**
  * @brief The stop radius of the code before the covered radius: the start
  * radius plus the thinnest width of the leaf and its linked partners. Kept as
  * a planted defect: it ignores where the star sits in its cell.
@@ -126,7 +144,7 @@ static struct test_pass run_empty_pass(const float start_radius,
  */
 static float old_stop_radius(const float start_radius,
                              const struct cell *leaf) {
-  return start_radius + cell_radiation_neighbour_margin(leaf);
+  return start_radius + old_neighbour_margin(leaf);
 }
 
 /*! A periodic box large enough that no cell of these tests wraps. */
@@ -197,13 +215,13 @@ static void test_clamped_search_request(void) {
   /* The old rule's margin is the thinnest of the leaf and its partners. */
   setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
                 1.f, 0.5f, 1.f);
-  if (cell_radiation_neighbour_margin(&leaf) != 0.5f)
+  if (old_neighbour_margin(&leaf) != 0.5f)
     error("Neighbour margin %g, expected the leaf width 0.5.",
-          cell_radiation_neighbour_margin(&leaf));
+          old_neighbour_margin(&leaf));
   partner.dmin = 0.25f;
-  if (cell_radiation_neighbour_margin(&leaf) != 0.25f)
+  if (old_neighbour_margin(&leaf) != 0.25f)
     error("Neighbour margin %g, expected the finer partner width 0.25.",
-          cell_radiation_neighbour_margin(&leaf));
+          old_neighbour_margin(&leaf));
 
   /* The covered radius is the face distance plus the thinnest partner. */
   const float r_centre = place_star(&level, &leaf, 0.5);
@@ -278,7 +296,7 @@ static void test_clamped_search_request(void) {
                           max(h_leaf, starved.h);
       const struct test_pass out =
           run_empty_pass(start, covered, 10.f, 0, with_request);
-      if (out.stop != hii_search_stop_margin)
+      if (out.stop != hii_search_stop_covered_radius)
         error(
             "Shared start radius: expected the covered radius to bind, got "
             "%d.",

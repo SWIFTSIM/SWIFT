@@ -1895,32 +1895,6 @@ cell_need_rebuild_for_radiation_pair(const struct cell *ci,
 }
 
 /**
- * @brief Wired reach of the radiation_in stencil beyond an HII pass's start
- * radius, for a star anywhere in a working-level cell.
- *
- * A star at the cell's edge still has a full neighbour cell width of wired gas
- * past it in every wired direction. Under asymmetric pairs a partner can rest
- * finer than the cell, so its wired coverage past the shared boundary is only
- * its own width: use the thinnest of the cell and every linked partner, or the
- * search could grow past a thin partner and gather an anisotropic shell.
- *
- * @param c The working-level #cell holding the star.
- */
-__attribute__((always_inline, nonnull)) INLINE static float
-cell_radiation_neighbour_margin(const struct cell *c) {
-
-  float margin = c->dmin;
-  for (const struct link *l = c->stars.radiation_level->stars.radiation_in;
-       l != NULL; l = l->next) {
-    if (l->t->type == task_type_self) continue;
-    const struct cell *partner =
-        (l->t->ci == c->stars.radiation_level) ? l->t->cj : l->t->ci;
-    margin = min(margin, partner->dmin);
-  }
-  return margin;
-}
-
-/**
  * @brief Width of the thinnest of a radiation_level cell and the cells linked
  * to it by its HII tasks.
  *
@@ -1957,7 +1931,8 @@ cell_radiation_tree_reach(const struct cell *c) {
 }
 
 /**
- * @brief Radius around a star inside which an HII pass sees all the gas.
+ * @brief Radius around a star inside which an HII pass visits every cell that
+ * held gas there at the last rebuild.
  *
  * The pass visits the star's radiation_level cell and every cell linked to
  * it. A sphere around the star stays inside them up to its distance to the

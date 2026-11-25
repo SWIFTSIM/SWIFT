@@ -2796,13 +2796,13 @@ int engine_step(struct engine *e) {
 #endif
 
     /* A pass stopped at the edge of the gas the tree covers asks for a wider
-     * tree. Released photons mean the rebuild could not widen it. */
+     * tree. Released photons mean the rebuild could not widen it. Cut
+     * held-gas searches alone do not print a line. */
     const struct radiation_hii_coverage_stats *cov = &e->radiation_hii_coverage;
     const struct radiation_hii_coverage_stats *cov_last =
         &e->radiation_hii_coverage_last_step;
-    if (cov->carried_passes + cov->released_passes + cov->held_search_cuts >
-        cov_last->carried_passes + cov_last->released_passes +
-            cov_last->held_search_cuts) {
+    if (cov->carried_passes + cov->released_passes >
+        cov_last->carried_passes + cov_last->released_passes) {
       message(
           "HII coverage stops: %.0f carried (+%.0f), %.0f released (+%.0f) "
           "with %.3e photons (+%.3e), %.0f held-gas searches cut (+%.0f).",
