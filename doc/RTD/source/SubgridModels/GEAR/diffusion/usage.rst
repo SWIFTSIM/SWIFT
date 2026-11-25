@@ -107,20 +107,21 @@ MPI support
    than one MPI rank only under all of the following conditions. SWIFT stops
    at start-up otherwise.
 
-   * ``GEARChemistry:use_positivity_limiter`` is ``0``. With the limiter on,
-     the flux of a pair uses the limiter factor of a donor on another rank,
-     and no task sends this factor between ranks.
    * The hydro scheme is SPHENIX or Gizmo MFM. These are the only schemes
      tested on several ranks. Gizmo MFV and every other scheme are refused.
    * Sinks are not used. Sinks are not supported on several ranks.
 
+   ``GEARChemistry:use_positivity_limiter`` can be ``0`` or ``1``. With the
+   limiter on, the limiter factor of a donor is sent to the other ranks in an
+   extra message before the force loop. This adds one message round trip per
+   step on the boundary cells.
+
    With these conditions, the metal mass is conserved to round-off and the
    flux of every pair across a rank boundary is the same on both ranks.
-   Without the limiter, a particle can give away more metal than it holds,
-   so a negative metal mass can appear. The limiter-off runs tested
-   reproduce the negative counts of the one-rank run. For a run that needs
-   the limiter, use a single rank (e.g. ``swift``, or ``swift_mpi`` on one
-   rank).
+   The result is not bit-identical from one run to the next on several
+   ranks, because the order of the summations changes. Without the limiter,
+   a particle can give away more metal than it holds, so a negative metal
+   mass can appear.
 
 Worked examples
 ~~~~~~~~~~~~~~~~

@@ -374,18 +374,10 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 #ifdef WITH_MPI
   int nr_ranks = 1;
   MPI_Comm_size(MPI_COMM_WORLD, &nr_ranks);
-  if (nr_ranks > 1) {
-    if (!chemistry_mpi_tested_hydro)
-      error(
-          "The GEAR FVPM chemistry is tested on more than one MPI rank only "
-          "with the SPHENIX and the Gizmo MFM hydro schemes.");
-    if (data->use_positivity_limiter)
-      error(
-          "With the positivity limiter, the flux uses the theta of a foreign "
-          "donor, and no task sends it between the prep and the apply pass. "
-          "Set GEARChemistry:use_positivity_limiter: 0 to run on several "
-          "ranks.");
-  }
+  if (nr_ranks > 1 && !chemistry_mpi_tested_hydro)
+    error(
+        "The GEAR FVPM chemistry is tested on more than one MPI rank only "
+        "with the SPHENIX and the Gizmo MFM hydro schemes.");
 #endif
 
   /***************************************************************************/

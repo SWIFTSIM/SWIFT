@@ -100,9 +100,9 @@ Riemann-solver flux, before the global FCT positivity limiter:
   global FCT positivity limiter on or off. When on, each particle's total
   outflow in a step is scaled down so that its metal mass stays
   non-negative. A restart keeps the value of the first run and ignores
-  the value in the parameter file. Runs on more than one MPI rank require
-  ``0`` (see the MPI section of the usage page): the metal mass of a
-  particle can then become negative.
+  the value in the parameter file. Both values work on more than one MPI
+  rank (see the MPI section of the usage page). With ``0``, the metal mass
+  of a particle can become negative.
 
 Timestep parameter
 ~~~~~~~~~~~~~~~~~~~
