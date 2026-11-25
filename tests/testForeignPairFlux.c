@@ -35,7 +35,8 @@
 
 /*
  * Checks the pair loops that update the inactive neighbours of a particle,
- * when one cell of the pair is foreign: the Gizmo force loop and the GEAR RT
+ * when one cell of the pair is foreign: the Gizmo force loop, the FVPM
+ * chemistry flux exchange of the force loop (also with SPH) and the GEAR RT
  * transport loop.
  *
  * Two adjacent top-level cells of width 1 are split into a tree of depth 1
@@ -57,8 +58,11 @@
  * so the search of the RT loops cannot rely on the hydro h_max_active. The
  * gradient loop also runs as a self task on one split cell.
  *
- * A bare configure skips this test (exit 77), and so does a hydro scheme that
- * does not update inactive neighbours. Run it by hand in a debug build, with
+ * The FVPM chemistry adds the metal mass flux of the first element. The
+ * positivity limiter is off, so the flux does not depend on the prep loop.
+ *
+ * A bare configure skips this test (exit 77), and so does a build where no
+ * loop updates inactive neighbours. Run it by hand in a debug build, with
  * the seed as the first argument (./testForeignPairFlux 1234), after one of:
  *   ./configure --with-hydro=gizmo-mfm --with-riemann-solver=hllc
  *     --enable-debug --enable-debugging-checks --disable-optimization
@@ -67,10 +71,19 @@
  *     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-stars=GEAR
  *     --with-feedback=none --with-grackle=<path> --enable-debug
  *     --enable-debugging-checks --disable-optimization --disable-hand-vec
+ *   ./configure --with-chemistry=GEAR-FVPM-DIFFUSION_10 (SPHENIX or Gizmo)
+ *     --enable-debug --enable-debugging-checks --disable-optimization
  * Only the second line checks the RT transport and gradient loops.
  */
 
-#if hydro_force_updates_inactive_neighbours
+#if hydro_force_updates_inactive_neighbours || \
+    chemistry_flux_updates_inactive_neighbours
+
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#define WITH_GIZMO_FLUXES 1
+#else
+#define WITH_GIZMO_FLUXES 0
+#endif
 
 void runner_dosub_pair2_force(struct runner *r, struct cell *ci,
                               struct cell *cj, const float h_hi,
@@ -95,8 +108,10 @@ void runner_dosub_self1_rt_gradient(struct runner *r, struct cell *c,
 
 /* Number of flux components compared: mass, momentum and energy, the
  * radiation energy and flux of the first photon group, or the gradient of its
- * energy density and of the x component of its flux. */
-#define N_FLUX 5
+ * energy density and of the x component of its flux. The last one is the FVPM
+ * metal mass flux of the first element. */
+#define N_FLUX 6
+#define FLUX_METAL 5
 
 #define REL_TOL 1e-4
 
@@ -141,8 +156,13 @@ static void get_flux(const struct part *p, const enum loop_type loop,
 #ifdef GIZMO_MFV_SPH
     f[0] = p->flux.mass;
 #endif
+#if WITH_GIZMO_FLUXES
     for (int k = 0; k < 3; k++) f[1 + k] = p->flux.momentum[k];
     f[4] = p->flux.energy;
+#endif
+#if chemistry_flux_updates_inactive_neighbours
+    f[FLUX_METAL] = p->chemistry_data.flux.metal_mass[0];
+#endif
   } else if (loop == loop_rt_transport) {
 #if rt_transport_updates_inactive_neighbours
     f[0] = p->rt_data.flux[0].energy;
@@ -161,8 +181,14 @@ static void reset_flux(struct part *p) {
 #ifdef GIZMO_MFV_SPH
   p->flux.mass = 0.f;
 #endif
+#if WITH_GIZMO_FLUXES
   for (int k = 0; k < 3; k++) p->flux.momentum[k] = 0.f;
   p->flux.energy = 0.f;
+#endif
+#if chemistry_flux_updates_inactive_neighbours
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++)
+    p->chemistry_data.flux.metal_mass[m] = 0.;
+#endif
 #if rt_transport_updates_inactive_neighbours
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.flux[g].energy = 0.f;
@@ -172,15 +198,28 @@ static void reset_flux(struct part *p) {
 #endif
 }
 
+/**
+ * @brief Interact a pair with an active pi, as the loop does. A non-symmetric
+ * call has an inactive pj.
+ */
 static void interact(const enum loop_type loop, const int symmetric,
                      const float r2, const float dx[3], const float hi,
                      const float hj, struct part *pi, struct part *pj,
-                     const float a, const float H) {
+                     const struct engine *e) {
+  const float a = e->cosmology->a;
+  const float H = e->cosmology->H;
   if (loop == loop_force) {
     if (symmetric)
       runner_iact_force(r2, dx, hi, hj, pi, pj, a, H);
     else
       runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
+#if chemistry_flux_updates_inactive_neighbours
+    runner_iact_chemistry_flux_exchange(
+        r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/symmetric,
+        /*local_first=*/1, /*local_second=*/1, a, H, e->time_base,
+        e->ti_current, e->cosmology, /*with_cosmology=*/0, e->chemistry,
+        chemistry_flux_pass_apply, e->max_active_bin);
+#endif
   } else if (loop == loop_rt_gradient) {
 #if rt_transport_updates_inactive_neighbours
     runner_iact_nonsym_rt_gradient(r2, dx, hi, hj, pi, pj, a, H);
@@ -196,31 +235,69 @@ static void interact(const enum loop_type loop, const int symmetric,
 }
 
 /**
- * @brief Set up a Gizmo particle ready for the force and RT transport loops.
+ * @brief Set up the metals of a particle for the FVPM chemistry flux.
+ *
+ * The values are functions of the position, so that the random draws of the
+ * other fields do not change.
+ */
+static void init_metals(struct part *p, const double m, const int active) {
+#if chemistry_flux_updates_inactive_neighbours
+  struct chemistry_part_data *ch = &p->chemistry_data;
+  const double phase = 3. * p->x[0] + 5. * p->x[1] + 7. * p->x[2];
+  ch->kappa = 1.0;
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  ch->tau = 1.0;
+#endif
+  ch->limiter.maxr = 1.f;
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    ch->limiter.rhoZ[k][0] = -1e10;
+    ch->limiter.rhoZ[k][1] = 1e10;
+    ch->limiter.Z[k][0] = -1e10;
+    ch->limiter.Z[k][1] = 1e10;
+    ch->fct_theta[k] = 1.0;
+    ch->metal_mass[k] = m * 1e-3 * (1. + 0.5 * sin(phase + k));
+    for (int d = 0; d < 3; d++) {
+      ch->gradients.Z[k][d] = 1e-3 * cos(phase + d);
+      ch->gradients.rhoZ[k][d] = 1e-3 * sin(2. * phase + d);
+    }
+  }
+
+  /* The fluxes were last applied at the start of the step */
+  ch->flux.ti_flux_last =
+      get_integer_time_begin(TI_CURRENT, active ? ACTIVE_BIN : INACTIVE_BIN);
+#endif
+}
+
+/**
+ * @brief Set up a particle ready for the force and RT transport loops.
  */
 static void init_particle(struct part *p, struct xpart *xp, const double m,
                           const int active, const struct engine *e) {
+#if WITH_GIZMO_FLUXES
   p->conserved.mass = m;
   p->conserved.energy = 1.f;
+#else
+  p->mass = m;
+  p->u = 1.f;
+#endif
   hydro_first_init_part(p, xp);
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) p->geometry.matrix_E[i][j] = (i == j);
   p->geometry.volume = 1.f;
   p->geometry.wcorr = 1.f;
   p->rho = random_uniform(0.5, 1.5);
+#if WITH_GIZMO_FLUXES
   p->P = random_uniform(0.5, 1.5);
+#endif
   hydro_prepare_force(p, xp, e->cosmology, e->hydro_properties,
                       e->pressure_floor_props, 0., 0.);
   hydro_reset_acceleration(p);
   for (int k = 0; k < 3; k++) p->v[k] = random_uniform(-1., 1.);
+#if WITH_GIZMO_FLUXES
   p->flux.dt = active ? 1e-3f : -1.f;
-  p->time_bin = active ? ACTIVE_BIN : INACTIVE_BIN;
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-  /* FVPM chemistry: the fluxes were last applied at the start of the step */
-  p->chemistry_data.flux.ti_flux_last =
-      get_integer_time_begin(TI_CURRENT, active ? ACTIVE_BIN : INACTIVE_BIN);
 #endif
+  p->time_bin = active ? ACTIVE_BIN : INACTIVE_BIN;
+  init_metals(p, m, active);
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_drift = TI_CURRENT;
   p->ti_kick = TI_CURRENT;
@@ -412,7 +489,9 @@ static void set_hydro_inactive(struct cell *c, const struct engine *e) {
   } else {
     for (int k = 0; k < c->hydro.count; k++) {
       c->hydro.parts[k].time_bin = INACTIVE_BIN;
+#if WITH_GIZMO_FLUXES
       c->hydro.parts[k].flux.dt = -1.f;
+#endif
     }
   }
   set_cell_properties(c, e);
@@ -426,8 +505,6 @@ static void brute_force(const struct cell *a, const struct cell *b,
                         struct flux *out, const enum loop_type loop,
                         const struct engine *e) {
   const struct space *s = e->s;
-  const float a_fac = e->cosmology->a;
-  const float H = e->cosmology->H;
   struct part pk, pq;
   for (int i = 0; i < a->hydro.count; i++) {
     const struct part *k = &a->hydro.parts[i];
@@ -451,12 +528,12 @@ static void brute_force(const struct cell *a, const struct cell *b,
       memcpy(&pq, q, sizeof(struct part));
       reset_flux(&pk);
       if (k_active && q_active) {
-        interact(loop, 1, r2, dx, k->h, q->h, &pk, &pq, a_fac, H);
+        interact(loop, 1, r2, dx, k->h, q->h, &pk, &pq, e);
       } else if (k_active) {
-        interact(loop, 0, r2, dx, k->h, q->h, &pk, &pq, a_fac, H);
+        interact(loop, 0, r2, dx, k->h, q->h, &pk, &pq, e);
       } else {
         const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
-        interact(loop, 0, r2, mdx, q->h, k->h, &pq, &pk, a_fac, H);
+        interact(loop, 0, r2, mdx, q->h, k->h, &pq, &pk, e);
       }
       double f[N_FLUX];
       get_flux(&pk, loop, f);
@@ -661,13 +738,14 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
       }
     set_node(ci, 0);
 
-    /* The first four components of a flux are conserved when the two ranks
-     * add up (the last one is the internal energy flux of the force loop). A
-     * gradient is not conserved. */
+    /* The first four components of a flux and the metal flux are conserved
+     * when the two ranks add up (the fifth one is the internal energy flux of
+     * the force loop). A gradient is not conserved. */
     double sum_rel = 0.;
     int bad_sum = 0;
-    const int n_conserved = loop == loop_rt_gradient ? 0 : 4;
-    for (int d = 0; d < n_conserved; d++) {
+    for (int d = 0; d < N_FLUX; d++) {
+      const int conserved = loop != loop_rt_gradient && d != 4;
+      if (!conserved) continue;
       if (!is_finite(sum[d])) bad_sum = 1;
       if (sum_abs[d] == 0.) continue;
       sum_rel = max(sum_rel, fabs(sum[d]) / sum_abs[d]);
@@ -799,6 +877,26 @@ int main(int argc, char *argv[]) {
   engine.pressure_floor_props = &pressure_floor;
   engine.physical_constants = &phys_const;
 
+#if chemistry_flux_updates_inactive_neighbours
+  struct chemistry_global_data chem_data;
+  bzero(&chem_data, sizeof(chem_data));
+  chem_data.diffusion_coefficient = 1.f;
+  chem_data.diffusion_mode = isotropic_constant;
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  chem_data.tau = 1.;
+  chem_data.relaxation_time_mode = constant_mode;
+  chem_data.hyperbolic_limiter_scope = limiter_all_components;
+#endif
+  chem_data.hll_riemann_solver_psi = 0.1f;
+  chem_data.C_CFL_chemistry = 0.5f;
+  chem_data.flux_limiter_noise_gate = 1e-15;
+  chem_data.flux_limiter_safety = 0.5;
+  chem_data.flux_limiter_sink_stability = 0.25;
+  chem_data.flux_limiter_startup = 0.1;
+  chem_data.use_positivity_limiter = 0;
+  engine.chemistry = &chem_data;
+#endif
+
   struct runner runner;
   bzero(&runner, sizeof(runner));
   runner.e = &engine;
@@ -854,7 +952,7 @@ int main(int argc, char *argv[]) {
 #else
 
 int main(int argc, char *argv[]) {
-  /* The hydro scheme does not update inactive neighbours: skip. */
+  /* No loop updates inactive neighbours: skip. */
   return 77;
 }
 

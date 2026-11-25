@@ -41,11 +41,12 @@
  * wrap across the periodic box, put particles up to the cell faces, and
  * move the particles after the sort.
  *
- * A pair with a foreign cell misses exchanges in the pair enumeration itself
- * when the force loop does not update inactive neighbours (SPH). There, each
- * particle's count must equal the reference minus the exact number of misses
- * predicted for it (predict_foreign_gap()). The prep and apply counts of
- * every particle must be equal.
+ * With SPH, the hydro gate of the pair loop alone would miss exchanges of a
+ * pair with a foreign cell, in the pair enumeration itself
+ * (predict_foreign_gap()). The FVPM chemistry makes the loop visit these
+ * pairs, so each particle's count must equal the reference, and every foreign
+ * case must hold such pairs. The prep and apply counts of every particle must
+ * be equal.
  */
 
 #if (defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||             \
@@ -342,13 +343,17 @@ static int n_ambiguous_pairs = 0;
 
 /* The naive pair loop visits every pair from both sides, and a force loop
    that updates inactive neighbours lets a foreign active particle reach
-   them: neither has a foreign gap. */
+   them: neither has a gap from the hydro gate. */
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS) || \
     hydro_force_updates_inactive_neighbours
-static const int foreign_gap_exists = 0;
+static const int hydro_gap_exists = 0;
 #else
-static const int foreign_gap_exists = 1;
+static const int hydro_gap_exists = 1;
 #endif
+
+/* The visits of the chemistry flux exchange close it. */
+static const int foreign_gap_exists =
+    hydro_gap_exists && !chemistry_flux_updates_inactive_neighbours;
 
 /**
  * @brief The progeny of a split cell that holds a particle.
@@ -555,10 +560,13 @@ static void move_after_sort(struct cell *c, const double d) {
  * @brief Compare the exchange counters of a local cell with the reference
  * minus the predicted misses, in both passes.
  *
+ * @param missing (return) Adds the number of expected exchanges missing in
+ * the counters, summed over both passes.
  * @return The number of (particle, pass) cases that violate it.
  */
 static int count_mismatches(const struct cell *c, const int *ref,
-                            const int *miss, int *doubles, int *drops) {
+                            const int *miss, int *doubles, int *drops,
+                            int *missing) {
   int bad = 0;
   for (int k = 0; k < c->hydro.count; k++) {
     for (int pass = 0; pass < 2; pass++) {
@@ -566,6 +574,7 @@ static int count_mismatches(const struct cell *c, const int *ref,
       if (n > ref[k]) (*doubles)++;
       if (n < ref[k] - miss[k]) (*drops)++;
       if (n != ref[k] - miss[k]) bad++;
+      *missing += ref[k] - miss[k] - n;
     }
   }
   return bad;
@@ -591,7 +600,8 @@ static int count_unequal_passes(const struct cell *c) {
  * checks the counts of its local cell, and the equality of the prep and
  * apply counts of every particle.
  *
- * @param expect_misses Must the prediction hold missed exchanges?
+ * @param expect_gap Must the pairs hold exchanges that the hydro gate alone
+ * misses?
  * @param expect_mixed Must the pairs hold active pairs in different depth
  * bands?
  * @param d_move The largest move of the particles after the sort.
@@ -599,7 +609,7 @@ static int count_unequal_passes(const struct cell *c) {
  */
 static int run_case(const char *label, struct runner *r, struct engine *e,
                     struct cell *ci, struct cell *cj, const int foreign,
-                    const int expect_misses, const int expect_mixed,
+                    const int expect_gap, const int expect_mixed,
                     const double d_move) {
 
   runner_do_hydro_sort(r, ci, 0x1FFF, 0, 0, 0, 0);
@@ -630,19 +640,26 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
     if (miss_i[rank] == NULL || (cj && miss_j[rank] == NULL))
       error("Could not allocate the predicted misses.");
   }
-  if (cj && foreign && foreign_gap_exists) {
+  if (cj && foreign && hydro_gap_exists) {
     predict_foreign_gap(ci, cj, miss_i[0], e);
     predict_foreign_gap(cj, ci, miss_j[1], e);
   }
 
-  int predicted = 0;
+  /* The exchanges that the hydro gate alone misses, and those still missed
+     with the visits of the chemistry. */
+  int gap = 0;
   for (int rank = 0; rank < 2; rank++) {
-    for (int k = 0; k < ci->hydro.count; k++) predicted += miss_i[rank][k];
+    for (int k = 0; k < ci->hydro.count; k++) gap += miss_i[rank][k];
     if (cj)
-      for (int k = 0; k < cj->hydro.count; k++) predicted += miss_j[rank][k];
+      for (int k = 0; k < cj->hydro.count; k++) gap += miss_j[rank][k];
+    if (!foreign_gap_exists) {
+      bzero(miss_i[rank], ci->hydro.count * sizeof(int));
+      if (cj) bzero(miss_j[rank], cj->hydro.count * sizeof(int));
+    }
   }
+  const int predicted = foreign_gap_exists ? gap : 0;
 
-  int bad = 0, unequal = 0, doubles = 0, drops = 0;
+  int bad = 0, unequal = 0, doubles = 0, drops = 0, missing = 0;
   const int n_ranks = foreign ? 2 : 1;
   for (int rank = 0; rank < n_ranks; rank++) {
     e->nodeID = rank;
@@ -662,21 +679,23 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
     unequal += count_unequal_passes(ci);
     if (cj) unequal += count_unequal_passes(cj);
     if (ci->nodeID == rank)
-      bad += count_mismatches(ci, ref_i, miss_i[rank], &doubles, &drops);
+      bad +=
+          count_mismatches(ci, ref_i, miss_i[rank], &doubles, &drops, &missing);
     if (cj && cj->nodeID == rank)
-      bad += count_mismatches(cj, ref_j, miss_j[rank], &doubles, &drops);
+      bad +=
+          count_mismatches(cj, ref_j, miss_j[rank], &doubles, &drops, &missing);
   }
   e->nodeID = 0;
 
   const int ambiguous = n_ambiguous_pairs - ambiguous_before;
-  const int reach_ok = (expect_misses ? (predicted > 0) : (predicted == 0)) &&
-                       (!expect_mixed || mixed > 0);
+  const int reach_ok =
+      (expect_gap ? (gap > 0) : (gap == 0)) && (!expect_mixed || mixed > 0);
   message(
-      "%-42s reference exchanges=%6d mixed-band pairs=%5d predicted "
-      "misses=%4d doubles=%d unpredicted drops=%d mismatches=%d "
-      "unequal passes=%d ambiguous pairs=%d",
-      label, ref_total, mixed, predicted, doubles, drops, bad, unequal,
-      ambiguous);
+      "%-42s reference exchanges=%6d mixed-band pairs=%5d hydro-gate gap=%4d "
+      "predicted misses=%4d doubles=%d unpredicted drops=%d mismatches=%d "
+      "missing exchanges per pass=%.1f unequal passes=%d ambiguous pairs=%d",
+      label, ref_total, mixed, gap, predicted, doubles, drops, bad,
+      0.5 * missing, unequal, ambiguous);
 
   for (int rank = 0; rank < 2; rank++) {
     free(miss_i[rank]);
@@ -766,7 +785,7 @@ int main(int argc, char *argv[]) {
       const int split = (variant >= 2);
       const int foreign = (variant == 1);
       const int top_band_active = (variant == 2);
-      const int expect_misses = foreign && foreign_gap_exists;
+      const int expect_gap = foreign && hydro_gap_exists;
 
       struct cell *ci =
           make_cell(loc_i, split, 0.02, 0, 0.5, top_band_active, &engine);
@@ -775,7 +794,7 @@ int main(int argc, char *argv[]) {
       sprintf(label, "pair %s, %s%s%s", pair_names[o],
               split ? "split" : "unsplit", foreign ? ", foreign" : "",
               top_band_active ? ", top band active" : "");
-      pass &= run_case(label, &runner, &engine, ci, cj, foreign, expect_misses,
+      pass &= run_case(label, &runner, &engine, ci, cj, foreign, expect_gap,
                        split, 0.);
       free_cell(ci);
       free_cell(cj);
@@ -828,7 +847,7 @@ int main(int argc, char *argv[]) {
                   cases[n].frac_active_j, 0, &engine);
     const int expect_mixed = cases[n].frac_active_j > 0.;
     pass &= run_case(cases[n].label, &runner, &engine, ci, cj, cases[n].foreign,
-                     cases[n].foreign && foreign_gap_exists, expect_mixed,
+                     cases[n].foreign && hydro_gap_exists, expect_mixed,
                      cases[n].d_move);
     free_cell(ci);
     free_cell(cj);
