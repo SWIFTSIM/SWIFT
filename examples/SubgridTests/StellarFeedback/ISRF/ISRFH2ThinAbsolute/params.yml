@@ -20,15 +20,15 @@ Gravity:
 
 TimeIntegration:
   time_begin:        0.
-  time_end:          8e-9                       # 80 steps of dt_max, about 7.8 yr
+  time_end:          8e-9                       # 128 steps of 6.25e-11, about 7.8 yr
   dt_min:            1e-14
-  dt_max:            1e-10                      # About 0.1 yr: the H2 at 1.2 pc changes by about 1 per cent per step
+  dt_max:            1e-10                      # The gas step is 6.25e-11 (8e-9 / 2^7), the power of two below this value
 
 Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1e-10                          # One snapshot per step of dt_max
+  delta_time: 1e-10                          # One snapshot per 1.6 gas steps
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -95,7 +95,7 @@ GEARFeedback:
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
-  max_timestep_young_Myr:               1.02e-7                 # Just above the gas step (1e-10 internal = 9.78e-8 Myr): the star emits every gas step
+  max_timestep_young_Myr:               1.02e-7                 # Above the gas step (6.25e-11 internal = 6.11e-8 Myr): the star emits every gas step
   max_timestep_old_Myr:                 1
   min_star_timestep_Myr:                1e-11
   HII_max_search_radius: 0.0002             # Inert with photoionization off, must stay under the box half-width

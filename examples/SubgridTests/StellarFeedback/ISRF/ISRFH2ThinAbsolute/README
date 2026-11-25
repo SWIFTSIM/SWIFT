@@ -3,7 +3,8 @@ One 29.7 Msun star in an isolated, dust-free box of cold (50 K), H2-poor gas, wi
 transport on (`ISRF_propagation: 1`). The star's Lyman-Werner (LW) light dissociates the H2 in
 the box. The box is thin: the H2 column is too small for the lines to absorb a visible part
 of the light. The check compares the star's luminosity with the radiation table and the
-H2 dissociation rate with the field that the cooling is given.
+H2 dissociation rate with the field that the cooling is given. The size of the LW field itself
+is printed by the check but not tested.
 
 The run uses geajay cooling with `ISRF_H2_line_absorption: 1` and
 `ISRF_packet_light_speed: unlimited` (one hop per step). Official Grackle refuses the
@@ -22,9 +23,9 @@ The radiation table must carry the `Data/Radiation` group; see the README of
 ./run.sh
 ```
 `level` (resolution, N = (2^level)^3 gas particles), `gas_density`, `gas_mass`, `star_mass`,
-`h2_ratio` (initial `nH2/nH`), `n_threads` and `force=1` (remove an existing `snap/`)
-override the defaults. The run takes a few minutes on 4 threads and writes one snapshot per
-step to `thin/snap`. `run.sh` prints the command of the check.
+`n_threads` and `force=1` (remove an existing `snap/` and `thin/`)
+override the defaults. The run takes a few minutes on 4 threads and writes a snapshot every
+1e-10 time units (about 0.1 yr) to `thin/snap`. `run.sh` prints the command of the check.
 
 # Check
 ```

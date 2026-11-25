@@ -5,17 +5,20 @@ One star sits in an isolated, dust-free box of H2-poor gas. The check reads the
 luminosity L of the star from the radiation table, not from the transported field.
 Two tests gate the run. Two other numbers are reported without a bar.
 
-Luminosity (gate). The star's LWLuminosities against the table L_LW at the star's mass,
-interpolated linearly in log L and log mass. The bar is the change of L between the
-two table nodes that bracket the star's mass: the table is a grid, and the code may
-read a node instead of interpolating. A larger difference means SWIFT read the table
-wrong.
+Luminosity (gate). The star's LWLuminosities against the table L_LW as SWIFT reads
+it. For Z = 0, below the first table row, SWIFT takes the first row and the mass node
+below the star's mass, with no interpolation in mass (interpolate_2d, constant
+boundary branch). That is why the snapshot value sits 0.98 per cent under the
+interpolated table value at 29.7 Msun. The check follows that rule, with a bar of 8
+float32 ulp of log10 L (about 1e-4 relative). It tests the readout of the table, not
+whether the boundary rule is the one the model wants. A star with Z inside the table
+range, or a mass outside it, is a void run.
 
 Rate identity (gate, test 4). Per particle ln(k_meas / (kappa_D c rho u_diss)), with
 k_meas = -d ln x2 / dt from two snapshots, kappa_D = 1.4425e-7 cm^2 erg^-1 (the
 Draine-field rate per unit LW flux), c rho u_diss the field the cooling receives
-(LWDissociatingSpecificEnergies, averaged over the interval) and the written line
-transmission divided out. Its median per shell must lie within the timing term plus
+(LWDissociatingSpecificEnergies, averaged over the interval; it already holds the
+line transmission). Its median per shell must lie within the timing term plus
 2 se. The timing term is the shell median of |ln(u_diss,b / u_diss,a)|: it covers
 whether the cooling reads the field of the step before or after. A second shielding of
 the transported rate by the library multiplies k_meas by a factor far below 1 and
@@ -28,8 +31,8 @@ particle's own LW energy before line absorption, over L / (4 pi r^2) is
 
     Q(r) = sum_i V_i c rho_i u_i / sum_i V_i L / (4 pi r_i^2),   V_i = m_i / rho_i.
 
-On the clean run Q is 0.97 to 0.99, with a size that depends on the cone power of the
-transport. No bar derived from the mechanism exists yet, so Q is printed with its
+On the clean run Q is 0.978 to 0.9985 (against the luminosity SWIFT emits), with a size
+that depends on the cone power of the transport. No bar derived from the mechanism exists yet, so Q is printed with its
 bootstrap error and not gated. The ratio of the measured dissociation to the
 kernel-mean thin limit (2b) is reported the same way: it carries the same Q.
 
@@ -62,6 +65,8 @@ from numpy.typing import NDArray
 Arr = NDArray[np.float64]
 
 C_LIGHT = 2.99792458e10
+MSUN = 1.988409870698051e33
+PARSEC = 3.0856775814913673e18
 KAPPA_D = 1.4425206587e-7
 KB = 1.380649e-16
 MH = 1.67262192369e-24
@@ -166,7 +171,7 @@ def step_table(path: Path) -> tuple[Arr, Arr]:
         for line in path.read_text().splitlines()
         if line.strip() and not line.startswith("#")
     ]
-    return np.array([float(r[1]) for r in rows]), np.array([float(r[8]) for r in rows])
+    return np.array([float(r[1]) for r in rows]), np.array([float(r[9]) for r in rows])
 
 
 def last_update_time(steps: Arr, t_snap: float) -> float:
@@ -197,19 +202,40 @@ def jeans_length(temp: Arr, rho: Arr, mu: Arr) -> Arr:
 
 
 def table_luminosity(path: Path, mass_msun: float, z: float) -> tuple[float, float]:
-    """Return L_LW [erg/s] at a mass (linear in log L and log M) and the change between its nodes."""
+    """Return the LW luminosity [erg/s] that SWIFT reads from the table, and its bar.
+
+    SWIFT interpolates log L bilinearly in log Z and log M. A metallicity below the
+    first row of the table (here Z = 0) takes the constant boundary branch of
+    interpolate_2d (src/feedback/GEAR/interpolation.h): the first row, and the mass
+    node below the star's mass, with no interpolation in mass. This function follows
+    that branch, with the index formed in float32 as SWIFT does. A star inside the
+    metallicity range needs the resampled Z axis of SWIFT and is refused.
+
+    The bar is the float32 resolution of log10 L, 8 ulp of the value (the table is
+    read and the units are applied in float32), as a relative error.
+
+    Raises
+    ------
+    ValueError
+        If the mass is outside the table or the metallicity is inside its range.
+    """
     with h5py.File(path, "r") as f:
         g = f["Data/Radiation"]
         a = g.attrs
-        log_mass = a["m0"] + a["dm"] * np.arange(a["nm"])
-        metallicity = g["Metallicity"][...]
-        row = int(np.argmin(np.abs(metallicity - z)))
-        lum = g["L_LW"][row]
-    x = np.log10(mass_msun)
-    value = float(10 ** np.interp(x, log_mass, np.log10(np.maximum(lum, 1e-300))))
-    i = int(np.searchsorted(log_mass, x))
-    node_change = float(abs(lum[i] / lum[i - 1] - 1.0))
-    return value, node_change
+        m0, dm, n_mass = float(a["m0"]), float(a["dm"]), int(a["nm"])
+        z_first = float(g["Metallicity"][0])
+        lum = g["L_LW"][0]
+    if z >= z_first:
+        raise ValueError(
+            f"star metallicity {z:g} is not below the first table row {z_first:g}"
+        )
+    log_m = np.float32(np.log10(mass_msun))
+    index = int((log_m - np.float32(m0)) / np.float32(dm))
+    if index < 0 or index >= n_mass - 1:
+        raise ValueError(f"log10 mass {float(log_m):.4f} is outside the table")
+    value = float(lum[index])
+    bar = 8.0 * float(np.finfo(np.float32).eps) * abs(np.log10(value)) * np.log(10.0)
+    return value, bar
 
 
 def boot_mean(v: Arr, w: Arr, rng: np.random.Generator) -> float:
@@ -266,115 +292,131 @@ def plant_double_shielding(snaps: list[dict]) -> None:
         set_x2(snaps[j + 1], x_plant)
 
 
+def luminosity_stats(s_last: dict, table: Path) -> dict:
+    """Return the snapshot luminosity, the table luminosity and the bar."""
+    l_table, bar = table_luminosity(table, s_last["star_mass"] / MSUN, s_last["star_z"])
+    diff = s_last["star_L"] / l_table - 1.0
+    return {
+        "snapshot_erg_s": s_last["star_L"],
+        "table_erg_s": l_table,
+        "relative_difference": diff,
+        "bar": bar,
+        "ok": abs(diff) <= bar,
+    }
+
+
+def interval_rates(a: dict, b: dict, steps: Arr) -> dict:
+    """Return the per-particle rates of the interval between two snapshots."""
+    ha, hb = hydrogen_state(a), hydrogen_state(b)
+    t_a = last_update_time(steps, a["time_code"])
+    t_b = last_update_time(steps, b["time_code"])
+    dt = (t_b - t_a) * a["t_unit"]
+    u_a, u_b = a["LWDissociatingSpecificEnergies"], b["LWDissociatingSpecificEnergies"]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        k_meas = -np.log(hb["x2"] / ha["x2"]) / dt
+        t_line = 0.5 * (a["LWLineTransmissions"] + b["LWLineTransmissions"])
+        rho_mid = 0.5 * (a["rho"] + b["rho"])
+        return {
+            "dt": dt,
+            "k_meas": k_meas,
+            "t_line": t_line,
+            "cu_eff": k_meas / (KAPPA_D * t_line),
+            "ratio4": k_meas / (KAPPA_D * C_LIGHT * rho_mid * 0.5 * (u_a + u_b)),
+            "timing": np.abs(np.log(u_b / u_a)),
+        }
+
+
+def field_stats(v: Arr, q: Arr, rng: np.random.Generator) -> dict:
+    """Return the volume mean of Q and its bootstrap error in one shell (no bar)."""
+    return {
+        "q_mean": float((v * q).sum() / v.sum()),
+        "q_median": float(np.median(q)),
+        "q_se": boot_mean(q, v, rng),
+    }
+
+
+def dissociation_stats(v: Arr, eff: Arr, ref: Arr, rng: np.random.Generator) -> dict:
+    """Return the dissociation over its thin limit in one shell (no bar).
+
+    The ratio of sums is the mean of eff / ref weighted by v * ref.
+    """
+    ratio = eff / ref
+    weight = v * ref
+    return {
+        "d_mean": float((weight * ratio).sum() / weight.sum()),
+        "d_se": boot_mean(ratio, weight, rng),
+    }
+
+
+def rate_identity_stats(ratio4: Arr, timing: Arr, rng: np.random.Generator) -> dict:
+    """Return the median of ln(ratio4) in one shell and its bar (test 4)."""
+    ln4 = np.log(ratio4)
+    median = float(np.median(ln4))
+    se = boot_median(ln4, rng)
+    tim = float(np.median(timing))
+    bar = tim + 2.0 * se
+    return {
+        "r4_median": median,
+        "r4_se": se,
+        "r4_timing": tim,
+        "r4_bar": bar,
+        "r4_ok": bool(abs(median) <= bar),
+    }
+
+
 def evaluate(snaps: list[dict], steps: Arr, table: Path, seed: int = 1) -> dict:
     """Return the luminosity, field, dissociation and rate statistics of the run."""
     rng = np.random.default_rng(seed)
     s_last = snaps[-1]
     n_snap = len(snaps)
-    star = s_last["star_pos"]
-    l_table, l_node = table_luminosity(
-        table, s_last["star_mass"] / 1.988409870698051e33, s_last["star_z"]
-    )
-    lum = {
-        "snapshot_erg_s": s_last["star_L"],
-        "table_erg_s": l_table,
-        "relative_difference": s_last["star_L"] / l_table - 1.0,
-        "bar": l_node,
-    }
-    lum["ok"] = abs(lum["relative_difference"]) <= lum["bar"]
-    r = np.linalg.norm(s_last["pos"] - star, axis=1)
+    lum = luminosity_stats(s_last, table)
+    r = np.linalg.norm(s_last["pos"] - s_last["star_pos"], axis=1)
     h_med = float(np.median(s_last["h"]))
-    r_lo = 3.0 * GAMMA_KERNEL * h_med
     r_hi = 0.5 * s_last["box"] - 2.0 * h_med
-    edges = np.arange(r_lo, r_hi, h_med)
+    edges = np.arange(3.0 * GAMMA_KERNEL * h_med, r_hi, h_med)
     j_last = n_snap - 2
     qualified_field = lit_mask(snaps, n_snap - N_LIT, n_snap - 1)
     qualified_rate = lit_mask(snaps, j_last - N_LIT + 1, j_last + 1)
     in_domain = (r > 3.0 * GAMMA_KERNEL * s_last["h"]) & (r < r_hi)
-    l_ref = l_table
+    l_table = lum["table_erg_s"]
     vol = s_last["mass"] / s_last["rho"]
     cu_own = C_LIGHT * s_last["rho"] * s_last["LWOwnSpecificEnergies"]
-    q_part = cu_own * 4.0 * np.pi * r**2 / l_ref
-    # interval statistics over the last interval
-    a, b = snaps[j_last], snaps[j_last + 1]
-    ha, hb = hydrogen_state(a), hydrogen_state(b)
-    t_a, t_b = last_update_time(steps, a["time_code"]), last_update_time(
-        steps, b["time_code"]
-    )
-    dt = (t_b - t_a) * a["t_unit"]
-    with np.errstate(divide="ignore", invalid="ignore"):
-        k_meas = -np.log(hb["x2"] / ha["x2"]) / dt
-        t_line = 0.5 * (a["LWLineTransmissions"] + b["LWLineTransmissions"])
-        cu_eff = k_meas / (KAPPA_D * t_line)
-        rho_mid = 0.5 * (a["rho"] + b["rho"])
-        u_diss = 0.5 * (
-            a["LWDissociatingSpecificEnergies"] + b["LWDissociatingSpecificEnergies"]
-        )
-        ratio4 = k_meas / (KAPPA_D * C_LIGHT * rho_mid * u_diss)
-        timing = np.abs(
-            np.log(
-                b["LWDissociatingSpecificEnergies"]
-                / a["LWDissociatingSpecificEnergies"]
-            )
-        )
+    q_part = cu_own * 4.0 * np.pi * r**2 / l_table
+    rates = interval_rates(snaps[j_last], snaps[j_last + 1], steps)
     ref_kernel = (
-        l_ref
+        l_table
         / (4.0 * np.pi)
         * kernel_mean_inverse_square(r, GAMMA_KERNEL * s_last["h"])
+    )
+    usable = (
+        np.isfinite(rates["k_meas"]) & (rates["k_meas"] > 0.0) & (rates["t_line"] > 0.0)
     )
     shells = []
     for lo, hi in zip(edges[:-1], edges[1:]):
         base = in_domain & (r >= lo) & (r < hi)
         sel_f = base & qualified_field
-        sel_r = (
-            base
-            & qualified_rate
-            & np.isfinite(k_meas)
-            & (k_meas > 0.0)
-            & (t_line > 0.0)
-        )
+        sel_r = base & qualified_rate & usable
         row: dict = {
-            "r_pc": float(0.5 * (lo + hi) / 3.0856775814913673e18),
+            "r_pc": float(0.5 * (lo + hi) / PARSEC),
             "n_field": int(sel_f.sum()),
             "n_rate": int(sel_r.sum()),
         }
         if sel_f.sum() >= N_MIN:
-            v, q = vol[sel_f], q_part[sel_f]
-            mean = float((v * q).sum() / v.sum())
-            se = boot_mean(q, v, rng)
-            row.update(q_mean=mean, q_median=float(np.median(q)), q_se=se)
+            row.update(field_stats(vol[sel_f], q_part[sel_f], rng))
         if sel_r.sum() >= N_MIN:
-            v = vol[sel_r]
-            eff = cu_eff[sel_r]
-            ref = ref_kernel[sel_r]
-            ratio = (v * eff).sum() / (v * ref).sum()
-            se_ratio = float(
-                np.std(
-                    [
-                        (v[i] * eff[i]).sum() / (v[i] * ref[i]).sum()
-                        for i in (
-                            rng.integers(0, v.size, v.size) for _ in range(N_BOOT)
-                        )
-                    ]
+            row.update(
+                dissociation_stats(
+                    vol[sel_r], rates["cu_eff"][sel_r], ref_kernel[sel_r], rng
                 )
             )
-            row.update(d_mean=float(ratio), d_se=se_ratio)
-            ln4 = np.log(ratio4[sel_r])
-            med4 = float(np.median(ln4))
-            se4 = boot_median(ln4, rng)
-            tim = float(np.median(timing[sel_r]))
             row.update(
-                r4_median=med4,
-                r4_se=se4,
-                r4_timing=tim,
-                r4_bar=tim + 2.0 * se4,
-                r4_ok=bool(abs(med4) <= tim + 2.0 * se4),
+                rate_identity_stats(rates["ratio4"][sel_r], rates["timing"][sel_r], rng)
             )
         shells.append(row)
     return {
         "luminosity": lum,
         "shells": shells,
-        "dt_s": dt,
+        "dt_s": rates["dt"],
         "interval": [j_last, j_last + 1],
         "n_lit_field": int(qualified_field.sum()),
     }
@@ -448,6 +490,11 @@ def main() -> int:
         help="plant: scale the star luminosity of the snapshot",
     )
     p.add_argument(
+        "--plant-star-skip",
+        action="store_true",
+        help="plant: the star makes no update in one step",
+    )
+    p.add_argument(
         "--plant-nan",
         action="store_true",
         help="plant: one NaN in the density of the last snapshot",
@@ -481,6 +528,8 @@ def main() -> int:
     if bad:
         print("NON-FINITE:\n  " + "\n  ".join(bad))
         return EXIT_NONFINITE
+    if o.plant_star_skip:
+        star_updates[len(star_updates) // 2] = 0.0
     void = void_reasons(snaps, steps, star_updates)
     if void:
         print("VOID:\n  " + "\n  ".join(void))
@@ -496,7 +545,11 @@ def main() -> int:
         snaps[-1]["star_L"] *= o.plant_luminosity
         print(f"PLANT: star luminosity x {o.plant_luminosity}")
 
-    res = evaluate(snaps, steps, o.radiation_table)
+    try:
+        res = evaluate(snaps, steps, o.radiation_table)
+    except ValueError as err:
+        print(f"VOID: {err}")
+        return EXIT_VOID
     lum = res["luminosity"]
     for key in ("snapshot_erg_s", "table_erg_s", "relative_difference", "bar"):
         if not np.isfinite(lum[key]):
@@ -504,7 +557,7 @@ def main() -> int:
             return EXIT_NONFINITE
     print(
         f"luminosity: snapshot {lum['snapshot_erg_s']:.4e} erg/s, table {lum['table_erg_s']:.4e} erg/s, "
-        f"difference {lum['relative_difference']:+.4f}, bar {lum['bar']:.4f}  {'ok' if lum['ok'] else 'FAIL'}"
+        f"difference {lum['relative_difference']:+.2e}, bar {lum['bar']:.2e}  {'ok' if lum['ok'] else 'FAIL'}"
     )
     print(
         f"interval {res['interval']}, dt {res['dt_s'] / 3.15576e7:.4f} yr, lit particles {res['n_lit_field']}"

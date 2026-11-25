@@ -12,10 +12,10 @@ level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
 gas_density=${gas_density:=1e3}   # Gas density in atom/cm^3
 gas_mass=${gas_mass:=0.1}   # Gas particle mass in Msun
 star_mass=${star_mass:=29.7}   # Star mass in Msun
-h2_ratio=${h2_ratio:=1e-6}   # Initial nH2 / nH
+h2_ratio=1e-6   # Initial nH2 / nH; fixed, it must equal GeajayCooling:initial_h2i_to_h_ratio of params.yml
 extra=${extra:=""}   # Extra swift arguments
 run_name=${run_name:=thin}
-force=${force:=0}   # 1: remove an existing snap/ before the run
+force=${force:=0}   # 1: remove an existing snap/ and $run_name/ before the run
 ic_file=ICs_isrf_h2_thin_absolute.hdf5
 
 if [ "$force" != 1 ] && { [ -e snap ] || [ -e "$run_name" ]; }; then
