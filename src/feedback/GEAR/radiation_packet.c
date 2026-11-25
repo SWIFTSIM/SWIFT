@@ -4305,7 +4305,9 @@ void radiation_packet_end_force(struct part *p) {
  * @brief Write the kernel mean of the own field into the band moments: PE to
  * PE and LW to LW, which the cooling reads, and the LW photon number
  * (`N E_lo`) to LW_PHOTON, which only the snapshot output reads. Also set the
- * LW energy that dissociates H2.
+ * LW energy that dissociates H2. With
+ * #radiation_packet_constants.cooling_reads_own_field the particle's own field
+ * replaces the kernel mean in all of them.
  *
  * Overwrites the moments, including any value from the initial conditions. Call
  * after #radiation_packet_end_force.
@@ -4317,21 +4319,27 @@ void radiation_packet_couple_field(
     struct part *p, const struct radiation_packet_constants *constants) {
 
   const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const int own = constants->cooling_reads_own_field;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     p->feedback_data.isrf_moment[radiation_isrf_operator_owner[b]].u =
-        (double)pk->band[b].ngb_mean_field_energy;
+        own ? (double)pk->band[b].field_energy
+            : (double)pk->band[b].ngb_mean_field_energy;
 
   p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
-      (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
+      own ? (double)pk->band[ISRF_OPERATOR_LW].field_photons
+          : (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
 
   /* The LW sum is in float and can flush to 0 where the double sum does not:
      the lines remove light, they never add it, and no star has a factor above
      the bound. */
-  const double lw = (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
+  const double lw =
+      own ? (double)pk->band[ISRF_OPERATOR_LW].field_energy
+          : (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
   const double dissociating_max =
       (double)constants->LW_dissociating_factor_max * lw;
-  double dissociating = pk->ngb_mean_field_dissociating_energy;
+  double dissociating = own ? (double)pk->field_dissociating_energy
+                            : pk->ngb_mean_field_dissociating_energy;
   if (dissociating > dissociating_max) dissociating = dissociating_max;
   p->feedback_data.LW_dissociating_u = dissociating;
 }
