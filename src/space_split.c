@@ -898,6 +898,11 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 #define space_split_subtrees_per_thread 8
 
+/*! A top-level cell is split by all the threads together only if its
+ * estimated cost exceeds this factor times one thread's share of the total
+ * cost. */
+#define space_split_large_cell_factor 2.
+
 /**
  * @brief A cell being split by space_split_large_cells(), the parts of the
  * sorting buffers holding its particles, and its number of particles.
@@ -931,6 +936,25 @@ static long long space_split_cell_load(const struct space *s,
     return (long long)c->hydro.count + c->stars.count + c->black_holes.count +
            c->sinks.count;
   }
+}
+
+/**
+ * @brief An estimate of the cost of splitting a whole cell on one thread.
+ *
+ * Every level of the tree sorts all the particles of the cell once, so the
+ * cost is the load times the number of levels the tree will have.
+ *
+ * @param s The #space.
+ * @param c The #cell.
+ */
+static double space_split_cell_cost(const struct space *s,
+                                    const struct cell *c) {
+
+  const double load = (double)space_split_cell_load(s, c);
+  const double levels = load > space_splitsize
+                            ? 1. + ceil(log(load / space_splitsize) / log(8.))
+                            : 1.;
+  return load * levels;
 }
 
 /**
@@ -1288,10 +1312,11 @@ static void space_split_large_cells(struct space *s, const int *large_cells,
  * @brief Split particles between cells of a hierarchy.
  *
  * Only do this for the local non-empty top-level cells, in parallel using
- * the threads in the #threadpool. The cells that need splitting and hold more
- * than a thread's share of the load (see space_split_cell_load()) are split
- * together by all the threads in space_split_large_cells(). All the other
- * cells are split whole, each by a single thread.
+ * the threads in the #threadpool. The cells that need splitting and whose
+ * cost (see space_split_cell_cost()) exceeds space_split_large_cell_factor
+ * times a thread's share of the total cost are split together by all the
+ * threads in space_split_large_cells(). All the other cells are split whole,
+ * each by a single thread.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1304,14 +1329,18 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  /* Find the top-level cells holding more than a thread's share of the
-   * particles: they are split together using all the threads. */
+  /* Find the top-level cells costing clearly more than a thread's share of
+   * the work: they are split together using all the threads. */
   const int nr_threads = s->e->threadpool.num_threads;
   const int nr_cells = s->nr_local_cells_with_particles;
-  long long total_load = 0;
-  for (int k = 0; k < nr_cells; k++)
-    total_load += space_split_cell_load(
+  double total_cost = 0., max_cost = 0.;
+  for (int k = 0; k < nr_cells; k++) {
+    const double cost = space_split_cell_cost(
         s, &s->cells_top[s->local_cells_with_particles_top[k]]);
+    total_cost += cost;
+    max_cost = max(max_cost, cost);
+  }
+  const double thread_share = total_cost / nr_threads;
 
   int *small_cells = (int *)malloc(nr_cells * sizeof(int));
   int *large_cells = (int *)malloc(nr_cells * sizeof(int));
@@ -1324,10 +1353,11 @@ void space_split(struct space *s, int verbose) {
     const int ind = s->local_cells_with_particles_top[k];
     const struct cell *c = &s->cells_top[ind];
 
-    /* Cells which need splitting and hold more than a thread's share of the
-     * load go in the large cells list. */
+    /* Cells which need splitting and cost clearly more than a thread's share
+     * go in the large cells list. */
     if (nr_threads > 1 && space_split_cell_needs_split(s, c) &&
-        space_split_cell_load(s, c) > total_load / nr_threads) {
+        space_split_cell_cost(s, c) >
+            space_split_large_cell_factor * thread_share) {
       large_cells[nr_large++] = ind;
     } else {
       small_cells[nr_small++] = ind;
@@ -1355,6 +1385,11 @@ void space_split(struct space *s, int verbose) {
   free(large_cells);
 
   if (verbose) {
+    message(
+        "%d of %d top-level cells split by all the threads (largest cell cost: "
+        "%.2f x a thread's share, threshold: %.2f).",
+        nr_large, nr_cells, thread_share > 0. ? max_cost / thread_share : 0.,
+        space_split_large_cell_factor);
     message("Max tree depth after split: %d", s->maxdepth);
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
