@@ -426,11 +426,66 @@ feedback_radiation_startup_diagnostics(const struct engine *e) {}
 #endif
 
 #ifdef IONIZATION_FEEDBACK_LOOP
-struct radiation_hii_coverage_stats;
+/**
+ * @brief Counts of the HII passes stopped at the edge of the gas the tree
+ * covers or by the one empty probe. Doubles only, so that the ranks sum them
+ * in one reduction.
+ */
+struct radiation_hii_coverage_stats {
+
+  /*! Passes that kept their unspent photons for the next pass. */
+  double carried_passes;
+
+  /*! Passes that released their unspent photons as escaped. */
+  double released_passes;
+
+  /*! Photons released by those passes. Only coverage stops count here:
+      photons left at a one-probe stop count in one_probe_photons; at any
+      other stop they escape uncounted, carried ones included, and so does a
+      carry cleared at death or at the end of the age window. */
+  double released_photons;
+
+  /*! Claim walks whose start radius was cut to the covered radius. */
+  double start_radius_cuts;
+
+  /*! Passes of a star holding gas that ended on its one empty probe with
+      photons left. */
+  double one_probe_stops;
+
+  /*! Photons left, and escaped, at those stops. */
+  double one_probe_photons;
+};
+
 double runner_hii_carry_at_coverage_stop(
     const struct cell *c, struct spart *si,
     const struct feedback_props *feedback_props, const float last_tree_reach,
     struct radiation_hii_coverage_stats *stats);
+#endif
+
+/**
+ * @brief Sum the HII coverage stops of all the ranks for the step report.
+ * Collective: called on every rank from engine_collect_end_of_step().
+ *
+ * A no-op when the HII loop is not compiled.
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+void feedback_radiation_hii_coverage_reduce(void);
+#else
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_hii_coverage_reduce(void) {}
+#endif
+
+/**
+ * @brief Print the HII coverage stops of the run when a step added some.
+ * Called on rank 0 only, after the step line, from engine_step().
+ *
+ * A no-op when the HII loop is not compiled.
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+void feedback_radiation_hii_coverage_report(void);
+#else
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_hii_coverage_report(void) {}
 #endif
 
 void runner_dosub_stars_hii_ionization_feedback(struct runner *r,

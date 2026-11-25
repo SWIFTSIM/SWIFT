@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "active.h"
 #include "lightcone/lightcone_array.h"
+#include "runner_radiation_feedback.h"
 #include "star_formation_logger.h"
 #include "timeline.h"
 
@@ -269,16 +270,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
       data.csds_file_size_gb);
 
-  /* HII coverage stops, summed over the ranks for the step report. */
-#ifdef WITH_MPI
-  if (MPI_Allreduce(
-          &e->radiation_hii_coverage_local, &e->radiation_hii_coverage,
-          sizeof(struct radiation_hii_coverage_stats) / sizeof(double),
-          MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to aggregate the HII coverage stops.");
-#else
-  e->radiation_hii_coverage = e->radiation_hii_coverage_local;
-#endif
+  feedback_radiation_hii_coverage_reduce();
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI

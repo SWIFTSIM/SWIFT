@@ -982,6 +982,68 @@ static int runner_hii_maintain_held_region(
   return count_held;
 }
 
+/*! HII coverage stops of this rank, the same summed over the ranks at the
+    end of each step, and that sum at the last report. All cumulative since
+    the run or its last restart: they are not in the restart file. */
+static struct radiation_hii_coverage_stats radiation_hii_coverage_local;
+static struct radiation_hii_coverage_stats radiation_hii_coverage;
+static struct radiation_hii_coverage_stats radiation_hii_coverage_last_report;
+
+/**
+ * @brief Sum the HII coverage stops of all the ranks. Collective.
+ */
+void feedback_radiation_hii_coverage_reduce(void) {
+#ifdef WITH_MPI
+  if (MPI_Allreduce(
+          &radiation_hii_coverage_local, &radiation_hii_coverage,
+          sizeof(struct radiation_hii_coverage_stats) / sizeof(double),
+          MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to aggregate the HII coverage stops.");
+#else
+  radiation_hii_coverage = radiation_hii_coverage_local;
+#endif
+}
+
+/**
+ * @brief Print the HII coverage stops of the run when a step added some.
+ * Rank 0 only.
+ */
+void feedback_radiation_hii_coverage_report(void) {
+
+  /* A pass stopped at the edge of the gas the tree covers asks for a wider
+   * tree. Released photons mean the rebuild could not widen it. Cut start
+   * radii alone do not print a line. Photons left at one-probe stops
+   * escape: their share of the issued photons measures the search stall. */
+  const struct radiation_hii_coverage_stats *cov = &radiation_hii_coverage;
+  const struct radiation_hii_coverage_stats *cov_last =
+      &radiation_hii_coverage_last_report;
+  const int new_coverage_stops =
+      cov->carried_passes + cov->released_passes >
+      cov_last->carried_passes + cov_last->released_passes;
+  const int new_one_probe_stops =
+      cov->one_probe_stops > cov_last->one_probe_stops;
+
+  if (new_coverage_stops)
+    message(
+        "HII coverage stops: %.0f carried (+%.0f), %.0f released (+%.0f) "
+        "with %.3e photons (+%.3e), %.0f start radii cut (+%.0f).",
+        cov->carried_passes, cov->carried_passes - cov_last->carried_passes,
+        cov->released_passes, cov->released_passes - cov_last->released_passes,
+        cov->released_photons,
+        cov->released_photons - cov_last->released_photons,
+        cov->start_radius_cuts,
+        cov->start_radius_cuts - cov_last->start_radius_cuts);
+  if (new_one_probe_stops)
+    message(
+        "HII one-probe stops with photons left: %.0f (+%.0f) with %.3e "
+        "photons (+%.3e).",
+        cov->one_probe_stops, cov->one_probe_stops - cov_last->one_probe_stops,
+        cov->one_probe_photons,
+        cov->one_probe_photons - cov_last->one_probe_photons);
+  if (new_coverage_stops || new_one_probe_stops)
+    radiation_hii_coverage_last_report = *cov;
+}
+
 /**
  * @brief Keep or release the unspent photons of a pass stopped at the covered
  * radius, and count the outcome.
@@ -1048,8 +1110,7 @@ static void runner_hii_count_one_probe_stop(struct runner *r, struct cell *c,
                                             const float covered_radius,
                                             struct hii_neighbor *buffer) {
 
-  struct radiation_hii_coverage_stats *stats =
-      &r->e->radiation_hii_coverage_local;
+  struct radiation_hii_coverage_stats *stats = &radiation_hii_coverage_local;
   const double photons_left = feedback_get_star_ionization_budget_total(si);
   atomic_add_d(&stats->one_probe_stops, 1.);
   atomic_add_d(&stats->one_probe_photons, photons_left);
@@ -1148,7 +1209,7 @@ static void runner_hii_claim_and_retry(
   /* A region whose held gas has flowed out since the last rebuild can start
      beyond the covered radius; the walk then starts at the covered radius. */
   if (start_radius > covered_radius)
-    atomic_add_d(&e->radiation_hii_coverage_local.start_radius_cuts, 1.);
+    atomic_add_d(&radiation_hii_coverage_local.start_radius_cuts, 1.);
 
   /* Logic: a pass can fall short of exhausting the star's photon budget
    * for two DIFFERENT reasons, which need two different retries:
@@ -1304,7 +1365,7 @@ static void runner_hii_claim_and_retry(
 #endif
         runner_hii_carry_at_coverage_stop(c, si, feedback_props,
                                           last_tree_reach,
-                                          &e->radiation_hii_coverage_local);
+                                          &radiation_hii_coverage_local);
       }
       if (stop == hii_search_stop_one_probe)
         runner_hii_count_one_probe_stop(r, c, si, frame, dynamic_search_radius,
