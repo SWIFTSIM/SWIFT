@@ -59,9 +59,13 @@
     which the column no longer shields. */
 #define RADIATION_H2_SHIELDING_VELOCITY_RESET_WIDTHS 3.
 
-/*! Tolerance of the inverse, as an interval of the natural logarithm of the
-    column. */
-#define RADIATION_H2_SHIELDING_INVERSE_TOLERANCE 1e-7
+/*! Tolerance of the inverse in the natural logarithm of the column: 2^-26, a
+    quarter of the float rounding of a stored column. */
+#define RADIATION_H2_SHIELDING_INVERSE_TOLERANCE 1.4901161193847656e-8
+
+/*! Largest number of iterations of the inverse. Bisection alone needs 32 to
+    reach the tolerance from the full range of columns. */
+#define RADIATION_H2_SHIELDING_INVERSE_MAX_ITERATIONS 64
 
 /**
  * @brief Exponent of the fit, a function of the gas temperature and density.
@@ -92,8 +96,9 @@ radiation_h2_shielding_exponent(const double T, const double n) {
 }
 
 /**
- * @brief Self-shielding factor of an H2 column: the dissociation rate at the
- * column over the rate at column 0.
+ * @brief The two terms of the self-shielding factor of an H2 column
+ * (#radiation_h2_shielding_factor): the power term of the line cores and the
+ * damped term of the line wings.
  *
  * The power is evaluated as an exponential of a logarithm, so that a large
  * exponent and column cannot overflow. The column is clamped to
@@ -102,20 +107,66 @@ radiation_h2_shielding_exponent(const double T, const double n) {
  * @param N H2 column in cm^-2.
  * @param alpha Exponent of the fit (#radiation_h2_shielding_exponent).
  * @param b5 Thermal line width of H2 in km/s. Positive.
+ * @param x (return) The clamped column in units of
+ * #RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2.
+ * @param power (return) The power term.
+ * @param damped (return) The damped term.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_h2_shielding_factor_terms(const double N, const double alpha,
+                                    const double b5, double *x, double *power,
+                                    double *damped) {
+  double Nc = N;
+  if (!(Nc > 0.)) Nc = 0.;
+  if (Nc > RADIATION_H2_SHIELDING_COLUMN_CAP_CM2)
+    Nc = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+  *x = Nc / RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2;
+  const double root = sqrt(1. + *x);
+  *power = 0.965 * exp(-alpha * log1p(*x / b5));
+  *damped = 0.035 * exp(-8.5e-4 * root) / root;
+}
+
+/**
+ * @brief Self-shielding factor of an H2 column: the dissociation rate at the
+ * column over the rate at column 0.
+ *
+ * @param N H2 column in cm^-2, clamped as in
+ * #radiation_h2_shielding_factor_terms.
+ * @param alpha Exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param b5 Thermal line width of H2 in km/s. Positive.
  * @return The factor, at most 1.
  */
 __attribute__((always_inline)) INLINE static double
 radiation_h2_shielding_factor(const double N, const double alpha,
                               const double b5) {
-  double Nc = N;
-  if (!(Nc > 0.)) Nc = 0.;
-  if (Nc > RADIATION_H2_SHIELDING_COLUMN_CAP_CM2)
-    Nc = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
-  const double x = Nc / RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2;
-  const double root = sqrt(1. + x);
-  const double f =
-      0.965 * exp(-alpha * log1p(x / b5)) + 0.035 * exp(-8.5e-4 * root) / root;
+  double x, power, damped;
+  radiation_h2_shielding_factor_terms(N, alpha, b5, &x, &power, &damped);
+  const double f = power + damped;
   return f < 1. ? f : 1.;
+}
+
+/**
+ * @brief Logarithm of the self-shielding factor of an H2 column, and its slope
+ * in the logarithm of the column.
+ *
+ * @param N H2 column in cm^-2, positive and at most
+ * #RADIATION_H2_SHIELDING_COLUMN_CAP_CM2.
+ * @param alpha Positive exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param b5 Thermal line width of H2 in km/s. Positive.
+ * @param slope (return) d ln S / d ln N, negative.
+ * @return ln S, without the cap of the factor at 1.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_h2_shielding_log_factor_slope(const double N, const double alpha,
+                                        const double b5, double *slope) {
+  double x, power, damped;
+  radiation_h2_shielding_factor_terms(N, alpha, b5, &x, &power, &damped);
+  const double f = power + damped;
+  const double wing_slope = 8.5e-4 * sqrt(1. + x) + 1.;
+  *slope = -(power * alpha * x / (b5 + x) +
+             0.5 * damped * wing_slope * x / (1. + x)) /
+           f;
+  return log(f);
 }
 
 /**
@@ -130,36 +181,93 @@ radiation_h2_shielding_factor_at_zero(void) {
 }
 
 /**
- * @brief Column whose shielding factor is a given transmission.
+ * @brief Column whose shielding factor is a given transmission, searched from
+ * a first guess.
  *
- * The factor falls with the column, so the root is bracketed in the
- * logarithm of the column and bisected. A transmission at or above the
- * factor at #RADIATION_H2_SHIELDING_COLUMN_FLOOR_CM2 gives 0, one at or below
- * the factor at #RADIATION_H2_SHIELDING_COLUMN_CAP_CM2 (a zero or negative one
+ * The factor falls with the column, so the root is bracketed in the logarithm
+ * u of the column and found by Newton steps on ln S(u) - ln t. A step that
+ * leaves the bracket, or that does not halve the step before it, is replaced
+ * by a bisection of the bracket. The search ends when a step is below
+ * #RADIATION_H2_SHIELDING_INVERSE_TOLERANCE, where the next error of a Newton
+ * step is of the order of its square. A transmission at or above the factor
+ * at #RADIATION_H2_SHIELDING_COLUMN_FLOOR_CM2 gives 0, one at or below the
+ * factor at #RADIATION_H2_SHIELDING_COLUMN_CAP_CM2 (a zero or negative one
  * included) gives that cap.
  *
  * @param t Transmission.
- * @param alpha Exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param alpha Positive exponent of the fit (#radiation_h2_shielding_exponent).
+ * @param b5 Thermal line width of H2 in km/s. Positive.
+ * @param N_guess First guess of the column in cm^-2. A guess outside the
+ * bracket, 0 included, is replaced by the column of the power term alone.
+ * @return The column in cm^-2.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_h2_shielding_inverse_from(const double t, const double alpha,
+                                    const double b5, const double N_guess) {
+  if (!(t > 0.)) return RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+  if (t >= radiation_h2_shielding_factor(
+               RADIATION_H2_SHIELDING_COLUMN_FLOOR_CM2, alpha, b5))
+    return 0.;
+  if (t <= radiation_h2_shielding_factor(RADIATION_H2_SHIELDING_COLUMN_CAP_CM2,
+                                         alpha, b5))
+    return RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+
+  double lo = log(RADIATION_H2_SHIELDING_COLUMN_FLOOR_CM2);
+  double hi = log(RADIATION_H2_SHIELDING_COLUMN_CAP_CM2);
+  const double log_t = log(t);
+
+  double u = 0.5 * (lo + hi);
+  if (N_guess > RADIATION_H2_SHIELDING_COLUMN_FLOOR_CM2 &&
+      N_guess < RADIATION_H2_SHIELDING_COLUMN_CAP_CM2) {
+    u = log(N_guess);
+  } else if (t < 0.965) {
+    /* The column at which the power term alone is t. It is below the cap,
+       since t exceeds the factor at the cap. */
+    const double x = b5 * expm1(-log(t / 0.965) / alpha);
+    if (x > 0.) {
+      const double u_power = log(x * RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2);
+      if (u_power > lo && u_power < hi) u = u_power;
+    }
+  }
+
+  double step_before = hi - lo;
+  for (int k = 0; k < RADIATION_H2_SHIELDING_INVERSE_MAX_ITERATIONS; k++) {
+    double slope;
+    const double residual =
+        radiation_h2_shielding_log_factor_slope(exp(u), alpha, b5, &slope) -
+        log_t;
+    if (residual > 0.)
+      lo = u;
+    else
+      hi = u;
+
+    const double step = slope < 0. ? -residual / slope : hi - lo;
+    if (fabs(step) <= RADIATION_H2_SHIELDING_INVERSE_TOLERANCE)
+      return exp(u + step);
+
+    double u_next = u + step;
+    if (!(u_next > lo && u_next < hi) || 2. * fabs(step) > fabs(step_before))
+      u_next = 0.5 * (lo + hi);
+    step_before = u_next - u;
+    u = u_next;
+    if (hi - lo <= RADIATION_H2_SHIELDING_INVERSE_TOLERANCE) break;
+  }
+  return exp(u);
+}
+
+/**
+ * @brief Column whose shielding factor is a given transmission
+ * (#radiation_h2_shielding_inverse_from without a first guess).
+ *
+ * @param t Transmission.
+ * @param alpha Positive exponent of the fit (#radiation_h2_shielding_exponent).
  * @param b5 Thermal line width of H2 in km/s. Positive.
  * @return The column in cm^-2.
  */
 __attribute__((always_inline)) INLINE static double
 radiation_h2_shielding_inverse(const double t, const double alpha,
                                const double b5) {
-  if (!(t > 0.)) return RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
-  double lo = log(RADIATION_H2_SHIELDING_COLUMN_FLOOR_CM2);
-  double hi = log(RADIATION_H2_SHIELDING_COLUMN_CAP_CM2);
-  if (t >= radiation_h2_shielding_factor(exp(lo), alpha, b5)) return 0.;
-  if (t <= radiation_h2_shielding_factor(exp(hi), alpha, b5))
-    return RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
-  while (hi - lo > RADIATION_H2_SHIELDING_INVERSE_TOLERANCE) {
-    const double mid = 0.5 * (lo + hi);
-    if (radiation_h2_shielding_factor(exp(mid), alpha, b5) > t)
-      lo = mid;
-    else
-      hi = mid;
-  }
-  return exp(0.5 * (lo + hi));
+  return radiation_h2_shielding_inverse_from(t, alpha, b5, 0.);
 }
 
 /**
