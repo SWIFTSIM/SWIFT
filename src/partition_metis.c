@@ -42,6 +42,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "error.h"
+#include "minmax.h"
 #include "partition.h"
 #include "sort_part.h"
 #include "space.h"
@@ -1451,6 +1452,69 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
   /* Calculations all done, now everyone gets a copy. */
   int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+}
+
+/**
+ * @brief Compute the volume weights of the top-level cells.
+ *
+ * The weight of a cell is the number of gravity mesh cells it covers, which
+ * is the size of the mesh patch a rank needs to allocate for it when using
+ * the distributed mesh. Balancing these stops ranks with a large volume and
+ * few particles being handed an unbounded fraction of the mesh.
+ *
+ * The weights are rescaled so that their sum is in the range of idx_t.
+ *
+ * @param s the space of cells.
+ * @param weights (return) the volume weights, sizeof number of cells.
+ */
+void partition_volume_weights(const struct space *s, double *weights) {
+
+  const int N = s->e->mesh->N;
+  if (N <= 0) {
+    error("DomainDecomposition:volume_weights requires a gravity mesh.");
+  }
+
+  /* Number of mesh cells per unit volume. */
+  const double fac = ((double)N / s->dim[0]) * ((double)N / s->dim[1]) *
+                     ((double)N / s->dim[2]);
+
+  double sum = 0.0;
+  for (int k = 0; k < s->nr_cells; k++) {
+    const struct cell *c = &s->cells_top[k];
+    weights[k] = c->width[0] * c->width[1] * c->width[2] * fac;
+    sum += weights[k];
+  }
+
+  /* Keep the sum in the range of idx_t. Note the pick functions zero vertex
+   * weights that are not larger than 1, so also keep above that. */
+  const double scale =
+      (sum > (double)IDX_MAX) ? (double)(IDX_MAX - 1000) / sum : 1.0;
+  for (int k = 0; k < s->nr_cells; k++) {
+    weights[k] = max(weights[k] * scale, 2.0);
+  }
+}
+
+/**
+ * @brief Pack the usual vertex weights and the volume weights into the two
+ *        constraint layout expected by METIS and ParMETIS.
+ *
+ * @param vertexw the usual vertex weights, sizeof number of cells. NULL for
+ *        unit weights.
+ * @param volumew the volume weights, sizeof number of cells.
+ * @param nr_cells the number of cells.
+ * @param weights (return) the packed weights, sizeof two times the number of
+ *        cells.
+ */
+void partition_interleave_weights(const double *vertexw, const double *volumew,
+                                  int nr_cells, double *weights) {
+
+  for (int k = 0; k < nr_cells; k++) {
+
+    /* The pick functions zero vertex weights that are not larger than 1, so
+     * the unit weight needs to be 2 to give a non-zero constraint. */
+    weights[2 * k] = (vertexw != NULL) ? vertexw[k] : 2.0;
+    weights[2 * k + 1] = volumew[k];
+  }
 }
 
 #endif

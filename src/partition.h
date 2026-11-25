@@ -151,6 +151,9 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
                              int verbose, int *celllist,
                              const int *cell_edge_offsets, int nedges);
 void partition_split_metis(struct space *s, int nregions, int *celllist);
+void partition_volume_weights(const struct space *s, double *weights);
+void partition_interleave_weights(const double *vertexw, const double *volumew,
+                                  int nr_cells, double *weights);
 #endif
 
 /* Debugging. */
