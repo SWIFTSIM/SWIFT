@@ -438,26 +438,21 @@ of a pass, the first one and the held-gas search included, is clamped to
 the radius inside which the visited cells hold all the gas of the star's
 surroundings, the covered radius
 \begin{equation}
-  r_{\rm cov} = d_{\rm face} + w_{\rm min},
+  r_{\rm cov} = d_{\rm face} + w_{\rm min} - \Delta x_{\rm max},
   \label{eq:hii-covered-radius}
 \end{equation}
 where $d_{\rm face}$ is the distance of the star to the nearest face of
 its \code{radiation\_level} cell (a face on the wall of a non-periodic box
 is left out, and a star that drifted out of the cell gives a negative
-$d_{\rm face}$), and $w_{\rm min}$ is the width of the thinnest linked
-partner (the cell's own width if it is thinner). A sphere of radius
-$r_{\rm cov}$ lies in the cell widened by $w_{\rm min}$ on every side, which
-the partners fill (\code{cell\_radiation\_covered\_radius} in
+$d_{\rm face}$), $w_{\rm min}$ is the width of the thinnest linked partner
+(the cell's own width if it is thinner), and $\Delta x_{\rm max}$ is the
+largest gas displacement of the partners since the last rebuild. A sphere
+of radius $r_{\rm cov}$ lies in the cell widened by $w_{\rm min}$ on every
+side, which the partners fill. The last term keeps out gas that entered
+from an unlinked cell after the rebuild: it is still stored in that cell
+and is not visited (\code{cell\_radiation\_covered\_radius} in
 \code{cell.h}). So the sorted machinery is never asked to find gas the
 task graph never wired, and the region is never cut flat at a cell face.
-
-The gas displacement since the last rebuild is not taken off
-$r_{\rm cov}$. As in SWIFT's other neighbour loops, that displacement only
-triggers a rebuild and never shortens a search. Taking it off would make
-$r_{\rm cov}$ depend on the step of the last rebuild, and a restart moves
-that step. Gas that entered the covered region from an unlinked cell since
-the rebuild is still stored in that cell, so a pass does not see it. It is
-seen by the first pass after the next rebuild.
 
 A pass stopped at $r_{\rm cov}$ with photons left asks for a wider tree
 through its search request (\code{h\_hii\_request}) and keeps its unspent

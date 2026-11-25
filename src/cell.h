@@ -1927,9 +1927,9 @@ cell_radiation_neighbour_margin(const struct cell *c) {
  * it. A sphere around the star stays inside them up to its distance to the
  * nearest face of the radiation_level cell plus the width of the thinnest
  * linked partner. A face on the wall of a non-periodic box is left out: no
- * gas lies beyond it. Gas displacement since the last rebuild is not taken
- * off, as in the other neighbour loops: it would make the radius depend on
- * the step of that rebuild.
+ * gas lies beyond it. Gas that entered the covered cells from an unlinked
+ * cell since the last rebuild is still stored in that cell, so the largest
+ * gas displacement of the partners is taken off.
  *
  * @param c The working-level #cell holding the star.
  * @param x The position of the star.
@@ -1944,11 +1944,13 @@ cell_radiation_covered_radius(const struct cell *c, const double x[3],
   const struct cell *level = c->stars.radiation_level;
 
   float partner_width = level->dmin;
+  float partner_drift = 0.f;
   for (const struct link *l = level->stars.radiation_in; l != NULL;
        l = l->next) {
     if (l->t->type == task_type_self) continue;
     const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
     partner_width = min(partner_width, partner->dmin);
+    partner_drift = max(partner_drift, partner->hydro.dx_max_part);
   }
 
   double face_distance = DBL_MAX;
@@ -1965,7 +1967,7 @@ cell_radiation_covered_radius(const struct cell *c, const double x[3],
   }
   if (face_distance == DBL_MAX) return FLT_MAX;
 
-  const double covered = face_distance + partner_width;
+  const double covered = face_distance + partner_width - partner_drift;
   return covered > 0. ? (float)covered : 0.f;
 }
 
