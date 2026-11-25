@@ -13,7 +13,7 @@ level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
 gas_density=${gas_density:=1e3}   # Gas density in atom/cm^3
 gas_mass=${gas_mass:=0.1}   # Gas particle mass in Msun
 h2_ratio=${h2_ratio:=3e-4}   # Initial nH2 / nH
-n_steps=${n_steps:=8}   # Steps to the end time; swift -n stops after the last, so no extra final snapshot
+n_steps=${n_steps:=6}   # Steps of the run, keep below 8; swift -n N runs N+1 steps
 run_name=${run_name:=$leg}
 ic_file=ICs_isrf_h2_two_sources.hdf5
 params=params.yml
@@ -86,4 +86,5 @@ python3 ../ISRFH2StarLit/checkH2Attenuation.py twosource \
     --first "$run_name"/snap/snapshot_0001.hdf5 \
     --last "$(ls "$run_name"/snap/snapshot_*.hdf5 | tail -n 1)" \
     --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --startup-log "$run_name"/output.log \
+    --timesteps "$run_name"/timesteps.txt \
     --only-a only_a --only-b only_b --repeat-a only_a2 --slots "$slots"
