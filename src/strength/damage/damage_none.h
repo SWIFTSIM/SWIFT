@@ -36,18 +36,24 @@
 __attribute__((always_inline)) INLINE static struct strength_damage
 strength_get_damage(const struct part *restrict p) {
 
-  return (struct strength_damage){0};
+  struct strength_damage damage = {0};
+  damage.total = p->strength_data.initial_damage;
+  return damage;
 }
 
 /**
  * @brief Get damage of particle at last kick time.
  *
+ * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static struct strength_damage
-strength_get_damage_full(const struct xpart *restrict xp) {
+strength_get_damage_full(const struct part *restrict p,
+                         const struct xpart *restrict xp) {
 
-  return (struct strength_damage){0};
+  struct strength_damage damage = {0};
+  damage.total = p->strength_data.initial_damage;
+  return damage;
 }
 
 /**
@@ -130,6 +136,12 @@ __attribute__((always_inline)) INLINE static void damage_compute_rates(
  */
 __attribute__((always_inline)) INLINE static void
 strength_first_init_part_damage(struct part *restrict p,
-                                struct xpart *restrict xp) {}
+                                struct xpart *restrict xp) {
+
+  const float initial_damage = p->strength_data.initial_damage;
+  if ((initial_damage < 0.f) || (initial_damage > 1.f))
+    error("Particle %lld has initial damage %g, outside [0, 1]", p->id,
+          initial_damage);
+}
 
 #endif /* SWIFT_DAMAGE_NONE_H */

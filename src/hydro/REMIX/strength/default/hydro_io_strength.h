@@ -44,6 +44,12 @@
 INLINE static void hydro_read_particles_strength(struct part *parts,
                                                  struct io_props *list,
                                                  int *num_fields) {
+
+  list[*num_fields] =
+      io_make_input_field("Damage", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
+                          parts, strength_data.initial_damage);
+  *num_fields += 1;
+
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
   list[*num_fields] =
       io_make_input_field("NumFlaws", INT, 1, COMPULSORY, UNIT_CONV_NO_UNITS,

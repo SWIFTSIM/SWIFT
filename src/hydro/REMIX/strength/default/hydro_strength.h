@@ -65,7 +65,7 @@ hydro_strength_state_init_kick(struct strength_state *s,
                                const struct mat_params *mp) {
 
   strength_state_init(s, p->mat_id, p->mass, xp->rho_evol_full, xp->u_full,
-                      strength_get_damage_full(xp),
+                      strength_get_damage_full(p, xp),
                       xp->strength_data.deviatoric_stress_tensor_full,
                       p->strength_data.strain_rate_tensor, p->phase,
                       p->is_h_max, mp);

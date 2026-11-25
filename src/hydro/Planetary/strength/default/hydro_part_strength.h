@@ -95,6 +95,9 @@ struct strength_part_data {
   // loop.
   float dv_force_loop[3][3];
 
+  // Initial damage, from the ICs and constant
+  float initial_damage;
+
 #ifdef STRENGTH_DAMAGE
   // Accumulated damage
   struct strength_damage damage;

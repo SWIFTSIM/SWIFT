@@ -44,10 +44,12 @@ strength_get_damage(const struct part *restrict p) {
 /**
  * @brief Get damage of particle at last kick time.
  *
+ * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static struct strength_damage
-strength_get_damage_full(const struct xpart *restrict xp) {
+strength_get_damage_full(const struct part *restrict p,
+                         const struct xpart *restrict xp) {
 
   return xp->strength_data.damage_full;
 }
@@ -104,18 +106,19 @@ strength_reset_predicted_values_damage(struct part *restrict p,
  *
  * @param d The damage, to be evolved.
  * @param damage_rates The rates of damage accumulation.
+ * @param initial_damage The initial damage.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
     struct strength_damage *d, const struct strength_damage_rates *damage_rates,
-    const float dt_therm) {
+    const float initial_damage, const float dt_therm) {
 
   /* Evolve each source of damage. */
   const float tensile_damage = damage_tensile_evolve(d, damage_rates, dt_therm);
   const float shear_damage = damage_shear_evolve(d, damage_rates, dt_therm);
 
   /* Combine sources of damage. */
-  d->total = fminf(tensile_damage + shear_damage, 1.f);
+  d->total = fminf(initial_damage + tensile_damage + shear_damage, 1.f);
 }
 
 /**
@@ -128,7 +131,7 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
     struct part *restrict p, const float dt_therm) {
 
   damage_evolve(&p->strength_data.damage, &p->strength_data.damage_rates,
-                dt_therm);
+                p->strength_data.initial_damage, dt_therm);
 }
 
 /**
@@ -143,7 +146,7 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     const float dt_therm) {
 
   damage_evolve(&xp->strength_data.damage_full, &p->strength_data.damage_rates,
-                dt_therm);
+                p->strength_data.initial_damage, dt_therm);
 }
 
 /**
@@ -188,8 +191,14 @@ __attribute__((always_inline)) INLINE static void
 strength_first_init_part_damage(struct part *restrict p,
                                 struct xpart *restrict xp) {
 
+  const float initial_damage = p->strength_data.initial_damage;
+  if ((initial_damage < 0.f) || (initial_damage > 1.f))
+    error("Particle %lld has initial damage %g, outside [0, 1]", p->id,
+          initial_damage);
+
   p->strength_data.damage = (struct strength_damage){0};
-  xp->strength_data.damage_full = (struct strength_damage){0};
+  p->strength_data.damage.total = initial_damage;
+  xp->strength_data.damage_full = p->strength_data.damage;
   p->strength_data.damage_rates = (struct strength_damage_rates){0};
 
   damage_tensile_first_init_part(p);
