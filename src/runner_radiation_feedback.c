@@ -1027,8 +1027,9 @@ double runner_hii_carry_at_coverage_stop(
  * @brief Count a pass of a star holding gas that its one empty probe stopped
  * with photons left. Those photons escape.
  *
- * Under SWIFT_DEBUG_CHECKS_VERBOSE, also search once more out to the covered
- * radius and report a stall: a candidate the stopped walk did not reach.
+ * Under SWIFT_DEBUG_CHECKS_VERBOSE, also search once more out to the reach of
+ * the walk and report a stall (runner_hii_is_stall()): a candidate the
+ * stopped walk could have reached but did not.
  *
  * @param r The #runner thread.
  * @param c The working-level #cell holding the star.
@@ -1054,13 +1055,16 @@ static void runner_hii_count_one_probe_stop(struct runner *r, struct cell *c,
   atomic_add_d(&stats->one_probe_photons, photons_left);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  if (radius >= covered_radius) return;
+  const float max_search_radius = r->e->stars_properties->HII_max_search_radius;
+  const float reach =
+      runner_hii_held_search_radius(covered_radius, max_search_radius);
+  if (radius >= reach) return;
 
   /* The walk found no candidate inside radius, so any found here lies
      beyond it. The gather only reads the gas. */
   struct hii_gather_state gather = {.r = r,
                                     .si = si,
-                                    .search_radius = covered_radius,
+                                    .search_radius = reach,
                                     .buffer = buffer,
                                     .max_size = max_ngbs,
                                     .count_found = 0,
@@ -1068,12 +1072,14 @@ static void runner_hii_count_one_probe_stop(struct runner *r, struct cell *c,
                                     .ctx = NULL,
                                     .frame = frame};
   runner_hii_visit_neighbors(c, &gather);
-  if (gather.count_found > 0)
+  if (gather.count_found > 0 &&
+      runner_hii_is_stall(radius, sqrtf(buffer[0].r2), covered_radius,
+                          max_search_radius))
     message(
         "HII stall signature: star %lld stopped by the one-probe rule at %e "
-        "below the covered radius %e; %d candidates inside it, nearest at %e; "
+        "below the walk reach %e; %d candidates inside it, nearest at %e; "
         "photons left %.17g",
-        si->id, radius, covered_radius, gather.count_found, sqrtf(buffer[0].r2),
+        si->id, radius, reach, gather.count_found, sqrtf(buffer[0].r2),
         photons_left);
 #endif
 }
@@ -1139,6 +1145,11 @@ static void runner_hii_claim_and_retry(
 
   struct hii_neighbor ngb_buffer[max_ngbs];
 
+  /* A region whose held gas has flowed out since the last rebuild can start
+     beyond the covered radius; the walk then starts at the covered radius. */
+  if (start_radius > covered_radius)
+    atomic_add_d(&e->radiation_hii_coverage_local.start_radius_cuts, 1.);
+
   /* Logic: a pass can fall short of exhausting the star's photon budget
    * for two DIFFERENT reasons, which need two different retries:
    *
@@ -1163,11 +1174,6 @@ static void runner_hii_claim_and_retry(
    * confined to the one star that actually needs it: neither retry
    * kind touches the outer loop over sparts, so a star that already
    * exhausts its budget on the first pass costs nothing extra. */
-  /* After a rebuild the cells are sized for the region, so a cut here is
-     rare. */
-  if (start_radius > covered_radius)
-    atomic_add_d(&e->radiation_hii_coverage_local.start_radius_cuts, 1.);
-
   float dynamic_search_radius = min(start_radius, covered_radius);
   int num_retry_full_buffer = 0;
   int num_radius_expansions = 0;
@@ -1453,9 +1459,24 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         r, c, si, frame, pass.dt_back, pass.dt_tag, covered_radius,
         &held_radius);
 
+    const float max_search_radius = e->stars_properties->HII_max_search_radius;
     const float start_radius = runner_hii_claim_start_radius(
-        interaction_limit, held_radius,
-        e->stars_properties->HII_max_search_radius);
+        interaction_limit, held_radius, max_search_radius);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* The held gas lies inside the reach of its gather, and the walk starts
+       beyond it unless the ceiling binds. */
+    const float held_reach =
+        runner_hii_held_search_radius(covered_radius, max_search_radius);
+    if (held_radius > held_reach * (1.f + 1e-6f))
+      error("Star %lld: held gas at %e beyond the held-gas reach %e.", si->id,
+            held_radius, held_reach);
+    if (start_radius < interaction_limit ||
+        start_radius < min(radiation_search_radius_factor * held_radius,
+                           max_search_radius))
+      error("Star %lld: claim walk starts at %e, inside the held gas at %e.",
+            si->id, start_radius, held_radius);
+#endif
 
     struct hii_pass_diagnostics diag;
     struct hii_claim_summary summary;

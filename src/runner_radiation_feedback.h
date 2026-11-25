@@ -210,6 +210,28 @@ runner_hii_claim_start_radius(const float interaction_limit,
 }
 
 /**
+ * @brief Is a one-probe stop a stall: does the walk leave a candidate it
+ * could have reached?
+ *
+ * The reach of any walk is the covered radius cut at the ceiling
+ * (runner_hii_held_search_radius()). The covered radius alone can exceed the
+ * ceiling, and has no bound at all in a box with walls on every side.
+ *
+ * @param stop_radius The radius the walk stopped at.
+ * @param nearest_candidate Distance of the nearest candidate the walk did not
+ * claim.
+ * @param covered_radius The covered radius of the pass.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_is_stall(
+    const float stop_radius, const float nearest_candidate,
+    const float covered_radius, const float max_search_radius) {
+  const float reach =
+      runner_hii_held_search_radius(covered_radius, max_search_radius);
+  return stop_radius < reach && nearest_candidate < reach;
+}
+
+/**
  * @brief Search radius a pass stopped at the covered radius asks for:
  * the next radius it would have tried.
  *
