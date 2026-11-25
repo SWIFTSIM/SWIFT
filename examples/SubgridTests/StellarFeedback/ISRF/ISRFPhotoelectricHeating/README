@@ -83,8 +83,8 @@ with_pe_heating=0 run_name=rate_off time_end=4e-9 dt_max=6e-10 extra_args="$list
 `rate_output_list.txt` opens the measuring window one step after the field
 first reaches the gas, so that the two runs start the window with the same
 energy. The window opens at 1.5e-9 because the star, born at t = 0, has light
-in its first step and the field reaches the gas at the second snapshot
-(1e-9). The same list serves every model, Grackle and geajay. Its times hold
+in its first step and the field reaches the gas at the end of the second
+step (t = 1e-9). The same list serves every model, Grackle and geajay. Its times hold
 for these `time_end` and `dt_max` values only.
 The ISRF also adds a small dust cooling, so the reference run should carry
 the ISRF too. With geajay, run the reference as `with_pe_heating=1
@@ -138,6 +138,7 @@ python3 isrf_photoelectric_heating_check.py \
     --pe-model grackle-wolfire1995 \
     --steps-per-window 1 --cooling-response 4.2436e-4
 ```
-The value 4.2436e-4 holds for this fixture only: `time_end=4e-9`, `dt_max=6e-10`, the shipped
-output lists and the official Grackle build. Another fixture, cadence or build needs its own
+The value 4.2436e-4 holds for this fixture only: `time_end=4e-9`, `dt_max=6e-10` and the
+official Grackle build. It was computed for an earlier output list, not for the current one, so
+the check reports the current error against its bar. Another fixture, cadence or build needs its own
 value, from a one-zone call of the cooling library at the start of the window.
