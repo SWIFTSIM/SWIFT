@@ -197,6 +197,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param t_gradient The send_gradient #task, if already created.
  * @param t_prep1 The send_prep1 #task, if it has already been created.
  * @param t_limiter The send_limiter #task, if it has already been created.
+ * @param t_pack_limiter The pack_limiter #task, if it has already been
+ * created.
  * @param t_rt_gradient The send_rt_gradient #task, if it has already been
  * created.
  * @param t_rt_transport The send_rt_transport #task, if it has already been
@@ -310,8 +312,15 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
 
-      if (with_limiter)
+      if (with_limiter) {
         scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
+
+        /* The sync task gives particles a temporary negative time-bin, which
+         * the pack would copy into the buffer. Wait for the send, and so for
+         * the pack, to complete before syncing. */
+        if (with_sync)
+          scheduler_addunlock(s, t_limiter, ci->super->timestep_sync);
+      }
 
 #ifdef EXTRA_STAR_LOOPS
       /* In stellar feedback, send gas parts only after they have finished their
