@@ -49,6 +49,8 @@ max_star_dt_myr=${max_star_dt_myr:=1e-7} #Stars:max_timestep_young_Myr override
 min_star_dt_myr=${min_star_dt_myr:=1e-9} #Stars:min_star_timestep_Myr override
 initial_metallicity=${initial_metallicity:=$initial_metallicity_default} #GEARChemistry:initial_metallicity override (Z/Zsun)
 run_name=${run_name:=""}
+library=${library:="grackle"} #Cooling library of the build: grackle (grackle_2 or grackle_3) or geajay (geajay_3)
+extra_swift_args=${extra_swift_args:=""} #Extra swift arguments, for example -n 199 to stop after 200 steps
 
 # Remove the ICs
 if [ -e ICs_isrf_h2_photodissociation.hdf5 ]
@@ -97,6 +99,16 @@ fi
 
 printf "Running the %s configuration...\n" "$config"
 
+if [ "$library" = "geajay" ]; then
+    # geajay shields with the Jeans length of params_geajay.yml: it has no mode 0 or 2
+    [ "$h2_self_shielding" = 3 ] || { echo "library=geajay needs h2_self_shielding=3."; exit 1; }
+    params_file=params_geajay.yml
+    cooling_args="-P GeajayCooling:initial_h2i_to_h_ratio:$nH2_ratio"
+else
+    params_file=params.yml
+    cooling_args="-P GrackleCooling:initial_nH2I_to_nH_ratio:$nH2_ratio -P GrackleCooling:H2_self_shielding:$h2_self_shielding -P GrackleCooling:H2_self_shielding_path:$h2_self_shielding_path"
+fi
+
 ../../../../../swift --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter --verbose=0 --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \
@@ -104,12 +116,10 @@ printf "Running the %s configuration...\n" "$config"
 		   -P Snapshots:delta_time:$delta_time \
 		   -P Statistics:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GrackleCooling:initial_nH2I_to_nH_ratio:$nH2_ratio \
-		   -P GrackleCooling:H2_self_shielding:$h2_self_shielding \
-		   -P GrackleCooling:H2_self_shielding_path:$h2_self_shielding_path \
+		   $cooling_args \
 		   -P Stars:max_timestep_young_Myr:$max_star_dt_myr \
 		   -P Stars:min_star_timestep_Myr:$min_star_dt_myr \
-		   params.yml 2>&1 | tee output.log
+		   $extra_swift_args $params_file 2>&1 | tee output.log
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

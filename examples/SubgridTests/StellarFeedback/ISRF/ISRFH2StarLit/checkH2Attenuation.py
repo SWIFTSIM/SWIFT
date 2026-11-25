@@ -6,6 +6,8 @@ Subcommands
 starlit     Transmission at depth against the shielding function (star-lit box).
 twosource   Two stars whose lights never share a slot: the two-star run is the sum of the
             one-star runs, and each star's column follows the straight ray.
+merge       Two stars in line with a receiver: the lights merge in one slot, and the merged
+            transmission stays between the separate shares and 1 / w_l times them.
 velocity    Reset of the carried column by a velocity shift.
 parity      Per-particle comparison of two runs (two ranks, or restart).
 stale_key   The removed key GeajayCooling:h2_transported_lw_rate_shielding is ignored.
@@ -1434,6 +1436,156 @@ def image_displacements(pos: np.ndarray, star: np.ndarray, box: float):
     return d, np.linalg.norm(d, axis=2)
 
 
+def image_reach(
+    label: str,
+    pos: np.ndarray,
+    star: np.ndarray,
+    box: float,
+    lit: np.ndarray,
+    h_max: float,
+):
+    """Return the image displacements of a star and the reach of its light.
+
+    The reach is the largest distance to the nearest image over the lit particles plus the
+    kernel support of the largest smoothing length.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if the reach is a box or more, or a lit particle is in reach of two images.
+    """
+    images = image_displacements(pos, star, box)
+    dist = images[1]
+    reach = float(dist.min(axis=1)[lit].max()) + KERNEL_GAMMA * h_max
+    if reach >= box:
+        raise GateExit(
+            EXIT_VOID,
+            f"void check, the light of {label} reaches {reach:.4g}, a box is {box:.4g}",
+        )
+    many = int(np.sum(np.sum(dist <= reach, axis=1)[lit] > 1))
+    if many:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, {many} lit particles are in reach of two images of {label}",
+        )
+    return images, reach
+
+
+def slot_rule_control(frame: np.ndarray, n_slots: int) -> None:
+    """Raise if the slot rule gives one slot to parallel directions and another to the opposite one.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if the control fails.
+    """
+    control = packet_slot(
+        frame,
+        np.array([[1.0, 0, 0], [2.0, 0, 0], [1.0, 0.01, 0], [-1.0, 0, 0]]),
+        n_slots,
+    )
+    if not (control[0] == control[1] == control[2] != control[3]):
+        raise GateExit(
+            EXIT_VOID, f"void check, the slot rule fails its control {control.tolist()}"
+        )
+
+
+def load_one_star_runs(
+    run_dirs: Dict[str, str],
+    last_path: str,
+    ab: dict,
+    ids: np.ndarray,
+    fields: Tuple[str, ...],
+) -> Tuple[Dict[str, dict], Dict[str, str]]:
+    """Return the snapshots and paths of the runs, with the two-star run first, in its particle order.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if a run is at another time than the two-star run or holds other particles.
+    """
+    runs = {"two-star": ab}
+    paths = {"two-star": last_path}
+    for label, run_dir in run_dirs.items():
+        paths[label] = run_last_snapshot(run_dir, last_path)
+        runs[label] = load_snapshot(paths[label], fields)
+        align_to_ids(runs[label], ids, label)
+        require_finite(
+            label, **{k: runs[label][k] for k in REQUIRED_OWN + REQUIRED_COLUMN}
+        )
+        if runs[label]["time"] != ab["time"]:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, {label} is at time {runs[label]['time']}, the two-star run at {ab['time']}",
+            )
+    return runs, paths
+
+
+def same_build_and_parameters(
+    params: dict, run_dirs: Dict[str, str], startup_log: str, count: str
+) -> Dict[str, Dict[str, str]]:
+    """Return the start-up lines of the runs, after checking that they share parameters and build.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if a run used other parameters or its build lines differ.
+    """
+    logs = {"two-star": read_startup_log(startup_log)}
+    for label, run_dir in run_dirs.items():
+        other = read_params(os.path.join(run_dir, "used_parameters.yml"))
+        if other != params:
+            diff = sorted(
+                k for k in set(other) | set(params) if other.get(k) != params.get(k)
+            )
+            raise GateExit(
+                EXIT_VOID, f"void run, {label} used other parameters: {diff[:5]}"
+            )
+        logs[label] = read_startup_log(os.path.join(run_dir, "output.log"))
+    for name, _ in LOG_IDENTITY:
+        if len({log[name] for log in logs.values()}) != 1:
+            raise GateExit(
+                EXIT_VOID, f"void run, the {count} runs differ in the {name} line"
+            )
+    return logs
+
+
+def check_star_positions(
+    paths: Dict[str, str],
+    expect: Dict[str, List[np.ndarray]],
+    same_id: Dict[str, Tuple[str, slice]],
+    box: float,
+) -> Dict[str, List[int]]:
+    """Return the star IDs of each run, after checking positions and the IDs of the one-star runs.
+
+    The ID seeds the random frame of the emission pixels, so a star must keep its ID in the
+    one-star runs. same_id maps a run to the run and the slice of IDs it must equal.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if a star is off the fixture position or has another ID.
+    """
+    star_id = {}
+    for label, want in expect.items():
+        coords, sids = star_particles(paths[label])
+        dist = [np.linalg.norm(coords - w[None, :], axis=1) for w in want]
+        if len(coords) != len(want) or any(d.min() >= 1e-5 * box for d in dist):
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, the stars of the {label} run are not at the fixture positions",
+            )
+        star_id[label] = [int(sids[int(np.argmin(d))]) for d in dist]
+    for label, (other, part) in same_id.items():
+        if star_id[label] != star_id[other][part]:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, the star of the {label} run has ID {star_id[label]}, in the {other} run {star_id[other][part]}: "
+                "the ID seeds the random frame of the emission pixels",
+            )
+    return star_id
+
+
 def star_particles(path: str) -> Tuple[np.ndarray, np.ndarray]:
     """Return the coordinates and the IDs of the star particles of a snapshot."""
     try:
@@ -1629,25 +1781,12 @@ def gate_twosource(args: argparse.Namespace) -> int:
     check_box_faces(first)
     ids = ab["ParticleIDs"]
     align_to_ids(first, ids, "snapshot 1")
-    runs = {"two-star": ab}
-    paths = {"two-star": args.last}
     run_dirs = {
         "star A": args.only_a,
         "star B": args.only_b,
         "star A again": args.repeat_a,
     }
-    for label, run_dir in run_dirs.items():
-        paths[label] = run_last_snapshot(run_dir, args.last)
-        runs[label] = load_snapshot(paths[label], fields)
-        align_to_ids(runs[label], ids, label)
-        require_finite(
-            label, **{k: runs[label][k] for k in REQUIRED_OWN + REQUIRED_COLUMN}
-        )
-        if runs[label]["time"] != ab["time"]:
-            raise GateExit(
-                EXIT_VOID,
-                f"void run, {label} is at time {runs[label]['time']}, the two-star run at {ab['time']}",
-            )
+    runs, paths = load_one_star_runs(run_dirs, args.last, ab, ids, fields)
     previous = {}
     for label in ("two-star", "star A"):
         snap = load_snapshot(
@@ -1665,22 +1804,7 @@ def gate_twosource(args: argparse.Namespace) -> int:
             EXIT_VOID,
             "void run, ISRF_packet_read_mean_time_Myr is not 0: the column weights are instantaneous",
         )
-    logs = {"two-star": read_startup_log(args.startup_log)}
-    for label, run_dir in run_dirs.items():
-        other = read_params(os.path.join(run_dir, "used_parameters.yml"))
-        if other != params:
-            diff = sorted(
-                k for k in set(other) | set(params) if other.get(k) != params.get(k)
-            )
-            raise GateExit(
-                EXIT_VOID, f"void run, {label} used other parameters: {diff[:5]}"
-            )
-        logs[label] = read_startup_log(os.path.join(run_dir, "output.log"))
-    for name, _ in LOG_IDENTITY:
-        if len({log[name] for log in logs.values()}) != 1:
-            raise GateExit(
-                EXIT_VOID, f"void run, the four runs differ in the {name} line"
-            )
+    logs = same_build_and_parameters(params, run_dirs, args.startup_log, "four")
     rep.info(
         "same build and parameters",
         "four runs; "
@@ -1696,27 +1820,16 @@ def gate_twosource(args: argparse.Namespace) -> int:
         "star A again": [star_a],
         "star B": [star_b],
     }
-    star_id = {}
-    for label, want in expect.items():
-        coords, sids = star_particles(paths[label])
-        dist = [np.linalg.norm(coords - w[None, :], axis=1) for w in want]
-        if len(coords) != len(want) or any(d.min() >= 1e-5 * box for d in dist):
-            raise GateExit(
-                EXIT_VOID,
-                f"void run, the stars of the {label} run are not at the fixture positions",
-            )
-        star_id[label] = [int(sids[int(np.argmin(d))]) for d in dist]
-    for label, want_ids in (
-        ("star A", star_id["two-star"][:1]),
-        ("star A again", star_id["two-star"][:1]),
-        ("star B", star_id["two-star"][1:]),
-    ):
-        if star_id[label] != want_ids:
-            raise GateExit(
-                EXIT_VOID,
-                f"void run, the star of the {label} run has ID {star_id[label]}, in the two-star run {want_ids}: "
-                "the ID seeds the random frame of the emission pixels",
-            )
+    star_id = check_star_positions(
+        paths,
+        expect,
+        {
+            "star A": ("two-star", slice(0, 1)),
+            "star A again": ("two-star", slice(0, 1)),
+            "star B": ("two-star", slice(1, 2)),
+        },
+        box,
+    )
     rep.info(
         "stars",
         f"the two-star run holds both stars, the one-star runs star A, star B and star A, at the "
@@ -1736,33 +1849,14 @@ def gate_twosource(args: argparse.Namespace) -> int:
     if not both.any():
         raise GateExit(EXIT_VOID, "void run, no particle is lit by both stars")
 
-    control = packet_slot(
-        frame,
-        np.array([[1.0, 0, 0], [2.0, 0, 0], [1.0, 0.01, 0], [-1.0, 0, 0]]),
-        args.slots,
-    )
-    if not (control[0] == control[1] == control[2] != control[3]):
-        raise GateExit(
-            EXIT_VOID, f"void check, the slot rule fails its control {control.tolist()}"
-        )
+    slot_rule_control(frame, args.slots)
     pos = ab["Coordinates"]
     h_max = float(ab["SmoothingLengths"].max())
     images, reach = {}, {}
     for label, star in (("star A", star_a), ("star B", star_b)):
-        images[label] = image_displacements(pos, star, box)
-        dist = images[label][1]
-        reach[label] = float(dist.min(axis=1)[lit[label]].max()) + KERNEL_GAMMA * h_max
-        if reach[label] >= box:
-            raise GateExit(
-                EXIT_VOID,
-                f"void check, the light of {label} reaches {reach[label]:.4g}, a box is {box:.4g}",
-            )
-        many = int(np.sum(np.sum(dist <= reach[label], axis=1)[lit[label]] > 1))
-        if many:
-            raise GateExit(
-                EXIT_VOID,
-                f"void run, {many} lit particles are in reach of two images of {label}",
-            )
+        images[label], reach[label] = image_reach(
+            label, pos, star, box, lit[label], h_max
+        )
     slots = {
         k: np.stack(
             [packet_slot(frame, images[k][0][:, i, :], args.slots) for i in range(27)],
@@ -1928,6 +2022,275 @@ def gate_twosource(args: argparse.Namespace) -> int:
                 EXIT_VOID,
                 f"void check, a column of {label} 1.5 times too large is outside the bar nowhere",
             )
+    return rep.exit_code()
+
+
+MERGE_SEGMENT_POINTS = 17
+MERGE_MIN_PROBES = 30
+MERGE_MIN_ACTIVE = 10
+MERGE_TEMPERATURE_SPREAD = 1e-3
+
+
+def gate_merge(args: argparse.Namespace) -> int:
+    """Check the merge of two lights with different columns in one reception slot.
+
+    Star B sits behind star A on a line, so that a receiver in front of A is at distance d
+    from A and 3 d from B. The lights of the two stars then reach the receiver in one slot
+    and merge. Three runs share one binary: star A alone, star B alone, both.
+
+    Reference. The merged transmission is T_AB = D_AB / E_AB from the own fields of the
+    two-star run. With the shares kept apart, each at its own column, the transmission is
+    T_ref = w_A t_A + w_B t_B, with t_s = D_s / E_s from the one-star run of star s and
+    w_s = E_s / (E_A + E_B). In one gas (an isothermal fit, where the exponent does not
+    depend on the density) the merge never shields more than the separate shares and
+    shields less by at most a factor 1 / w_l, with w_l the energy fraction of the
+    least-shielded light (derivation_h2_merge_bounds, sections 3 and 5):
+
+        1 - e  <=  R = T_AB / T_ref  <=  (1 / w_l) (1 + e).
+
+    The merged column is at least the smaller share column, so also
+    min(t_A, t_B) (1 - e) <= T_AB <= max(t_A, t_B) (1 + e), with no weight in it.
+
+    Float term. e = (n (2 + 2 s) + 6) 2^-24 + s (r_H2 - 1). Per merge, the float32
+    of the transmission (2^-24), of the column (s 2^-24 with s the log slope of the fit),
+    the inverse of the fit (below s 2^-24) and the float sum of the energies (2^-24) give
+    (2 + 2 s) 2^-24, and a light merges at most once per hop, n hops. The 6 2^-24 are the
+    float ratios D / E and the weights. The last term is the columns of the three runs,
+    each a sum of n_H2 along the path: the n_H2 of a particle in the three runs, at the
+    reference and the last snapshot, lies within a factor r_H2 (the largest over the
+    particles of its maximum over its minimum), so the columns differ by at most that
+    factor and the transmission by s times it. The hop length does not enter: the one-star runs
+    and the two-star run carry the same hops.
+
+    Probes. Gas lit in all three runs, forward of star A (the weights at the receiver are
+    then not larger than at the merge, where the packet was nearer to A), with the whole
+    segment between the stars in the slot of the receiver (the merged origin is a mean of
+    origins on the segment), and with the angle subtended by the stars at the receiver at
+    most --max-subtended-deg. Beyond that angle the merged packet does not follow the
+    one-star flows: E_AB differs from E_A + E_B by percents, the shares of the merged
+    packet differ from w_s, and R below 1 occurs. The angle limit is not derived. The
+    count outside it is printed.
+
+    Controls. The gate is void if fewer than MERGE_MIN_PROBES probes remain, if fewer than
+    MERGE_MIN_ACTIVE have R above 1 + 2 e (the merge changes nothing otherwise), or if a
+    merged column 1.05 times too large or a transmission 0.98 times too low is inside the
+    bar at every probe.
+
+    The --plant options change the arrays read, as a known error would: the transmission
+    of the two-star run times a factor, its column times a factor (the transmission follows
+    the fit), a NaN in its dissociating energy.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if a premise or a control is not met, EXIT_NONFINITE on a NaN.
+    """
+    rep = Report()
+    fix = load_json(args.fixture, "geometry file")
+    for key in ("box_kpc", "star_a_kpc", "star_b_kpc"):
+        if key not in fix:
+            raise GateExit(EXIT_MISSING, f"geometry file lacks {key}")
+    fields = REQUIRED_GAS + REQUIRED_OWN + REQUIRED_COLUMN
+    first = load_snapshot(args.first, REQUIRED_GAS)
+    ab = load_snapshot(args.last, fields)
+    if args.plant_nan:
+        ab["LWOwnDissociatingSpecificEnergies"][
+            int(np.argmax(ab["LWOwnSpecificEnergies"]))
+        ] = np.nan
+    require_finite("two-star snapshot", **{k: ab[k] for k in fields})
+    check_box_faces(first)
+    ids = ab["ParticleIDs"]
+    align_to_ids(first, ids, "snapshot 1")
+    run_dirs = {"star A": args.only_a, "star B": args.only_b}
+    runs, paths = load_one_star_runs(run_dirs, args.last, ab, ids, fields)
+    params = read_params(args.params)
+    calibrate_temperatures(first, ab, params, rep)
+    check_premise_parameters(params, rep, args.startup_log)
+    logs = same_build_and_parameters(params, run_dirs, args.startup_log, "three")
+    rep.info(
+        "same build and parameters",
+        "three runs; "
+        + "; ".join(f"{v}" for k, v in logs["two-star"].items() if k != "slot frame"),
+    )
+    frame = slot_frame(logs["two-star"]["slot frame"])
+    box = ab["box"]
+    star_a = np.asarray(fix["star_a_kpc"], float)
+    star_b = np.asarray(fix["star_b_kpc"], float)
+    star_id = check_star_positions(
+        paths,
+        {"two-star": [star_a, star_b], "star A": [star_a], "star B": [star_b]},
+        {"star A": ("two-star", slice(0, 1)), "star B": ("two-star", slice(1, 2))},
+        box,
+    )
+    rep.info(
+        "stars",
+        f"the two-star run holds both stars, the one-star runs star A and star B, at the "
+        f"fixture positions and with the IDs of the two-star run ({star_id['two-star']})",
+    )
+
+    temp = ab["Temperatures"]
+    spread = float(temp.max() / temp.min() - 1.0)
+    if not spread <= MERGE_TEMPERATURE_SPREAD:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, the gas is not isothermal: T spans {spread:.3g} of its minimum, "
+            f"above {MERGE_TEMPERATURE_SPREAD:g} (the exponent of the fit would differ along the path)",
+        )
+    n_ref = np.stack(
+        [h2_column_density(first)] + [h2_column_density(s) for s in runs.values()]
+    )
+    h2_region_ranges(first, ab, [("", np.ones(len(ids), bool))], rep)
+    eps_h2 = float(np.max(n_ref.max(axis=0) / n_ref.min(axis=0))) - 1.0
+
+    own, ratio = {}, {}
+    for k, snap in runs.items():
+        own[k], ratio[k] = own_transmission(snap, args.population_factor)
+    lit = {k: own[k] > 0.0 for k in runs}
+    slot_rule_control(frame, args.slots)
+    pos = ab["Coordinates"]
+    h_max = float(ab["SmoothingLengths"].max())
+    rows = np.arange(len(pos))
+    disp, dist = {}, {}
+    for label, star in (("star A", star_a), ("star B", star_b)):
+        images, _ = image_reach(label, pos, star, box, lit[label], h_max)
+        nearest = np.argmin(images[1], axis=1)
+        disp[label] = images[0][rows, nearest]
+        dist[label] = images[1][rows, nearest]
+    seg_slots = []
+    for t in np.linspace(0.0, 1.0, MERGE_SEGMENT_POINTS):
+        d = pos - (star_a + t * (star_b - star_a))[None, :]
+        seg_slots.append(packet_slot(frame, d - box * np.round(d / box), args.slots))
+    in_one_slot = np.all(np.stack(seg_slots) == seg_slots[0][None, :], axis=0)
+    gap = float(np.linalg.norm(star_b - star_a))
+    forward = disp["star A"] @ ((star_a - star_b) / gap) > 0.0
+    cos_sub = (dist["star A"] ** 2 + dist["star B"] ** 2 - gap**2) / (
+        2.0 * dist["star A"] * dist["star B"]
+    )
+    subtended = np.degrees(np.arccos(np.clip(cos_sub, -1.0, 1.0)))
+    held = np.ones(len(ids), bool)
+    for label in runs:
+        before = load_snapshot(
+            previous_snapshot(paths[label]), ("ParticleIDs", "LWOwnSpecificEnergies")
+        )
+        align_to_ids(before, ids, f"{label} previous snapshot")
+        held &= before["LWOwnSpecificEnergies"] > 0.0
+    both = lit["star A"] & lit["star B"] & lit["two-star"] & held
+    shared = both & in_one_slot & forward
+    probes = shared & (subtended <= args.max_subtended_deg)
+    n_probes = int(probes.sum())
+    rep.info(
+        "probes",
+        f"{int(both.sum())} particles lit in all three runs, also at the previous snapshot, "
+        f"{int(shared.sum())} forward of star A with "
+        f"the segment between the stars in one slot, {n_probes} within {args.max_subtended_deg:g} degrees "
+        f"subtended by the stars",
+    )
+    if n_probes < MERGE_MIN_PROBES:
+        raise GateExit(
+            EXIT_VOID, f"void run, {n_probes} probes, fewer than {MERGE_MIN_PROBES}"
+        )
+
+    e_a, e_b = own["star A"], own["star B"]
+    e_sum = e_a + e_b
+    w_a = np.divide(e_a, e_sum, out=np.zeros_like(e_sum), where=e_sum > 0.0)
+    t_a, t_b, t_ab = ratio["star A"], ratio["star B"], ratio["two-star"]
+    dens = gas_number_density(ab)
+    cm = ab["unit_length"]
+    n_h2 = h2_column_density(ab)
+    column = ab[PARITY_COLUMN] / cm**2
+
+    def column_error(t: np.ndarray, factor: float) -> np.ndarray:
+        return (
+            t
+            * transmission(factor * column, temp, dens)
+            / transmission(column, temp, dens)
+        )
+
+    t_ab = t_ab * args.plant_transmission
+    if args.plant_column != 1.0:
+        t_ab = column_error(t_ab, args.plant_column)
+    require_finite(
+        "ratios of the probes",
+        t_a=t_a[probes],
+        t_b=t_b[probes],
+        t_ab=t_ab[probes],
+        w_a=w_a[probes],
+    )
+    t_ref = w_a * t_a + (1.0 - w_a) * t_b
+    if not np.all(t_ref[probes] > 0.0):
+        raise GateExit(EXIT_VOID, "void run, a probe has a zero reference transmission")
+    r_ratio = t_ab / np.where(t_ref > 0.0, t_ref, 1.0)
+    w_least = np.where(t_a >= t_b, w_a, 1.0 - w_a)
+    slope = np.maximum(
+        log_slope(np.maximum(n_h2 * dist["star A"] * cm, 1.0), temp, dens),
+        log_slope(np.maximum(n_h2 * dist["star B"] * cm, 1.0), temp, dens),
+    )
+    n_hops = light_hops(first, ab, args.timesteps)
+    eps = (n_hops * (2.0 + 2.0 * slope) + 6.0) * FLOAT32_EPS + slope * eps_h2
+    rep.info(
+        "bar term",
+        f"e = (n (2 + 2 s) + 6) 2^-24 + s (r_H2 - 1): n = {n_hops} hops, s up to "
+        f"{float(slope[probes].max()):.3g}, r_H2 - 1 = {eps_h2:.3g}; e from "
+        f"{float(eps[probes].min()):.3g} to {float(eps[probes].max()):.3g}",
+    )
+    require_finite("reference ratio of the probes", r=r_ratio[probes])
+    low = probes & (r_ratio < 1.0 - eps)
+    high = probes & (r_ratio * w_least > 1.0 + eps)
+    rep.check(
+        "merged transmission is not below the separate shares",
+        not low.any(),
+        f"{int(low.sum())} of {n_probes} probes with R < 1 - e; R from "
+        f"{float(r_ratio[probes].min()):.6g} to {float(r_ratio[probes].max()):.6g}",
+    )
+    rep.check(
+        "merged transmission is at most 1 / w_l times the separate shares",
+        not high.any(),
+        f"{int(high.sum())} of {n_probes} probes with R w_l > 1 + e; largest R w_l "
+        f"{float(np.max((r_ratio * w_least)[probes])):.6g}",
+    )
+    outside = probes & (
+        (t_ab > np.maximum(t_a, t_b) * (1.0 + eps))
+        | (t_ab < np.minimum(t_a, t_b) * (1.0 - eps))
+    )
+    rep.check(
+        "merged transmission between the transmissions of the two stars",
+        not outside.any(),
+        f"{int(outside.sum())} of {n_probes} probes outside [min t, max t] widened by e",
+    )
+
+    active = int(np.sum(probes & (r_ratio > 1.0 + 2.0 * eps)))
+    rep.info("merge acts", f"{active} probes with R above 1 + 2 e")
+    if active < MERGE_MIN_ACTIVE:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, the merge changes the transmission at {active} probes, fewer than {MERGE_MIN_ACTIVE}",
+        )
+    for what, t_plant in (
+        ("transmission x0.98", t_ab * 0.98),
+        ("merged column x1.05", column_error(t_ab, 1.05)),
+    ):
+        seen = int(np.sum(t_plant[probes] / t_ref[probes] < 1.0 - eps[probes]))
+        rep.info(f"plant {what}", f"outside the bar at {seen} of {n_probes} probes")
+        if seen == 0:
+            raise GateExit(
+                EXIT_VOID,
+                f"void check, the plant {what} is inside the bar at every probe",
+            )
+
+    beyond = shared & ~probes
+    if beyond.any():
+        rep.reading(
+            "probes beyond the angle limit",
+            f"{int(beyond.sum())} particles; R from {float(np.min(r_ratio[beyond])):.6g} to "
+            f"{float(np.max(r_ratio[beyond])):.6g}, {int(np.sum(beyond & (r_ratio < 1.0 - eps)))} below 1 - e",
+        )
+    gap_e = np.abs(
+        ab["LWOwnSpecificEnergies"] / np.where(e_sum > 0.0, e_sum, 1.0) - 1.0
+    )
+    rep.reading(
+        "E_AB over E_A + E_B",
+        f"largest |ratio - 1| {float(gap_e[probes].max()):.3g} over the probes",
+    )
     return rep.exit_code()
 
 
@@ -2283,11 +2646,12 @@ def build_parser() -> argparse.ArgumentParser:
     for name, fn in (
         ("starlit", gate_starlit),
         ("twosource", gate_twosource),
+        ("merge", gate_merge),
         ("velocity", gate_velocity),
     ):
         sp = sub.add_parser(name)
-        common(sp, counters=name != "twosource")
-        if name in ("starlit", "twosource"):
+        common(sp, counters=name not in ("twosource", "merge"))
+        if name in ("starlit", "twosource", "merge"):
             sp.add_argument(
                 "--timesteps",
                 default=None,
@@ -2297,12 +2661,24 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument(
                 "--case", choices=["auto", "reset", "noreset"], default="auto"
             )
-        if name == "twosource":
-            for flag, what in (
+        if name == "merge":
+            sp.add_argument(
+                "--max-subtended-deg",
+                type=float,
+                default=10.0,
+                help="largest angle subtended by the two stars at a probe",
+            )
+            sp.add_argument("--plant-transmission", type=float, default=1.0)
+            sp.add_argument("--plant-column", type=float, default=1.0)
+            sp.add_argument("--plant-nan", action="store_true")
+        if name in ("twosource", "merge"):
+            flags = [
                 ("--only-a", "run directory of star A alone"),
                 ("--only-b", "run directory of star B alone"),
-                ("--repeat-a", "run directory of star A alone, run again"),
-            ):
+            ]
+            if name == "twosource":
+                flags.append(("--repeat-a", "run directory of star A alone, run again"))
+            for flag, what in flags:
                 sp.add_argument(flag, required=True, help=what)
             sp.add_argument(
                 "--slots",

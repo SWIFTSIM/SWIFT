@@ -73,7 +73,9 @@ def write_ic(
     star_ids = n_gas + np.arange(n_star) if star_ids is None else star_ids
     check_away_from_faces(pos, box, "gas")
     check_away_from_faces(star_pos, box, "star")
-    m_star = np.full(n_star, star_mass_msun * MSUN_CGS / UNIT_MASS_CGS)
+    m_star = np.broadcast_to(np.asarray(star_mass_msun, float), (n_star,)) * (
+        MSUN_CGS / UNIT_MASS_CGS
+    )
     h_gas = 1.2348 * (box**3 / n_gas) ** (1.0 / 3.0) * np.ones(n_gas)
     with h5py.File(filename, "w") as f:
         g = f.create_group("/Header")

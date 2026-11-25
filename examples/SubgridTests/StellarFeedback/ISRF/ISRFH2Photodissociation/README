@@ -67,7 +67,8 @@ does not bias the comparison.
 make -j
 ```
 `--with-cooling=grackle_2` (or `grackle_3`) is required, because H2 is only
-tracked in these modes. The GEAR feedback module registers the
+tracked in these modes. For geajay, use `--with-geajay=path/to/geajay --with-cooling=geajay_3`
+in place of the two Grackle options. The GEAR feedback module registers the
 `LWSpecificEnergies` snapshot output. `--with-chealpix` is required by the ISRF
 transport.
 
@@ -86,6 +87,9 @@ Table for GEAR" (parameter file
 config=thin  run_name=thin  ./run.sh
 config=thick run_name=thick ./run.sh
 ```
+With a geajay build, add `library=geajay`: `run.sh` then reads `params_geajay.yml` and
+shields with the Jeans length (`h2_self_shielding=3` only). The run takes about five minutes on 8
+threads; `extra_swift_args="-n 199"` stops it after 200 steps.
 Add `h2_self_shielding=0` for the unshielded reference, or
 `h2_self_shielding=2` for the kernel-length column. Resolution is set
 by `level` (`N = (2**level)**3` gas particles) and `gas_mass` (Msun). Change
@@ -100,17 +104,21 @@ minutes on 8 threads. See `run.sh` for the other overrides.
 python3 isrf_h2_photodissociation_check.py --config thin  -s "thin/snap/snapshot_*.hdf5"
 python3 isrf_h2_photodissociation_check.py --config thick -s "thick/snap/snapshot_*.hdf5"
 ```
-`run.sh` passes only `GrackleCooling:` overrides, so it makes Grackle runs. For a
-geajay run made another way, set `H2_SHIELDING_LIBRARY=geajay` (default
-`grackle`): the libraries differ in the column, `N_H2 = 2 n_H2 l` for Grackle
-and `n_H2 l` for geajay, and in the Doppler mass, `m_H` and `2 m_H`.
+For a geajay run (`library=geajay`), set `H2_SHIELDING_LIBRARY=geajay` (default
+`grackle`) when you run the check: the libraries differ in the column,
+`N_H2 = 2 n_H2 l` for Grackle and `n_H2 l` for geajay, and in the Doppler mass,
+`m_H` and `2 m_H`.
 Pass the run's `--h2-self-shielding` (0, 2 or 3) and, for mode 2,
 `--h2-self-shielding-path`, and check a mode-0 run
 with `--config thin`, since no shielding applies. For `thin`, the median relative
 error on the H2 abundance must be at most 8% where the predicted
 destruction reaches two e-folds. For `thick`, the measured ratio of the
 shielded to the unshielded destruction rate must be within 25% of the
-predicted `f_shield`. The script also prints radial profiles of `G_0`, `k_diss,0`,
+predicted `f_shield`, and each particle's measured drop of H2 must equal its predicted
+drop within a bar that the script prints (the rate identity, see the docstring of the script).
+`--plant-coefficient 0.95` scales the measured drop by 0.95, as a rate coefficient 5% too low would, and
+`--thick-lag-steps` sets the gas steps between the field in the snapshot and the field the chemistry used.
+The script also prints radial profiles of `G_0`, `k_diss,0`,
 the shielding length, `N_H2`, `f_shield`, and the ratio of Grackle's local
 column to the geometric column towards the star, and the ratio of the code's
 rate to `3.3e-11 G_0`. It writes a comparison
