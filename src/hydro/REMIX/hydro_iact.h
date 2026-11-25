@@ -438,13 +438,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                  (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
-  const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
-                                  pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
-  float drho_dt_norm_and_difn_j = alpha_norm * mi * v_sig_norm *
-                                  pj->force.vac_switch *
-                                  (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
+  const float alpha_norm_i =
+      const_remix_norm_alpha *
+      (pi->phase == mat_phase_solid ? const_remix_norm_solid_factor : 1.f);
+
+  const float alpha_norm_j =
+      const_remix_norm_alpha *
+      (pj->phase == mat_phase_solid ? const_remix_norm_solid_factor : 1.f);
+
+  float drho_dt_norm_and_difn_i =
+      alpha_norm_i * mj * v_sig_norm * pi->force.vac_switch *
+      (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+
+  float drho_dt_norm_and_difn_j =
+      alpha_norm_j * mi * v_sig_norm * pj->force.vac_switch *
+      (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
   if (hydro_difn_include_pair(pi, pj)) {
@@ -656,10 +664,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                  (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
-  const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
-                                  pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+  const float alpha_norm_i =
+      const_remix_norm_alpha *
+      (pi->phase == mat_phase_solid ? const_remix_norm_solid_factor : 1.f);
+
+  float drho_dt_norm_and_difn_i =
+      alpha_norm_i * mj * v_sig_norm * pi->force.vac_switch *
+      (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
   if (hydro_difn_include_pair(pi, pj)) {

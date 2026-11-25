@@ -56,6 +56,7 @@
 #define const_remix_difn_a_rho 0.05f
 #define const_remix_difn_b_rho 0.95f
 #define const_remix_norm_alpha 1.0f
+#define const_remix_norm_solid_factor 0.1f
 #define const_remix_slope_limiter_exp_denom 0.04f
 
 /* The viscosity that the particles are reset to after being hit by a
