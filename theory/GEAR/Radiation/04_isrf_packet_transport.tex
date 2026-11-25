@@ -1852,11 +1852,20 @@ the factor is constant, so a further hop lowers the dissociation rate no
 further, while any true column below the cap would lower it. The two guards that set
 $\Sigma_{\rm cap}$ therefore err towards too little further absorption.
 
-\paragraph{Numerics of the merge.} The inverse is found by bisection of
-$\ln\Sigma$ between $\Sigma_{\rm floor}=10^{2}$\,cm$^{-2}$ and
-$\Sigma_{\rm cap}$. The tolerance of the inverse is $10^{-7}$, the width in
-$\ln\Sigma$ at which the bisection stops. The inverse returns the middle of that
-interval, so its column error is at most $5\times10^{-8}$ of the column. A ratio at or above the factor at
+\paragraph{Numerics of the merge.} The inverse solves
+$g(u)=\ln\mathcal S(e^u)-\ln\mathcal S_k=0$ for $u=\ln\Sigma$ by Newton steps
+$u\to u-g/g'$, with the slope $g'=\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma$
+of Eq.~\eqref{eq:h2-factor} in closed form. The root stays bracketed between
+$\Sigma_{\rm floor}=10^{2}$\,cm$^{-2}$ and $\Sigma_{\rm cap}$: every
+evaluation moves one end of the bracket, and a step that leaves the bracket,
+or is more than half the step before it, is replaced by a bisection. The first
+guess is the column of the held light before the merge. Without one, it is the
+column at which the power term of Eq.~\eqref{eq:h2-factor} alone equals the
+ratio. The search stops at a step below $2^{-26}$ in $\ln\Sigma$, a quarter of
+the float rounding $2^{-24}$ of the stored column. Near the root the error
+after a Newton step is of the order of the square of the step, so the column
+error of the inverse is far below the rounding of its storage. At most 64
+evaluations are made; bisection alone reaches the tolerance in 32. A ratio at or above the factor at
 $\Sigma_{\rm floor}$ gives $\Sigma_k=0$, and one at or below the factor at
 $\Sigma_{\rm cap}$ gives $\Sigma_{\rm cap}$. A ratio within $10^{-6}$ of
 $\mathcal S_0$ also gives $\Sigma_k=0$ without the inverse: clear light keeps
@@ -3534,7 +3543,7 @@ numerator of Eq.~\eqref{eq:packet-advance} in
 (\code{src/feedback/GEAR/radiation\_propagation\_iact.h:89-91}, :121-128); the
 twin also adds the part of the reach of an active receiver. The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
-\code{radiation\_packet.c:4217}.
+\code{radiation\_packet.c:4219}.
 
 The share $\phi_{ij,k}$ is \code{fraction} in
 \code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:1020-1135},
@@ -3549,8 +3558,8 @@ in the visit of the receiver, the outer part of the reach of each active
 sender, local or foreign. The vector \code{dx\_ij}
 passed to it points from sender to receiver. The held energy of the sender is
 set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
-\code{radiation\_packet.c:4271-4300}). The escape of a slot with $S_{i,k}=0$ is
-at \code{radiation\_packet.c:4237-4244}. The parameter $p$ is
+\code{radiation\_packet.c:4273-4302}). The escape of a slot with $S_{i,k}=0$ is
+at \code{radiation\_packet.c:4239-4246}. The parameter $p$ is
 \code{radiation\_packet\_constants.cone\_power} (read at \code{radiation\_packet.h:507}, in
 \code{radiation\_packet\_slot\_weight}, which the gradient and the force loop share), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:923-925}
 and checked at :985-987.
@@ -3565,11 +3574,11 @@ width $W$ is set by \code{radiation\_packet\_set\_frame\_width}
 
 \paragraph{The merge (Secs.~\ref{sec:packet-merge}, \ref{sec:packet-merge-summary}).} The merge of one slot
 without a speed limit is \code{radiation\_packet\_merge\_slot\_unlimited}
-(\code{radiation\_packet.c:3714-3794}). It is called for every slot by
-\code{radiation\_packet\_merge} (:4061-4131), which
+(\code{radiation\_packet.c:3716-3796}). It is called for every slot by
+\code{radiation\_packet\_merge} (:4063-4133), which
 \code{radiation\_snapshot\_part\_propagation} calls for active particles
 (\code{radiation\_isrf.c:183-269}, the call at :255).
-Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3761-3769}. The
+Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3763-3771}. The
 sums of Eq.~\eqref{eq:packet-merge-origin} are formed in
 \code{radiation\_packet\_deliver\_share} as \code{inbox\_origin\_offset}
 (\code{radiation\_packet.h:837} and :860). Their weight is
@@ -3579,7 +3588,7 @@ $\sum_s e_s$ is at \code{radiation\_packet.c:3422} in
 \code{radiation\_packet\_set\_origin} (:3419-3439), $d_k$ at :3424-3427,
 $\boldsymbol{n}_k$ at :3430, and the fallback direction at :3435-3437. The
 merge returns before any change of origin when the slot received no energy
-(:3792). The fields of Eq.~\eqref{eq:packet-merge-origin} are
+(:3794). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
 \code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:386-478}).
 
@@ -3682,30 +3691,34 @@ bytes took about 7 per cent more CPU time than without the padding. That timing
 had no line absorption, so the cost with the switch on is not measured.
 
 The fit and the hop are in \code{src/feedback/GEAR/radiation\_h2\_shielding.h}.
-The constants of the fit are at :38-64: the clamps of $T$ and $n$, $\Sigma_0$,
+The constants of the fit are at :38-68: the clamps of $T$ and $n$, $\Sigma_0$,
 $\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the factor 3 of $\Delta v_{\max}$, in
-Doppler parameters, and the tolerance $10^{-7}$ of the inverse in $\ln\Sigma$.
+Doppler parameters, the tolerance $2^{-26}$ of the inverse in $\ln\Sigma$ and
+its largest number of iterations, 64.
 Eq.~\eqref{eq:h2-exponent} is \code{radiation\_h2\_shielding\_exponent}
-(:78-92). Its density factor is the natural exponential (:90), and $T$ is
+(:82-96). Its density factor is the natural exponential (:94), and $T$ is
 clamped to $100$ to $8000$\,K and $n$ to at most $10^7$\,cm$^{-3}$, as in
 Grackle (\code{solve\_rate\_cool\_g.F}) and geajay (\code{src/h2.h}). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
-(:108-119, the cap on the column at :112-113). $\mathcal S_0$ is
-\code{radiation\_h2\_shielding\_factor\_at\_zero} (:128-130). The inverse is
-\code{radiation\_h2\_shielding\_inverse} (:147-163), with the two limits at
-:149-154 and the bisection at :155-162. The hop of Eq.~\eqref{eq:h2-hop} is
-\code{radiation\_h2\_shielding\_hop\_factor} (:183-198). For a receiver with no
+(:140-146), with its two terms in \code{radiation\_h2\_shielding\_factor\_terms}
+(:116-127, the cap on the column at :121-122). $\mathcal S_0$ is
+\code{radiation\_h2\_shielding\_factor\_at\_zero} (:179-181). The inverse is
+\code{radiation\_h2\_shielding\_inverse\_from} (:205-256), with the two limits at
+:207-213, the first guess at :219-231 and the Newton steps at :233-255. The
+logarithm of the factor and its slope are
+\code{radiation\_h2\_shielding\_log\_factor\_slope} (:160-170). The hop of Eq.~\eqref{eq:h2-hop} is
+\code{radiation\_h2\_shielding\_hop\_factor} (:291-306). For a receiver with no
 line width, or when both $\Sigma$ and $\Delta\Sigma$ are 0, it leaves the share
-as it is and returns $\mathcal S_0$ (:185-186). For $\Delta\Sigma\le0$ it
-returns $\mathcal S(\Sigma)$ (:187). Otherwise it clamps the ratio at 1
-(:194-195) and returns the factor of the new column, which $\mathcal B_k$
+as it is and returns $\mathcal S_0$ (:293-294). For $\Delta\Sigma\le0$ it
+returns $\mathcal S(\Sigma)$ (:295). Otherwise it clamps the ratio at 1
+(:302-303) and returns the factor of the new column, which $\mathcal B_k$
 divides by.
 
 The velocity step and the reset of Eq.~\eqref{eq:h2-shift} are
-\code{radiation\_h2\_shielding\_shift} (:231-243). The gas of a receiver gives
+\code{radiation\_h2\_shielding\_shift} (:339-351). The gas of a receiver gives
 $\Delta\Sigma$ per unit of path, $\alpha$, $b_5$ and $\Delta v_{\max}$ through
-\code{radiation\_h2\_shielding\_receiver\_cache} (:269-290). There $n_{{\rm H}_2}$
-is at :277, the exponent at :281, $b_5$ at :286 and the velocity limit at
-:287-288.
+\code{radiation\_h2\_shielding\_receiver\_cache} (:418-439). There $n_{{\rm H}_2}$
+is at :426, the exponent at :430, $b_5$ at :435 and the velocity limit at
+:436-437.
 
 The fit of a particle is cached by \code{radiation\_cache\_H2\_line\_absorption}
 (\code{radiation\_isrf.c:134-170}). The column per length is written at every
@@ -3740,22 +3753,22 @@ are \code{H2\_column\_per\_length}, \code{H2\_shielding\_exponent},
 
 The merge of Eq.~\eqref{eq:h2-merge} is split around the merge of the slot.
 Before it, \code{radiation\_packet\_line\_begin}
-(\code{radiation\_packet.c:3550-3574}) records the sums of the light that
+(\code{radiation\_packet.c:3552-3576}) records the sums of the light that
 stayed. It takes the column of that light in the fit of the merging particle.
 It stores the sums in \code{struct radiation\_packet\_line\_state}
-(:3450-3484). After it, \code{radiation\_packet\_line\_end} (:3595-3657) forms
-$\mathcal T_k$ (:3636-3639). It applies the guards (:3640-3647) and forms
-$\Delta v_k$ (:3643) and the column (:3649-3651). The waiting sums that stay in
-the slot are set at :3619-3630.
-\code{radiation\_packet\_merge} (:4061-4131) calls both around the merge of each
-slot, at :4087 and :4097 without a speed limit and at :4112 and :4122 with one.
+(:3450-3484). After it, \code{radiation\_packet\_line\_end} (:3597-3659) forms
+$\mathcal T_k$ (:3638-3641). It applies the guards (:3642-3649) and forms
+$\Delta v_k$ (:3645) and the column (:3651-3653). The waiting sums that stay in
+the slot are set at :3621-3632.
+\code{radiation\_packet\_merge} (:4063-4133) calls both around the merge of each
+slot, at :4089 and :4099 without a speed limit and at :4114 and :4124 with one.
 
 The column of Eq.~\eqref{eq:h2-harmonic} is
-\code{radiation\_packet\_line\_harmonic\_column} (:3459-3471). The clear
-tolerance $10^{-6}$ is at :3375, and the rule for a merging particle with no
-line width is at :3463. A sum over the factor of exactly 0, which the
+\code{radiation\_packet\_line\_harmonic\_column} (:3529-3542). The clear
+tolerance $10^{-6}$ is at :3444, and the rule for a merging particle with no
+line width is at :3534. A sum over the factor of exactly 0, which the
 float sum gives when it flushes, cannot be inverted and is read as the smallest normal
-float (:3464-3465): the column is then not 0. One flushed share gets a column at least its own; several
+float (:3535-3536): the column is then not 0. One flushed share gets a column at least its own; several
 flushed shares in one slot get less, because the sum stays 0 while the dissociating
 energy adds up. The substitute is not a bound on the true column: a column of 0
 would put the next hop on the steep part of the shielding curve and shield more downstream, and
@@ -3765,7 +3778,7 @@ $e_s\mathcal T_s/\mathcal S_r(\Sigma_s)$ added to it (\code{radiation\_packet.h:
 smallest normal float, $1.2\times10^{-38}$ in internal energy units. Since
 $\mathcal S_r<1$, the dissociating energy $e_s\mathcal T_s$ of each such share
 is below that value too. The move of Eq.~\eqref{eq:h2-refit} is
-\code{radiation\_packet\_line\_refit} (\code{radiation\_packet.c:3672-3691}). The snapshot stores
+\code{radiation\_packet\_line\_refit} (\code{radiation\_packet.c:3674-3693}). The snapshot stores
 $\Sigma^{\rm own}$ of Eq.~\eqref{eq:h2-own} as \code{LWLineH2ColumnDensities}
 (\code{src/feedback/GEAR\_thermal/feedback\_io.h:533-538}), with the unit
 attribute of an inverse area, which gives cm$^{-2}$ in cgs units.
@@ -3790,12 +3803,12 @@ test, together with the star flag of the call at :1417-1426, gates the move of t
 arrival window (Section~\ref{sec:packet-lightspeed}). \code{source\_step\_end\_ti}
 (:763) is the end of the step of the sender. For a particle it is
 \code{step\_end\_ti}, set as \code{ti\_current + ti\_step} at
-\code{radiation\_packet.c:4081} and :4126. For a star it is
+\code{radiation\_packet.c:4083} and :4128. For a star it is
 \code{ti\_current + ti\_step} at \code{radiation\_packet.h:1422}.
 Eq.~\eqref{eq:packet-release} is \code{radiation\_packet\_merge\_slot\_unlimited}
-(\code{radiation\_packet.c:3714-3794}). The release fraction is at :3719-3733,
-the cutoff rule at :3735-3743, and the release of the energy, the photon number
-and the origin sum at :3745-3790.
+(\code{radiation\_packet.c:3716-3796}). The release fraction is at :3721-3735,
+the cutoff rule at :3737-3745, and the release of the energy, the photon number
+and the origin sum at :3747-3792.
 
 \paragraph{Finite speed of light (Sec.~\ref{sec:packet-lightspeed}).} The mode
 is \code{GEARFeedback:ISRF\_packet\_light\_speed}: \code{cap} is the capped
@@ -3822,16 +3835,16 @@ hop is formed in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:1080-1102}). The near bins and far cells are
 \code{radiation\_packet\_deposit} (\code{radiation\_packet.c:3317}),
 \code{radiation\_packet\_place} (:2985), \code{radiation\_packet\_regrid}
-(:3176), \code{radiation\_packet\_release\_far\_cell} (:3814) and
-\code{radiation\_packet\_merge\_slot\_limited} (:3927). The time at which the
+(:3176), \code{radiation\_packet\_release\_far\_cell} (:3816) and
+\code{radiation\_packet\_merge\_slot\_limited} (:3929). The time at which the
 light of a bin or a cell leaves, and the faint-light rule, are
 \code{radiation\_packet\_add\_to\_bin}, \code{radiation\_packet\_add\_to\_far}
 and \code{radiation\_packet\_join\_below\_end}. In that merge the origin
 sum of the waiting light is released in proportion to the energy at
-:3970-3987. Bins and far cells below the photon cutoff are booked as absorbed
-at :3938-3950 (\code{radiation\_packet\_absorb\_below\_cutoff}, :3370-3381).
+:3972-3989. Bins and far cells below the photon cutoff are booked as absorbed
+at :3940-3952 (\code{radiation\_packet\_absorb\_below\_cutoff}, :3370-3381).
 The departure time is not stored: it is the end of the step of the sender minus its step. The rest of a far cell below the cutoff is
-booked at :3854-3861. A stored stamp is capped at the end of its bin or cell
+booked at :3856-3863. A stored stamp is capped at the end of its bin or cell
 by \code{radiation\_packet\_time\_below\_end} (:2644-2648). The time-step bound of
 Eq.~\eqref{eq:isrf-dt} is \code{radiation\_isrf\_part\_timestep}
 (\code{radiation\_isrf.c:288-301}).
@@ -3850,23 +3863,23 @@ of the whole run is printed by \code{radiation\_packet\_far\_share\_final}
 
 \paragraph{The field (Sec.~\ref{sec:packet-field}).}
 Eq.~\eqref{eq:packet-field} is \code{radiation\_packet\_end\_gradient}
-(\code{radiation\_packet.c:4185-4263}, the sum over slots at :4214-4248, the
-factor at :4221). It is called from \code{radiation\_end\_gradient\_propagation}
+(\code{radiation\_packet.c:4187-4265}, the sum over slots at :4216-4250, the
+factor at :4223). It is called from \code{radiation\_end\_gradient\_propagation}
 (\code{radiation\_isrf.c:326-339}, the call at :335), which passes the true
 speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:385-390}),
-applied at \code{radiation\_packet.c:4250-4254}; $\tau_{\rm m}$ is
+applied at \code{radiation\_packet.c:4252-4256}; $\tau_{\rm m}$ is
 \code{GEARFeedback:ISRF\_packet\_read\_mean\_time\_Myr}
 (\code{feedback\_properties.h:926-931}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1205-1230}, called at
 \code{radiation\_propagation\_iact.h:166-167}, :200). The self term and the
 division are \code{radiation\_packet\_end\_force}
-(\code{radiation\_packet.c:4271-4300}), called at \code{radiation\_isrf.c:315}.
+(\code{radiation\_packet.c:4273-4302}), called at \code{radiation\_isrf.c:315}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
-(\code{radiation\_packet.c:4314-4335}, called at \code{radiation\_isrf.c:316}).
+(\code{radiation\_packet.c:4316-4337}, called at \code{radiation\_isrf.c:316}).
 The kernel mean of the dissociating energy is capped at $f_{\rm max}$ times the
-kernel mean of the LW energy (\code{radiation\_packet.c:4326-4334}; $f_{\rm max}=1$
+kernel mean of the LW energy (\code{radiation\_packet.c:4328-4336}; $f_{\rm max}=1$
 without the population factor), so that a float LW sum flushed to 0 never lies
 below the double dissociating sum.
 
@@ -3876,7 +3889,7 @@ origin is set in \code{radiation\_packet\_set\_origin}
 \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:183-269}).
 The hop reads it in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:1062-1071}). An empty slot keeps its old origin
-(\code{radiation\_packet.c:3792}), but the gradient and the hop skip empty
+(\code{radiation\_packet.c:3794}), but the gradient and the hop skip empty
 slots (\code{radiation\_packet.h:544, :1039}). The inbox and reservoir sums are
 booked at \code{radiation\_packet.h:840-860}.
 
@@ -3894,7 +3907,7 @@ a sink is \code{feedback\_isrf\_packet\_removed\_data}
 \code{escaped\_photons} in the \code{packet} struct of the star
 (\code{feedback\_struct.h:1069-1114}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
-(\code{radiation\_packet.c:4347-4378}), called at
+(\code{radiation\_packet.c:4349-4380}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:606}. The removal is
 \code{radiation\_packet\_book\_removed\_gas} (\code{radiation\_packet.c:1762-1800},
 the inherited sum with the redshift ledger at :1795-1798). It is reached from
@@ -3920,7 +3933,7 @@ ledger \code{feedback\_isrf\_packet\_box\_data}. The same reduction sums it over
 the ranks, and \code{feedback\_write\_flavour} writes it as the snapshot
 attributes \code{PacketStarsLeftBox*}, \code{PacketSinksLeftBox*} and
 \code{PacketSwallowedByBlackHoles*}. The escape of a slot
-with no downstream neighbour is at \code{radiation\_packet.c:4237-4244}.
+with no downstream neighbour is at \code{radiation\_packet.c:4239-4246}.
 
 \paragraph{Test beams (Sec.~\ref{sec:packet-ledger}).} The keys are
 \code{GEARFeedback:ISRF\_packet\_test\_beam\_1} and \code{\_2}. They are read

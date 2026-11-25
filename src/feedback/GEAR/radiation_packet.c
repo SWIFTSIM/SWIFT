@@ -3523,12 +3523,14 @@ static double radiation_packet_waiting_LW_energy(
  * flushed share gets a column at least its own, several in one slot get less.
  * @param alpha Exponent of the fit.
  * @param b5 Thermal line width of H2 of the fit in km/s.
+ * @param N_guess First guess of the column in cm^-2, or 0 for none.
  * @return The column in cm^-2.
  */
 static double radiation_packet_line_harmonic_column(const double dissociating,
                                                     double over_factor,
                                                     const double alpha,
-                                                    const double b5) {
+                                                    const double b5,
+                                                    const double N_guess) {
   if (!(b5 > 0.)) return 0.;
   /* A sum of 0 means a flushed float sum: the column cannot be recovered. */
   if (!(over_factor > 0.)) over_factor = FLT_MIN;
@@ -3536,7 +3538,7 @@ static double radiation_packet_line_harmonic_column(const double dissociating,
   if (f >= radiation_h2_shielding_factor_at_zero() *
                (1. - RADIATION_PACKET_LINE_CLEAR_TOLERANCE))
     return 0.;
-  return radiation_h2_shielding_inverse(f, alpha, b5);
+  return radiation_h2_shielding_inverse_from(f, alpha, b5, N_guess);
 }
 
 /**
@@ -3648,7 +3650,7 @@ static void radiation_packet_line_end(
       else
         N = radiation_packet_line_harmonic_column(
             released_dissociating, released_over_factor,
-            fd->H2_shielding_exponent, fd->H2_line_width_km_s);
+            fd->H2_shielding_exponent, fd->H2_line_width_km_s, st->held_column);
     }
   }
   sl->H2_transmission = (float)t;
@@ -3681,7 +3683,7 @@ void radiation_packet_line_refit(struct part *p, const float old_alpha,
     const double B = sl->H2_waiting_energy_over_factor;
     if (!(A > 0.) || !(B > 0.) || !(B < (double)FLT_MAX)) continue;
     const double N =
-        radiation_packet_line_harmonic_column(A, B, old_alpha, old_b5);
+        radiation_packet_line_harmonic_column(A, B, old_alpha, old_b5, 0.);
     if (!(N > 0.)) continue;
     const double f = b5 > 0. ? radiation_h2_shielding_factor(N, alpha, b5)
                              : radiation_h2_shielding_factor_at_zero();
