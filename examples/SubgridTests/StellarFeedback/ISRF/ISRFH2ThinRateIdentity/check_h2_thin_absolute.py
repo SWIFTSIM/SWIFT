@@ -86,7 +86,8 @@ not see a scale error of the LW field, because the rate and the field scale toge
 the Q bar does.
 
 Exit status: 0 pass, 1 a failed bar, 2 a missing file or field, 3 a value that is not
-finite, 4 a void run.
+finite, 4 a void Q bar with no other failure (a failed gate always gives 1; the
+luminosity and the rate identity run at every level and star mass).
 
 The --plant-* options change the data as a known error would, to show that the check
 fails when it should. They act on the arrays read from the snapshots, not on SWIFT.
@@ -890,15 +891,13 @@ def main() -> int:
     )
     status = EXIT_PASS if lum["ok"] else EXIT_FAIL
     void_q = bar_void_reasons(snaps[-1])
-    if void_q:
-        print("VOID: the Q geometry bar is not gated here:\n  " + "\n  ".join(void_q))
-        return EXIT_VOID
-    window, done = window_steps(snaps, steps)
-    bar = geometry_bar(snaps[-1], done)
-    q_win = measured_window_q(snaps, window, lum["table_erg_s"])
-    if not (np.all(np.isfinite(q_win)) and np.all(np.isfinite(bar["centre"]))):
-        print("NON-FINITE geometry bar or measured Q")
-        return EXIT_NONFINITE
+    if not void_q:
+        window, done = window_steps(snaps, steps)
+        bar = geometry_bar(snaps[-1], done)
+        q_win = measured_window_q(snaps, window, lum["table_erg_s"])
+        if not (np.all(np.isfinite(q_win)) and np.all(np.isfinite(bar["centre"]))):
+            print("NON-FINITE geometry bar or measured Q")
+            return EXIT_NONFINITE
     n_tested = 0
     for sh in res["shells"]:
         cells = [f"{sh['r_pc']:6.2f}", f"{sh['n_field']:6d}"]
@@ -937,26 +936,33 @@ def main() -> int:
         )
     if n_tested == 0:
         print("VOID: no shell holds enough lit particles")
-        return EXIT_VOID
-    print(
-        f"Q geometry bar: window snapshots {window[0]}..{window[-1]} step 2, cone power "
-        f"{snaps[-1]['cone_power']:g}, model {N_SEQUENCE} frame sequences, bar centre +- {BAR_SIGMA:g} sigma"
-    )
-    print(f"{'r[pc]':>10} {'Q window':>9} {'centre':>8} {'sigma':>7} {'(Q-c)/sig':>10}")
-    if not (np.all(np.isfinite(bar["sigma"])) and np.all(bar["sigma"] > 0.0)):
-        print("NON-FINITE or not positive sigma of the geometry bar")
-        return EXIT_NONFINITE
-    for (lo, hi), q, c, sg in zip(
-        bar_shells(snaps[-1]), q_win, bar["centre"], bar["sigma"]
-    ):
-        z = (q - c) / sg
-        bad = abs(z) > BAR_SIGMA
-        if bad:
-            status = EXIT_FAIL
+        void_q = void_q + ["no shell holds enough lit particles"]
+    if void_q:
+        print("VOID: the Q geometry bar is not gated here:\n  " + "\n  ".join(void_q))
+    else:
         print(
-            f"{lo:4.2f}-{hi:4.2f} {q:9.4f} {c:8.4f} {sg:7.4f} {z:10.2f}  {'FAIL Q' if bad else 'ok'}"
+            f"Q geometry bar: window snapshots {window[0]}..{window[-1]} step 2, cone power "
+            f"{snaps[-1]['cone_power']:g}, model {N_SEQUENCE} frame sequences, bar centre +- {BAR_SIGMA:g} sigma"
         )
-    print("RESULT:", "PASS" if status == EXIT_PASS else "FAIL")
+        print(
+            f"{'r[pc]':>10} {'Q window':>9} {'centre':>8} {'sigma':>7} {'(Q-c)/sig':>10}"
+        )
+        if not (np.all(np.isfinite(bar["sigma"])) and np.all(bar["sigma"] > 0.0)):
+            print("NON-FINITE or not positive sigma of the geometry bar")
+            return EXIT_NONFINITE
+        for (lo, hi), q, c, sg in zip(
+            bar_shells(snaps[-1]), q_win, bar["centre"], bar["sigma"]
+        ):
+            z = (q - c) / sg
+            bad = abs(z) > BAR_SIGMA
+            if bad:
+                status = EXIT_FAIL
+            print(
+                f"{lo:4.2f}-{hi:4.2f} {q:9.4f} {c:8.4f} {sg:7.4f} {z:10.2f}  {'FAIL Q' if bad else 'ok'}"
+            )
+    if status == EXIT_PASS and void_q:
+        status = EXIT_VOID
+    print("RESULT:", {EXIT_PASS: "PASS", EXIT_VOID: "VOID"}.get(status, "FAIL"))
     if o.json:
         o.json.write_text(json.dumps({"exit": status, **res}, indent=1, default=float))
     return status

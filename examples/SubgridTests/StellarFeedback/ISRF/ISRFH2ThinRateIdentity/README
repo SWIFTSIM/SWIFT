@@ -39,13 +39,13 @@ Three tests gate the run, and the exit status is 0 when all pass:
   computes the bar itself: it propagates the light through the gas of the run with a model of
   the transport, using the cone power and the star smoothing length of the snapshots, and takes
   the expected `Q` in each shell with a margin of 3 standard deviations over random emission
-  frames. The check takes about one minute. It needs scipy. It does not depend on the number
-  of reception slots. The bar applies to `level=5` and `star_mass=29.7`; with other values
-  this test prints `VOID` and the check exits with 4.
+  frames. The check takes about one minute. It needs scipy. The bar is gated at one
+  reception slot count only; other counts are untested. It applies to `level=5` and `star_mass=29.7`; with other values
+  this test prints `VOID` and the other tests still run.
 
 The check also prints the LW energy density in each shell over the thin-limit
 value `L / (4 pi r^2 c)` (`Q`) and the dissociation rate over the thin-limit kernel mean,
 both without a bar, and the `Q` of the three bar shells with its bar.
-Exit status 1 is a failed test, 2 a missing file, 3 a value that is not finite, 4 a run that
+Exit status 1 is a failed test (any test, also when the `Q` bar is void), 2 a missing file, 3 a value that is not finite, 4 a void `Q` bar with no failed test, or a run that
 does not meet the conditions of the check (one star, no dust, no periodic images, unlimited
 light speed).
