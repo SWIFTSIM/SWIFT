@@ -365,6 +365,8 @@ void space_regrid(struct space *s, int verbose) {
 #else
         initial_partition.type = INITPART_VECTORIZE;
 #endif
+        /* Keep balancing the volume if that was requested (this struct is
+         * otherwise uninitialised). */
         initial_partition.volume_weights = s->e->reparttype->volume_weights;
         initial_partition.volume_imbalance = s->e->reparttype->volume_imbalance;
         partition_initial_partition(&initial_partition, s->e->nodeID,

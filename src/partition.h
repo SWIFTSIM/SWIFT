@@ -56,6 +56,8 @@ struct partition {
   int grid[3];
   int usemetis;
   int metis_seed;
+
+  /* Also balance the volume of the domains, and the tolerance of that. */
   int volume_weights;
   float volume_imbalance;
 };
@@ -78,6 +80,8 @@ struct repartition {
   int usemetis;
   int metis_seed;
   int adaptive;
+
+  /* Also balance the volume of the domains, and the tolerance of that. */
   int volume_weights;
   float volume_imbalance;
 

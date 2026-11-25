@@ -1743,21 +1743,35 @@ output, SWIFT prints the seed that was used for the partition it kept.
 
 In simulations with a very inhomogeneous particle distribution, like zooms,
 balancing the particles or the work can produce domains that cover a very
-large volume. When using the distributed gravity mesh these domains are
-handed a correspondingly large part of the mesh, which can exhaust the memory
-of a rank. The optional::
+large volume. When using the distributed gravity mesh
+(``Gravity:distributed_mesh``) each rank allocates the part of the mesh
+covering the particles in its cells, so such a domain is handed a
+correspondingly large part of the mesh, which can exhaust the memory of that
+rank. The optional::
 
   DomainDecomposition:
     volume_weights:   0
     volume_imbalance: 2.0
 
-parameters can be used to guard against this. Setting ``volume_weights`` to 1
-gives METIS or ParMETIS a second balance constraint, the number of gravity
-mesh cells covered by each top-level cell, which is applied to the initial
-partition and all repartitions. ``volume_imbalance`` is the tolerance of that
-constraint, the allowed ratio of the largest domain volume to the mean, and
-must be greater than 1. Small values favour the volume balance at the cost of
-the particle or work balance. This option requires a gravity mesh.
+parameters can be used to guard against this, the values shown are the
+defaults. Setting ``volume_weights`` to 1 gives METIS or ParMETIS a second
+quantity to balance alongside the usual vertex weights, the number of gravity
+mesh cells covered by each top-level cell. This is used for the *memory*,
+*edgememory* and *region* initial partitions and for all the repartition
+strategies described below, it has no effect on the *grid* and *vectorized*
+initial partitions.
+
+``volume_imbalance`` is the tolerance of that balance, the largest volume a
+domain may cover as a multiple of the mean domain volume, and must be greater
+than 1. So the default allows a domain to cover up to twice the mean
+volume. Smaller values give a better volume balance at the cost of the
+particle or work balance.
+
+The mesh cells covered by a top-level cell are an estimate of the mesh memory
+it needs, as an empty or nearly empty cell needs less than this. The option
+requires a periodic gravity mesh and SWIFT will stop with an error if it is
+set without one. It is only useful when also using the distributed mesh, as
+otherwise all ranks hold the full mesh whatever the partition.
 
 Repartitioning:
 ^^^^^^^^^^^^^^^
@@ -1779,7 +1793,8 @@ the::
     repartition_type:
 
 parameter. The possible values for this are *none*, *fullcosts*, *edgecosts*,
-*memory*, *timecosts*.
+*memory*, *timecosts*. The ``volume_weights`` option described above also
+applies to all of these, except *none*.
 
     * *none*
 

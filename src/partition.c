@@ -332,7 +332,9 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_sizes_to_edges(s, weights_v, weights_e, cell_edge_offsets);
     }
 
-    /* Add the volume weights as a second balance constraint, if requested. */
+    /* Add the volume weights as a second balance constraint, if requested.
+     * With a single constraint we just pass on the usual weights untouched
+     * (which may be NULL). */
     double *vertexw = weights_v;
     int ncon = 1;
     if (initial_partition->volume_weights) {
@@ -386,7 +388,7 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
-    if (ncon == 2) free(vertexw);
+    if (ncon == 2) free(vertexw); /* Only ours when packed. */
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) swift_free("partition_edge_weights", weights_e);
     free(celllist);

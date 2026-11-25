@@ -396,7 +396,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
-  /* Add the volume weights as a second balance constraint, if requested. */
+  /* Add the volume weights as a second balance constraint, if requested.
+   * This needs to follow the rescaling above, which only knows about the
+   * usual weights, the volume weights are scaled when computed. With a single
+   * constraint we just pass on the usual weights untouched. */
   double *vertexw = weights_v;
   int ncon = 1;
   if (repartition->volume_weights) {
@@ -473,7 +476,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Clean up. */
   swift_free("partition_adjncy", inds);
   free(xadj);
-  if (ncon == 2) free(vertexw);
+  if (ncon == 2) free(vertexw); /* Only ours when packed. */
   if (vweights) free(weights_v);
   if (eweights) swift_free("partition_edge_weights", weights_e);
 }
@@ -528,7 +531,10 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   if (cell_edge_offsets == NULL) error("Failed to allocate cell_edge_offsets");
   int nadjcny = partition_count_edges(s, s->periodic, 0, cell_edge_offsets);
 
-  /* Add the volume weights as a second balance constraint, if requested. */
+  /* Add the volume weights as a second balance constraint, if requested.
+   * This needs to follow the rescaling above, which only knows about the
+   * usual weights, the volume weights are scaled when computed. With a single
+   * constraint we just pass on the usual weights untouched. */
   double *vertexw = weights;
   int ncon = 1;
   if (repartition->volume_weights) {
@@ -569,7 +575,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 
   /* Clean up edge info */
   free(cell_edge_offsets);
-  if (ncon == 2) free(vertexw);
+  if (ncon == 2) free(vertexw); /* Only ours when packed. */
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
