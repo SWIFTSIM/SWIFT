@@ -111,7 +111,10 @@ unchanged between the two snapshots of the window to float32 precision: a
 linear, cadence-converged regime.
 
 The window must also open when the field arrives. The field is first stored
-at the end of step 3, and the cooling uses it from step 4. A window that
+at the end of step 2, and the cooling uses it from step 3: the star of the
+shipped fixture is born at t = 0 and has light in its first step, so the
+field reaches the gas one step earlier than for a star lit one step after
+its birth. A window that
 opens later starts with the heating run ahead of the reference by the
 heating of the steps before it, and the cooling of the heating run responds
 to that lead. A snapshot's ``u`` also carries half a step of the rate in
