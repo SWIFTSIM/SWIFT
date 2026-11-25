@@ -17,7 +17,8 @@ run_name=${run_name:=$leg}
 ic_file=ICs_isrf_h2_velocity_shift.hdf5
 params=params.yml
 extra_ic_args="${widths:+--widths $widths}"
-extra_swift_args=""
+n_steps=${n_steps:=16}   # Steps of the run, keep at 16 or below; swift -n N runs N+1 steps and writes no final snapshot
+extra_swift_args="-n $((n_steps - 1))"
 stale_key_arg=""
 
 case "$leg" in

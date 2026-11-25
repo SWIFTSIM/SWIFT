@@ -67,6 +67,14 @@
     reach the tolerance from the full range of columns. */
 #define RADIATION_H2_SHIELDING_INVERSE_MAX_ITERATIONS 64
 
+/*! Largest column step of a hop over b5 + x, both in units of
+    #RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2, for which the factor after the hop
+    comes from series (#radiation_h2_shielding_log1p_small). */
+#define RADIATION_H2_SHIELDING_SERIES_MAX_STEP 0.125
+
+/*! Largest |y| for which #radiation_h2_shielding_exp_neg sums its series. */
+#define RADIATION_H2_SHIELDING_SERIES_MAX_EXPONENT 0.25
+
 /**
  * @brief Exponent of the fit, a function of the gas temperature and density.
  *
@@ -96,6 +104,51 @@ radiation_h2_shielding_exponent(const double T, const double n) {
 }
 
 /**
+ * @brief ln(1 + d) for 0 <= d <= #RADIATION_H2_SHIELDING_SERIES_MAX_STEP, as
+ * the series of 2 artanh(d / (2 + d)) to the 13th power. The relative
+ * truncation error is below 1e-18.
+ *
+ * @param d The argument.
+ * @return ln(1 + d).
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_h2_shielding_log1p_small(const double d) {
+  const double z = d / (2. + d);
+  const double z2 = z * z;
+  return 2. * z *
+         (1. + z2 * (1. / 3. +
+                     z2 * (1. / 5. +
+                           z2 * (1. / 7. + z2 * (1. / 9. + z2 * (1. / 11. +
+                                                                 z2 / 13.))))));
+}
+
+/**
+ * @brief exp(-y): the Taylor series to the 12th power for |y| up to
+ * #RADIATION_H2_SHIELDING_SERIES_MAX_EXPONENT, where its relative truncation
+ * error is below 5e-18, and the libm exponential beyond.
+ *
+ * @param y The argument.
+ * @return exp(-y).
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_h2_shielding_exp_neg(const double y) {
+  if (!(fabs(y) <= RADIATION_H2_SHIELDING_SERIES_MAX_EXPONENT)) return exp(-y);
+  double s = 1. / 479001600.;
+  s = 1. / 39916800. - y * s;
+  s = 1. / 3628800. - y * s;
+  s = 1. / 362880. - y * s;
+  s = 1. / 40320. - y * s;
+  s = 1. / 5040. - y * s;
+  s = 1. / 720. - y * s;
+  s = 1. / 120. - y * s;
+  s = 1. / 24. - y * s;
+  s = 1. / 6. - y * s;
+  s = 0.5 - y * s;
+  s = 1. - y * s;
+  return 1. - y * s;
+}
+
+/**
  * @brief The two terms of the self-shielding factor of an H2 column
  * (#radiation_h2_shielding_factor): the power term of the line cores and the
  * damped term of the line wings.
@@ -122,8 +175,8 @@ radiation_h2_shielding_factor_terms(const double N, const double alpha,
     Nc = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
   *x = Nc / RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2;
   const double root = sqrt(1. + *x);
-  *power = 0.965 * exp(-alpha * log1p(*x / b5));
-  *damped = 0.035 * exp(-8.5e-4 * root) / root;
+  *power = 0.965 * radiation_h2_shielding_exp_neg(alpha * log1p(*x / b5));
+  *damped = 0.035 * radiation_h2_shielding_exp_neg(8.5e-4 * root) / root;
 }
 
 /**
@@ -177,7 +230,7 @@ radiation_h2_shielding_log_factor_slope(const double N, const double alpha,
  */
 __attribute__((always_inline)) INLINE static double
 radiation_h2_shielding_factor_at_zero(void) {
-  return 0.965 + 0.035 * exp(-8.5e-4);
+  return 0.965 + 0.035 * radiation_h2_shielding_exp_neg(8.5e-4);
 }
 
 /**
@@ -293,12 +346,38 @@ radiation_h2_shielding_hop_factor(double *t, double *N, const double dN,
   if (!(b5 > 0.) || !(*N > 0. || dN > 0.))
     return radiation_h2_shielding_factor_at_zero();
   if (!(dN > 0.)) return radiation_h2_shielding_factor(*N, alpha, b5);
-  const double f_old = radiation_h2_shielding_factor(*N, alpha, b5);
-  const double f_new = radiation_h2_shielding_factor(*N + dN, alpha, b5);
+
+  double x_old, power_old, damped_old;
+  radiation_h2_shielding_factor_terms(*N, alpha, b5, &x_old, &power_old,
+                                      &damped_old);
+  double f_old = power_old + damped_old;
+  if (f_old > 1.) f_old = 1.;
+
   double N_new = *N + dN;
   if (N_new > RADIATION_H2_SHIELDING_COLUMN_CAP_CM2)
     N_new = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
   *N = N_new;
+
+  /* For a small step, the terms after the hop are those before it times
+     (1 + step)^-alpha and (root_old / root_new) e^(-8.5e-4 (root_new -
+     root_old)), both evaluated by series. */
+  const double x_new =
+      (N_new > 0. ? N_new : 0.) / RADIATION_H2_SHIELDING_COLUMN_UNIT_CM2;
+  const double dx = x_new - x_old;
+  const double step = dx / (b5 + x_old);
+  double f_new;
+  if (step <= RADIATION_H2_SHIELDING_SERIES_MAX_STEP) {
+    const double root_old = sqrt(1. + x_old);
+    const double root_new = sqrt(1. + x_new);
+    f_new =
+        power_old * radiation_h2_shielding_exp_neg(
+                        alpha * radiation_h2_shielding_log1p_small(step)) +
+        damped_old * (root_old / root_new) *
+            radiation_h2_shielding_exp_neg(8.5e-4 * dx / (root_old + root_new));
+    if (f_new > 1.) f_new = 1.;
+  } else {
+    f_new = radiation_h2_shielding_factor(N_new, alpha, b5);
+  }
   double ratio = f_new / f_old;
   if (ratio > 1.) ratio = 1.;
   *t *= ratio;

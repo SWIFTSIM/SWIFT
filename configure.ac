@@ -3108,8 +3108,8 @@ AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels
 
 # Reception slots of the GEAR ISRF packet transport: the number of cells of
 # the partition of directions in which a gas particle holds light. Each slot
-# adds 272 bytes to every gas particle at the default 8 near bins. 12 merges
-# fewer directions of light than 8 and costs 1088 bytes more per gas particle.
+# adds 304 bytes to every gas particle at the default 8 near bins. 12 merges
+# fewer directions of light than 8 and costs 1216 bytes more per gas particle.
 AC_ARG_WITH([isrf-packet-slots],
 	    [AS_HELP_STRING([--with-isrf-packet-slots=<N>], [Number of reception slots of the GEAR ISRF packet transport: 8 (octants of the frame), 12 (rhombic dodecahedron faces), 16 (octants halved), 24 (tetrakis hexahedron faces) or 48 (disdyakis dodecahedron faces) @<:@default: 12@:>@])],
 	    [with_isrf_packet_slots="$withval"],

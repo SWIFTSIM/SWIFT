@@ -20,7 +20,7 @@ Gravity:
 
 TimeIntegration:
   time_begin:        0.
-  time_end:          2.56e-11                   # 16 steps of dt_max; keep a power of two times dt_max
+  time_end:          1.024e-10                  # 64 steps of dt_max, an upper bound: run.sh stops the run after n_steps steps
   dt_min:            1e-14
   dt_max:            1.6e-12
 

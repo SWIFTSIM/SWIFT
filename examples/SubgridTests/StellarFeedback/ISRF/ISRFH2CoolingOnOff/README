@@ -32,7 +32,8 @@ Resolution, density and particle mass are the `level`, `gas_density`, `gas_mass`
 Three runs of the same box are needed, about 15 minutes and 50 MB each on 8 threads. `run.sh`
 uses the IC maker and the glass file of `../ISRFH2StarLit`. The `repeat` run repeats the `on`
 run unchanged: it measures how much the H2 differs between two runs with the same switch.
-`run.sh` stops if `snap/` or `restart/` exists (`force=1` removes them).
+Each run moves its `snap/` and `restart/` directories into its own leg directory. `run.sh` stops
+if `snap/` or `restart/` exists (`force=1` removes them), for instance after an interrupted run.
 ```
 leg=on ./run.sh
 leg=off ./run.sh

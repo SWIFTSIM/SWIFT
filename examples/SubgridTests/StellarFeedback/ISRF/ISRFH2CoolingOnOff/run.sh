@@ -48,6 +48,7 @@ mkdir snap
 mkdir -p "$run_name"
 cp used_parameters.yml output.log timesteps.txt fixture.json "$run_name"/
 mv snap "$run_name"/
+[ ! -e restart ] || mv restart "$run_name"/
 
 echo "Run leg=on, leg=off and leg=repeat, then compare them:"
 echo "python3 check_h2_cooling_onoff.py --on on/snap --off off/snap --repeat repeat/snap"
