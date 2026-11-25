@@ -96,11 +96,16 @@ mass). Grackle receives two numbers from it:
 with $\rho$ the physical gas density and
 $\sigma_{\rm H_2}/\bar E_{\rm LW}=1.4425\times10^{-7}$\,cm$^2$\,erg$^{-1}$,
 derived below for the Draine field (section~\ref{sec:isrf-lw-coefficient}).
-Grackle computes the photoelectric heating from $G_0$, with the efficiency law
-chosen in its parameters. SWIFT is built with one of four Grackle chemical
-networks, the Grackle build modes 0 to 3. Only build modes 2 and 3 track
-H$_2$, and only they receive $k_{\rm diss}$. In build modes 0 and 1,
-$k_{\rm diss}$ is zero: the LW band still heats through $G_0$, but it
+The code holds this value as a compile-time constant, not read from the yields
+table.
+The cooling library computes the photoelectric heating from $G_0$, with the
+efficiency law chosen in its parameters. The library is Grackle or geajay, and
+SWIFT is built with one chemical network of it. The networks are numbered 0
+(tabulated cooling), 1 (H and He), 2 (with H$_2$), 3 (with HD) and, in geajay
+only, 4. Grackle has the build modes \code{grackle\_0} to \code{grackle\_3},
+geajay the builds \code{geajay\_0} to \code{geajay\_4}. Only the networks 2 and
+above track H$_2$, and only they receive $k_{\rm diss}$. In the networks 0 and
+1, $k_{\rm diss}$ is zero: the LW band still heats through $G_0$, but it
 dissociates nothing. The light that dust absorbs on the
 way is not added to the gas as heat; the gas is heated only through $G_0$.
 The scheme also carries the photon number of each band. The LW photon number
@@ -192,7 +197,15 @@ range as the uncertainty:
   \label{eq:isrf-c-result}
 \end{equation}
 At $\bar E_{\rm LW}=12.2$\,eV $=1.9546\times10^{-11}$\,erg this is
-$\sigma_{\rm H_2}=2.82\times10^{-18}$\,cm$^2$. Two more
+$\sigma_{\rm H_2}=2.82\times10^{-18}$\,cm$^2$. The constant is
+\code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}, $1.4425206587\times10^{-7}$ in
+cm$^2$\,erg$^{-1}$ (\code{src/feedback/GEAR/radiation.h:113}); the mean of the
+three computations above is $1.44253\times10^{-7}$, which agrees with the
+constant within the rounding of the printed values. The energy $12.2$\,eV is
+\code{RADIATION\_LW\_PHOTON\_ENERGY\_EV} (:117, from \citealt{Kim2023},
+Table~3), which the rate does not read. The mean LW photon energy of the
+yields table sets the LW photon number of the light, not the rate
+(Section~\ref{sec:packet-state}). Two more
 errors are not in the half range. The rate of \citet{Sternberg2014} has two
 significant figures ($\pm0.9$ per cent). The line list assumes a $300$\,K
 population of the rotational levels; the rows of Table~2 of
@@ -266,6 +279,25 @@ $\bar E_b$ is the band luminosity over the band photon rate of the same stars.
 Both quantities are set at each feedback step of the
 star and are constant over it. The mean photon energy fixes the photon number
 that the star emits (Section~\ref{sec:packet-state}).
+
+\paragraph{Light at birth.} A star that has just formed has the age $0$ at the
+start and at the end of its first feedback call, so that call is a step of zero
+length. It ejects nothing: no supernova, wind or enrichment. It sets the
+radiation of the star all the same, with the values of age $0$, and these
+values give the light of the first step of the star. At age $0$ no star of the
+particle has left the main sequence. A particle that stands for one star reads
+$L_b$, $\bar E_b$ and the ionising photon rate at its mass and metallicity. A
+population integrates the table over the initial mass function up to the
+largest mass of the function, or up to the mass that splits the function for a
+population of its continuous part, with no cap by the main-sequence lifetime.
+The bolometric luminosity is then multiplied by the radiation pressure
+efficiency, as at every later step
+(Section~\ref{sec:rp-momentum}). The same call marks the star for the HII
+channel when photoionisation is on. Code:
+\code{stellar\_evolution\_compute\_radiation\_at\_birth}
+(\code{src/feedback/GEAR/stellar\_evolution.c:1842-1865}), called from the
+zero-length branch of \code{feedback\_will\_do\_feedback}
+(\code{src/feedback/GEAR/feedback\_common.c:341-354}).
 
 \paragraph{The population value of the dissociation rate.}
 \label{sec:isrf-lw-population}
@@ -786,7 +818,7 @@ $E_{k,b}$ & energy & band energy held in slot $k$ of a particle \\
 $N_{k,b}$ & energy & photon number of slot $k$, stored as $N E_{{\rm lo},b}$ (number of photons times the lower edge energy) \\
 $\bar E_b$ & energy & mean photon energy of the band, $E_{{\rm lo},b}\,E_{k,b}/N_{k,b}$ \\
 $f_b$ & -- & photon number per unit energy of a star, $E_{{\rm lo},b}/\bar E_b$ \\
-$K$ & -- & number of reception slots, 12 by default \\
+$K$ & -- & number of reception slots, 12 \\
 $\boldsymbol{n}_k$ & -- & unit direction of travel of slot $k$ \\
 $d_k$ & length & distance from the origin of slot $k$ to the particle \\
 $\boldsymbol{o}$ & length & offset from a particle to the origin of a packet \\
@@ -846,7 +878,7 @@ $u_{\rm LW}^{\rm own}$, $u_{\rm diss}^{\rm own}$, $\Sigma^{\rm own}$ & energy/ma
 \label{sec:packet-state}
 
 A gas particle holds one packet per reception slot. The slots are the cells of a
-partition of the sphere of directions into $K$ cells of equal solid angle. The
+partition of the sphere of directions into $K=12$ cells of equal solid angle. The
 cells are convex cones fixed in a rotated frame, so the mean of any set of
 directions of one cell lies in that cell. Each slot holds, for both bands, the
 energy $E_{k,b}$ and the photon number $N_{k,b}$, and for both bands together
@@ -866,36 +898,20 @@ of its spectrum in the band, clamped to the band,
 
 \paragraph{The slot function.} Let $\boldsymbol{y}=R\,\boldsymbol{x}$ be a
 direction $\boldsymbol{x}$ in the frame, $R$ a rotation matrix. The slot of
-a direction depends on the number $K$ of slots, a compile-time option.
-\begin{align}
-  K=8:&\quad k=\sum_{m=0}^{2} 2^m\,[\,y_m\ge 0\,], \label{eq:packet-slot8}\\
-  K=12:&\quad k=4m+2\,[\,y_{m_1}\ge0\,]+[\,y_{m_2}\ge0\,], \quad
-  m=\arg\min_{m'} |y_{m'}|, \label{eq:packet-slot12}\\
-  K=16:&\quad k=\sum_{m=0}^{2} 2^m\,[\,y_m\ge 0\,]+8\,[\,|y_1|>|y_0|\,],
-  \label{eq:packet-slot16}\\
-  K=24:&\quad k=4(2m+s)+2t+b, \label{eq:packet-slot24}\\
-  K=48:&\quad k=8(2m+s)+4t+2b+c, \label{eq:packet-slot48}
-\end{align}
-with $[\cdot]$ equal to 1 if the condition holds and 0 otherwise. In
-Eqs.~\eqref{eq:packet-slot24} and~\eqref{eq:packet-slot48}, $m$ is the axis of
-the largest $|y|$ (the lowest axis on a tie), $s=[\,y_m\ge0\,]$, $(m_1,m_2)$
-are the two other axes in axis order, $t=[\,|y_{m_1}|\ge|y_{m_2}|\,]$, and $b$
-and $c$ are $[\,y\ge0\,]$ for the larger and for the smaller of $|y_{m_1}|$ and
-$|y_{m_2}|$. In
-Eq.~\eqref{eq:packet-slot12}, $m$ is the axis of the smallest $|y|$, the
-lowest axis on a tie. The indices $(m_1,m_2)$ are the two other axes in axis
-order: $(1,2)$ for $m=0$, $(0,2)$ for $m=1$ and $(0,1)$ for $m=2$. For $K=8$
-the cells are the octants of the frame. For $K=12$ they are the faces of a
-rhombic dodecahedron (Fig.~\ref{fig:isrf-slots}). For $K=16$ they are the octants halved by the plane
-$|y_0|=|y_1|$; a tie $|y_0|=|y_1|$ goes to the lower half. For $K=24$ and $48$
-the cells are the faces of a tetrakis hexahedron and of a disdyakis
-dodecahedron (Sec.~\ref{sec:isrf-code}). A direction on a
+a direction is
+\begin{equation}
+  k=4m+2\,[\,y_{m_1}\ge0\,]+[\,y_{m_2}\ge0\,], \qquad
+  m=\arg\min_{m'} |y_{m'}|, \label{eq:packet-slot12}
+\end{equation}
+with $[\cdot]$ equal to 1 if the condition holds and 0 otherwise. Here $m$ is
+the axis of the smallest $|y|$, the lowest axis on a tie. The indices
+$(m_1,m_2)$ are the two other axes in axis order: $(1,2)$ for $m=0$, $(0,2)$
+for $m=1$ and $(0,1)$ for $m=2$. The cells are the faces of a rhombic
+dodecahedron (Fig.~\ref{fig:isrf-slots}). A direction on a
 border goes to the cell with the positive coordinate, whatever the sign of a
-zero. A direction in the same octant as another differs from it by at most
-$90^\circ$. The cells of $K=16$ lie inside octants, and those of $K=12$ also
-keep two directions within $90^\circ$: in a cell with $|y_m|\le y_{m_1}$ and
-$|y_m|\le y_{m_2}$, the dot product of two unit vectors is at least
-$y_{m_2}y'_{m_2}\ge0$. For every $K$, the opposite direction $-\boldsymbol y$
+zero. Two directions of one cell differ by at most $90^\circ$: in a cell with
+$|y_m|\le y_{m_1}$ and $|y_m|\le y_{m_2}$, the dot product of two unit vectors
+is at least $y_{m_2}y'_{m_2}\ge0$. The opposite direction $-\boldsymbol y$
 flips the signs that select the cell, so it falls in another slot unless it
 lies on a border.
 
@@ -905,8 +921,7 @@ lies on a border.
 \caption{The reception slots on the sphere of directions, in the slot frame
 $(y_0,y_1,y_2)$. Left: the 12 slots, front and back, coloured by the axis $m$
 of Eq.~\eqref{eq:packet-slot12} and numbered by $k$: convex cones of equal
-solid angle. Dots: the box axes, each at least $10^\circ$ from a border.
-Right: 8 and 16 slots (octants, halved octants).}
+solid angle. Dots: the box axes, each at least $10^\circ$ from a border.}
 \label{fig:isrf-slots}
 \end{figure}
 
@@ -917,9 +932,8 @@ Right: 8 and 16 slots (octants, halved octants).}
 \end{equation}
 with $\theta_x,\theta_y,\theta_z$ three run-time angles, default
 $(24^\circ,36^\circ,66^\circ)$. The default keeps every cell border at least
-$10^\circ$ from the six box axes for $K=12$ ($19^\circ$ for $K=8$, $6^\circ$
-for $K=16$, $24$ and $48$). Box diagonals can lie on a border: the $(1,1,1)$ directions are
-$0.01^\circ$ from one at $K=12$. A source or beam exactly along a box diagonal
+$10^\circ$ from the six box axes. Box diagonals can lie on a border: the
+$(1,1,1)$ directions are $0.01^\circ$ from one. A source or beam exactly along a box diagonal
 then gets an arbitrary but deterministic slot; rotate the frame for such a
 setup. A positive run-time seed offset multiplies $R$ on the left by a rotation drawn uniformly from that seed
 \citep{Shoemake1992}, so that repeats of a run use independent frames. The
@@ -991,7 +1005,7 @@ the packet's origin to the receiver (Fig.~\ref{fig:isrf-hop}a). Seen from the re
 \end{equation}
 because the origin is $d_{i,k}$ behind the sender along its direction. The
 slot of the receiver is the slot function of
-Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot48} applied to
+Eq.~\eqref{eq:packet-slot12} applied to
 $-\boldsymbol{o}_j$. The slot is chosen from this geometry and not from the
 slot index of the sender. The share carries the energy $\phi_{ij,k}E_{i,k,b}$
 and the photon number $\phi_{ij,k}N_{i,k,b}$ of each band $b$, changed by the
@@ -1199,6 +1213,27 @@ of the origin at the star, and it is absorbed along the distance
 $r=|\boldsymbol{o}|$ (Section~\ref{sec:packet-absorption}). The cell sums
 $S_c$ and the shares use the same weights, so the shares and the escaped
 fractions sum to one.
+
+\paragraph{The modes of delivery.} The shares and the escaped fractions do not
+depend on how fast the light moves. Four settings decide when a share
+reaches the gas.
+\begin{itemize}
+  \item With \code{GEARFeedback:ISRF\_propagation} $=0$ there is no transport:
+    the star adds the share to its receivers in the current step, attenuated
+    as described above under ``Without transport''.
+  \item With the transport and \code{ISRF\_packet\_light\_speed} $=$
+    \code{cap} (the default), the share waits in the near bins and far cells
+    of the receiver, with the delay of Section~\ref{sec:packet-lightspeed}.
+  \item With \code{fixed}, the same bins serve a fixed speed that bounds the
+    time step.
+  \item With \code{unlimited}, the no-delay test mode, the share goes to the
+    inbox of the receiver slot or, from a star of a coarser time bin, to the
+    reservoir of Section~\ref{sec:packet-reservoir}. The reservoir spreads the
+    share in equal parts over the step of the star.
+\end{itemize}
+A star books the light of its step at the end of the step. With a limited
+speed, the window in which the light arrives is set in
+Section~\ref{sec:packet-lightspeed} (paragraph ``Arrival bins and cells'').
 
 \subsubsection{Redshift and band-edge transfer}
 \label{sec:packet-transfer}
@@ -2048,7 +2083,7 @@ memory against the delays held exactly: up to $N_{\rm n}$ receiver steps
 (Section~\ref{sec:isrf-far-limit}). $N_{\rm n}$ is the compile-time constant
 \code{RADIATION\_PACKET\_BINS}, 8 by default and set with
 \code{CFLAGS="-DRADIATION\_PACKET\_BINS=<n>"} from 1 to 31. Each bin costs 20
-bytes in every slot, so $20\,N_{\rm slots}$ bytes in every gas particle. The
+bytes in every slot, so $20\times12=240$ bytes in every gas particle. The
 light of a hop of length $r$ arrives $r/(v\,\Delta t_r)+s$ receiver steps after
 the departure of the sender, with $s$ the ratio of the step of the sender to
 that of the receiver. With $q=v\,\Delta t_r/h_r$ and $r_h$ the smoothing length
@@ -2322,7 +2357,9 @@ transported LW rate out of its own H$_2$ shielding. With the switch off, the
 transport has no H$_2$ line absorption. When the H$_2$ self-shielding option of Grackle is on
 (Section~\ref{sec:isrf-problem}), Grackle multiplies $k_{\rm diss}$ by a
 factor \citep{WolcottGreenHaiman2019} from a local H$_2$ column: $n_{\rm H_2}$
-times a multiple of the kernel support radius, or times the Jeans length.
+times a multiple of the kernel support radius, or times the Jeans length. In
+geajay the corresponding key is \code{GeajayCooling:h2\_shielding\_length\_method},
+off (\code{none}) by default.
 
 % ---------------------------------------------------------------------------
 \subsection{Numerics: speed, conservation, rounding, accuracy and limits}
@@ -2595,7 +2632,7 @@ an expanding box: the redshift and the band-edge transfer have only the
 per-hop error sizes of Sections~\ref{sec:packet-transfer} and
 \ref{sec:isrf-rounding}, and the cosmological equation has no end-to-end test.
 The accuracy on several MPI ranks is not measured. There is no resolution
-study, no study of the slot count $K$, no comparison with an independent
+study, no comparison with an independent
 transfer code other than on beam tests, and no galaxy-scale test.
 
 \subsubsection{Limit: merged slots break the linearity of the superposition}
@@ -3261,7 +3298,7 @@ transmission & neighbours inside a regular cone of solid angle $4\pi/N_c$
   & every neighbour ahead ($\mu>10^{-3}$), weight $V_jW\mu^p$, $p=4$; the
   light escapes if there is none \\
 reception & $N_c$ cones, random rotation at each reception; a packet is binned
-  by its direction & $K=12$ cells (8, 16, 24 or 48), one fixed frame for all particles
+  by its direction & $K=12$ cells, one fixed frame for all particles
   and steps; a share is binned by the direction from its origin to the
   receiver \\
 merging & mean of the unit directions, weighted by the photon number and
@@ -3354,10 +3391,14 @@ band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
 through \code{cooling\_get\_isrf\_habing\_subgrid} and
 \code{cooling\_get\_LW\_dissociation\_rate\_subgrid}
 (\code{src/cooling/radiation\_rates\_to\_chemistry.h:289-339}). The second
-returns zero for the build modes \code{grackle\_0} and \code{grackle\_1}
+returns zero for the networks 0 and 1 of either library
 (\code{COOLING\_NETWORK} below 2, set by \code{--with-cooling}), whose
-chemical network has no H$_2$. Both are called in
-\code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:893-923}). \code{dust\_chemistry},
+chemical network has no H$_2$. For Grackle, both are called in
+\code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:893-923}).
+For geajay, the local $G_0$ is read when the particle field is used and the
+LW rate is resolved for a particle with extra data, in the preparation of the
+library inputs (\code{src/cooling/geajay/cooling.c:1262-1290}). The Grackle
+switches \code{dust\_chemistry},
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
 \code{cooling.c:1830-1835}. The H$_2$ self-shielding option of
 Sec.~\ref{sec:packet-absorb-summary} is \code{GrackleCooling:H2\_self\_shielding}
@@ -3373,14 +3414,18 @@ number is output only
 
 \paragraph{The light of a star (Sec.~\ref{sec:isrf-problem}).} A single star
 sets $L_{\rm PE}$, $L_{\rm LW}$ and its photon fractions in
-\code{stellar\_evolution\_compute\_preSN\_feedback\_individual\_star}
-(\code{src/feedback/GEAR/stellar\_evolution.c:1393-1418}), from the table
+\code{stellar\_evolution\_compute\_radiation\_individual\_star}
+(\code{src/feedback/GEAR/stellar\_evolution.c:1323-1431}, the bands at
+:1367-1395), from the table
 datasets \code{L\_PE}, \code{L\_LW}, \code{MeanPhotonEnergyPE} and
 \code{MeanPhotonEnergyLW}. A population does it in
-\code{stellar\_evolution\_compute\_preSN\_feedback\_spart} (:1665-1713), from
+\code{stellar\_evolution\_compute\_radiation\_spart} (:1565-1705), from
 \code{Integrated\_L\_PE}, \code{Integrated\_L\_LW} and the
 \code{Integrated\_MeanPhotonEnergy*} datasets, up to the mass
-\code{m\_sup\_capped} (:1638 for a table with a metallicity axis). The tables
+\code{m\_sup\_capped} (:1638 for a table with a metallicity axis). Both
+functions are called at each feedback step
+(\code{stellar\_evolution\_compute\_preSN\_feedback\_individual\_star}, :1470, and
+\code{stellar\_evolution\_compute\_preSN\_feedback\_spart}, :1806) and at birth (:1850, :1863). The tables
 are read by \code{radiation\_read\_data}
 (\code{src/feedback/GEAR/radiation\_table\_io.c:1457-1694}), which walks the
 descriptor table \code{radiation\_table\_datasets} (:1054-1101), one entry per
@@ -3417,10 +3462,8 @@ vanishes. They are stored as \code{band\_edge\_weight\_pe},
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:186-188}).
 
 \paragraph{The packet and its slots (Sec.~\ref{sec:packet-state}).} The slot
-count is \code{RADIATION\_PACKET\_SLOTS}, set by
-\code{--with-isrf-packet-slots=<N>} (\code{configure.ac:3048-3056}, default 12;
-\code{N} other than 8, 12, 16, 24 or 48 is an error; the default and the check are
-repeated at \code{src/feedback/GEAR\_thermal/feedback\_struct.h:168-218}). The
+count is \code{RADIATION\_PACKET\_SLOTS}, 12
+(\code{src/feedback/GEAR\_thermal/feedback\_struct.h:169}). The
 slot struct is \code{feedback\_isrf\_packet\_slot\_data}
 (\code{feedback\_struct.h:376-468}); the packet is
 \code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:474-526}).
@@ -3432,10 +3475,9 @@ Eq.~\eqref{eq:packet-photonfrac} is
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:973-981}).
-Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
-(\code{src/feedback/GEAR/radiation\_packet.c:1302-1313}), and
-Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot48} are
-\code{radiation\_packet\_slot} (\code{radiation\_packet.c:1341-1380}).
+Eq.~\eqref{eq:packet-slot12} is \code{radiation\_packet\_slot}
+(\code{src/feedback/GEAR/radiation\_packet.c:1341-1380}, the 12-slot branch at
+:1372-1377).
 Eq.~\eqref{eq:packet-frame} is \code{radiation\_packet\_build\_octant\_frame}
 (\code{radiation\_packet.c:1436-1488}). Its angles are
 \code{GEARFeedback:ISRF\_packet\_octant\_frame\_angles\_deg} and its seed offset
@@ -3449,32 +3491,19 @@ The pair loops pass a pointer to them to the hop
 (\code{feedback\_get\_radiation\_packet\_constants},
 \code{radiation\_propagation\_iact.h:37-41}).
 
-\paragraph{24 and 48 slots and their cost (Sec.~\ref{sec:packet-state}).}
-\code{--with-isrf-packet-slots=24} and \code{=48} select two more partitions
-(\code{radiation\_packet.c:1356-1370}). Let $m$ be the axis of the largest $|y|$
-(the lowest axis on a tie), $s=[\,y_m\ge0\,]$, $(m_1,m_2)$ the two other axes
-in axis order, $t=[\,|y_{m_1}|\ge|y_{m_2}|\,]$, and $b$ and $c$ equal to
-$[\,y\ge0\,]$ for the larger and for the smaller of $|y_{m_1}|$ and
-$|y_{m_2}|$. Then $k=4(2m+s)+2t+b$ for $K=24$, the faces of a tetrakis
-hexahedron (each face of the cube cut by its two diagonals), and
-$k=8(2m+s)+4t+2b+c$ for $K=48$, the faces of a disdyakis dodecahedron (those
-triangles halved again). Both are convex spherical triangles of solid angle
-$4\pi/K$, the opposite direction lies in another cell, and a tie goes to the
-same side whatever the sign of a zero. The default frame keeps the box axes
-$5.98^\circ$ from a border for both, against $10.54^\circ$ for $K=12$. The
+\paragraph{The cost of the slots (Sec.~\ref{sec:packet-state}).}
+The default frame keeps the box axes $10.54^\circ$ from a border. The
 border distance of the debug check is
 \code{radiation\_packet\_slot\_border\_distance} (\code{radiation\_packet.c:1395-1423}).
-\code{tests/testRadiationPacketSlotGeometry.c} checks these properties for the
-slot count of the build against the nearest of $K$ generator directions.
-Every gas particle holds the $K$ slots (\code{feedback\_struct.h:480}), so
+\code{tests/testRadiationPacketSlotGeometry.c} checks the convexity and the
+equal solid angle of the cells against the nearest of $K$ generator directions.
+Every gas particle holds the $K=12$ slots (\code{feedback\_struct.h:480}), so
 its size grows by 304 bytes per slot (paragraph on memory below). The gradient and the force loops visit
 every non-empty slot of the sender (\code{radiation\_packet.h:544}, :1039), so
-the work of a hop grows with the number of lit slots, at most $K$. More slots
-narrow the limit of Sec.~\ref{sec:packet-superposition}: two directions share a
-slot only if they are at most the largest angle inside a cell apart, $90^\circ$
-for $K=12$, $\arccos(1/3)=70.53^\circ$ for $K=24$ (two cube vertices of a cell)
-and $\arccos(1/\sqrt3)=54.74^\circ$ for $K=48$ (face centre and cube vertex).
-The energy of each band is exact at every $K$.
+the work of a hop grows with the number of lit slots, at most 12. Two
+directions share a slot only if they are at most $90^\circ$ apart, which sets
+the limit of Sec.~\ref{sec:packet-superposition}. The energy of each band is
+exact.
 
 \paragraph{The hop (Sec.~\ref{sec:packet-hop}).} The weight of
 Eq.~\eqref{eq:packet-share} is \code{radiation\_packet\_transmission\_weight}
@@ -3863,10 +3892,10 @@ the inherited sum with the redshift ledger at :1795-1798). It is reached from
 \code{feedback\_book\_removed\_gas\_to\_spart},
 \code{feedback\_book\_removed\_gas\_to\_sink} and
 \code{feedback\_book\_sink\_merger}
-(\code{src/feedback/GEAR/feedback\_common.c:1472-1505}). Gas that leaves a
+(\code{src/feedback/GEAR/feedback\_common.c:1548-1573}). Gas that leaves a
 non-periodic box is booked by \code{radiation\_packet\_book\_gas\_left\_box}
 (\code{radiation\_packet.c:1833-1835}) through
-\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1507-1515},
+\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1581-1583},
 called at \code{src/cell\_drift.c:340}). The sum over the ranks is
 \code{radiation\_packet\_reduce\_left\_box} (\code{radiation\_packet.c:1891-1915}),
 and \code{feedback\_write\_flavour}

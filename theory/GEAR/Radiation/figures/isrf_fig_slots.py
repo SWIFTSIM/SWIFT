@@ -1,4 +1,4 @@
-"""The reception slots on the sphere of directions, for 12, 8 and 16 slots."""
+"""The 12 reception slots on the sphere of directions."""
 
 import numpy as np
 import isrf_style as st
@@ -25,25 +25,14 @@ def faces(K: int) -> list:
     """Return (slot, colour index, corners) of each cell, corners in frame coordinates."""
     e = np.eye(3)
     out = []
-    if K == 12:
-        for m in range(3):
-            i, j = [a for a in range(3) if a != m]
-            for sa in (0, 1):
-                for sb in (0, 1):
-                    si, sj = 2 * sa - 1, 2 * sb - 1
-                    corner = lambda s: (s * e[m] + si * e[i] + sj * e[j]) / np.sqrt(3)
-                    quad = [si * e[i], corner(1), sj * e[j], corner(-1)]
-                    out.append((4 * m + 2 * sa + sb, m, quad))
-    else:
-        for o in range(8):
-            s = np.array([1 if o >> k & 1 else -1 for k in range(3)], float)
-            if K == 8:
-                tri = [s[0] * e[0], s[1] * e[1], s[2] * e[2], s[2] * e[2]]
-                out.append((o, bin(o).count("1") % 2, tri))
-            else:
-                mid = (s[0] * e[0] + s[1] * e[1]) / np.sqrt(2)
-                out.append((o, 0, [s[0] * e[0], mid, s[2] * e[2], s[2] * e[2]]))
-                out.append((o + 8, 1, [mid, s[1] * e[1], s[2] * e[2], s[2] * e[2]]))
+    for m in range(3):
+        i, j = [a for a in range(3) if a != m]
+        for sa in (0, 1):
+            for sb in (0, 1):
+                si, sj = 2 * sa - 1, 2 * sb - 1
+                corner = lambda s: (s * e[m] + si * e[i] + sj * e[j]) / np.sqrt(3)
+                quad = [si * e[i], corner(1), sj * e[j], corner(-1)]
+                out.append((4 * m + 2 * sa + sb, m, quad))
     return out
 
 
@@ -151,22 +140,16 @@ def main() -> None:
     R = frame()
     fig = plt.figure(figsize=(st.TEXT_WIDTH, 2.35))
     boxes = [
-        (0.0, 0.0, 0.36, 1.0),
-        (0.33, 0.0, 0.36, 1.0),
-        (0.70, 0.5, 0.26, 0.48),
-        (0.70, 0.0, 0.26, 0.48),
+        (0.04, 0.0, 0.46, 1.0),
+        (0.50, 0.0, 0.46, 1.0),
     ]
     views = [
         (22, 35, 12, True),
         (-22, 215, 12, True),
-        (22, 35, 8, False),
-        (22, 35, 16, False),
     ]
     titles = [
         "12 slots, front",
         "12 slots, back",
-        "8 slots (octants)",
-        "16 slots (half-octants)",
     ]
     for box, (el, az, K, lab), title in zip(boxes, views, titles):
         ax = fig.add_axes(box, projection="3d", computed_zorder=False)

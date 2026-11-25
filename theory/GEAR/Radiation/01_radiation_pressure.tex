@@ -188,8 +188,10 @@ for a star with no gas neighbours this step, since
 Equation~(\ref{eq:rp-tauIR}) is \code{radiation\_get\_physical\_optical\_depth}
 (\code{radiation\_pressure.c:94-103}) with \code{radiation\_get\_physical\_opacity}
 (\code{radiation\_pressure.c:72-81}). The efficiency scales $L_{\rm bol}$ in
-\code{feedback\_will\_do\_feedback}
-(\code{src/feedback/GEAR/feedback\_common.c:270-407}, lines 389-392). $Z_\star$ is
+\code{feedback\_apply\_radiation\_pressure\_efficiency}
+(\code{src/feedback/GEAR/feedback\_common.c:250-262}), which
+\code{feedback\_will\_do\_feedback} calls at the end of a step (:408) and for a
+star at its birth (:345), where $L_{\rm bol}$ is the value of age $0$. $Z_\star$ is
 accumulated in \code{radiation\_iact\_nonsym\_feedback\_density}
 (\code{src/feedback/GEAR/radiation\_iact.h:63-104}, lines 101-103) and normalized in
 \code{feedback\_prepare\_radiation\_feedback} (\code{radiation\_iact.h:161-186},
