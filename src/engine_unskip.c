@@ -71,6 +71,56 @@ struct unskip_data {
   enum task_broad_types task_types[task_broad_types_count];
 };
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Check that the chemistry flux prep pass is active wherever the force
+ * loop is.
+ *
+ * A force task waits for its prep task through the chemistry flux ghosts of
+ * its local supers. The scheduler ignores a skipped dependency, so a skipped
+ * prep task or ghost would let the force loop read an outflow that is not
+ * complete, with no error.
+ *
+ * @param e The #engine.
+ */
+static void engine_check_chemistry_flux_prep_activation(
+    const struct engine *e) {
+
+  if (!chemistry_need_flux_prep_loop(e->chemistry)) return;
+
+  const struct scheduler *s = &e->sched;
+  for (int k = 0; k < s->nr_tasks; k++) {
+    const struct task *t = &s->tasks[k];
+    if (t->skip || t->subtype != task_subtype_force) continue;
+    if (t->type != task_type_self && t->type != task_type_pair) continue;
+
+    const struct task *prep = NULL;
+    for (const struct link *l = t->ci->hydro.chemistry_flux_prep; l != NULL;
+         l = l->next) {
+      if (l->t->ci == t->ci && l->t->cj == t->cj) {
+        prep = l->t;
+        break;
+      }
+    }
+    if (prep == NULL || prep->skip)
+      error("An active %s force task has no active chemistry flux prep task.",
+            taskID_names[t->type]);
+
+    const struct cell *cells[2] = {t->ci, t->cj};
+    for (int n = 0; n < 2; n++) {
+      const struct cell *c = cells[n];
+      if (c == NULL || c->nodeID != e->nodeID) continue;
+      const struct task *ghost = c->hydro.super->hydro.chemistry_flux_ghost;
+      if (ghost != NULL && ghost->skip)
+        error(
+            "An active %s force task has a skipped chemistry flux ghost on "
+            "its local cell.",
+            taskID_names[t->type]);
+    }
+  }
+}
+#endif
+
 /**
  * @brief Unskip any hydro tasks associated with active cells.
  *
@@ -493,6 +543,10 @@ void engine_unskip(struct engine *e) {
   threadpool_map(&e->threadpool, engine_do_unskip_mapper, local_active_cells,
                  num_active_cells * multiplier, sizeof(int), /*chunk=*/1,
                  &data);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (with_hydro) engine_check_chemistry_flux_prep_activation(e);
+#endif
 
 #ifdef WITH_PROFILER
   ProfilerStop();

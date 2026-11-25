@@ -835,6 +835,14 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_gradient, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
+    /* The prep pass must read the same foreign particles as the force loop.
+       Only xv is received for an inactive foreign cell. */
+    for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
+         l = l->next) {
+      scheduler_addunlock(s, t_xv, l->t);
+      scheduler_addunlock(s, t_gradient, l->t);
+      scheduler_addunlock(s, l->t, tend);
+    }
 #else
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
@@ -2670,6 +2678,14 @@ static inline void engine_make_chemistry_flux_prep_task(struct engine *e,
     engine_make_chemistry_flux_prep_dependencies(sched, prep, force, ci);
   if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super))
     engine_make_chemistry_flux_prep_dependencies(sched, prep, force, cj);
+
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+  /* As for the force pair: an inactive local cell next to an active foreign
+     cell has no density or gradient pair that waits for its sort. */
+  scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, prep);
+  if (ci->hydro.super != cj->hydro.super)
+    scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, prep);
+#endif
 }
 
 #else
@@ -3261,9 +3277,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              with_timestep_limiter);
       }
 
-      /* TODO(MPI): the prep loop on several ranks needs a send and a recv
-         of the prep-loop state of foreign cells. The chemistry modules that
-         use the prep loop refuse runs on several ranks. */
+      /* TODO(MPI): the force loop reads the theta of a foreign donor, but no
+         task sends it after the chemistry flux ghost of its rank. */
       if (with_chemistry_flux_prep)
         engine_make_chemistry_flux_prep_task(e, ci, cj, flags, t_force);
 #else

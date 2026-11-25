@@ -1724,6 +1724,53 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Activate a chemistry flux prep task and the chemistry flux ghosts of
+ * the supers of its cells.
+ *
+ * The ghost of an inactive cell is activated too: it finalises the
+ * per-particle state of the prep loop, and the force loop reads it on both
+ * sides of a pair.
+ *
+ * @param t The chemistry flux prep task.
+ * @param s The #scheduler.
+ */
+static void cell_activate_chemistry_flux_prep(struct task *t,
+                                              struct scheduler *s) {
+  scheduler_activate(s, t);
+
+  const struct cell *ci = t->ci;
+  const struct cell *cj = t->cj;
+  if (ci->hydro.super->hydro.chemistry_flux_ghost != NULL)
+    scheduler_activate(s, ci->hydro.super->hydro.chemistry_flux_ghost);
+  if (cj != NULL && cj->hydro.super->hydro.chemistry_flux_ghost != NULL)
+    scheduler_activate(s, cj->hydro.super->hydro.chemistry_flux_ghost);
+}
+
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
+/**
+ * @brief Is this a pair task between an inactive local cell and an active
+ * foreign cell?
+ *
+ * @param t The #task.
+ * @param e The #engine.
+ */
+static int cell_pair_is_local_inactive_foreign_active(const struct task *t,
+                                                      const struct engine *e) {
+  if (t->type != task_type_pair) return 0;
+
+  const struct cell *ci = t->ci;
+  const struct cell *cj = t->cj;
+  const int nodeID = e->nodeID;
+  const int ci_active = cell_is_active_hydro(ci, e);
+  const int cj_active = cell_is_active_hydro(cj, e);
+  return (!ci_active && ci->nodeID == nodeID && cj_active &&
+          cj->nodeID != nodeID) ||
+         (!cj_active && cj->nodeID == nodeID && ci_active &&
+          ci->nodeID != nodeID);
+}
+#endif
+
+/**
  * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -2003,20 +2050,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
-    for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
-         l = l->next) {
-      scheduler_activate(s, l->t);
-
-      /* Activate the chemistry flux ghosts of both cells, even of an
-         inactive one: the ghost finalises the per-particle state of the
-         prep loop, and the force loop reads it on both sides of a pair. */
-      struct cell *ci = l->t->ci;
-      struct cell *cj = l->t->cj;
-      if (ci->hydro.super->hydro.chemistry_flux_ghost != NULL)
-        scheduler_activate(s, ci->hydro.super->hydro.chemistry_flux_ghost);
-      if (cj != NULL && cj->hydro.super->hydro.chemistry_flux_ghost != NULL)
-        scheduler_activate(s, cj->hydro.super->hydro.chemistry_flux_ghost);
-    }
+    for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL; l = l->next)
+      cell_activate_chemistry_flux_prep(l->t, s);
 
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
@@ -2045,33 +2080,24 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
    * so, we have to do this now, from the active remote cell). */
   else if (c->nodeID != nodeID && c_active) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
-    /* TODO(MPI): with the chemistry flux prep loop on several ranks, the
-       force pairs activated here also need their prep tasks and the
-       chemistry flux ghosts of both supers. The chemistry modules that use
-       the prep loop refuse runs on several ranks. */
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       struct task *t = l->t;
+      if (!cell_pair_is_local_inactive_foreign_active(t, e)) continue;
 
-      if (t->type != task_type_pair) continue;
+      scheduler_activate(s, t);
 
-      struct cell *ci = l->t->ci;
-      struct cell *cj = l->t->cj;
+      /* Store current values of dx_max and h_max. */
+      cell_activate_subcell_hydro_tasks(t->ci, t->cj, s, with_timestep_limiter);
+    }
 
-      const int ci_active = cell_is_active_hydro(ci, e);
-      const int cj_active = cell_is_active_hydro(cj, e);
-      const int ci_nodeID = ci->nodeID;
-      const int cj_nodeID = cj->nodeID;
-      if ((!ci_active && ci_nodeID == nodeID && cj_active &&
-           cj_nodeID != nodeID) ||
-          (!cj_active && cj_nodeID == nodeID && ci_active &&
-           ci_nodeID != nodeID)) {
-        scheduler_activate(s, l->t);
-
-        /* Store current values of dx_max and h_max. */
-        if (t->type == task_type_pair) {
-          cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
-        }
-      }
+    /* The flux ghost of the inactive local cell must also run, so that the
+       force pair waits for the outflow of this prep pair. TODO(MPI): no task
+       sends the theta of a foreign donor between the prep and the force
+       loop. */
+    for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
+         l = l->next) {
+      if (cell_pair_is_local_inactive_foreign_active(l->t, e))
+        cell_activate_chemistry_flux_prep(l->t, s);
     }
 #endif
   }
