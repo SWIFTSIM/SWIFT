@@ -446,8 +446,10 @@ chemistry_debug_check_foreign_theta(const struct part *restrict p,
   if (p->chemistry_data.ti_fct_theta != t_current)
     error(
         "The positivity limiter factor of the foreign particle %lld is from "
-        "ti=%lld, not from the current step ti=%lld: its theta message was "
-        "not unpacked before the force loop.",
+        "ti=%lld, not from the current step ti=%lld (-1: not received). "
+        "Either its theta message was not unpacked before the force loop, or "
+        "it was packed before the chemistry flux ghost of its rank, or a "
+        "whole-part receive overwrote it after the unpack.",
         p->id, p->chemistry_data.ti_fct_theta, t_current);
 }
 #endif
