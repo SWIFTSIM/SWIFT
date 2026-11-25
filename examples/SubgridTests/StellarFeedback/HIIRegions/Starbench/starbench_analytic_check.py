@@ -19,7 +19,7 @@
 """
 Compare the simulated growth of the HII region radius against the STARBENCH
 semi-empirical D-type expansion formula (Bisbas et al. 2015, MNRAS 453, 1324,
-arXiv:1507.05621), Eqns 8, 11, 28 and 29.
+arXiv:1507.05621), Eqns 8, 12, 28 and 29.
 
 Unlike the classical Spitzer (1978) solution used by
 stromgren_analytic_check.py, STARBENCH is a numerically-integrated blend of
@@ -29,18 +29,24 @@ agree with high-resolution simulations to <~2%:
   Eqn 8  (Raga-I):  the exact pressure-driven thin-shell ODE (Spitzer's
                      closed-form solution is what you get by dropping the
                      small mu_i*T_o/(mu_o*T_i) term from this).
-  Eqn 11 (Raga-II): Hosokawa & Inutsuka (2006)'s ODE, including the inertia
-                     of the swept-up shell (2nd order in R).
+  Eqn 12 (Raga-II): Hosokawa & Inutsuka (2006)'s shell-inertia solution as
+                     printed in the paper. It is not the exact first integral
+                     of Eqn 11 (that has -c_o^2 where Eqn 12 has -c_o^2/2, and
+                     stalls near 2.80 pc for the paper's inputs; Eqn 12 stalls
+                     at 4.452 pc). The paper's text names Eqn 11, but its
+                     figures and Table 4 follow Eqn 12, so this check does too.
+                     The curve starts at R_St and stops at the stagnation
+                     radius R_STAG, where its square root reaches 0.
   Eqn 28: R_SB = R_II + f_SB * (R_I - R_II)
   Eqn 29: f_SB = 1 - 0.733 * exp(-t / 1 Myr)
 
 This is the STARBENCH paper's own late-phase test density and source
-(rho_o=5.21e-21 g/cm3, Q_H=1e49/s) at this code's own Z=0 ionized/neutral
-temperature floors (T_i~47500 K, T_o~1e3 K via SPH:minimal_temperature),
-not the papers' flat T_i=1e4 K -- the comparison is evaluated at whatever
-T_i/T_o this run actually used (--T-ionized-K/--T-neutral-K), not
-hardcoded to the papers' own numbers. See this example's README for the
-full parameter derivation and why Z=0 (not the Z/Zsun~0.231 workaround
+(rho_o=5.21e-21 g/cm3, Q_H=1e49/s). The comparison is evaluated at the
+ionized and neutral temperatures this run actually holds, not at the papers'
+flat T_i=1e4 K and T_o=1e3 K: T_i is measured from the tagged gas and T_o from
+the never-tagged gas before the wave of the shell reaches it
+(--T-ionized-K and --T-neutral-K override them). See this example's README
+for the parameter derivation and why Z=0 (not the Z/Zsun~0.231 workaround
 used elsewhere in this project) is the right choice here.
 
 Two r_hii conventions are reported, because the photon-count budget can
@@ -94,6 +100,7 @@ import glob
 import os
 import re
 import sys
+from typing import List, Optional, Sequence, Tuple
 
 import h5py
 import numpy as np
@@ -130,8 +137,18 @@ def alpha_b_hui_gnedin(T):
 # -----------------------------------------------------------------------------
 # STARBENCH semi-empirical formula (Bisbas et al. 2015)
 # -----------------------------------------------------------------------------
+def stagnation_radius_pc(R_St_pc: float, c_i_km_s: float, c_o_km_s: float) -> float:
+    """Return the stagnation radius of Eqn 12, R_STAG = R_St (8/3)^(2/3) (c_i/c_o)^(4/3).
+
+    @param R_St_pc Initial Stromgren radius (pc).
+    @param c_i_km_s, c_o_km_s Ionized/neutral isothermal sound speeds (km/s).
+    @return R_STAG (pc).
+    """
+    return R_St_pc * (8.0 / 3.0) ** (2.0 / 3.0) * (c_i_km_s / c_o_km_s) ** (4.0 / 3.0)
+
+
 def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K):
-    """Solve Eqns 8 and 11 numerically and blend via Eqns 28-29.
+    """Solve Eqns 8 and 12 numerically and blend via Eqns 28-29.
 
     mu_i and mu_o are the ionized and neutral mean molecular weights the
     curve is evaluated at, and must be the same ones c_i_km_s and c_o_km_s
@@ -141,7 +158,7 @@ def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K
     checks pass the run's own measured composition instead, see
     resolve_composition().
 
-    @param t_myr Array of times (Myr) to evaluate at, must start > 0.
+    @param t_myr Array of times (Myr) to evaluate at, within [0, inf).
     @param R_St_pc Initial Stromgren radius (pc).
     @param c_i_km_s, c_o_km_s Ionized/neutral isothermal sound speeds (km/s).
     @param mu_i, mu_o Ionized/neutral mean molecular weights.
@@ -151,7 +168,6 @@ def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K
     pc_to_km = 3.0857e13
     Myr_to_s = 3.15576e13
     c_i = c_i_km_s * Myr_to_s / pc_to_km  # pc / Myr
-    c_o = c_o_km_s * Myr_to_s / pc_to_km
 
     def rhs_raga1(t, y):
         R = y[0]
@@ -159,41 +175,34 @@ def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K
         term2 = (mu_i * T_o_K) / (mu_o * T_i_K) * (R_St_pc / R) ** (-0.75)
         return [c_i * (ratio - term2)]
 
-    def rhs_raga2_conservative(t, y):
-        # w = R^3 * dR/dt (proportional to the shell's physical momentum);
-        # avoids the (3/R)(dR/dt)^2 term's numerical stiffness in the naive
-        # R'' + (3/R)R'^2 = ... form.
-        R, w = y
-        dRdt = w / R**3
-        dwdt = 3.0 * R_St_pc**1.5 * c_i**2 * np.sqrt(R) - 3.0 * c_o**2 * R**2
-        return [dRdt, dwdt]
+    outside_pressure = 0.5 * (mu_i * T_o_K) / (mu_o * T_i_K)
 
-    t0 = min(t_myr.min(), 1e-4)
-    t_span = [t0, t_myr.max()]
+    def rhs_raga2(t, y):
+        # The square root is clamped at 0: the shell stops at R_STAG instead
+        # of the argument turning negative.
+        radicand = 4.0 / 3.0 * (R_St_pc / y[0]) ** 1.5 - outside_pressure
+        return [c_i * np.sqrt(max(radicand, 0.0))]
+
+    t_span = [0.0, t_myr.max()]
 
     sol1 = solve_ivp(rhs_raga1, t_span, [R_St_pc], t_eval=t_myr, rtol=1e-10, atol=1e-12)
     if sol1.status != 0:
         raise RuntimeError(f"Raga-I (Eqn 8) integration failed: {sol1.message}")
 
-    # v(0) = c_i matches Raga-I's own initial expansion rate at R=R_St; a
-    # larger initial velocity (e.g. sqrt(4/3)*c_i, Eqn 13's implied slope)
-    # sends this ODE into an unstable oscillation that crashes through R=0
-    # well before 3 Myr -- verified empirically, not just in principle.
-    w0 = R_St_pc**3 * c_i
     sol2 = solve_ivp(
-        rhs_raga2_conservative,
+        rhs_raga2,
         t_span,
-        [R_St_pc, w0],
+        [R_St_pc],
         t_eval=t_myr,
-        method="Radau",
         rtol=1e-10,
         atol=1e-12,
+        max_step=1e-3,
     )
     if sol2.status != 0:
-        raise RuntimeError(f"Raga-II (Eqn 11) integration failed: {sol2.message}")
+        raise RuntimeError(f"Raga-II (Eqn 12) integration failed: {sol2.message}")
 
     R_I = sol1.y[0]
-    R_II = sol2.y[0]
+    R_II = np.minimum(sol2.y[0], stagnation_radius_pc(R_St_pc, c_i_km_s, c_o_km_s))
     f_SB = 1.0 - 0.733 * np.exp(-t_myr / 1.0)  # Eqn 29
     R_SB = R_II + f_SB * (R_I - R_II)  # Eqn 28
     return R_I, R_II, R_SB
@@ -608,6 +617,162 @@ def resolve_composition(files, uses_neutral):
     )
 
 
+# The shell wave reaches the gas in a series of radial shells one after the
+# other. The shells below are fractions of the box half-width, from the
+# inner edge of the far field outwards. The far field is uniform while the
+# medians of its shells agree within this fraction.
+FAR_SHELL_EDGES = (0.5, 0.6, 0.8, 1.0, 1.2, 1.8)
+FAR_FIELD_UNIFORMITY = 0.02
+# Largest change of the far-field temperature between successive snapshots for
+# the gas to count as warmed.
+PLATEAU_CHANGE = 0.01
+
+
+def never_tagged_far_field_temperatures_K(
+    filename: str, min_count: int = 20
+) -> Tuple[Optional[List[np.ndarray]], bool]:
+    """Return the temperatures of the never-tagged gas in the far-field shells.
+
+    A particle is never-tagged when its HIIStarIDs entry matches no star of
+    the snapshot. Its temperature uses its own mean molecular weight from the
+    species arrays, or MU_NEUTRAL_FALLBACK when the run has none.
+
+    @param filename Snapshot file.
+    @param min_count Fewest particles each shell must hold.
+    @return (list of per-shell temperature arrays [K], whether mu was
+    measured), or (None, False) when the snapshot holds no star or a shell
+    holds fewer than min_count particles.
+    """
+    with h5py.File(filename, "r") as h:
+        if "PartType4" not in h:
+            return None, False
+        gas = h["PartType0"]
+        star_ids = h["PartType4"]["ParticleIDs"][:]
+        box = np.asarray(h["Header"].attrs["BoxSize"], dtype=np.float64)
+        dx = gas["Coordinates"][:] - h["PartType4"]["Coordinates"][0]
+        dx -= box * np.round(dx / box)
+        r = np.linalg.norm(dx, axis=1)
+        half_width = 0.5 * float(np.min(box))
+        never = ~np.isin(gas["HIIStarIDs"][:], star_ids)
+        u_L = h["Units"].attrs["Unit length in cgs (U_L)"][0]
+        u_t = h["Units"].attrs["Unit time in cgs (U_t)"][0]
+        u_cgs = gas["InternalEnergies"][:] * (u_L / u_t) ** 2
+        mu_measured = "HI" in gas
+        if mu_measured:
+            inv_mu = (
+                gas["HI"][:]
+                + 2.0 * gas["HII"][:]
+                + 0.25 * gas["HeI"][:]
+                + 0.5 * gas["HeII"][:]
+                + 0.75 * gas["HeIII"][:]
+            )
+            mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+        else:
+            mu = MU_NEUTRAL_FALLBACK
+        T = u_cgs * (2.0 / 3.0) * mu * const.m_p.cgs.value / const.k_B.cgs.value
+        shells = []
+        for lo, hi in zip(FAR_SHELL_EDGES[:-1], FAR_SHELL_EDGES[1:]):
+            in_shell = never & (r >= lo * half_width) & (r < hi * half_width)
+            if np.sum(in_shell) < min_count:
+                return None, mu_measured
+            shells.append(T[in_shell])
+        return shells, mu_measured
+
+
+def measure_neutral_temperature_K(
+    files: Sequence[str], min_count: int = 20
+) -> Tuple[Optional[float], Optional[str]]:
+    """Measure the median temperature of the never-tagged far-field gas, in the
+    last snapshot before the shell wave reaches it.
+
+    The neutral gas warms for about 0.3 Myr from its initial temperature, then
+    a density and temperature wave from the shell crosses the box. The wave
+    arrival is the first snapshot where the shell medians of the far field
+    differ by more than FAR_FIELD_UNIFORMITY; the snapshot before it is used.
+    A snapshot qualifies only on the warm plateau: its temperature differs
+    from the previous snapshot's by at most PLATEAU_CHANGE. The first snapshot
+    (initial temperature) never qualifies, so a series too sparse to show the
+    plateau gives no value.
+
+    @param files Snapshot filenames, in time order.
+    @param min_count Fewest particles each far-field shell must hold.
+    @return (median T [K] over the far field, source filename), or
+    (None, None) when no snapshot is on the plateau or a shell median is not
+    finite.
+    """
+    chosen = (None, None)
+    previous_K = None
+    for filename in files:
+        shells, _ = never_tagged_far_field_temperatures_K(filename, min_count)
+        if shells is None:
+            previous_K = None
+            continue
+        medians = np.array([np.median(s) for s in shells])
+        if not np.all(np.isfinite(medians)) or np.any(medians <= 0.0):
+            return None, None
+        if np.max(medians) / np.min(medians) - 1.0 > FAR_FIELD_UNIFORMITY:
+            break
+        T_K = float(np.median(np.concatenate(shells)))
+        if previous_K is not None and abs(T_K / previous_K - 1.0) <= PLATEAU_CHANGE:
+            chosen = (T_K, filename)
+        previous_K = T_K
+    return chosen
+
+
+def resolve_T_neutral_K(
+    requested_K: Optional[float], files: Sequence[str]
+) -> Tuple[float, str]:
+    """Return (T_o [K] the reference is computed at, verdict marker).
+
+    None (the default) means "measure it from the run's own never-tagged gas".
+    An explicit value is honoured, but when it disagrees with the measured one
+    by more than 10% the marker appended to every verdict token says so, as
+    resolve_T_ionized_K does.
+
+    @param requested_K Explicit T_o [K], or None to measure it.
+    @param files Snapshot filenames, in time order.
+    @return (T_o [K], "" or a " (T_o MISMATCH: ...)" verdict marker).
+    """
+    T_measured_K, source = measure_neutral_temperature_K(files)
+    if requested_K is None:
+        if T_measured_K is None:
+            raise RuntimeError(
+                "Could not measure T_o: no snapshot holds uniform far-field "
+                "gas on the warm plateau (the series needs snapshots at most "
+                "0.05 Myr apart up to 0.3 Myr). Pass --T-neutral-K explicitly."
+            )
+        print(
+            f"T_neutral          : {T_measured_K:.4g} K "
+            f"(measured from never-tagged far-field gas, {source})"
+        )
+        return T_measured_K, ""
+    if T_measured_K is not None and abs(T_measured_K / requested_K - 1.0) > 0.1:
+        print("\n" + "!" * 72)
+        print(
+            f"WARNING: --T-neutral-K {requested_K:.4g} K disagrees with the "
+            f"temperature this run actually holds its neutral gas at "
+            f"({T_measured_K:.4g} K, measured in {source})."
+        )
+        print(
+            "The outside pressure of the reference is computed at a "
+            "temperature the run did not use. Omit --T-neutral-K to use "
+            "the measured value."
+        )
+        print("!" * 72 + "\n")
+        return requested_K, (
+            f" (T_o MISMATCH: reference {requested_K:.4g} K vs measured "
+            f"{T_measured_K:.4g} K)"
+        )
+    return requested_K, ""
+
+
+def verdict_for(rel_error: float, tol: float) -> str:
+    """Return "PASS" when rel_error is finite and within tol, else "FAIL"."""
+    if not np.isfinite(rel_error):
+        return "FAIL"
+    return "PASS" if rel_error <= tol else "FAIL"
+
+
 def resolve_T_ionized_K(requested_K, files):
     """Return (T_i [K] the reference is computed at, verdict marker).
 
@@ -680,15 +845,22 @@ def main():
         "explicit value overrides the measurement but warns loudly if the "
         "two disagree by >10%%.",
     )
-    parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
+    parser.add_argument(
+        "--T-neutral-K",
+        type=float,
+        default=None,
+        dest="T_neutral_K",
+        help="Neutral-gas temperature the reference is computed at. Default: "
+        "median of the never-tagged far-field gas in the last snapshot "
+        "before the shell wave reaches it. An explicit value overrides the "
+        "measurement but warns loudly if the two disagree by >10%%.",
+    )
     args = parser.parse_args()
-    T_ionized_K, T_i_marker = resolve_T_ionized_K(
-        args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
-    )
-    mu_i, mu_o, mu_marker = resolve_composition(
-        sorted(glob.glob(args.snapshot_glob)), uses_neutral=True
-    )
-    verdict_marker = T_i_marker + mu_marker
+    snapshot_files = sorted(glob.glob(args.snapshot_glob))
+    T_ionized_K, T_i_marker = resolve_T_ionized_K(args.T_ionized_K, snapshot_files)
+    T_neutral_K, T_o_marker = resolve_T_neutral_K(args.T_neutral_K, snapshot_files)
+    mu_i, mu_o, mu_marker = resolve_composition(snapshot_files, uses_neutral=True)
+    verdict_marker = T_i_marker + T_o_marker + mu_marker
 
     (
         t_sim,
@@ -709,14 +881,14 @@ def main():
     alpha_B = alpha_b_hui_gnedin(T_ionized_K * u.K)
     R_St = ((3 * Q_H / (4 * np.pi * alpha_B * n_H**2)) ** (1 / 3.0)).to(u.pc)
     c_i = (np.sqrt(const.k_B * T_ionized_K * u.K / (mu_i * const.m_p))).to(u.km / u.s)
-    c_o = (np.sqrt(const.k_B * args.T_neutral_K * u.K / (mu_o * const.m_p))).to(
-        u.km / u.s
-    )
+    c_o = (np.sqrt(const.k_B * T_neutral_K * u.K / (mu_o * const.m_p))).to(u.km / u.s)
+    R_stag = stagnation_radius_pc(R_St.to(u.pc).value, c_i.value, c_o.value) * u.pc
 
     print(f"Star mass          : {star_mass_msun:.3f} Msun")
     print_n_H_with_source(n_H, n_H_source, files)
     print(f"Q_H                : {Q_H.to(1/u.s).value:.3e} 1/s")
     print(f"R_St               : {R_St:.4g}")
+    print(f"R_STAG (Eqn 12)    : {R_stag:.4g}")
     print(f"c_i = {c_i:.4g} (mu_i={mu_i:.4f}), c_o = {c_o:.4g} (mu_o={mu_o:.4f})")
     print(f"Box half-width     : {box_half_width.to(u.pc):.4g}")
 
@@ -729,7 +901,7 @@ def main():
         mu_i,
         mu_o,
         T_ionized_K,
-        args.T_neutral_K,
+        T_neutral_K,
     )
 
     # Interpolate the STARBENCH curve onto the simulation's own snapshot
@@ -776,7 +948,7 @@ def main():
         ("instantaneous front", r_now_pc[last]),
     ]:
         rel_error = abs(r_c - R_SB_c) / R_SB_c
-        verdict = "PASS" if rel_error <= args.tol else "FAIL"
+        verdict = verdict_for(rel_error, args.tol)
         print(
             f"  {label}: r_sim={r_c:.4g} pc  "
             f"rel_error={rel_error:.2%}  [{verdict}{verdict_marker}]"
@@ -812,7 +984,7 @@ def main():
         label="Simulation (instantaneous $h_{\\rm HII}$)",
     )
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
-    ax.plot(t_grid, R_II, "-.", color="grey", label="Raga-II (Eqn 11)")
+    ax.plot(t_grid, R_II, "-.", color="grey", label="Raga-II (Eqn 12)")
     ax.plot(t_grid, R_SB, "--", color="black", label="STARBENCH (Eqns 28-29)")
     ax.axhline(
         box_half_width.to(u.pc).value,
