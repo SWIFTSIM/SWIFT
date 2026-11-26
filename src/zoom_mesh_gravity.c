@@ -39,6 +39,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity.h"
 #include "gravity_properties.h"
 #include "inline.h"
 #include "kernel_long_gravity.h"
@@ -79,8 +80,8 @@ void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh) {
 /**
  * @brief Set the zoom mesh geometry from the current zoom region.
  *
- * The mesh covers the zoom region plus a buffer of background top-level
- * cells. The side length and buffer size must already be set.
+ * The mesh covers the zoom region plus an optional buffer of background
+ * top-level cells. The side length and buffer size must already be set.
  *
  * @param mesh The #zoom_pm_mesh.
  * @param s The #space.
@@ -134,6 +135,9 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
   mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * r_cut_min_ratio;
 
+  /* A new geometry means a new r_s, so report any softening excess afresh. */
+  mesh->max_softening_reported = 0.;
+
   /* The zoom mesh only makes sense if it is strictly higher resolution than
    * the background mesh it is correcting. If it isn't, the mesh-tree
    * splitting criterion becomes *more* conservative inside the zoom region
@@ -182,7 +186,7 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
  * @brief Initialize the high-resolution zoom gravity mesh geometry.
  *
  * The mesh is disabled unless the parameter Gravity:zoom_mesh is non-zero. When
- * enabled, the mesh covers the current zoom region plus a buffer measured in
+ * enabled, the mesh covers the current zoom region plus an optional buffer in
  * background top-level cell shells.
  *
  * @param mesh The #zoom_pm_mesh to initialise.
@@ -258,10 +262,14 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         (int)(2. * props->a_smooth * r_cut_max_ratio) + 1, side_length);
   }
 
+  /* By default the mesh covers the zoom region only. Each extra shell of
+   * background cells lets more neighbour cells use the zoom split, but for a
+   * fixed side length it coarsens the mesh and pulls in heavier (more softened)
+   * background particles. */
   const int buffer_cells =
-      parser_get_opt_param_int(params, "Gravity:zoom_mesh_bkg_buffer_cells", 1);
-  if (buffer_cells < 1) {
-    error("Gravity:zoom_mesh_bkg_buffer_cells must be >= 1.");
+      parser_get_opt_param_int(params, "Gravity:zoom_mesh_bkg_buffer_cells", 0);
+  if (buffer_cells < 0) {
+    error("Gravity:zoom_mesh_bkg_buffer_cells must be >= 0.");
   }
 
   if (s->zoom_props->nr_bkg_cells <= 0 ||
@@ -1610,11 +1618,125 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
 }
 
 /**
+ * @brief Report covered particles softened beyond the zoom mesh r_s.
+ *
+ * Used by the --dump-zoom-geometry dry run, before the multipoles exist, so
+ * the softening of each particle is computed directly. Gives the same
+ * diagnostic as zoom_mesh_compute_potential() before any time is spent.
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param s The #space containing the particles.
+ */
+void zoom_mesh_report_softening_gparts(const struct zoom_pm_mesh *mesh,
+                                       const struct space *s) {
+
+  if (mesh == NULL || !mesh->enabled) return;
+
+  const struct gravity_props *props = s->e->gravity_properties;
+  double max_softening = 0.;
+  long long nr_over = 0;
+  for (size_t k = 0; k < s->nr_gparts; ++k) {
+    const struct gpart *gp = &s->gparts[k];
+    if (gp->time_bin == time_bin_inhibited) continue;
+    if (gp->x[0] < mesh->active_min[0] || gp->x[0] > mesh->active_max[0] ||
+        gp->x[1] < mesh->active_min[1] || gp->x[1] > mesh->active_max[1] ||
+        gp->x[2] < mesh->active_min[2] || gp->x[2] > mesh->active_max[2])
+      continue;
+    struct gpart tmp = *gp;
+    gravity_predict_extra(&tmp, props);
+    const double h = gravity_get_softening(&tmp, props);
+    max_softening = max(max_softening, h);
+    if (h > mesh->r_s) nr_over++;
+  }
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &max_softening, 1, MPI_DOUBLE, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &nr_over, 1, MPI_LONG_LONG, MPI_SUM,
+                MPI_COMM_WORLD);
+#endif
+
+  if (engine_rank != 0) return;
+  if (nr_over > 0) {
+    message(
+        "WARNING: the zoom mesh smoothing scale r_s=%g is smaller than the "
+        "softening radius of %lld covered particles (largest h=%g, "
+        "h/r_s=%.2f). The mesh force on these particles will not be softened "
+        "as requested. Decrease Gravity:zoom_mesh_side_length to avoid this.",
+        mesh->r_s, nr_over, max_softening, max_softening / mesh->r_s);
+  } else {
+    message(
+        "Zoom mesh r_s=%g exceeds the softening radius of every covered "
+        "particle (largest h=%g, h/r_s=%.2f).",
+        mesh->r_s, max_softening, max_softening / mesh->r_s);
+  }
+}
+
+/**
+ * @brief Report covered cells whose particles are softened beyond r_s.
+ *
+ * Uses the maximal softening recorded in the multipoles of the cells that
+ * actually receive the zoom correction. Warns rather than aborts.
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param s The #space containing the particles.
+ * @return The largest covered softening in units of r_s.
+ */
+double zoom_mesh_check_softening(struct zoom_pm_mesh *mesh,
+                                 const struct space *s) {
+
+  /* Background particles can have mass-dependent softenings larger than the
+   * configured high-resolution values. Check only cells receiving the zoom
+   * correction; uncovered cells keep the global tree-PM split. */
+  double max_softening = 0.;
+  int nr_cells_over = 0;
+  if (s->cells_top != NULL && s->zoom_props != NULL) {
+    const struct zoom_region_properties *z = s->zoom_props;
+    const int *lists[2] = {z->local_zoom_cells_top, z->local_bkg_cells_top};
+    const int counts[2] = {z->nr_local_zoom_cells, z->nr_local_bkg_cells};
+    for (int type = 0; type < 2; ++type) {
+      for (int i = 0; i < counts[type]; ++i) {
+        const struct cell *c = &s->cells_top[lists[type][i]];
+        if (!zoom_mesh_cell_is_covered(mesh, c)) continue;
+        if (c->grav.count == 0) continue;
+        const double h = c->grav.multipole->m_pole.max_softening;
+        max_softening = max(max_softening, h);
+        if (h > mesh->r_s) nr_cells_over++;
+      }
+    }
+  }
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &max_softening, 1, MPI_DOUBLE, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &nr_cells_over, 1, MPI_INT, MPI_SUM,
+                MPI_COMM_WORLD);
+#endif
+
+  /* Particles softened beyond r_s still get finite forces, but the mesh part
+   * of their mutual force is unsoftened, so for r_s < r < h their softening is
+   * effectively ~r_s rather than h. Warn (once per geometry, and again if it
+   * gets worse) rather than abort, and say by how much. */
+  if (max_softening > mesh->r_s &&
+      max_softening > mesh->max_softening_reported) {
+    if (engine_rank == 0) {
+      message(
+          "WARNING: the zoom mesh smoothing scale r_s=%g is smaller than the "
+          "softening radius of particles in %d covered top-level cells "
+          "(largest h=%g, h/r_s=%.2f). The mesh force on these particles is "
+          "not softened as requested. Decrease "
+          "Gravity:zoom_mesh_side_length to avoid this.",
+          mesh->r_s, nr_cells_over, max_softening, max_softening / mesh->r_s);
+    }
+    mesh->max_softening_reported = max_softening;
+  }
+
+  return max_softening / mesh->r_s;
+}
+
+/**
  * @brief Add the isolated zoom mesh correction to covered particles.
  *
- * Check the softening of the cells that actually receive the correction, using
- * the maximal softening recorded in their multipoles, then select the
- * replicated or distributed FFT solve.
+ * Report any covered particles softened beyond r_s, then select the replicated
+ * or distributed FFT solve.
  *
  * @param mesh The #zoom_pm_mesh, or NULL when disabled.
  * @param s The #space containing the particles.
@@ -1627,34 +1749,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 
   if (mesh == NULL || !mesh->enabled) return;
 
-  /* Background particles can have mass-dependent softenings larger than the
-   * configured high-resolution values. Check only cells receiving the zoom
-   * correction; uncovered cells keep the global tree-PM split. */
-  double max_softening = 0.;
-  if (s->cells_top != NULL && s->zoom_props != NULL) {
-    const struct zoom_region_properties *z = s->zoom_props;
-    const int *lists[2] = {z->local_zoom_cells_top, z->local_bkg_cells_top};
-    const int counts[2] = {z->nr_local_zoom_cells, z->nr_local_bkg_cells};
-    for (int type = 0; type < 2; ++type) {
-      for (int i = 0; i < counts[type]; ++i) {
-        const struct cell *c = &s->cells_top[lists[type][i]];
-        if (!zoom_mesh_cell_is_covered(mesh, c)) continue;
-        if (c->grav.count == 0) continue;
-        max_softening =
-            max(max_softening, (double)c->grav.multipole->m_pole.max_softening);
-      }
-    }
-  }
-#ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, &max_softening, 1, MPI_DOUBLE, MPI_MAX,
-                MPI_COMM_WORLD);
-#endif
-  if (max_softening > mesh->r_s) {
-    error(
-        "Zoom mesh smoothing scale r_s=%g is smaller than the softening "
-        "radius h=%g of a covered gravity particle.",
-        mesh->r_s, max_softening);
-  }
+  zoom_mesh_check_softening(mesh, s);
 
   if (mesh->distributed_mesh) {
     zoom_mesh_compute_potential_distributed(mesh, s, tp, verbose);

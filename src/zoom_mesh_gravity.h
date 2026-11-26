@@ -82,6 +82,9 @@ struct zoom_pm_mesh {
   /*! Distance below which tree forces are retained */
   double r_cut_min;
 
+  /*! Largest covered softening already reported as exceeding r_s */
+  double max_softening_reported;
+
   /*! Full zero-padded mesh used as density and potential field */
   double *potential_global;
 
@@ -107,6 +110,10 @@ void zoom_mesh_free(struct zoom_pm_mesh *mesh);
 void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s);
 void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
                               const struct space *s);
+double zoom_mesh_check_softening(struct zoom_pm_mesh *mesh,
+                                 const struct space *s);
+void zoom_mesh_report_softening_gparts(const struct zoom_pm_mesh *mesh,
+                                       const struct space *s);
 void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                                  const struct space *s, struct threadpool *tp,
                                  int verbose);

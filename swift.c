@@ -1695,6 +1695,7 @@ int main(int argc, char *argv[]) {
 
   /* Time to dump zoom geometry diagnostics if requested. */
   if (with_zoom_geometry_dry_run) {
+    zoom_mesh_report_softening_gparts(&zoom_mesh, &s);
     zoom_dump_geometry(&e);
 #ifdef WITH_MPI
     if ((res = MPI_Finalize()) != MPI_SUCCESS)
