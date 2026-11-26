@@ -396,9 +396,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 #endif
     }
 
-    /* Now, get the maximal particle motion from its square */
+    /* Now, get the maximal particle motion from its square
+     * For the sorts, we also add the offset between the original sort and the
+     * last sort as resorts could happen in only some directions. Note that we
+     * don't add them in quadrature as the displacements are not necessarily
+     * orthogonal. */
     dx_max = sqrtf(dx2_max);
-    dx_max_sort = sqrtf(dx2_max_sort);
+    dx_max_sort = sqrtf(dx2_max_sort) + c->hydro.dx_max_sort_offset;
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
@@ -807,9 +811,13 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       }
     }
 
-    /* Now, get the maximal particle motion from its square */
+    /* Now, get the maximal particle motion from its square
+     * For the sorts, we also add the offset between the original sort and the
+     * last sort as resorts could happen in only some directions. Note that we
+     * don't add them in quadrature as the displacements are not necessarily
+     * orthogonal. */
     dx_max = sqrtf(dx2_max);
-    dx_max_sort = sqrtf(dx2_max_sort);
+    dx_max_sort = sqrtf(dx2_max_sort) + c->stars.dx_max_sort_offset;
 
     /* Store the values */
     c->stars.h_max = cell_h_max;

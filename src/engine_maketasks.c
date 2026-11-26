@@ -586,8 +586,17 @@ void engine_addtasks_send_hydro(
                                         t_rt_gradient, t_rt_transport,
                                         with_feedback, with_rt);
 
-      if (with_limiter)
+      if (with_limiter) {
         scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
+
+        /* The sync task gives particles a temporary negative time-bin, which
+         * the pack would copy into the buffer. Wait for the send, and so for
+         * the pack, to complete before syncing. The edge starts at the send,
+         * not at the pack, because the pack must keep the send as its only
+         * dependent (task_get_unique_dependent). */
+        if (with_sync)
+          scheduler_addunlock(s, t_limiter, ci->super->timestep_sync);
+      }
 
       if (with_rt) {
         /* Don't send the transport stuff before the gradient stuff */

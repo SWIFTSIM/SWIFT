@@ -30,14 +30,22 @@ override the defaults. The run takes a few minutes on 4 threads and writes a sna
 ```
 python3 check_h2_thin_absolute.py thin/snap --radiation-table PopII_parsec_spectral.hdf5
 ```
-Two tests gate the run, and the exit status is 0 when both pass:
+Three tests gate the run, and the exit status is 0 when all pass:
 - the star's `LWLuminosities` against the luminosity that SWIFT reads from the radiation
   table for the star's mass and metallicity;
 - the rate identity: the H2 dissociation rate of every particle equals the LW field that the
-  cooling is given, times the Draine-field rate coefficient, in each radial shell.
+  cooling is given, times the Draine-field rate coefficient, in each radial shell;
+- the stored light `Q` (see below) in three radial shells against a two-sided bar. The check
+  computes the bar itself: it propagates the light through the gas of the run with a model of
+  the transport, using the cone power and the star smoothing length of the snapshots, and takes
+  the expected `Q` in each shell with a margin of 3 standard deviations over random emission
+  frames. The check takes about one minute. It needs scipy. The bar is gated at one
+  reception slot count only; other counts are untested. It applies to `level=5` and `star_mass=29.7`; with other values
+  this test prints `VOID` and the other tests still run.
 
-The check also prints, without a bar, the LW energy density in each shell over the thin-limit
-value `L / (4 pi r^2 c)` (`Q`) and the dissociation rate over the thin-limit kernel mean.
-Exit status 1 is a failed test, 2 a missing file, 3 a value that is not finite, 4 a run that
+The check also prints the LW energy density in each shell over the thin-limit
+value `L / (4 pi r^2 c)` (`Q`) and the dissociation rate over the thin-limit kernel mean,
+both without a bar, and the `Q` of the three bar shells with its bar.
+Exit status 1 is a failed test (any test, also when the `Q` bar is void), 2 a missing file, 3 a value that is not finite, 4 a void `Q` bar with no failed test, or a run that
 does not meet the conditions of the check (one star, no dust, no periodic images, unlimited
 light speed).

@@ -113,6 +113,7 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
     cp->hydro.dx_max_part = 0.f;
     cp->hydro.dx_outside_max = 0.f;
     cp->hydro.dx_max_sort = 0.f;
+    cp->hydro.dx_max_sort_offset = 0.f;
     cp->stars.h_max = 0.f;
     cp->stars.h_max_active = 0.f;
     cp->stars.h_hii_max = 0.f;
@@ -120,6 +121,7 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
     cp->stars.dx_max_part = 0.f;
     cp->stars.dx_outside_max = 0.f;
     cp->stars.dx_max_sort = 0.f;
+    cp->stars.dx_max_sort_offset = 0.f;
     cp->sinks.h_max = 0.f;
     cp->sinks.h_max_active = 0.f;
     cp->sinks.dx_max_part = 0.f;

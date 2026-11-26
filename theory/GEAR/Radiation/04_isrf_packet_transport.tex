@@ -269,7 +269,11 @@ power-law fits of the luminosity and the radius. $\bar E_b$ is $L_b$ over the
 band photon rate of the same spectrum.
 
 A particle that stands for one star reads $L_b$ and $\bar E_b$ at its mass, and also at its
-metallicity if the table has a metallicity axis. The table has no age axis, so
+metallicity if the table has a metallicity axis. A star outside the table on
+one axis, such as a star of zero metallicity below the first row, reads that
+axis at its edge node. Where the table's edge policy for that field says
+zero, the value is zero instead. Otherwise the other axis is still
+interpolated; no axis is extrapolated. The table has no age axis, so
 the light of a single star is constant while it emits. A particle that stands
 for a stellar population integrates the table over the initial mass function,
 from its lowest mass to the largest mass still alive in the step, and
@@ -2006,6 +2010,12 @@ step-bounding mode also bounds the step of every gas particle
 (Section~\ref{sec:isrf-speed}). The no-delay test mode is the limit
 $v\to\infty$ (Section~\ref{sec:packet-reservoir}).
 
+\paragraph{Limit on the star step.} In the capped and the step-bounding modes the
+light of a star arrives smoothly, within the sensitivity of the test, for a star step up to
+$16$ steps of the receiver. At $32$ and $64$ steps it arrives with a field ripple, once per
+star step, so the ripple sets in between $16$ and $32$ steps. The no-delay mode has no
+ripple.
+
 \paragraph{Arrival time.} Let $t_{{\rm d},i}$ be the departure time of sender
 $i$: the merge time at which it formed its held packet. A share to a
 receiver at the comoving separation $r_{ij}$ arrives at
@@ -2033,19 +2043,20 @@ $\Delta t$, and spreads the light of the step from $t-\Delta t+\delta$ to
 $t+\delta$, with $\delta=a\,r_{\star j}/v$ the light time to the receiver.
 If the star has a longer step than the receiver and the window starts before the end $t_0$ of
 bin $0$ of the receiver, the part of the light that arrives by $t_0$ would leave
-whole at the next merge, once per star step, and the field would pulse at the
+whole at the next merge, once per star step, and the field would ripple at the
 period of the star step. The window is then moved to run from $t_0$ to
 $t_0+\Delta t$: the light after $t_0$ keeps its times and the early part follows
 it at the same rate. The windows of the successive steps of a star tile with no
 gap and no overlap, so a steady star gives a steady arrival rate, for a star step
-up to about $16$ steps of the receiver and a fixed step of the receiver. The light that
+up to $16$ steps of the receiver and a fixed step of the receiver. The light that
 arrives by $t_0$ is delayed by at most one star step plus one step of the receiver. The
 moved window always reaches $t_0+\Delta t$, but the $8$ near bins and the two base far
-cells reach only about $t_0+16$ steps of the receiver. For a star step of $32$ steps of the
-receiver or more, the moved light therefore lies partly beyond them and widens the far cells
-to about the star step for as long as the star shines. This costs the widening described
-below, and the far-share warning can fire. Only a star step of $16$ steps of the receiver
-and one star were measured. A star step not longer than
+cells end $16$ to $23$ steps of the receiver after $t_0$. For a star step of $32$ steps of
+the receiver or more, the moved light therefore lies partly beyond them and widens the far
+cells again at each booking. A widened cell holds its light until its end or until its
+lattice changes (below), so most of the light of a star step leaves in one merge and the
+field peaks at many times its mean. The field ripple thus sets in between $16$ and $32$
+steps of the receiver, in the capped and the step-bounding modes alike. A star step not longer than
 that of the receiver, a window that starts after $t_0$, and a receiver with no
 step yet keep the window as it is. A
 receiver keeps the waiting light of each slot in $N_{\rm n}$ near bins and two far
@@ -2087,9 +2098,13 @@ waiting light fits, and a far cell that holds one share keeps the interval of
 that share and releases the part that has arrived.
 
 A near bin leaves whole at the first merge at or after its end, so its light
-waits less than one step after it has arrived. A far cell leaves at the end of
-each sub-step by its shape, and at the end of the cell at the latest, so its
-light waits less than $W$ steps, $W$ the width of the cells.
+waits less than one step after it has arrived. A far cell with a shape leaves
+whole at its stored latest time. Its shape counts only when its light is placed
+again, at a change of the lattice (below). At the base width the far lattice
+slides by one cell as the cell falls due, and its light goes into the near bins
+as one pulse per sub-step of one step. Its light then waits less than $W$ steps,
+$W$ the width of the cells. A widened cell waits for the next change of its
+lattice, and the light due by then leaves in one merge.
 When the step or the width changes, the light of a cell is placed again as
 pulses, one at the end of each sub-step that holds light, each in the cell that
 holds that time, and a cell that has no shape as a pulse at its end. Each pulse but the last is
@@ -2173,8 +2188,8 @@ $t$ (drawn with four near bins): $N_{\rm n}$ near bins one step wide, then two f
 once the step is known; the drawing uses $n=2$). A share
 from a sender with twice the step is spread over three bins.
 (b) A far share is cut at the cell ends. A far cell of a receiver with a step
-keeps its light as a shape of $8$ sub-steps and leaves by the end of each
-sub-step (black), never ahead of the arrived light (orange), except for faint
+keeps its light as a shape of $8$ sub-steps and, at the base width, leaves by the
+end of each sub-step (black), never ahead of the arrived light (orange), except for faint
 light, which leaves at the end of the last cell. A cell with no shape leaves
 whole at its end.}
 \label{fig:isrf-bins}
