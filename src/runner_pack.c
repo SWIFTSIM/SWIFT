@@ -80,25 +80,7 @@ static void cell_update_hydro_h_max_active(struct cell *c,
     const struct part *parts = c->hydro.parts;
     for (int i = 0; i < c->hydro.count; ++i) {
       if (part_is_inhibited(&parts[i], e)) continue;
-#ifdef LIMITER_TIMEBIN_PROBE
-      if (parts[i].time_bin <= 0)
-        message(
-            "LIMITER_TIMEBIN_PROBE recv-part: cellID=%lld owner=%d depth=%d "
-            "count=%d i=%d id=%lld time_bin=%d wakeup=%d "
-            "to_be_synchronized=%d min_ngb_time_bin=%d ti_current=%lld "
-            "max_active_bin=%d",
-            c->cellID, c->nodeID, c->depth, c->hydro.count, i, parts[i].id,
-            parts[i].time_bin, parts[i].limiter_data.wakeup,
-            parts[i].limiter_data.to_be_synchronized,
-            parts[i].limiter_data.min_ngb_time_bin, e->ti_current,
-            e->max_active_bin);
-#endif
-      /* Compare bins directly: the limiter pack copies time_bin without the
-       * cell lock, so a bin can be the transient negative value written by
-       * timestep_sync_part() mid-sync. A bin <= 0 is a particle being
-       * re-timestepped this step, i.e. active; part_is_active() would
-       * assert on it. */
-      if (parts[i].time_bin <= e->max_active_bin)
+      if (part_is_active(&parts[i], e))
         h_max_active = max(h_max_active, parts[i].h);
     }
   }
