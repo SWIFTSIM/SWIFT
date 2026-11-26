@@ -117,8 +117,8 @@ def make_figure(output_path: str) -> None:
         "1. Split gate: a region stops splitting once "
         "factor . kernel_gamma . h_hii_max >= 0.5 . dmin\n"
         "2. Rebuild criterion: whole-tree rebuild fires once reach + drift > dmin\n"
-        "3. In-pass clamp: dynamic_search_radius capped at interaction_limit + dmin this pass;\n"
-        "   the outer shell is deferred to the next rebuild, never lost"
+        "3. In-pass clamp: dynamic_search_radius capped at the covered radius r_cov;\n"
+        "   its photons are kept only if the tree reach grew, else released as escaped"
     )
     fig.text(
         0.5,
