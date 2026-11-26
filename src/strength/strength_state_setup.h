@@ -144,7 +144,8 @@ strength_state_get_phase(struct strength_state *s,
 
 /**
  * @brief Get the pressure, from the EoS, with tension limited by the minimum
- * pressure and by damage, depending on the yield stress method.
+ * pressure and by damage, depending on the yield stress method, for solids,
+ * and with no tension for fluids.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -155,9 +156,16 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
   if (!s->cache.pressure_computed) {
     float pressure =
         gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
-    pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
-    if (pressure < 0.f) {
-      yield_apply_damage_to_tensile_pressure(&pressure, s, mp);
+
+    /* Solids are limited in tension by the minimum pressure and by damage,
+     * while fluids do not support tension. */
+    if (strength_state_get_phase(s, mp) == mat_phase_solid) {
+      pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
+      if (pressure < 0.f) {
+        yield_apply_damage_to_tensile_pressure(&pressure, s, mp);
+      }
+    } else {
+      pressure = fmaxf(pressure, 0.f);
     }
     s->cache.pressure = pressure;
     s->cache.pressure_computed = true;
