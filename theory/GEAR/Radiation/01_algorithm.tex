@@ -256,7 +256,7 @@ Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
 at all: both simply clamp ionized gas to a flat $10^4\,$K.
 
 \paragraph{Implementation.} The floor is set in \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-152}), called from the
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-153}), called from the
 cooling task.
 
 \subsubsection{Applying the Floor: Energy Accounting}
@@ -314,7 +314,7 @@ evaluated at it whenever $u_{\rm collisional} < \Delta u_{\rm
 ionized}$).
 
 \paragraph{Implementation.} \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-152}) returns $u_{\rm new}$ to
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-153}) returns $u_{\rm new}$ to
 \code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1263-1274}, which calls \code{cooling\_new\_energy\_or\_keep\_previous}, \code{cooling.c:1053-1240}), which
 skips Grackle's \code{local\_solve\_chemistry} on a tagged particle. The
 cooling step that applies Eq.~\ref{eq:cool-dudt} and records the radiated
@@ -451,14 +451,14 @@ differently; see Section~\ref{sec:front-radius}.
 
 \paragraph{Implementation.} The flag is read in
 \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-152}) inside
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-153}) inside
 \code{\#if COOLING\_NETWORK > 0} (the chemical-network level of the cooling library), at lines 100-101; the same compile-time
 gate recurs at line 125. The rate-coupled branch starts at line 101 and leaves the energy alone.
 $\Gamma_{\rm HI}$ is
 \code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
 (\code{src/feedback/GEAR/radiation\_gas.c:564-573}); the excess photon energy is
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
-(\code{src/feedback/GEAR/radiation\_getters.c:575-582}); the fields are handed to
+(\code{src/feedback/GEAR/radiation\_getters.c:578-585}); the fields are handed to
 Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
 (\code{src/cooling/radiation\_rates\_to\_chemistry.h:251-276}).
 
@@ -737,7 +737,9 @@ expansions are used up; (2) the radius is at \code{Stars:HII\_max\_search\_radiu
 (3) the radius is at $r_{\rm cov}$; (4) a star holding gas has had its one
 empty probe. A walk that reaches $r_{\rm cov}$ with nothing found, at its start
 or after its one probe, cannot grow, so the covered radius is tested before the
-one probe and the pass stops at the covered radius. It asks for a wider tree,
+one probe and the pass stops at the covered radius, unless the tries or the
+ceiling bind first. A stop on the tries or the ceiling asks for no wider tree
+and keeps no photons. A stop at the covered radius asks for a wider tree,
 and its photons follow the carry rule of
 Section~\ref{sec:budget-carry}. A one-probe stop is therefore always inside
 $r_{\rm cov}$. Its photons escape. The step log counts the coverage stops
