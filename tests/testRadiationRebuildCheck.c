@@ -74,32 +74,68 @@ struct test_pass {
   float h_request;
 };
 
+/*! A stop rule with the signature of runner_hii_search_stop(). */
+typedef enum hii_search_stop (*test_stop_rule)(float, float, float, int, int,
+                                               int, int, int);
+
+/**
+ * @brief The stop rule of the code before the covered radius was tested
+ * first. Kept as a planted defect: a star holding gas whose one empty probe
+ * lands on the covered radius stops as a one-probe stop, so its photons
+ * escape and it never asks for a wider tree.
+ *
+ * @param radius The radius just searched.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ * @param covered_radius The covered radius of the pass.
+ * @param num_expansions Expansions done so far in this pass.
+ * @param max_expansions Stars:HII_max_radius_expansion_tries.
+ * @param count_found Candidates found at @p radius.
+ * @param count_held Gas the star already held at the start of the pass.
+ * @param num_empty_expansions Consecutive empty probes of a star holding gas.
+ */
+static enum hii_search_stop old_order_search_stop(
+    const float radius, const float max_search_radius,
+    const float covered_radius, const int num_expansions,
+    const int max_expansions, const int count_found, const int count_held,
+    const int num_empty_expansions) {
+
+  if (num_expansions >= max_expansions) return hii_search_stop_tries;
+  if (radius >= max_search_radius) return hii_search_stop_ceiling;
+  const int probe_used =
+      count_found == 0 && count_held > 0 && num_empty_expansions >= 1;
+  if (probe_used) return hii_search_stop_one_probe;
+  if (radius >= covered_radius) return hii_search_stop_covered_radius;
+  return hii_search_grow;
+}
+
 /**
  * @brief Run the radius growth of runner_dosub_stars_hii_ionization_feedback()
- * for a star that finds nothing at any radius.
+ * for a star that finds nothing at any radius, under a given stop rule.
  *
+ * @param stop_rule runner_hii_search_stop(), or old_order_search_stop().
  * @param start_radius The shared start radius of the leaf.
- * @param margin cell_radiation_neighbour_margin() of the leaf.
+ * @param max_reachable The radius no search of the pass goes beyond:
+ * cell_radiation_covered_radius(), or old_stop_radius() for the old rule.
  * @param max_search_radius Stars:HII_max_search_radius.
  * @param count_held Gas the star holds at the start of the pass.
  * @param with_request 0 to model the code before the request existed.
  */
-static struct test_pass run_empty_pass(const float start_radius,
-                                       const float margin,
-                                       const float max_search_radius,
-                                       const int count_held,
-                                       const int with_request) {
-  const float max_reachable = start_radius + margin;
-  float radius = start_radius;
+static struct test_pass run_empty_pass_with_rule(const test_stop_rule stop_rule,
+                                                 const float start_radius,
+                                                 const float max_reachable,
+                                                 const float max_search_radius,
+                                                 const int count_held,
+                                                 const int with_request) {
+  float radius = min(start_radius, max_reachable);
   int num_expansions = 0;
   int num_empty = 0;
   struct test_pass out = {hii_search_grow, 0.f, 0.f};
   while (1) {
     const int count_found = 0;
-    out.stop = runner_hii_search_stop(radius, max_search_radius, max_reachable,
-                                      num_expansions, test_expansion_tries,
-                                      count_found, count_held, num_empty);
-    if (out.stop == hii_search_stop_margin && with_request)
+    out.stop =
+        stop_rule(radius, max_search_radius, max_reachable, num_expansions,
+                  test_expansion_tries, count_found, count_held, num_empty);
+    if (out.stop == hii_search_stop_covered_radius && with_request)
       out.h_request = runner_hii_requested_radius(radius, test_expansion_factor,
                                                   max_search_radius) /
                       (radiation_search_radius_factor * kernel_gamma);
@@ -114,6 +150,78 @@ static struct test_pass run_empty_pass(const float start_radius,
   }
   out.radius = radius;
   return out;
+}
+
+/**
+ * @brief run_empty_pass_with_rule() under runner_hii_search_stop().
+ *
+ * @param start_radius The shared start radius of the leaf.
+ * @param max_reachable The radius no search of the pass goes beyond.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ * @param count_held Gas the star holds at the start of the pass.
+ * @param with_request 0 to model the code before the request existed.
+ */
+static struct test_pass run_empty_pass(const float start_radius,
+                                       const float max_reachable,
+                                       const float max_search_radius,
+                                       const int count_held,
+                                       const int with_request) {
+  return run_empty_pass_with_rule(runner_hii_search_stop, start_radius,
+                                  max_reachable, max_search_radius, count_held,
+                                  with_request);
+}
+
+/**
+ * @brief The margin of the code before the covered radius: the thinnest width
+ * of the leaf and the cells linked to its radiation level.
+ *
+ * @param leaf The working-level #cell holding the star.
+ */
+static float old_neighbour_margin(const struct cell *leaf) {
+  const struct cell *level = leaf->stars.radiation_level;
+  float margin = leaf->dmin;
+  for (const struct link *l = level->stars.radiation_in; l != NULL;
+       l = l->next) {
+    if (l->t->type == task_type_self) continue;
+    const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
+    margin = min(margin, partner->dmin);
+  }
+  return margin;
+}
+
+/**
+ * @brief The stop radius of the code before the covered radius: the start
+ * radius plus the thinnest width of the leaf and its linked partners. Kept as
+ * a planted defect: it ignores where the star sits in its cell.
+ *
+ * @param start_radius The shared start radius of the leaf.
+ * @param leaf The working-level #cell holding the star.
+ */
+static float old_stop_radius(const float start_radius,
+                             const struct cell *leaf) {
+  return start_radius + old_neighbour_margin(leaf);
+}
+
+/*! A periodic box large enough that no cell of these tests wraps. */
+static const double test_dim[3] = {100., 100., 100.};
+
+/**
+ * @brief Place the radiation level of setup_stencil() as a cube with its
+ * lower corner at the origin, and return the covered radius of a star at
+ * distance @p face_distance from its lower x face, centred in y and z.
+ *
+ * @param level The radiation_level #cell.
+ * @param leaf The working-level #cell holding the star.
+ * @param face_distance Distance of the star to the lower x face.
+ */
+static float place_star(struct cell *level, const struct cell *leaf,
+                        const double face_distance) {
+  for (int k = 0; k < 3; k++) {
+    level->loc[k] = 0.;
+    level->width[k] = level->dmin;
+  }
+  const double x[3] = {face_distance, 0.5 * level->dmin, 0.5 * level->dmin};
+  return cell_radiation_covered_radius(leaf, x, test_dim, 1);
 }
 
 /**
@@ -149,8 +257,8 @@ static void setup_stencil(struct cell *level, struct cell *leaf,
 }
 
 /**
- * @brief A star that only the neighbour cell margin stops asks for a wider
- * reach, and that reach reaches the rebuild check through the cell maxima.
+ * @brief A star that only the covered radius stops asks for a wider reach,
+ * and that reach reaches the rebuild check through the cell maxima.
  */
 static void test_clamped_search_request(void) {
 
@@ -159,31 +267,46 @@ static void test_clamped_search_request(void) {
   struct task t_self, t_pair;
   struct link l_self, l_pair;
 
-  /* The margin is the thinnest of the leaf and its linked partners. */
   setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
-                1.f, 0.5f, 1.f);
-  if (cell_radiation_neighbour_margin(&leaf) != 0.5f)
-    error("Neighbour margin %g, expected the leaf width 0.5.",
-          cell_radiation_neighbour_margin(&leaf));
-  partner.dmin = 0.25f;
-  if (cell_radiation_neighbour_margin(&leaf) != 0.25f)
-    error("Neighbour margin %g, expected the finer partner width 0.25.",
-          cell_radiation_neighbour_margin(&leaf));
+                1.f, 0.5f, 0.25f);
 
-  /* The margin is reached after k expansions, and binds only if k is below
-   * the try count: start * f^(N - 1) >= start + margin. */
-  float growth = 1.f;
-  for (int k = 0; k < test_expansion_tries - 1; k++)
-    growth *= test_expansion_factor;
-  const float boundary = 1.f / (growth - 1.f);
-  message("Margin binds only above a start radius of %.3f margins.", boundary);
+  /* The covered radius is the face distance plus the thinnest partner. */
+  const float r_centre = place_star(&level, &leaf, 0.5);
+  const float r_face = place_star(&level, &leaf, 0.1);
+  if (fabsf(r_centre - 0.75f) > 1e-6f || fabsf(r_face - 0.35f) > 1e-6f)
+    error("Covered radius %g and %g, expected 0.75 and 0.35.", r_centre,
+          r_face);
+
+  /* Planted defect: near a face the old rule searches past the gas the
+   * linked cells hold, so its pass must fail the coverage bound. */
+  {
+    const float start = 0.3f;
+    const struct test_pass new_pass = run_empty_pass(start, r_face, 10.f, 0, 1);
+    const struct test_pass old_pass =
+        run_empty_pass(start, old_stop_radius(start, &leaf), 10.f, 0, 1);
+    if (new_pass.radius > r_face)
+      error("Covered-radius stop searched %g beyond the coverage %g.",
+            new_pass.radius, r_face);
+    if (!(old_pass.radius > r_face))
+      error(
+          "Planted old stop rule stayed inside the coverage (%g <= %g): the "
+          "check cannot see the defect.",
+          old_pass.radius, r_face);
+    message(
+        "Near a face: covered-radius stop at %.3f, planted old rule at %.3f "
+        "beyond the coverage %.3f (caught).",
+        new_pass.radius, old_pass.radius, r_face);
+  }
 
   /* A lone starved star: its own h sets a start radius well below the
-   * boundary, so the try count stops it and neither code requests. */
+   * coverage, so the try count stops it and neither code requests. */
   {
     const float start = 0.2f * 0.5f;
-    const struct test_pass old_pass = run_empty_pass(start, 0.5f, 10.f, 0, 0);
-    const struct test_pass new_pass = run_empty_pass(start, 0.5f, 10.f, 0, 1);
+    const float covered = place_star(&level, &leaf, 0.5);
+    const struct test_pass old_pass =
+        run_empty_pass(start, covered, 10.f, 0, 0);
+    const struct test_pass new_pass =
+        run_empty_pass(start, covered, 10.f, 0, 1);
     if (old_pass.stop != hii_search_stop_tries ||
         new_pass.stop != hii_search_stop_tries)
       error("Lone starved star: expected the try count to bind, got %d/%d.",
@@ -195,8 +318,9 @@ static void test_clamped_search_request(void) {
             new_pass.radius);
   }
 
-  /* A starved star sharing its leaf with a large region: the shared start
-   * radius exceeds the boundary, and only the margin stops it. */
+  /* A starved star near a face, sharing its leaf with a large region: the
+   * shared start radius lies close to the coverage, and only the covered
+   * radius stops it. */
   struct spart region, starved;
   bzero(&region, sizeof(struct spart));
   bzero(&starved, sizeof(struct spart));
@@ -209,6 +333,7 @@ static void test_clamped_search_request(void) {
      * fire. */
     setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
                   1.5f, 0.5f, 1.5f);
+    const float covered = place_star(&level, &leaf, 0.1);
     starved.h_hii_request = 0.f;
     int fired = 0;
     for (int pass = 0; pass < 20; pass++) {
@@ -216,11 +341,13 @@ static void test_clamped_search_request(void) {
                                stars_get_hii_search_length(&starved));
       const float start = radiation_search_radius_factor * kernel_gamma *
                           max(h_leaf, starved.h);
-      const struct test_pass out = run_empty_pass(
-          start, cell_radiation_neighbour_margin(&leaf), 10.f, 0, with_request);
-      if (out.stop != hii_search_stop_margin)
-        error("Shared start radius: expected the margin to bind, got %d.",
-              out.stop);
+      const struct test_pass out =
+          run_empty_pass(start, covered, 10.f, 0, with_request);
+      if (out.stop != hii_search_stop_covered_radius)
+        error(
+            "Shared start radius: expected the covered radius to bind, got "
+            "%d.",
+            out.stop);
       starved.h_hii_request = out.h_request;
       level.stars.h_hii_max = max(stars_get_hii_search_length(&region),
                                   stars_get_hii_search_length(&starved));
@@ -244,25 +371,27 @@ static void test_clamped_search_request(void) {
         with_request ? "with" : "without", fired);
   }
 
-  /* Radiation level four cells wide: the request first grows the start
-   * radius pass by pass, each request larger than the last, and fires once
-   * it outgrows the wired neighbours. */
-  {
+  /* Radiation level four cells wide: the linked cells hold the whole search,
+   * so the try count stops the star, with no request and no rebuild. The
+   * planted old rule stops at the leaf width instead and asks for rebuilds
+   * the tree does not need. */
+  for (int old_rule = 0; old_rule < 2; old_rule++) {
     setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
                   4.f, 0.5f, 4.f);
+    const float covered = place_star(&level, &leaf, 0.1);
     starved.h_hii_request = 0.f;
+    level.stars.h_hii_max = 0.f;
     float last_request = 0.f;
     int fired = 0;
+    enum hii_search_stop stop = hii_search_grow;
     for (int pass = 0; pass < 20; pass++) {
       const float h_leaf = max(stars_get_hii_search_length(&region),
                                stars_get_hii_search_length(&starved));
       const float start = radiation_search_radius_factor * kernel_gamma *
                           max(h_leaf, starved.h);
-      const struct test_pass out = run_empty_pass(
-          start, cell_radiation_neighbour_margin(&leaf), 10.f, 0, 1);
-      if (!(out.h_request > last_request))
-        error("Pass %d: request %g does not exceed the last one %g.", pass,
-              out.h_request, last_request);
+      const float reach = old_rule ? old_stop_radius(start, &leaf) : covered;
+      const struct test_pass out = run_empty_pass(start, reach, 10.f, 0, 1);
+      stop = out.stop;
       last_request = out.h_request;
       starved.h_hii_request = out.h_request;
       level.stars.h_hii_max = max(stars_get_hii_search_length(&region),
@@ -272,36 +401,54 @@ static void test_clamped_search_request(void) {
         break;
       }
     }
-    if (fired < 2)
+    if (!old_rule && (stop != hii_search_stop_tries || fired))
       error(
-          "Wide radiation level: rebuild after %d passes, expected more "
-          "than one.",
+          "Wide radiation level: stop %d and rebuild after %d passes, "
+          "expected the try count and no rebuild.",
+          stop, fired);
+    if (old_rule && fired < 2)
+      error(
+          "Planted old stop rule in a wide level: rebuild after %d passes, "
+          "expected more than one.",
           fired);
     message(
-        "Wide radiation level: rebuild after %d passes, requested radius "
-        "%.3f.",
-        fired, last_request / to_h);
-
-    /* A tree whose level covers the request is silent: no second rebuild. */
-    level.dmin = 2.f * last_request / to_h;
-    partner.dmin = level.dmin;
-    if (cell_need_rebuild_for_radiation_pair(&level, &partner))
-      error("A level wide enough for the request still demands a rebuild.");
+        "Wide radiation level, %s: stop %d, rebuild after %d passes (0 is "
+        "never in 20), requested radius %.3f.",
+        old_rule ? "planted old rule" : "covered radius", stop, fired,
+        last_request / to_h);
   }
 
-  /* Not clamped: the ceiling, or the one-probe rule of a star holding gas,
-   * stops these stars before the margin is the only limit. */
+  /* A tree whose level covers a request is silent: no rebuild. */
+  setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
+                4.f, 0.5f, 4.f);
+  level.stars.h_hii_max = 1.9f * to_h;
+  if (cell_need_rebuild_for_radiation_pair(&level, &partner))
+    error("A level wide enough for the request still demands a rebuild.");
+
+  /* Not clamped: the ceiling, or the one-probe rule of a star holding gas
+   * whose probe ends inside the covered radius, stops these stars. */
   {
-    const struct test_pass ceiling = run_empty_pass(1.f, 0.5f, 1.2f, 0, 1);
+    const struct test_pass ceiling = run_empty_pass(1.f, 1.5f, 1.2f, 0, 1);
     if (ceiling.stop != hii_search_stop_ceiling || ceiling.h_request != 0.f)
       error("Ceiling: stop %d, request %g.", ceiling.stop, ceiling.h_request);
-    const struct test_pass probe = run_empty_pass(1.f, 0.05f, 10.f, 3, 1);
+    const struct test_pass probe = run_empty_pass(1.f, 2.f, 10.f, 3, 1);
     if (probe.stop != hii_search_stop_one_probe || probe.h_request != 0.f)
       error("One probe: stop %d, request %g.", probe.stop, probe.h_request);
     message(
         "Not clamped: ceiling stop at %.3f, one-probe stop at %.3f, no "
         "request.",
         ceiling.radius, probe.radius);
+  }
+
+  /* Clamped although the star holds gas: its one probe ends on the covered
+   * radius, so the cell layout, not the empty probe, stops it. */
+  {
+    const struct test_pass probe = run_empty_pass(1.f, 1.05f, 10.f, 3, 1);
+    if (probe.stop != hii_search_stop_covered_radius || probe.h_request <= 0.f)
+      error("Probe on the covered radius: stop %d, request %g.", probe.stop,
+            probe.h_request);
+    message("Probe on the covered radius at %.3f: requested radius %.3f.",
+            probe.radius, probe.h_request / to_h);
   }
 
   /* The helper reads the larger of the region and the request. */
@@ -312,6 +459,85 @@ static void test_clamped_search_request(void) {
   starved.h_hii_request = 0.7f;
   if (stars_get_hii_search_length(&starved) != 0.7f)
     error("Search length ignores h_hii_request.");
+}
+
+/**
+ * @brief A star holding gas whose claim walk starts within one expansion of
+ * the covered radius, with no gas out to it, asks for a wider tree.
+ *
+ * The first probe at the start radius is empty, and the second lands on the
+ * covered radius. Under the planted old order that is a one-probe stop: the
+ * photons escape, nothing raises h_hii_request, and the held gas alone never
+ * widens the tree, so every pass stops in the same way.
+ */
+static void test_one_probe_on_covered_radius(void) {
+
+  struct cell level, leaf, partner;
+  struct task t_self, t_pair;
+  struct link l_self, l_pair;
+  setup_stencil(&level, &leaf, &partner, &t_self, &t_pair, &l_self, &l_pair,
+                1.5f, 0.5f, 1.5f);
+  const float covered = place_star(&level, &leaf, 0.1);
+
+  /* Start radius midway between one expansion below the covered radius and
+   * the level width, so the held gas alone does not trigger a rebuild. */
+  const float pair_dmin = min(level.dmin, partner.dmin);
+  const float target_start =
+      0.5f * (covered / test_expansion_factor + min(covered, pair_dmin));
+  const float held_radius = target_start / radiation_search_radius_factor;
+  const float start = runner_hii_claim_start_radius(0.1f, held_radius, 10.f);
+  if (!(start > covered / test_expansion_factor && start < covered &&
+        start < pair_dmin))
+    error(
+        "Test setup error: start radius %g must lie in (%g, %g) and below "
+        "the level width %g.",
+        start, covered / test_expansion_factor, covered, pair_dmin);
+
+  struct spart star;
+  bzero(&star, sizeof(struct spart));
+  star.h_hii = held_radius * kernel_gamma_inv;
+
+  for (int old_order = 0; old_order < 2; old_order++) {
+    const test_stop_rule rule =
+        old_order ? old_order_search_stop : runner_hii_search_stop;
+    star.h_hii_request = 0.f;
+    level.stars.h_hii_max = stars_get_hii_search_length(&star);
+    if (cell_need_rebuild_for_radiation_pair(&level, &partner))
+      error("Test setup error: the held gas alone triggers a rebuild.");
+
+    struct test_pass out = {hii_search_grow, 0.f, 0.f};
+    int fired = 0;
+    for (int pass = 0; pass < 20; pass++) {
+      out = run_empty_pass_with_rule(rule, start, covered, 10.f, 3, 1);
+      star.h_hii_request = out.h_request;
+      level.stars.h_hii_max = stars_get_hii_search_length(&star);
+      if (cell_need_rebuild_for_radiation_pair(&level, &partner)) {
+        fired = pass + 1;
+        break;
+      }
+    }
+
+    if (old_order && (out.stop != hii_search_stop_one_probe ||
+                      out.h_request != 0.f || fired))
+      error(
+          "Planted old order: stop %d, request %g, rebuild after %d "
+          "passes; expected a one-probe stop, no request and no rebuild, "
+          "so the check cannot see the defect.",
+          out.stop, out.h_request, fired);
+    if (!old_order && (out.stop != hii_search_stop_covered_radius ||
+                       out.h_request <= 0.f || fired != 1))
+      error(
+          "Probe on the covered radius: stop %d, request %g, rebuild after "
+          "%d passes; expected a covered-radius stop, a request and a "
+          "rebuild after 1 pass.",
+          out.stop, out.h_request, fired);
+    message(
+        "Probe on the covered radius %.3f from start %.3f, %s: stop %d at "
+        "%.3f, rebuild after %d passes (0 is never in 20).",
+        covered, start,
+        old_order ? "planted old order" : "covered radius first", out.stop,
+        out.radius, fired);
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -1193,6 +1419,7 @@ int main(int argc, char *argv[]) {
   }
 
   test_clamped_search_request();
+  test_one_probe_on_covered_radius();
 
   return 0;
 }

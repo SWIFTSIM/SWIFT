@@ -1023,6 +1023,12 @@ struct feedback_spart_data {
         dt_back`, debited by radiation_consume_ionizing_photons. */
     double N_ion_budget_pix[HII_MAX_ANGULAR_PIXELS];
 
+    /*! Tree reach (cell_radiation_tree_reach()) of the last pass stopped
+        because the tree covered no more gas. Positive: its unspent photons
+        wait in N_ion_budget_pix for the next pass. Negative: they were
+        released or already spent. 0: no such stop. */
+    float HII_carry_tree_reach;
+
     /*! Number of active angular pixels this star is currently using
         (1 = spherical/HEALPix disabled) */
     int n_HII_pixels;

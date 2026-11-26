@@ -1080,6 +1080,7 @@ GEARFeedback:
                                                           # is negative, every star (also its timestep). Must be > 0,
                                                           # and at most HII_rebuild_time_Myr if that is positive.
                                                           # (Default: 1e-4)
+  HII_carry_photons_at_coverage_stop: 1                   # 1: a pass stopped where the tree covers no more gas keeps its unspent photons for the star's next pass if the tree reach grew since its last such stop; otherwise, and with 0, they are counted as escaped. (Default: 1)
   HII_couple_ionization_rate: 0                           # 1: couple the HII rate into the Grackle RT fields, 0: flag-and-floor scheme. Needs COOLING_GRACKLE_MODE >= 1. One MPI rank only. (Default: 0)
 
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation; --with-subgrid-radiation part isrf)

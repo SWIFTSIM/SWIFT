@@ -2795,24 +2795,9 @@ int engine_step(struct engine *e) {
     fflush(stdout);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* A star's HII front hitting the reach clamp waits on the next rebuild
-     * to re-level its task instead of expanding further this step. A
-     * persistently growing count means the wired stencil's placement
-     * headroom (radiation_search_radius_factor, src/cell_stars.h -- a
-     * compile-time constant) is too small for this star's growth rate. */
-    if (e->radiation_reach_clamp_count > 0) {
-      warning(
-          "Radiation reach-clamp events: %lld cumulative (+%lld this step) "
-          "-- the wired stencil's placement headroom "
-          "(radiation_search_radius_factor) may be too small for this "
-          "star's growth rate.",
-          e->radiation_reach_clamp_count,
-          e->radiation_reach_clamp_count -
-              e->radiation_reach_clamp_count_last_step);
-      e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
-    }
+    feedback_radiation_hii_coverage_report();
 
+#ifdef SWIFT_DEBUG_CHECKS
     /* Two ranks' stars both reaching the same boundary gas is expected
      * cross-rank contention, not a bug, so this is a message, not a
      * warning. */

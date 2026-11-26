@@ -27,6 +27,7 @@
 #include <config.h>
 
 /* Includes. */
+#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -1894,29 +1895,94 @@ cell_need_rebuild_for_radiation_pair(const struct cell *ci,
 }
 
 /**
- * @brief Wired reach of the radiation_in stencil beyond an HII pass's start
- * radius, for a star anywhere in a working-level cell.
+ * @brief Width of the thinnest of a radiation_level cell and the cells linked
+ * to it by its HII tasks, and the largest gas displacement of those partners.
  *
- * A star at the cell's edge still has a full neighbour cell width of wired gas
- * past it in every wired direction. Under asymmetric pairs a partner can rest
- * finer than the cell, so its wired coverage past the shared boundary is only
- * its own width: use the thinnest of the cell and every linked partner, or the
- * search could grow past a thin partner and gather an anisotropic shell.
+ * @param level The radiation_level #cell.
+ * @param partner_drift (return) The largest hydro.dx_max_part of the linked
+ * cells, 0 if there are none.
+ * @return The thinnest width.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_thinnest_partner_width(const struct cell *level,
+                                      float *partner_drift) {
+
+  float width = level->dmin;
+  *partner_drift = 0.f;
+  for (const struct link *l = level->stars.radiation_in; l != NULL;
+       l = l->next) {
+    if (l->t->type == task_type_self) continue;
+    const struct cell *partner = (l->t->ci == level) ? l->t->cj : l->t->ci;
+    width = min(width, partner->dmin);
+    *partner_drift = max(*partner_drift, partner->hydro.dx_max_part);
+  }
+  return width;
+}
+
+/**
+ * @brief Upper bound of the covered radius the current tree gives a star of
+ * this working-level cell: the width of its radiation_level cell plus the
+ * thinnest linked width. The real maximum is half that width plus the thinnest
+ * linked width.
+ *
+ * Unlike cell_radiation_covered_radius(), it does not depend on where the star
+ * sits, so it changes only when a rebuild changes the tree.
  *
  * @param c The working-level #cell holding the star.
  */
 __attribute__((always_inline, nonnull)) INLINE static float
-cell_radiation_neighbour_margin(const struct cell *c) {
+cell_radiation_tree_reach(const struct cell *c) {
 
-  float margin = c->dmin;
-  for (const struct link *l = c->stars.radiation_level->stars.radiation_in;
-       l != NULL; l = l->next) {
-    if (l->t->type == task_type_self) continue;
-    const struct cell *partner =
-        (l->t->ci == c->stars.radiation_level) ? l->t->cj : l->t->ci;
-    margin = min(margin, partner->dmin);
+  const struct cell *level = c->stars.radiation_level;
+  float partner_drift;
+  return level->dmin +
+         cell_radiation_thinnest_partner_width(level, &partner_drift);
+}
+
+/**
+ * @brief Radius around a star inside which an HII pass visits every cell that
+ * held gas there at the last rebuild.
+ *
+ * The pass visits the star's radiation_level cell and every cell linked to
+ * it. A sphere around the star stays inside them up to its distance to the
+ * nearest face of the radiation_level cell plus the width of the thinnest
+ * linked partner. A face on the wall of a non-periodic box is left out: no
+ * gas lies beyond it. Gas that entered the covered cells from an unlinked
+ * cell since the last rebuild is still stored in that cell, so the largest
+ * gas displacement of the partners is taken off.
+ *
+ * @param c The working-level #cell holding the star.
+ * @param x The position of the star.
+ * @param dim The size of the box.
+ * @param periodic Is the box periodic?
+ * @return The covered radius, at least 0, or FLT_MAX if every face is a wall.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_covered_radius(const struct cell *c, const double x[3],
+                              const double dim[3], const int periodic) {
+
+  const struct cell *level = c->stars.radiation_level;
+
+  float partner_drift;
+  const float partner_width =
+      cell_radiation_thinnest_partner_width(level, &partner_drift);
+
+  double face_distance = DBL_MAX;
+  for (int k = 0; k < 3; k++) {
+    const double half_width = 0.5 * level->width[k];
+    double dx = x[k] - (level->loc[k] + half_width);
+    if (periodic) dx = nearest(dx, dim[k]);
+
+    const int lower_is_wall = !periodic && level->loc[k] <= 0.;
+    const int upper_is_wall =
+        !periodic && level->loc[k] + level->width[k] >= dim[k];
+    if (!lower_is_wall) face_distance = min(face_distance, half_width + dx);
+    if (!upper_is_wall) face_distance = min(face_distance, half_width - dx);
   }
-  return margin;
+  if (face_distance == DBL_MAX) return FLT_MAX;
+
+  const double covered = face_distance + partner_width - partner_drift;
+  return covered > 0. ? (float)covered : 0.f;
 }
 
 /**
