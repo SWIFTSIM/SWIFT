@@ -598,16 +598,17 @@ the HII age window clear it. With
 \code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop}$\,=0$ the photons
 of a stopped pass escape. The step log reports the carried and released
 passes and the photons released at coverage stops. Photons left at a
-one-probe stop are counted apart (Section~\ref{sec:hii-claim-start}). Photons
-left at any other stop escape uncounted there, carried ones included, and so
-does a carry cleared at death or at the end of the age window.
+one-probe, tries or ceiling stop are counted apart
+(Section~\ref{sec:hii-claim-start}). Photons left at any other stop escape
+uncounted there, carried ones included, and so does a carry cleared at death
+or at the end of the age window.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
 (\code{src/feedback/GEAR/feedback\_common.c:1257-1268}). The issued
 interval, the skips and the tag gap are set in
 \code{runner\_hii\_open\_star\_pass}
-(\code{src/runner\_radiation\_feedback.c:725-826}).
+(\code{src/runner\_radiation\_feedback.c:770-871}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -730,6 +731,23 @@ once by \code{Stars:HII\_radius\_expansion\_factor}). Starting beyond the held
 gas keeps that one probe for the gas outside the region. A star that holds
 nothing starts at $r_{\rm start}$.
 
+A probe is empty only if it meets neither a candidate nor gas that another
+star holds beyond the previous search radius ($r_{\rm held}$ for the first
+probe). A star whose region lies inside the regions of other stars sees their
+gas past $r_{\rm held}$. That gas is not a candidate either, but it shows that
+the front of the star lies farther out, so the walk grows through it. Gas of
+other stars inside $r_{\rm held}$ does not count: it says nothing about the
+gas past the region. Only gas in a pixel with photons left counts. The walk
+then spends the photons of the pass on the first candidates past the other
+regions, and no photon escapes at a one-probe stop while each probe meets such
+gas. Two probes in a row that meet neither a candidate nor such gas still stop
+the walk. A star alone, or one that holds nothing, is not affected.
+
+A nested star with photons left makes up to six searches per pass instead of
+two and reaches $1.61\,r_0$. It can therefore reach $r_{\rm cov}$ and ask for
+a wider tree, and so for wider locks, where the earlier stop would have ended
+the pass. \code{Stars:HII\_max\_search\_radius} bounds the reach.
+
 A pass that finds nothing more within its radius and still has photons ends
 for one of four reasons. They are tested in this order, and the first that
 holds ends the pass: (1) \code{Stars:HII\_max\_radius\_expansion\_tries}
@@ -742,33 +760,42 @@ ceiling bind first. A stop on the tries or the ceiling asks for no wider tree
 and keeps no photons. A stop at the covered radius asks for a wider tree,
 and its photons follow the carry rule of
 Section~\ref{sec:budget-carry}. A one-probe stop is therefore always inside
-$r_{\rm cov}$. Its photons escape. The step log counts the coverage stops
+$r_{\rm cov}$. Its photons escape. A star nested in other regions whose front
+lies beyond $r_0$ times the expansion factor to the power of the tries
+($1.93\,r_{\rm held}$ with the default 5 tries and factor 1.1) stops on the
+tries, and its photons escape. The step log counts the coverage stops
 (carried and released passes, released photons, start radii cut to $r_{\rm cov}$)
-and, apart, the one-probe stops with photons left and those photons. The share
-of the issued photons that escape at one-probe stops measures how often
-the search still falls short. The counters are cumulative over the run,
+and, apart, the one-probe stops and the tries or ceiling stops with photons
+left, with those photons. The share of the issued photons that escape at
+these stops measures how often the search still falls short. The counters are cumulative over the run,
 are summed over the MPI ranks at the end of each step, and start again from
 zero at a restart: they are not in the restart file.
 
 \paragraph{Implementation.} The gather is in \code{runner\_hii\_maintain\_held\_region}
-(\code{src/runner\_radiation\_feedback.c:850}), exempt from
+(\code{src/runner\_radiation\_feedback.c:895}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
 (\code{src/feedback/GEAR/feedback\_common.c:743-777}). Its reach and
 Eq.~\eqref{eq:hii-claim-start} are \code{runner\_hii\_held\_search\_radius} and
-\code{runner\_hii\_claim\_start\_radius} (\code{src/runner\_radiation\_feedback.h:174-211}).
-The stop order is \code{runner\_hii\_search\_stop}
-(\code{src/runner\_radiation\_feedback.h:159-172}). The carry decision is
+\code{runner\_hii\_claim\_start\_radius} (\code{src/runner\_radiation\_feedback.h:189-226}).
+The stop order is \code{runner\_hii\_search\_stop} and the empty-probe count
+\code{runner\_hii\_next\_empty\_probes}
+(\code{src/runner\_radiation\_feedback.h:161-187}). The gas of other stars is
+counted in \code{runner\_hii\_count\_held\_by\_other\_star}
+(\code{src/runner\_radiation\_feedback.c:206}) and added to the candidates by
+\code{runner\_hii\_probe\_count\_met} (\code{src/runner\_radiation\_feedback.h:416}).
+The carry decision is
 \code{feedback\_carry\_star\_HII\_unspent\_photons}
 (\code{src/feedback/GEAR/feedback\_common.c:1336-1348}). The one-probe stops are
 counted in \code{runner\_hii\_count\_one\_probe\_stop}
-(\code{src/runner\_radiation\_feedback.c:1106}). The counters are summed in
+(\code{src/runner\_radiation\_feedback.c:1162}), the tries and ceiling stops in
+\code{runner\_hii\_count\_growth\_limit\_stop} (\code{:1210}). The counters are summed in
 \code{feedback\_radiation\_hii\_coverage\_reduce}, called at
 \code{src/engine\_collect\_end\_of\_step.c:273}, and printed by
 \code{feedback\_radiation\_hii\_coverage\_report}, called at
 \code{src/engine.c:2798}. The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
 (\code{feedback\_common.c:946-1016}), called at
-\code{src/runner\_radiation\_feedback.c:939}.
+\code{src/runner\_radiation\_feedback.c:984}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}

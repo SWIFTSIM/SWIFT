@@ -194,6 +194,46 @@ runner_hii_try_insert_candidate(struct hii_gather_state *gather,
 }
 
 /**
+ * @brief Count a gas particle held by another star if the search reached it
+ * first and its pixel has photons left.
+ *
+ * @param gather The #hii_gather_state of the traversal.
+ * @param dx Star-minus-particle position offset.
+ * @param r2 Squared distance between star and particle.
+ * @param r2_max Squared search radius.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_hii_count_held_by_other_star(struct hii_gather_state *gather,
+                                    const float dx[3], const float r2,
+                                    const float r2_max) {
+
+  if (r2 >= r2_max || r2 <= gather->r2_others_min) return;
+
+  struct spart *si = gather->si;
+  const int pixel = runner_hii_get_pixel(
+      dx, feedback_get_star_HII_pixel_count(si), gather->frame);
+  if (feedback_get_star_ionization_budget(si, pixel) > 0.0)
+    gather->count_held_by_others++;
+}
+
+/**
+ * @brief Is this gas particle held by a star other than the one gathering new
+ * candidates?
+ *
+ * @param pj The gas particle.
+ * @param xpj The particle's extended data, or NULL for a foreign cell.
+ * @param gather The #hii_gather_state of the traversal.
+ */
+__attribute__((always_inline)) INLINE static int
+runner_hii_part_held_by_other_star(const struct part *pj,
+                                   const struct xpart *xpj,
+                                   const struct hii_gather_state *gather) {
+  return gather->mode == hii_gather_new_candidates &&
+         radiation_is_part_tagged_as_ionized(pj, xpj) &&
+         radiation_get_part_ionized_star_id(pj, xpj) != gather->si->id;
+}
+
+/**
  * @brief Does this gas particle belong to the set the current traversal is
  * gathering?
  *
@@ -257,7 +297,8 @@ __attribute__((always_inline)) INLINE static void runner_hii_axis_window(
  *
  * The particle is skipped if it is inhibited or outside the set the traversal
  * is after. Otherwise its distance to the star is measured and it goes to
- * #runner_hii_try_insert_candidate.
+ * #runner_hii_try_insert_candidate, or to
+ * #runner_hii_count_held_by_other_star if another star holds it.
  *
  * @param gather The #hii_gather_state of the traversal.
  * @param pj The candidate gas particle.
@@ -276,10 +317,11 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
 
   const struct engine *e = gather->r->e;
 
-  /* Early abort? */
+  /* Early abort? Gas held by another star fails the filter but is counted. */
   if (part_is_inhibited(pj, e)) return;
-  if (!runner_hii_part_passes_gather_filter(pj, xpj, e, gather->si->id,
-                                            gather->mode))
+  const int held_by_other = runner_hii_part_held_by_other_star(pj, xpj, gather);
+  if (!held_by_other && !runner_hii_part_passes_gather_filter(
+                            pj, xpj, e, gather->si->id, gather->mode))
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -297,7 +339,10 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
   const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-  runner_hii_try_insert_candidate(gather, pj, xpj, c, dx, r2, r2_max);
+  if (held_by_other)
+    runner_hii_count_held_by_other_star(gather, dx, r2, r2_max);
+  else
+    runner_hii_try_insert_candidate(gather, pj, xpj, c, dx, r2, r2_max);
 }
 
 /**
@@ -1012,8 +1057,9 @@ void feedback_radiation_hii_coverage_report(void) {
 
   /* A pass stopped at the edge of the gas the tree covers asks for a wider
    * tree. Released photons mean the rebuild could not widen it. Cut start
-   * radii alone do not print a line. Photons left at one-probe stops
-   * escape: their share of the issued photons measures the search stall. */
+   * radii alone do not print a line. Photons left at one-probe, tries and
+   * ceiling stops escape: their share of the issued photons measures the
+   * search stall. */
   const struct radiation_hii_coverage_stats *cov = &radiation_hii_coverage;
   const struct radiation_hii_coverage_stats *cov_last =
       &radiation_hii_coverage_last_report;
@@ -1022,6 +1068,8 @@ void feedback_radiation_hii_coverage_report(void) {
       cov_last->carried_passes + cov_last->released_passes;
   const int new_one_probe_stops =
       cov->one_probe_stops > cov_last->one_probe_stops;
+  const int new_growth_limit_stops =
+      cov->growth_limit_stops > cov_last->growth_limit_stops;
 
   if (new_coverage_stops)
     message(
@@ -1040,7 +1088,15 @@ void feedback_radiation_hii_coverage_report(void) {
         cov->one_probe_stops, cov->one_probe_stops - cov_last->one_probe_stops,
         cov->one_probe_photons,
         cov->one_probe_photons - cov_last->one_probe_photons);
-  if (new_coverage_stops || new_one_probe_stops)
+  if (new_growth_limit_stops)
+    message(
+        "HII tries or ceiling stops with photons left: %.0f (+%.0f) with "
+        "%.3e photons (+%.3e).",
+        cov->growth_limit_stops,
+        cov->growth_limit_stops - cov_last->growth_limit_stops,
+        cov->growth_limit_photons,
+        cov->growth_limit_photons - cov_last->growth_limit_photons);
+  if (new_coverage_stops || new_one_probe_stops || new_growth_limit_stops)
     radiation_hii_coverage_last_report = *cov;
 }
 
@@ -1146,6 +1202,19 @@ static void runner_hii_count_one_probe_stop(struct runner *r, struct cell *c,
 }
 
 /**
+ * @brief Count a pass that the tries or the ceiling stopped with photons left.
+ * Those photons escape.
+ *
+ * @param si The #spart.
+ */
+static void runner_hii_count_growth_limit_stop(const struct spart *si) {
+  struct radiation_hii_coverage_stats *stats = &radiation_hii_coverage_local;
+  atomic_add_d(&stats->growth_limit_stops, 1.);
+  atomic_add_d(&stats->growth_limit_photons,
+               feedback_get_star_ionization_budget_total(si));
+}
+
+/**
  * @brief How the claim walk of a star pass ended.
  */
 struct hii_claim_summary {
@@ -1178,6 +1247,8 @@ struct hii_claim_summary {
  * @param last_tree_reach feedback_get_star_HII_carry_tree_reach() before the
  * budget of this pass opened.
  * @param count_held Gas the star already held at the start of the pass.
+ * @param held_radius Distance to the star of the farthest gas it holds, 0 if
+ * it holds none.
  * @param diag The #hii_pass_diagnostics.
  * @param summary (return) How the walk ended.
  */
@@ -1185,8 +1256,8 @@ static void runner_hii_claim_and_retry(
     struct runner *r, struct cell *c, struct spart *si, const double *frame,
     const double dt_back, const double dt_tag, const float start_radius,
     const float covered_radius, const float last_tree_reach,
-    const int count_held, struct hii_pass_diagnostics *diag,
-    struct hii_claim_summary *summary) {
+    const int count_held, const float held_radius,
+    struct hii_pass_diagnostics *diag, struct hii_claim_summary *summary) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -1240,6 +1311,10 @@ static void runner_hii_claim_and_retry(
   int num_radius_expansions = 0;
   int num_empty_expansions = 0;
 
+  /* Gas of other stars counts only where no earlier search of this walk
+     reached: inside the held region it says nothing about the front. */
+  float others_min_radius = held_radius;
+
   hii_pass_diagnostics_init(diag, si);
 
   while (1) {
@@ -1253,17 +1328,21 @@ static void runner_hii_claim_and_retry(
        retry gathers past it. */
     int attempt_front_count = 0;
 
-    struct hii_gather_state gather = {.r = r,
-                                      .si = si,
-                                      .search_radius = dynamic_search_radius,
-                                      .buffer = ngb_buffer,
-                                      .max_size = max_ngbs,
-                                      .count_found = 0,
-                                      .mode = hii_gather_new_candidates,
-                                      .ctx = NULL,
-                                      .frame = frame};
+    struct hii_gather_state gather = {
+        .r = r,
+        .si = si,
+        .search_radius = dynamic_search_radius,
+        .buffer = ngb_buffer,
+        .max_size = max_ngbs,
+        .count_found = 0,
+        .mode = hii_gather_new_candidates,
+        .ctx = NULL,
+        .frame = frame,
+        .r2_others_min = others_min_radius * others_min_radius,
+        .count_held_by_others = 0};
     runner_hii_visit_neighbors(c, &gather);
     const int count_found = gather.count_found;
+    const int count_met = runner_hii_probe_count_met(&gather);
 
     const int buffer_was_full = (count_found == max_ngbs);
 
@@ -1343,7 +1422,7 @@ static void runner_hii_claim_and_retry(
        * runner_hii_search_stop() binds. */
       const enum hii_search_stop stop = runner_hii_search_stop(
           dynamic_search_radius, max_search_radius, covered_radius,
-          num_radius_expansions, max_radius_expansion_tries, count_found,
+          num_radius_expansions, max_radius_expansion_tries, count_met,
           count_held, num_empty_expansions);
 
       if (stop == hii_search_stop_covered_radius) {
@@ -1370,13 +1449,14 @@ static void runner_hii_claim_and_retry(
       if (stop == hii_search_stop_one_probe)
         runner_hii_count_one_probe_stop(r, c, si, frame, dynamic_search_radius,
                                         covered_radius, ngb_buffer);
+      if (stop == hii_search_stop_tries || stop == hii_search_stop_ceiling)
+        runner_hii_count_growth_limit_stop(si);
       if (stop != hii_search_grow) break;
 
-      if (count_found == 0 && count_held > 0)
-        ++num_empty_expansions;
-      else
-        num_empty_expansions = 0;
+      num_empty_expansions = runner_hii_next_empty_probes(count_met, count_held,
+                                                          num_empty_expansions);
 
+      others_min_radius = dynamic_search_radius;
       dynamic_search_radius =
           min3(dynamic_search_radius * radius_expansion_factor,
                max_search_radius, covered_radius);
@@ -1543,9 +1623,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
     struct hii_pass_diagnostics diag;
     struct hii_claim_summary summary;
-    runner_hii_claim_and_retry(
-        r, c, si, frame, pass.dt_back, pass.dt_tag, start_radius,
-        covered_radius, pass.last_tree_reach, count_held, &diag, &summary);
+    runner_hii_claim_and_retry(r, c, si, frame, pass.dt_back, pass.dt_tag,
+                               start_radius, covered_radius,
+                               pass.last_tree_reach, count_held, held_radius,
+                               &diag, &summary);
 
     hii_pass_diagnostics_print(&diag, e, si, count_held);
     runner_hii_close_star_pass(c, si, pass.star_age_safe, &summary, &diag,
