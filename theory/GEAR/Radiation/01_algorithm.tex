@@ -739,9 +739,14 @@ the front of the star lies farther out, so the walk grows through it. Gas of
 other stars inside $r_{\rm held}$ does not count: it says nothing about the
 gas past the region. Only gas in a pixel with photons left counts. The walk
 then spends the photons of the pass on the first candidates past the other
-regions, and no photon escapes at a one-probe stop while such gas lies inside
-$r_{\rm cov}$ and within the tries. A star alone, or one that holds nothing,
-is not affected.
+regions, and no photon escapes at a one-probe stop while each probe meets such
+gas. Two probes in a row that meet neither a candidate nor such gas still stop
+the walk. A star alone, or one that holds nothing, is not affected.
+
+A nested star with photons left makes up to six searches per pass instead of
+two and reaches $1.61\,r_0$. It can therefore reach $r_{\rm cov}$ and ask for
+a wider tree, and so for wider locks, where the earlier stop would have ended
+the pass. \code{Stars:HII\_max\_search\_radius} bounds the reach.
 
 A pass that finds nothing more within its radius and still has photons ends
 for one of four reasons. They are tested in this order, and the first that

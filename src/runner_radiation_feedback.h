@@ -476,9 +476,10 @@ struct radiation_hii_coverage_stats {
 
   /*! Photons released by those passes. Only coverage stops count here:
       photons left at a one-probe stop count in one_probe_photons, at a tries
-      or ceiling stop in growth_limit_photons; at any other stop they escape
-      uncounted, carried ones included, and so does a carry cleared at death
-      or at the end of the age window. */
+      or ceiling stop in growth_limit_photons; at any other stop, the two
+      full-buffer breaks included, they escape uncounted, carried ones
+      included, and so does a carry cleared at death or at the end of the age
+      window. */
   double released_photons;
 
   /*! Claim walks whose start radius was cut to the covered radius. */
