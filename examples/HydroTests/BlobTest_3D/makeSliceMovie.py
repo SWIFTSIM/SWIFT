@@ -6,8 +6,8 @@ Josh Borrow (joshua.borrow@durham.ac.uk) 2019
 LGPLv3
 """
 
-from swiftsimio import load
-from swiftsimio.visualisation import slice
+from swiftsimio import load, mask, cosmo_array, cosmo_quantity
+from swiftsimio.visualisation import slice_gas
 
 from p_tqdm import p_map
 
@@ -33,64 +33,47 @@ name = "Fluid Density $\\rho$"
 def get_image(n):
     """
     Gets the image for snapshot n, and also returns the associated
-    SWIFT metadata object.
+    simulation time.
     """
     filename = f"{snapshot_name}_{n:04d}.hdf5"
 
     data = load(filename)
-    boxsize = data.metadata.boxsize[0].value
+    coords = data.gas.coordinates
 
     output = np.zeros((resolution, resolution * 4), dtype=float)
-
-    x, y, z = data.gas.coordinates.value.T
+    z_slice = cosmo_quantity(
+        0.5,
+        coords.units,
+        comoving=coords.comoving,
+        scale_factor=data.metadata.scale_factor,
+        scale_exponent=1,
+    )
 
     # This is an oblong box but we can only make squares!
-    for box, box_edges in enumerate([[0.0, 1.1], [0.9, 2.1], [1.9, 3.1], [2.9, 4.0]]):
-        mask = np.logical_and(x >= box_edges[0], x <= box_edges[1])
-        masked_x = x[mask] - np.float64(box)
-        masked_y = y[mask]
-        masked_z = z[mask]
-
-        try:
-            hsml = data.gas.smoothing_length.value[mask]
-        except:
-            hsml = data.gas.smoothing_lengths.value[mask]
+    for box in range(4):
+        region = cosmo_array(
+            [box, box + 1.0, 0.0, 1.0],
+            coords.units,
+            comoving=coords.comoving,
+            scale_factor=data.metadata.scale_factor,
+            scale_exponent=1,
+        )
 
         if plot == "density":
-            mass = data.gas.masses.value[mask]
-            image = slice(
-                x=masked_y,
-                y=masked_x,
-                z=masked_z,
-                m=mass,
-                h=hsml,
-                z_slice=0.5,
-                res=resolution,
-            )
+            # Density in the slice
+            image = slice_gas(data, resolution, z_slice, "masses", region=region)
+            image = image.to_value("g/cm**3")
         else:
-            quantity = getattr(data.gas, plot).value[mask]
             # Need to divide out the particle density for non-projected density quantities
-            image = scatter(
-                x=masked_y,
-                y=masked_x,
-                z=masked_z,
-                m=quantity,
-                h=hsml,
-                z_slice=0.5,
-                res=resolution,
-            ) / scatter(
-                x=masked_y,
-                y=masked_x,
-                z=masked_z,
-                m=np.ones_like(quantity),
-                h=hsml,
-                z_slice=0.5,
-                res=resolution,
-            )
+            image = slice_gas(
+                data, resolution, z_slice, plot, region=region
+            ) / slice_gas(data, resolution, z_slice, None, region=region)
+            image = image.to_value(getattr(data.gas, plot).units)
 
-        output[:, box * resolution : (box + 1) * resolution] = image
+        # The images are indexed [x, y]; imshow wants [y, x]
+        output[:, box * resolution : (box + 1) * resolution] = image.T
 
-    return output, data.metadata
+    return output, data.metadata.t.to_value("s")
 
 
 def get_data_dump(metadata):
@@ -100,12 +83,12 @@ def get_data_dump(metadata):
 
     try:
         viscosity = metadata.viscosity_info
-    except:
+    except KeyError:
         viscosity = "No info"
 
     try:
         diffusion = metadata.diffusion_info
-    except:
+    except KeyError:
         diffusion = "No info"
 
     output = (
@@ -129,14 +112,14 @@ def get_data_dump(metadata):
     return output
 
 
-def time_formatter(metadata):
-    return f"$t = {metadata.t:2.2f}$"
+def time_formatter(t):
+    return f"$t = {t:2.2f}$ s"
 
 
 # Generate the frames and unpack our variables
-images, metadata = zip(*p_map(get_image, list(range(start_frame, end_frame))))
+images, times = zip(*p_map(get_image, list(range(start_frame, end_frame))))
 
-# The edges are funny because of the non-periodicity.
+# Set the colour range from the central part of the first frame.
 central_region = images[0][
     resolution // 10 : resolution - resolution // 10,
     resolution // 10 : resolution - resolution // 10,
@@ -154,7 +137,7 @@ image = ax.imshow(np.zeros_like(images[0]), norm=norm, cmap=cmap, origin="lower"
 description_text = ax.text(
     0.5,
     0.5,
-    get_data_dump(metadata[0]),
+    get_data_dump(mask(f"{snapshot_name}_{start_frame:04d}.hdf5").metadata),
     va="center",
     ha="center",
     **text_args,
@@ -164,7 +147,7 @@ description_text = ax.text(
 time_text = ax.text(
     (1 - 0.025 * 0.25),
     0.975,
-    time_formatter(metadata[0]),
+    time_formatter(times[0]),
     **text_args,
     va="top",
     ha="right",
@@ -181,7 +164,7 @@ def animate(n):
     if n >= 0:
         image.set_array(images[n])
         description_text.set_text("")
-        time_text.set_text(time_formatter(metadata[n]))
+        time_text.set_text(time_formatter(times[n]))
 
     return (image,)
 

@@ -42,7 +42,8 @@ rho = np.array(file["/PartType0/Densities"])
 u = np.array(file["/PartType0/InternalEnergies"])
 agrav = np.array(file["/PartType0/GravAcceleration"])
 m = np.array(file["/PartType0/Masses"])
-ids = np.array(file["/PartType0/ParticleIDs"])
+# IDs are 1-based; shift them to recover the 0-based lattice index
+ids = np.array(file["/PartType0/ParticleIDs"]) - 1
 
 # ids_reverse gives the index original particle 0 now has in the particle arrays
 # and so on
@@ -55,12 +56,12 @@ rho_x = 1000.0 * np.exp(-0.5 * A / np.pi / cs2 * np.cos(2.0 * np.pi * x))
 
 P = cs2 * rho
 
-n1D = np.ceil(len(P) ** (1.0 / 3.0))
+n1D = int(round(len(P) ** (1.0 / 3.0)))
 gradP = np.zeros(P.shape)
 for i in range(len(P)):
     iself = int(ids[i] / n1D / n1D)
-    jself = int(int(ids[i] - n1D * iself) / n1D)
-    kself = int(ids[i] - n1D ** 2 * iself - n1D * jself)
+    jself = int((ids[i] - n1D**2 * iself) / n1D)
+    kself = int(ids[i] - n1D**2 * iself - n1D * jself)
     corr = 0.0
     im1 = iself - 1
     if im1 < 0:
@@ -70,8 +71,8 @@ for i in range(len(P)):
     if ip1 == n1D:
         ip1 = 0
         corr = 1.0
-    idxp1 = ids_reverse[ip1 * n1D ** 2 + jself * n1D + kself]
-    idxm1 = ids_reverse[im1 * n1D ** 2 + jself * n1D + kself]
+    idxp1 = ids_reverse[ip1 * n1D**2 + jself * n1D + kself]
+    idxm1 = ids_reverse[im1 * n1D**2 + jself * n1D + kself]
     gradP[i] = (P[idxp1] - P[idxm1]) / (coords[idxp1, 0] - coords[idxm1, 0] + corr)
 
 fig, ax = pl.subplots(2, 2)

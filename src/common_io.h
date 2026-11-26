@@ -148,6 +148,8 @@ void io_copy_temp_buffer(void *temp, const struct engine *e,
 #endif /* HAVE_HDF5 */
 
 size_t io_sizeof_type(enum IO_DATA_TYPE type);
+void io_fill_default_value(void *dest, enum IO_DATA_TYPE type, int dimension,
+                           double value);
 int io_is_double_precision(enum IO_DATA_TYPE type);
 
 long long io_count_gas_to_write(const struct space *s, const int subsample,

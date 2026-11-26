@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# This example requires SWIFT to be configured with:
+#   --with-hydro-dimension=2
+
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
-if [ ! -e glassPlane_128.hdf5 ]
+if [ ! -e glassPlane_128.hdf5 ] || [ ! -e glassPlane_48.hdf5 ]
 then
     echo "Fetching initial glass file for the Sod shock example..."
     ./getGlass.sh

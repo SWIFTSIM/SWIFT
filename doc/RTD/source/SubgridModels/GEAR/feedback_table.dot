@@ -163,10 +163,64 @@ digraph feedback {
       </table>>];
    }
 
+   subgraph cluster_sw {
+     SW[shape="none", label=<
+     <table BORDER="0">
+     <tr>
+      <td><u>SW</u></td>
+     </tr>
+     <tr>
+      <td>Mmin</td>
+     </tr>
+     <tr>
+      <td>Mmax</td>
+     </tr>
+     </table>>];
+   }
+
+   subgraph cluster_sw_e_m {
+      graph[style="dotted"];
+      sw_e_m[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>Power/Mass</u></td>
+      </tr>
+      <tr>
+        <td>min</td>
+      </tr>
+      <tr>
+        <td>num_step</td>
+      </tr>
+      <tr>
+        <td>step_size</td>
+      </tr>
+      </table>>];
+   }
+
+   subgraph cluster_sw_I_e_m {
+      graph[style="dotted"];
+      sw_I_e_m[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>Integrated Power/Mass</u></td>
+      </tr>
+      <tr>
+        <td>min</td>
+      </tr>
+      <tr>
+        <td>num_step</td>
+      </tr>
+      <tr>
+        <td>step_size</td>
+      </tr>
+      </table>>];
+   }
+
    Data->LifeTimes;
    Data->IMF;
    Data->SNII;
    Data->SNIa;
+   Data->SW;
 
    LifeTimes->coeff_z;
 
@@ -174,5 +228,8 @@ digraph feedback {
    SNII->snii_ej;
    SNII->snii_ejnp;
 
-   SNIa->snia_metals;
+   SNIa->snia_metals; 
+
+   SW->sw_e_m;
+   SW->sw_I_e_m;
 }

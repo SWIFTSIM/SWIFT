@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt
 plt.style.use("local.mplstyle")
 
 import numpy as np
-from glob import glob
 import h5py
 import sys
 

@@ -86,6 +86,9 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     pc->grav.CoM_rebuild[2] = mp->CoM_rebuild[2];
     pc->grav.r_max = mp->r_max;
     pc->grav.r_max_rebuild = mp->r_max_rebuild;
+    pc->grav.dx_max[0] = mp->dx_max[0];
+    pc->grav.dx_max[1] = mp->dx_max[1];
+    pc->grav.dx_max[2] = mp->dx_max[2];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -292,6 +295,9 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     mp->CoM_rebuild[2] = pc->grav.CoM_rebuild[2];
     mp->r_max = pc->grav.r_max;
     mp->r_max_rebuild = pc->grav.r_max_rebuild;
+    mp->dx_max[0] = pc->grav.dx_max[0];
+    mp->dx_max[1] = pc->grav.dx_max[1];
+    mp->dx_max[2] = pc->grav.dx_max[2];
   }
 
   /* Number of new cells created. */
@@ -323,8 +329,10 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->split = 0;
       temp->hydro.dx_max_part = 0.f;
       temp->hydro.dx_max_sort = 0.f;
+      temp->hydro.dx_max_sort_offset = 0.f;
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
+      temp->stars.dx_max_sort_offset = 0.f;
       temp->sinks.dx_max_part = 0.f;
       temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
@@ -451,21 +459,32 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
-  pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
+#ifndef NONE_SPH
+  pcells[0].ti_end_min.hydro = c->hydro.ti_end_min;
+  pcells[0].dx_max_part.hydro = c->hydro.dx_max_part;
+#endif
+
+  pcells[0].ti_end_min.grav = c->grav.ti_end_min;
+
+#ifndef STARS_NONE
+  pcells[0].ti_end_min.stars = c->stars.ti_end_min;
+  pcells[0].dx_max_part.stars = c->stars.dx_max_part;
+#endif
+
+#ifndef BLACK_HOLES_NONE
+  pcells[0].ti_end_min.black_holes = c->black_holes.ti_end_min;
+  pcells[0].dx_max_part.black_holes = c->black_holes.dx_max_part;
+#endif
+
+#ifndef SINK_NONE
+  pcells[0].ti_end_min.sinks = c->sinks.ti_end_min;
+  pcells[0].dx_max_part.sinks = c->sinks.dx_max_part;
+#endif
+
+#ifndef RT_NONE
   pcells[0].rt.ti_rt_end_min = c->rt.ti_rt_end_min;
   pcells[0].rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
-
-  pcells[0].grav.ti_end_min = c->grav.ti_end_min;
-
-  pcells[0].stars.ti_end_min = c->stars.ti_end_min;
-  pcells[0].stars.dx_max_part = c->stars.dx_max_part;
-
-  pcells[0].black_holes.ti_end_min = c->black_holes.ti_end_min;
-  pcells[0].black_holes.dx_max_part = c->black_holes.dx_max_part;
-
-  pcells[0].sinks.ti_end_min = c->sinks.ti_end_min;
-  pcells[0].sinks.dx_max_part = c->sinks.dx_max_part;
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -497,22 +516,32 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
-  c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
+#ifndef NONE_SPH
+  c->hydro.ti_end_min = pcells[0].ti_end_min.hydro;
+  c->hydro.dx_max_part = pcells[0].dx_max_part.hydro;
+#endif
 
+  c->grav.ti_end_min = pcells[0].ti_end_min.grav;
+
+#ifndef STARS_NONE
+  c->stars.ti_end_min = pcells[0].ti_end_min.stars;
+  c->stars.dx_max_part = pcells[0].dx_max_part.stars;
+#endif
+
+#ifndef BLACK_HOLES_NONE
+  c->black_holes.ti_end_min = pcells[0].ti_end_min.black_holes;
+  c->black_holes.dx_max_part = pcells[0].dx_max_part.black_holes;
+#endif
+
+#ifndef SINK_NONE
+  c->sinks.ti_end_min = pcells[0].ti_end_min.sinks;
+  c->sinks.dx_max_part = pcells[0].dx_max_part.sinks;
+#endif
+
+#ifndef RT_NONE
   c->rt.ti_rt_end_min = pcells[0].rt.ti_rt_end_min;
   c->rt.ti_rt_min_step_size = pcells[0].rt.ti_rt_min_step_size;
-
-  c->grav.ti_end_min = pcells[0].grav.ti_end_min;
-
-  c->stars.ti_end_min = pcells[0].stars.ti_end_min;
-  c->stars.dx_max_part = pcells[0].stars.dx_max_part;
-
-  c->black_holes.ti_end_min = pcells[0].black_holes.ti_end_min;
-  c->black_holes.dx_max_part = pcells[0].black_holes.dx_max_part;
-
-  c->sinks.ti_end_min = pcells[0].sinks.ti_end_min;
-  c->sinks.dx_max_part = pcells[0].sinks.dx_max_part;
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

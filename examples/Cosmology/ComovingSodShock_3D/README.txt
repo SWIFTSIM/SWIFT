@@ -8,7 +8,7 @@ this case, hydrodynamics in the co-moving frame is identical to
 hydrodynamics in a physical non-cosmological frame with a rescaled time 
 variable dt'=a^2*dt.
 
-We choose an Einstein-de Sitter cosmology with H(a)=H_0*a^(3/2) and a 
+We choose an Einstein-de Sitter cosmology with H(a)=H_0*a^(-3/2) and a 
 box size of 1 pc and rescale the Sod shock initial conditions so that 
 the internal coordinates, density and pressure values are still the same 
 as for the original Sod shock in the non-cosmological case. We then 

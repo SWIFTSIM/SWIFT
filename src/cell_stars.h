@@ -46,6 +46,12 @@ struct cell_stars {
     /*! Pointer to the #spart data at rebuild time. */
     struct spart *parts_rebuild;
 
+    /*! Dependency implicit task for the ghost  (in->ghost->out)*/
+    struct task *ghost_in;
+
+    /*! Dependency implicit task for the ghost  (in->ghost->out)*/
+    struct task *ghost_out;
+
     /*! The star ghost task itself */
     struct task *density_ghost[STARS_GHOST_NTASK];
 
@@ -108,6 +114,10 @@ struct cell_stars {
 
     /*! Maximum particle movement in this cell since the last sort. */
     float dx_max_sort;
+
+    /*! Upper bound on the particle shift at the time sort directions were
+     * added to this (leaf) cell without resetting the shifts. */
+    float dx_max_sort_offset;
 
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;

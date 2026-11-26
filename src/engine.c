@@ -839,6 +839,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_gparts_foreign = s->size_gparts_foreign;
+  size_t old_size_gparts_fof_foreign = s->size_gparts_fof_foreign;
   if (!fof && count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_foreign", s->gparts_foreign);
@@ -850,13 +851,13 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   }
 
   /* Allocate space for the foreign FOF particles we will receive */
-  if (fof && count_gparts_in > s->size_gparts_foreign) {
-    if (s->gparts_foreign != NULL)
+  if (fof && count_gparts_in > s->size_gparts_fof_foreign) {
+    if (s->gparts_fof_foreign != NULL)
       swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
-    s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
+    s->size_gparts_fof_foreign = engine_foreign_alloc_margin * count_gparts_in;
     if (swift_memalign(
             "gparts_fof_foreign", (void **)&s->gparts_fof_foreign, gpart_align,
-            sizeof(struct gpart_fof_foreign) * s->size_gparts_foreign) != 0)
+            sizeof(struct gpart_fof_foreign) * s->size_gparts_fof_foreign) != 0)
       error("Failed to allocate foreign FOF gpart data.");
   }
 
@@ -915,19 +916,28 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   }
 
   if (e->verbose) {
+
+    /* Report the gpart buffer we are dealing with */
+    const size_t size_gparts =
+        fof ? s->size_gparts_fof_foreign : s->size_gparts_foreign;
+    const size_t old_size_gparts =
+        fof ? old_size_gparts_fof_foreign : old_size_gparts_foreign;
+    const size_t sizeof_gpart =
+        fof ? sizeof(struct gpart_fof_foreign) : sizeof(struct gpart_foreign);
+
     message(
         "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
         "(%zd/%zd/%zd/%zd/%zd MB)",
-        s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
+        s->size_parts_foreign, size_gparts, s->size_sparts_foreign,
         s->size_bparts_foreign, s->size_sinks_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
-        s->size_gparts_foreign * sizeof(struct gpart_foreign) / (1024 * 1024),
+        size_gparts * sizeof_gpart / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
         s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
-        (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
+        (size_gparts - old_size_gparts) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
         (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
         (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
@@ -935,16 +945,13 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
           "(%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
-          (s->size_gparts_foreign - old_size_gparts_foreign),
+          (size_gparts - old_size_gparts),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
           (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
-          fof ? (s->size_gparts_foreign - old_size_gparts_foreign) *
-                    sizeof(struct gpart_fof_foreign) / (1024 * 1024)
-              : (s->size_gparts_foreign - old_size_gparts_foreign) *
-                    sizeof(struct gpart_foreign) / (1024 * 1024),
+          (size_gparts - old_size_gparts) * sizeof_gpart / (1024 * 1024),
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
@@ -1608,6 +1615,16 @@ int engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
+    /* The FOF decides which cells can contain links based on their geometry.
+     * The particles have moved since the last rebuild and may now lie outside
+     * their cell, so rebuild the tree with the drifted positions first.
+     * engine_rebuild() clears these flags but we still need the rebuild
+     * below to take the newly seeded black holes into account. */
+    const int restarting = e->restarting;
+    engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
+    e->forcerebuild = 1;
+    e->restarting = restarting;
+
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
 
@@ -2009,8 +2026,10 @@ void engine_synchronize_times(struct engine *e) {
   const ticks tic_start = getticks();
 
   /* Collect which top-level cells have been updated */
-  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
-                MPI_SUM, MPI_COMM_WORLD);
+  /* Note: the array holds 0/1 flags, so a byte-wise OR is what we want (and
+   * MPI_CHAR is not a valid type for arithmetic reductions). */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_BYTE,
+                MPI_BOR, MPI_COMM_WORLD);
 
   /* Activate tend communications involving the cells that have changed. */
   for (int i = 0; i < e->s->nr_cells; ++i) {
@@ -2307,6 +2326,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
+
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old, e->time);
 
   if (e->policy & engine_policy_rt)
     rt_props_update(e->rt_props, e->internal_units, e->cosmology);
@@ -2661,7 +2683,12 @@ int engine_step(struct engine *e) {
 #endif
 
     /* Write the star formation information to the file */
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
 
       star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
                                               e->cosmology->a, e->cosmology->z,
@@ -2694,9 +2721,17 @@ int engine_step(struct engine *e) {
 
   /* When restarting, we may have had some i/o to do on the step
    * where we decided to stop. We have to do this now.
-   * We need some cells to exist but not the whole task stuff. */
-  if (e->restarting) space_rebuild(e->s, 0, e->verbose);
-  if (e->restarting) engine_io(e);
+   * We need a full rebuild (not just the space) such that the foreign cells
+   * and the communication tasks exist in case FOF runs over MPI. */
+  if (e->restarting) {
+    engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
+    engine_io(e);
+
+    /* engine_rebuild() clears these but the rest of the restart step needs
+     * them: drift everything below and rebuild again at the new time. */
+    e->restarting = 1;
+    e->forcerebuild = 1;
+  }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* If we're restarting, clean up some flags and counters first. If would
@@ -2764,6 +2799,9 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old, e->time);
 
   /* Update the rt properties */
   if (e->policy & engine_policy_rt)
@@ -3465,7 +3503,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -3512,14 +3550,18 @@ void engine_init(
     parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
                                   num_snapshot_triggers_part,
                                   e->snapshot_recording_triggers_desired_part);
-  if (num_snapshot_triggers_spart)
+  if (num_snapshot_triggers_spart && (e->policy & engine_policy_stars))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
                                   num_snapshot_triggers_spart,
                                   e->snapshot_recording_triggers_desired_spart);
-  if (num_snapshot_triggers_bpart)
+  if (num_snapshot_triggers_bpart && (e->policy & engine_policy_black_holes))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
                                   e->snapshot_recording_triggers_desired_bpart);
+  if (num_snapshot_triggers_sink && (e->policy & engine_policy_sinks))
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_sink",
+                                  num_snapshot_triggers_sink,
+                                  e->snapshot_recording_triggers_desired_sink);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
@@ -3728,7 +3770,12 @@ void engine_init(
   }
 
   /* Initialize the star formation history structure */
-  if (e->policy & engine_policy_star_formation) {
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = with_sinks && with_stars;
+
+  if (with_star_formation || with_star_formation_sink) {
     star_formation_logger_accumulator_init(&e->sfh);
   }
 
@@ -3768,7 +3815,7 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
-    for (int k = 0; k <= engine_maxpolicy; k++)
+    for (int k = 0; k < engine_maxpolicy; k++)
       if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
@@ -3776,7 +3823,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 0; k <= engine_maxpolicy; k++)
+  for (int k = 0; k < engine_maxpolicy; k++)
     if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
@@ -3890,8 +3937,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       /* RMS peculiar motion for the DM */
       const float rms_vel_dm = vel_norm_dm / N_dm;
 
-      /* Time-step based on maximum displacement */
-      dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
+      /* Time-step based on maximum displacement. Particles at rest do not
+       * limit it. */
+      if (rms_vel_dm > 0.f) dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
     }
 
     /* Baryon case */
@@ -3910,8 +3958,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       /* RMS peculiar motion for the baryons */
       const float rms_vel_b = vel_norm_b / N_b;
 
-      /* Time-step based on maximum displacement */
-      dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+      /* Time-step based on maximum displacement. Particles at rest do not
+       * limit it. */
+      if (rms_vel_b > 0.f) dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
     }
 
     /* Use the minimum */
@@ -4042,7 +4091,12 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
       fclose(e->sfh_logger);
     }
 

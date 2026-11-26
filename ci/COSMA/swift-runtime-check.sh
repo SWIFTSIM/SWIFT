@@ -35,8 +35,26 @@ module load grackle-swift/3.3.dev1
 #  Need 2.70 for Fortran support.
 module load autoconf
 
+#  Function to locate the test data. Should be in the home directory of this
+#  user when in a container.
+function link_data {
+    ln -s $HOME/${1} .
+}
+
 #  Clean sources.
 git clean -fdx
+
+#  Python packages needed by the example scripts, in a virtual environment
+#  built from the module's Python. Created after the clean so each run
+#  starts fresh; downloads are cached in ~/.cache/pip.
+echo "------------------------------------------"
+echo "Creating the Python virtual environment."
+echo "------------------------------------------"
+python3 -m venv "${WORKDIR}/.ci-venv" || exit 1
+source "${WORKDIR}/.ci-venv/bin/activate" || exit 1
+python3 -m pip install --upgrade pip || exit 1
+python3 -m pip install -r examples/requirements.txt || exit 1
+python3 -c "import swiftsimio; print('swiftsimio', swiftsimio.__version__)" || exit 1
 
 #  And off we go.
 ./autogen.sh
@@ -53,7 +71,8 @@ cd examples/GravityTests/ExternalPointMass
 echo "------------------------"
 echo "External point mass test, 1 thread"
 echo "------------------------"
-python makeIC.py 10000
+python3 --version
+python3 makeIC.py 10000
 do_run ../../../swift -g -t 1 externalPointMass.yml
 
 echo "---------------------------------------------"
@@ -69,7 +88,7 @@ echo "-----------------------"
 
 #  Avoid downloading it is not necessary on COSMA which has direct access.
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5 EAGLE_ICs_6.hdf5
+link_data EAGLE_ICs_6.hdf5
 do_run ../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16
 
 # Check also a dry-run
@@ -85,9 +104,9 @@ echo "SodShock threaded test, 4 threads, 256 steps"
 echo "--------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/glassCube_64.hdf5
 #wget http://virgodb/swift-webstorage/ICs/glassCube_32.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_64.hdf5 glassCube_64.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_32.hdf5 glassCube_32.hdf5
-python makeIC.py
+link_data glassCube_64.hdf5
+link_data glassCube_32.hdf5
+python3 makeIC.py
 do_run ../../../swift -s -t 4 -n 256 sodShock.yml
 
 #  Bigger test, requires a lot of resources, so don't run as long.
@@ -112,7 +131,7 @@ echo "------------------------------------------------------------------"
 echo "EAGLE_12 MPI test with ext. gravity, 4 ranks, 8 threads, 128 steps"
 echo "------------------------------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5 EAGLE_ICs_12.hdf5
+link_data EAGLE_ICs_12.hdf5
 do_run mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1024 -PRestarts:onexit:1 eagle_12.yml
 
 #  Restart this.
@@ -129,7 +148,7 @@ do_make clean
 do_configure --with-hydro-dimension=1 --with-parmetis --enable-debugging-checks --disable-vec --enable-debug
 do_make
 cd examples/HydroTests/SodShock_1D
-python makeIC.py
+python3 makeIC.py
 do_run ../../../swift -s -t 1 sodShock.yml
 cd ../../../
 
@@ -142,9 +161,39 @@ echo "debugging-checks are disabled"
 do_configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=${GRACKLE_HOME}/lib
 do_make
 cd examples/SinkParticles/PlummerSphere
-ln -s /cosma5/data/Swift/web-storage/ICs/test_sink.hdf5
-ln -s /cosma5/data/Swift/web-storage/CoolingTables/CloudyData_UVB=HM2012.h5
-ln -s /cosma5/data/Swift/web-storage/FeedbackTables/POPIIsw.h5
+link_data test_sink.hdf5
+link_data CloudyData_UVB=HM2012.h5
+link_data POPIIsw.h5
 do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
+cd ../../../
+
+echo "--------------"
+echo "Sink particles in gas-free cell"
+do_make clean
+echo "--------------"
+echo "debugging-checks are enabled"
+do_configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=${GRACKLE_HOME}/lib --enable-debugging-checks --enable-debug
+do_make
+cd examples/SinkParticles/GasFreeSinkCells
+# Create the ICs using the default parameters.
+python3 makeIC.py --level 5 -o ICs_gas_free_sink_cells.hdf5 --lJ 0.250
+link_data CloudyData_UVB=HM2012.h5
+link_data POPIIsw.h5
+do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --sync --limiter --threads=4 params.yml
+cd ../../../
+
+echo "---------------------------------------"
+echo "TREECOOL cooling, cosmological box test"
+echo "---------------------------------------"
+do_make clean
+do_configure --with-cooling=TREECOOL --enable-debugging-checks --enable-debug
+do_make
+# cd examples/Cooling/ConstantCosmoTempEvolution
+# #wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/gravity_glassCube_32.hdf5
+# link_data gravity_glassCube_32.hdf5
+# python makeIC.py
+# do_run ../../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml
+# cd ../../../
 
 exit
+

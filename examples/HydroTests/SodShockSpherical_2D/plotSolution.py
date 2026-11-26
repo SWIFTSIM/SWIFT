@@ -49,8 +49,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 coords = sim["/PartType0/Coordinates"]
@@ -69,16 +69,16 @@ v_bin, _, _ = stats.binned_statistic(x, v, statistic="mean", bins=x_bin_edge)
 P_bin, _, _ = stats.binned_statistic(x, P, statistic="mean", bins=x_bin_edge)
 S_bin, _, _ = stats.binned_statistic(x, S, statistic="mean", bins=x_bin_edge)
 u_bin, _, _ = stats.binned_statistic(x, u, statistic="mean", bins=x_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(x, rho ** 2, statistic="mean", bins=x_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(x, v ** 2, statistic="mean", bins=x_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(x, P ** 2, statistic="mean", bins=x_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(x, S ** 2, statistic="mean", bins=x_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(x, u ** 2, statistic="mean", bins=x_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(x, rho**2, statistic="mean", bins=x_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(x, v**2, statistic="mean", bins=x_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(x, P**2, statistic="mean", bins=x_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(x, S**2, statistic="mean", bins=x_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(x, u**2, statistic="mean", bins=x_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 ref = np.loadtxt("sodShockSpherical2D_exact.txt")
 

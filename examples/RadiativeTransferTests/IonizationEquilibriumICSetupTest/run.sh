@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 if [ ! -f ./ionization_equilibrium_test.hdf5 ]; then
     echo "creating ICs"

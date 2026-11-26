@@ -35,8 +35,8 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 # define unit system to use
 unitsystem = cosmo_units
@@ -101,9 +101,6 @@ def initial_condition(x, unitsystem):
     F = np.zeros(3, dtype=np.float64)
     F[0] = (E * c_internal).to(unit_flux)
 
-    E1 = E
-    F1 = F[0]
-
     E_list.append(E)
     F_list.append(F)
 
@@ -124,25 +121,19 @@ def initial_condition(x, unitsystem):
     E_list.append(E)
     F_list.append(F)
 
-    E2 = E
-    F2 = F[0]
-
     # Group 3 Photons:
     # -------------------
     sigma = 0.1 * boxsize
     mean = 0.5 * boxsize
     amplitude = 2.0
 
-    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2)) * unit_energy
+    E = amplitude * np.exp(-((x[0] - mean) ** 2) / (2 * sigma**2)) * unit_energy
 
     F = np.zeros(3, dtype=np.float64)
     F[0] = (E * c_internal).to(unit_flux)
 
     E_list.append(E)
     F_list.append(F)
-
-    E3 = E
-    F3 = F[0]
 
     return E_list, F_list
 
@@ -156,20 +147,46 @@ if __name__ == "__main__":
     for i in range(n_p):
         xp[i, 0] = (i + 0.5) * dx
 
-    w = Writer(unitsystem, boxsize, dimension=1)
+    boxsize_cosmo = sw.cosmo_array(
+        [boxsize.value],
+        boxsize.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    w = sw.Writer(unit_system=unitsystem, boxsize=boxsize_cosmo, dimension=1)
 
-    w.gas.coordinates = xp
-    w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
+    w.gas.coordinates = sw.cosmo_array(
+        xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.gas.velocities = sw.cosmo_array(
+        np.zeros(xp.shape),
+        unyt.cm / unyt.s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
     mpart = 1e20 * unyt.M_Sun
     mpart = mpart.to(unitsystem["mass"])
 
-    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
-    w.gas.internal_energy = (
-        np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.masses = sw.cosmo_array(
+        np.ones(xp.shape[0], dtype=np.float64) * mpart.value,
+        mpart.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    u = (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.internal_energy = sw.cosmo_array(
+        np.ones(xp.shape[0], dtype=np.float64) * u.value,
+        u.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
-    w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=1)
+    w.gas.generate_smoothing_lengths()
 
     # If IDs are not present, this automatically generates
     w.write(outputfilename)

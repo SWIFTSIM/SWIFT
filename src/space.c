@@ -154,7 +154,7 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
   }
   if (s->gparts_fof_foreign != NULL) {
     swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
-    s->size_gparts_foreign = 0;
+    s->size_gparts_fof_foreign = 0;
     s->gparts_fof_foreign = NULL;
   }
   if (s->sparts_foreign != NULL) {
@@ -457,14 +457,20 @@ void space_map_cells_pre(struct space *s, int full,
 /**
  * @brief Get a new empty (sub-)#cell.
  *
- * If there are cells in the buffer, use the one at the end of the linked list.
- * If we have no cells, allocate a new chunk of memory and pick one from there.
+ * The cells (and their multipoles) are taken from the head of the buffer of
+ * thread @c tpid. If that buffer is empty, a new chunk of memory is allocated
+ * and the cells are picked from there.
+ *
+ * The buffers are not locked: a thread may only use its own buffer, i.e.
+ * pass its threadpool id as @c tpid from within a #threadpool mapper. Outside
+ * of a mapper, the main thread may use any buffer.
  *
  * @param s The #space.
  * @param nr_cells Number of #cell to pick up.
  * @param cells Array of @c nr_cells #cell pointers in which to store the
  *        new cells.
- * @param tpid ID of threadpool threadpool associated with cells_sub.
+ * @param tpid ID of the threadpool thread whose buffer (cells_sub and
+ *        multipoles_sub) is used.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tpid) {
@@ -515,7 +521,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     }
   }
 
-  /* Unlock the space. */
+  /* Count the new cells. */
   atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
@@ -548,12 +554,24 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
+
+  /* Early exit if we have no hydro or star particles, as we won't have
+   * allocated any sort arrays. */
+  if (s->e->total_nr_parts == 0 && s->e->total_nr_sparts == 0) return;
+
+  const ticks tic = getticks();
+
   for (short int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
     for (struct cell *finger = s->cells_sub[tpid]; finger != NULL;
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);
     }
+  }
+
+  if (s->e->verbose) {
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
   }
 }
 
@@ -1184,6 +1202,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+  s->with_hydro_splitting = 0;
+  s->splitting_need_unique_id = 0;
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
@@ -1511,8 +1531,10 @@ void space_init(struct space *s, struct swift_params *params,
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
-    space_extra_gparts = 0;
     space_extra_sinks = 0;
+    if (!s->with_hydro_splitting) {
+      space_extra_gparts = 0;
+    }
   }
 
   const int create_sparts =
@@ -1539,7 +1561,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }
@@ -2540,6 +2562,9 @@ void space_after_snap_tracer(struct space *s, int verbose) {
   for (size_t i = 0; i < s->nr_bparts; ++i) {
     tracers_after_snapshot_bpart(&s->bparts[i]);
   }
+  for (size_t i = 0; i < s->nr_sinks; ++i) {
+    tracers_after_snapshot_sink(&s->sinks[i]);
+  }
 }
 
 /**
@@ -2796,6 +2821,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_parts_foreign = 0;
   s->gparts_foreign = NULL;
   s->size_gparts_foreign = 0;
+  s->gparts_fof_foreign = NULL;
+  s->size_gparts_fof_foreign = 0;
   s->sparts_foreign = NULL;
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;

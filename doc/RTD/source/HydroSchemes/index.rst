@@ -31,6 +31,7 @@ In case the case of a 2 loop scheme, SWIFT removes the gradient loop and the ext
    :maxdepth: 2
    :caption: Contents:
 
+   kernels
    traditional_sph
    minimal_sph
    planetary_sph

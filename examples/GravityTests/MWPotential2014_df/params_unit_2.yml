@@ -1,6 +1,6 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.988409870698051e+33 # 10^10 Solar masses
+  UnitMass_in_cgs:     1.988409870698051e+33 # Solar mass
   UnitLength_in_cgs:   3.0856775814913673e+24 # Mpc
   UnitVelocity_in_cgs: 1e5       # 1 km / s in cm/s
   UnitCurrent_in_cgs:  1         # Amperes
@@ -16,7 +16,8 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            output           # Common part of the name of output files
-  subdir:              output_2         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).  time_first:          0.      # Time of the first output (in internal units)
+  subdir:              output_2         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).
+  time_first:          0.      # Time of the first output (in internal units)
   delta_time:          1e-5    # Time difference between consecutive outputs (in internal units)
   UnitMass_in_cgs:     1.98848e+43
   UnitLength_in_cgs:   3.086e+21

@@ -24,6 +24,8 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
+#include "engine.h"
+#include "runner.h"
 #include "runner_doiact_hydro.h"
 
 /**
@@ -1077,7 +1079,13 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 #endif
 
   if (force_naive || !is_sorted) {
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+
     DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
+
   } else {
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
     if (sort_is_face(sid))
@@ -1088,11 +1096,11 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 #else
     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
-  }
 
-  /* Now we can unlock */
-  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-    error("Impossible to unlock cell!");
+    /* Unlock now that we are done reading the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+  }
 }
 
 /**
@@ -1256,7 +1264,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
-  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
@@ -1574,6 +1581,13 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells (cj).");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  runner_check_sort_shift_hydro(ci, cj, sid, e);
+  runner_check_sort_shift_hydro(cj, ci, sid, e);
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
@@ -2275,6 +2289,13 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells (cj).");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  runner_check_sort_shift_hydro(ci, cj, sid, e);
+  runner_check_sort_shift_hydro(cj, ci, sid, e);
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
   DOPAIR2_NAIVE(r, ci, cj, limit_min_h, limit_max_h);

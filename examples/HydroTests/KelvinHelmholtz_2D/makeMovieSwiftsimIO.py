@@ -10,12 +10,10 @@ Written by Josh Borrow (joshua.borrow@durham.ac.uk)
 """
 
 import os
-import h5py as h5
 import numpy as np
-import scipy.interpolate as si
 
 from swiftsimio import load
-from swiftsimio.visualisation import project_gas_pixel_grid
+from swiftsimio.visualisation import project_gas
 
 
 def load_and_extract(filename):
@@ -35,7 +33,7 @@ def make_plot(filename, array, nx, ny, dx, dy):
 
     data = load_and_extract(filename)
 
-    mesh = project_gas_pixel_grid(data, nx).T
+    mesh = project_gas(data, nx).to_value("g/cm**2").T
 
     array.set_array(mesh)
 
@@ -46,8 +44,6 @@ def frame(n, *args):
     """
     Make a single frame. Requires the global variables plot and dpi.
     """
-
-    global plot, dpi
 
     fn = "{}_{:04d}.hdf5".format(filename, n)
 
@@ -61,7 +57,6 @@ if __name__ == "__main__":
 
     from tqdm import tqdm
     from matplotlib.animation import FuncAnimation
-    from scipy.stats import gaussian_kde
 
     import matplotlib.pyplot as plt
 
@@ -87,7 +82,7 @@ if __name__ == "__main__":
 
     data = load_and_extract("kelvinHelmholtz_0000.hdf5")
 
-    mesh = project_gas_pixel_grid(data, dpi)
+    mesh = project_gas(data, dpi).to_value("g/cm**2")
 
     # Global variable for set_array
     plot = ax.imshow(

@@ -18,6 +18,8 @@ from scipy.integrate import odeint
 
 import stromgren_plotting_tools as spt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Plot parameters
 params = {
     "axes.labelsize": 14,
@@ -33,7 +35,6 @@ params = {
     "xtick.major.width": 1.5,
     "ytick.major.width": 1.5,
     "axes.linewidth": 1.5,
-    "text.usetex": True,
     "figure.figsize": (5, 4),
     "figure.subplot.left": 0.045,
     "figure.subplot.right": 0.99,
@@ -124,7 +125,7 @@ def get_analytic_neutralfraction_stromgren3D(data, scheme):
             meta.parameters["SPHM1RT:star_emission_rates"].decode("utf-8")
         )
         * unit_m_in_cgs
-        * unit_v_in_cgs ** 3
+        * unit_v_in_cgs**3
         / unit_l_in_cgs
     )
     ionizing_photon_energy_erg = (
@@ -149,7 +150,7 @@ def plot_analytic_compare(filename):
     xstar = data.stars.coordinates
     xpart = data.gas.coordinates
     dxp = xpart - xstar
-    r = np.sqrt(np.sum(dxp ** 2, axis=1))
+    r = np.sqrt(np.sum(dxp**2, axis=1))
 
     imf = spt.get_imf(scheme, data)
     xHI = imf.HI / (imf.HI + imf.HII)

@@ -17,8 +17,9 @@
 #
 ##############################################################################
 
-import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Generates a swift IC file for the Square test in a periodic box
 
@@ -39,33 +40,33 @@ vol = 1.0
 numPart_out = L * L
 numPart_in = int(L * L * rho0 / rho1 / 4)
 
-L_out = int(sqrt(numPart_out))
-L_in = int(sqrt(numPart_in))
+L_out = int(np.sqrt(numPart_out))
+L_in = int(np.sqrt(numPart_in))
 
-pos_out = zeros((numPart_out, 3))
+pos_out = np.zeros((numPart_out, 3))
 for i in range(L_out):
     for j in range(L_out):
         index = i * L_out + j
         pos_out[index, 0] = i / (float(L_out)) + 1.0 / (2.0 * L_out)
         pos_out[index, 1] = j / (float(L_out)) + 1.0 / (2.0 * L_out)
-h_out = ones(numPart_out) * (1.0 / L_out) * 1.2348
-m_out = ones(numPart_out) * vol * rho1 / numPart_out
-u_out = ones(numPart_out) * P1 / (rho1 * (gamma - 1.0))
+h_out = np.ones(numPart_out) * (1.0 / L_out) * 1.2348
+m_out = np.ones(numPart_out) * vol * rho1 / numPart_out
+u_out = np.ones(numPart_out) * P1 / (rho1 * (gamma - 1.0))
 
-pos_in = zeros((numPart_in, 3))
+pos_in = np.zeros((numPart_in, 3))
 for i in range(L_in):
     for j in range(L_in):
         index = i * L_in + j
         pos_in[index, 0] = 0.25 + i / float(2.0 * L_in) + 1.0 / (2.0 * 2.0 * L_in)
         pos_in[index, 1] = 0.25 + j / float(2.0 * L_in) + 1.0 / (2.0 * 2.0 * L_in)
-h_in = ones(numPart_in) * (1.0 / L_in) * 1.2348
-m_in = ones(numPart_in) * 0.25 * vol * rho0 / numPart_in
-u_in = ones(numPart_in) * P0 / (rho0 * (gamma - 1.0))
+h_in = np.ones(numPart_in) * (1.0 / L_in) * 1.2348
+m_in = np.ones(numPart_in) * 0.25 * vol * rho0 / numPart_in
+u_in = np.ones(numPart_in) * P0 / (rho0 * (gamma - 1.0))
 
 # Remove the central particles
-select_out = logical_or(
-    logical_or(pos_out[:, 0] < 0.25, pos_out[:, 0] > 0.75),
-    logical_or(pos_out[:, 1] < 0.25, pos_out[:, 1] > 0.75),
+select_out = np.logical_or(
+    np.logical_or(pos_out[:, 0] < 0.25, pos_out[:, 0] > 0.75),
+    np.logical_or(pos_out[:, 1] < 0.25, pos_out[:, 1] > 0.75),
 )
 pos_out = pos_out[select_out, :]
 h_out = h_out[select_out]
@@ -73,53 +74,31 @@ u_out = u_out[select_out]
 m_out = m_out[select_out]
 
 # Add the central region
-pos = append(pos_out, pos_in, axis=0)
-h = append(h_out, h_in, axis=0)
-u = append(u_out, u_in)
-m = append(m_out, m_in)
-numPart = size(h)
-ids = linspace(1, numPart, numPart)
-vel = zeros((numPart, 3))
+pos = np.append(pos_out, pos_in, axis=0)
+h = np.append(h_out, h_in, axis=0)
+u = np.append(u_out, u_in)
+m = np.append(m_out, m_in)
+numPart = np.size(h)
+ids = np.linspace(1, numPart, numPart)
+vel = np.zeros((numPart, 3))
 vel[:, 0] = vx
 vel[:, 1] = vy
 
 
 # File
-fileOutput = h5py.File(fileOutputName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [vol, vol], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=2,
+)
 
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [vol, vol, 0.2]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 2
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = vel * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = fileOutput.create_group("/PartType0")
-ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-ds[()] = pos
-ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = vel
-ds = grp.create_dataset("Masses", (numPart, 1), "f")
-ds[()] = m.reshape((numPart, 1))
-ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-ds[()] = h.reshape((numPart, 1))
-ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-ds[()] = u.reshape((numPart, 1))
-ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-ds[()] = ids.reshape((numPart, 1))
-
-fileOutput.close()
+w.write(fileOutputName)

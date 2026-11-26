@@ -76,14 +76,14 @@ struct spart {
   union {
 
     /*! Birth time */
-    float birth_time;
+    double birth_time;
 
     /*! Birth scale factor */
-    float birth_scale_factor;
+    double birth_scale_factor;
   };
 
   /*! Scale-factor / time at which this particle last did enrichment */
-  float last_enrichment_time;
+  double last_enrichment_time;
 
   /*! Initial star mass */
   float mass_init;
@@ -147,6 +147,10 @@ struct spart {
 
   /* Exact integer number of neighbours in the density loop */
   int N_density_exact;
+
+  /* Number of exact neighbours (or near-neighbours) lying on the edge of the
+   * kernel, whose inclusion depends on round-off */
+  int N_density_exact_edge;
 
   /*! Has this particle interacted with any unhibited neighbour? */
   char inhibited_exact;

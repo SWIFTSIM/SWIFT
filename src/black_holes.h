@@ -29,6 +29,8 @@
 #include "./black_holes/EAGLE/black_holes.h"
 #elif defined(BLACK_HOLES_SPIN_JET)
 #include "./black_holes/SPIN_JET/black_holes.h"
+#elif defined(BLACK_HOLES_GEAR)
+#include "./black_holes/GEAR/black_holes.h"
 #else
 #error "Invalid choice of black hole model"
 #endif

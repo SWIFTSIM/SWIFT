@@ -244,10 +244,14 @@
 /* Returns the higher 128-bits of the 256-bit vector. */
 #define VEC_GET_HIGH(a) _mm256_extractf128_ps(a, 1)
 
-/* Check if we have AVX2 intrinsics alongside AVX */
-#ifdef HAVE_AVX2
+/* Check if the compiler targets FMA (a separate flag from AVX2) */
+#ifdef __FMA__
 #define vec_fma(a, b, c) _mm256_fmadd_ps(a, b, c)
 #define vec_fnma(a, b, c) _mm256_fnmadd_ps(a, b, c)
+#endif
+
+/* Check if we have AVX2 intrinsics alongside AVX */
+#ifdef HAVE_AVX2
 
 /* Used in VEC_FORM_PACKED_MASK */
 #define identity_indices 0x0706050403020100
@@ -271,12 +275,12 @@
   vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask.m), result)
 #endif /* HAVE_AVX2 */
 
-/* Create an FMA using vec_add and vec_mul if AVX2 is not present. */
+/* Create an FMA using vec_add and vec_mul if FMA is not present. */
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
 #endif
 
-/* Create a negated FMA using vec_sub and vec_mul if AVX2 is not present. */
+/* Create a negated FMA using vec_sub and vec_mul if FMA is not present. */
 #ifndef vec_fnma
 #define vec_fnma(a, b, c) vec_sub(c, vec_mul(a, b))
 #endif

@@ -25,6 +25,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "io_compression.h"
 #include "io_properties.h"
 #include "output_options.h"
 #include "units.h"
@@ -282,6 +283,13 @@ void io_prepare_output_fields(struct output_options *output_options,
       if (value_id == compression_level_count)
         error("Choice of output selection parameter %s ('%s') is invalid.",
               param_name, param_value);
+
+#ifdef HAVE_HDF5
+      if (param_is_known)
+        io_check_field_compression(field_list[param_ptype][field_id].type,
+                                   (enum lossy_compression_schemes)value_id,
+                                   field_list[param_ptype][field_id].name);
+#endif
 
       /* Adjust number of fields to be written for param_ptype, if this field's
        * status is different from default and it is a known one. */

@@ -7,7 +7,7 @@ The included python script `make_sink_ic.py` creates the initial conditions. You
 Running the script with no options produces a "level 6" box at "m5" resolution, with a sink mass 50x that of the gas mass, and a density and velocity dispersion of 0.1 atoms/cc and 10 km/s respectively, representative of the ISM. The ICs have the default name `ics.hdf5`.
 
 # Configure
-To run this example with GEAR model,
+To run this example with the Basic sink model,
 
 ./configure --with-sink=Basic --with-kernel=wendland-C2
 
@@ -20,7 +20,7 @@ You can also add `--enable-sink-density-checks=<CHECK_FREQUENCY>` to run the bru
 # Run
 We can now run with 
 
-swift --hydro --self-gravity --sinks --threads=<NUM_THREADS> params.yml
+../../../swift --hydro --self-gravity --sinks --threads=<NUM_THREADS> params.yml
 
 By default the simulation will run for 500 Myr, and output a snapshot every 10 Myr. You can change these options in your paramfile.
 

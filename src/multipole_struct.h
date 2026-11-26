@@ -213,6 +213,9 @@ struct gravity_tensors {
       /*! Upper limit of the CoM<->gpart distance */
       double r_max;
 
+      /*! Upper limit of the CoM<->gpart distance along each axis */
+      float dx_max[3];
+
       /*! Upper limit of the CoM<->gpart distance at the last rebuild */
       double r_max_rebuild;
     };

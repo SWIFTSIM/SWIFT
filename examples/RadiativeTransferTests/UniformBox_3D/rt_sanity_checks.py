@@ -42,7 +42,6 @@ import numpy as np
 from sys import argv
 from swift_rt_debug_io import get_snap_data
 
-
 # some behaviour options
 skip_snap_zero = False  # skip snap_0000.hdf5
 skip_last_snap = False  # skip snap_0max.hdf5

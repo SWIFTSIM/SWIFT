@@ -87,7 +87,7 @@ SPHM1RT:
   init_species_abundance_HeIII:    0.0                # (Conditional) (if useabundances==1) HeIII abundances (in unit hydrogen number density:nH)
   relativeTolerance:          1e-3                    # (Optional) Relative tolerance for SPHM1RT thermo-chemistry intergration
   absoluteTolerance:          1e-10                   # (Optional) Absolute tolerance for SPHM1RT thermo-chemistry integration
-  explicitTolerance:          0.1                     # (Optional) Tolerance below which we use the explicit solution in SPHM1RT thermo-chemistry
+  explicitRelTolerance:          0.1                     # (Optional) Tolerance below which we use the explicit solution in SPHM1RT thermo-chemistry
   ionizing_photon_energy_erg: [3.0208e-11, 5.61973e-11, 1.05154e-10]  # (Optional) ionizing photon energy in erg averaged within frequency bins
   reinject:               1                          # (Optional) gather energy around injection radius and re-inject the energy
 

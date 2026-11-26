@@ -1,3 +1,6 @@
 This example generates a set of particles in an isothermal potential
-and follows their orbits. IDL scripts verify the conservation of
-energy and angular momentum.
+and follows their orbits. The python script energy_plot.py verifies
+the conservation of energy and angular momentum.
+
+SWIFT must be configured with --with-ext-potential=isothermal to run
+this example.

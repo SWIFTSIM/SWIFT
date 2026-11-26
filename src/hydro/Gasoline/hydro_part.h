@@ -32,6 +32,7 @@
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
+#include "forcing_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
@@ -81,6 +82,9 @@ struct xpart {
 
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
+
+  /* Additional data used by the forcing scheme */
+  struct forcing_xpart_data forcing_data;
 
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */

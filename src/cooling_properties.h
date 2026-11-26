@@ -46,6 +46,8 @@
 #include "./cooling/EAGLE/cooling_properties.h"
 #elif defined(COOLING_PS2020)
 #include "./cooling/PS2020/cooling_properties.h"
+#elif defined(COOLING_TREECOOL)
+#include "./cooling/TREECOOL/cooling_properties.h"
 #else
 #error "Invalid choice of cooling function."
 #endif

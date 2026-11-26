@@ -17,8 +17,9 @@
 #
 ################################################################################
 
-# Computes the analytical solution of the Zeldovich pancake and compares with
-# the simulation result
+# Plots the evolution of the mean comoving density, internal energy, entropy
+# and peculiar velocities of the gas in a uniform cosmological box, and
+# compares them with the expected (constant) solution
 
 # Parameters
 T_i = 100.0  # Initial temperature of the gas (in K)
@@ -48,19 +49,19 @@ redshift = sim["/Header"].attrs["Redshift"][0]
 a = sim["/Header"].attrs["Scale-factor"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
-unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
-unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"]
-unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"]
+unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"][0]
+unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"][0]
+unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"][0]
 m_gas = sim["/PartType0/Masses"][0]
 N = sim["/Header"].attrs["NumPart_Total"][0]
 sim.close()
 
 # Expected comoving quantities
-rho_0 = N * m_gas / boxSize ** 3
+rho_0 = N * m_gas / boxSize**3
 u_0 = kB_in_SI * T_i / (gas_gamma - 1.0) / mH_in_kg
 u_0 *= 1e-6  # conversion to internal units
 u_0 *= a ** (-3 * (1 - gas_gamma))
@@ -116,7 +117,7 @@ for i in range(N_output):
     vz_std[i] = np.std(v[:, 2])
 
 # Move to physical quantities
-rho_mean_phys = rho_mean / a ** 3
+rho_mean_phys = rho_mean / a**3
 u_mean_phys = u_mean / a ** (3 * (gas_gamma - 1.0))
 S_mean_phys = S_mean
 

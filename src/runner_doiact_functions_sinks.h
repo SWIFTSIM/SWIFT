@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #include "runner_doiact_sinks.h"
 
 /**
@@ -93,7 +92,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
         if (r2 < hig2) {
           IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
                          e->gravity_properties, e->sink_properties,
-                         e->ti_current, e->time);
+                         e->ti_current, e->time, e->time_base);
         }
       } /* loop over the parts in ci. */
     } /* loop over the sinks in ci. */
@@ -150,7 +149,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       if (r2 < hig2 || r2 < hjg2) {
         IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
                         e->gravity_properties, e->sink_properties,
-                        e->ti_current, e->time);
+                        e->ti_current, e->time, e->time_base);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -244,7 +243,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
         if (r2 < hig2) {
           IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
                          e->gravity_properties, e->sink_properties,
-                         e->ti_current, e->time);
+                         e->ti_current, e->time, e->time_base);
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */
@@ -301,7 +300,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2 || r2 < hjg2) {
         IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
                         e->gravity_properties, e->sink_properties,
-                        e->ti_current, e->time);
+                        e->ti_current, e->time, e->time_base);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
@@ -414,7 +413,7 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
                        e->gravity_properties, e->sink_properties, e->ti_current,
-                       e->time);
+                       e->time, e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -488,7 +487,7 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_SINKS_GAS(r2, dx, hi, pj->h, si, pj, with_cosmology, cosmo,
                        e->gravity_properties, e->sink_properties, e->ti_current,
-                       e->time);
+                       e->time, e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -686,19 +685,30 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   const int do_cj_sink = 1;
 #endif
 
+  /* In the swallow case we care about sink-sink and sink-gas
+   * interactions.
+   * In all other cases only sink-gas so we can abort if there is
+   * no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int do_ci = (ci->sinks.count != 0 && ci_active && do_ci_sink);
+  const int do_cj = (cj->sinks.count != 0 && cj_active && do_cj_sink);
+#else
   const int do_ci =
       (ci->sinks.count != 0 && cj->hydro.count != 0 && ci_active && do_ci_sink);
   const int do_cj =
       (cj->sinks.count != 0 && ci->hydro.count != 0 && cj_active && do_cj_sink);
+#endif
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
 
   /* Check that cells are drifted. */
-  if (do_ci && (!cell_are_sink_drifted(ci, e) || !cell_are_part_drifted(cj, e)))
+  if (do_ci && (!cell_are_sink_drifted(ci, e) ||
+                (cj->hydro.count != 0 && !cell_are_part_drifted(cj, e))))
     error("Interacting undrifted cells.");
 
-  if (do_cj && (!cell_are_part_drifted(ci, e) || !cell_are_sink_drifted(cj, e)))
+  if (do_cj && ((ci->hydro.count != 0 && !cell_are_part_drifted(ci, e)) ||
+                !cell_are_sink_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
   /* No sorted interactions here -> use the naive ones */
@@ -727,9 +737,20 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother? */
+  /* Should we even bother?
+   * In the swallow case we care about sink-sink and sink-gas
+   * interactions.
+   * In all other cases only sink-gas so we can abort if there is
+   * no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
   const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
   const int should_do_cj = cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
+#else
+  const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
+                           cell_is_active_sinks(ci, e);
+  const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
+                           cell_is_active_sinks(cj, e);
+#endif
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -761,10 +782,17 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
     const int do_cj_sink = 1;
 #endif
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
     const int do_ci =
         ci->sinks.count != 0 && cell_is_active_sinks(ci, e) && do_ci_sink;
     const int do_cj =
         cj->sinks.count != 0 && cell_is_active_sinks(cj, e) && do_cj_sink;
+#else
+    const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
+                      cell_is_active_sinks(ci, e) && do_ci_sink;
+    const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
+                      cell_is_active_sinks(cj, e) && do_cj_sink;
+#endif
 
     if (do_ci) {
 
@@ -813,8 +841,17 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
     error("This function should not be called on foreign cells");
 #endif
 
-  /* Should we even bother? */
+  /* Should we even bother?
+   * In the swallow case we care about sink-sink and sink-gas
+   * interactions.
+   * In all other cases only sink-gas so we can abort if there is
+   * no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
   const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+#else
+  const int should_do_ci = ci->hydro.count != 0 && ci->sinks.count != 0 &&
+                           cell_is_active_sinks(ci, e);
+#endif
 
   if (!should_do_ci) return;
 

@@ -103,6 +103,7 @@ int main(int argc, char *argv[]) {
   e.time = 0.1f;
   e.ti_current = 8;
   e.time_base = 1e-10;
+  e.nodeID = 0;
 
   struct pm_mesh mesh;
   mesh.periodic = 0;

@@ -164,11 +164,9 @@ INLINE static int particle_splitting_write_sparticles(
   list[0] = io_make_output_field(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
       split_data.progenitor_id,
-      "Progenitor ID of the gas particle that became this star. If this "
-      "particle is the result of one (or many) splitting events, this ID "
-      "corresponds to the ID of the particle in the initial conditions that "
-      "its lineage can be traced back to. If the particle was never split, "
-      "this is the same as ParticleIDs.");
+      "ProgenitorParticleIDs value of the gas particle that became "
+      "this star. Note this star has the same ParticleIDs value as the gas "
+      "particle it formed from.");
 
   list[1] = io_make_output_field(
       "SplitCounts", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -200,11 +198,9 @@ INLINE static int particle_splitting_write_bparticles(
   list[0] = io_make_output_field(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       split_data.progenitor_id,
-      "Progenitor ID of the gas particle that became the seed BH. If this "
-      "particle is the result of one (or many) splitting events, this ID "
-      "corresponds to the ID of the particle in the initial conditions that "
-      "its lineage can be traced back to. If the particle was never split, "
-      "this is the same as ParticleIDs.");
+      "ProgenitorParticleIDs value of the gas particle that became "
+      "the seed BH. Note this BH has the same ParticleIDs value as the gas "
+      "particle it was seeded from.");
 
   list[1] = io_make_output_field(
       "SplitCounts", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,

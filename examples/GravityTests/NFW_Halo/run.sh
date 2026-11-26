@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ ! -e test_nfw.hdf5 ]
 then
     echo "Generate initial conditions for NFW example"	

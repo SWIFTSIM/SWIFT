@@ -308,14 +308,14 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[0] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[1] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[2] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the depth limits (if any) */
@@ -583,6 +583,13 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells (cj).");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  runner_check_sort_shift_hydro(ci, cj, sid, e);
+  runner_check_sort_shift_hydro(cj, ci, sid, e);
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);

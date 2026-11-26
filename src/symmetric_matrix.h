@@ -135,9 +135,9 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_print(
     const struct sym_matrix *M) {
-  message("|%.4f %.4f %.4f|", M->xx, M->xy, M->xz);
-  message("|%.4f %.4f %.4f|", M->xy, M->yy, M->yz);
-  message("|%.4f %.4f %.4f|", M->xz, M->yz, M->zz);
+  message("|%.7f %.7f %.7f|", M->xx, M->xy, M->xz);
+  message("|%.7f %.7f %.7f|", M->xy, M->yy, M->yz);
+  message("|%.7f %.7f %.7f|", M->xz, M->yz, M->zz);
 }
 
 /**

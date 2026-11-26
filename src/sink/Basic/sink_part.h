@@ -20,6 +20,7 @@
 #define SWIFT_BASIC_SINK_PART_H
 
 #include "timeline.h"
+#include "tracers_struct.h"
 
 #define sink_need_unique_id 1
 
@@ -113,6 +114,9 @@ struct sink {
 
   /*! sink merger information (e.g. merging ID) */
   struct sink_sink_data merger_data;
+
+  /*! Tracer structure */
+  struct tracers_sink_data tracers_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

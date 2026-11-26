@@ -1,0 +1,53 @@
+# Driven subsonic turbulence, Mach ~ 0.3 (Bauer & Springel 2012, MNRAS 423, 2558).
+# Unit periodic box, rho = 1, isothermal sound speed c_s = 1, gamma = 1.001 (configure with --with-adiabatic-index=1.001).
+
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1
+  UnitLength_in_cgs:   1
+  UnitVelocity_in_cgs: 1
+  UnitCurrent_in_cgs:  1
+  UnitTemp_in_cgs:     1
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.      # The starting time of the simulation (in internal units).
+  time_end:   25.6    # The end time of the simulation (in internal units).
+  dt_min:     1e-8    # The minimal time-step size of the simulation (in internal units).
+  dt_max:     5e-3    # The maximal time-step size of the simulation (in internal units). Not larger than TurbulenceDriving:frequency.
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:    drivenTurbulence  # Common part of the name of output files
+  time_first:  2.                # Time of the first output (in internal units)
+  delta_time:  0.8               # Time difference between consecutive outputs (in internal units)
+  compression: 4
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time: 0.05  # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta: 1.2348  # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:  0.1     # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:    0.
+  h_max:          0.2
+
+# Ornstein-Uhlenbeck driving: Table 4 of Bauer & Springel (2012), Mach ~ 0.3 column
+# (sigma = 0.014, Delta t = 0.005, t_s = 1, k in [6.27, 12.57], P(k) ~ k^-5/3, purely solenoidal).
+TurbulenceDriving:
+  random_seed:      42
+  energy:           1.96e-4  # sigma^2 * decay_time: the variance of the OU process is sqrt(energy / decay_time) = 0.014
+  decay_time:       1.0      # Auto-correlation time t_s of the OU process
+  frequency:        0.005    # Time between updates of the driving field
+  weight:           1.0      # Purely solenoidal driving
+  k_min:            6.27     # 2 pi / L
+  k_max:            12.57    # 4 pi / L
+  shape:            2        # Kolmogorov k^-5/3 amplitude spectrum
+  amplitude_factor: 0.8165   # 1/sqrt(3/2): reproduces the Mach numbers of the paper (see the README)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name: ./drivenTurbulence.hdf5
+  periodic:  1

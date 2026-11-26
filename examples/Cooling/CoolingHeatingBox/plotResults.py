@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-import matplotlib
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,7 +50,7 @@ mass_units = units[0]
 length_units = units[1]
 velocity_units = units[2]
 time_units = velocity_units / length_units
-density_units = mass_units / length_units ** 3
+density_units = mass_units / length_units**3
 
 # Read in all other data
 data = np.loadtxt(resultfile)

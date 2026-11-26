@@ -53,6 +53,9 @@ __attribute__((nonnull)) INLINE static void gravity_reset(
 
   bzero(m, sizeof(struct gravity_tensors));
   m->m_pole.min_old_a_grav_norm = FLT_MAX;
+  m->dx_max[0] = 0.f;
+  m->dx_max[1] = 0.f;
+  m->dx_max[2] = 0.f;
 }
 
 /**
@@ -107,6 +110,11 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
 
   /* Conservative change in maximal radius containing all gpart */
   m->r_max += x_diff;
+
+  /* Conservative change in maximal displacement along each axis */
+  m->dx_max[0] += dv[0] * dt;
+  m->dx_max[1] += dv[1] * dt;
+  m->dx_max[2] += dv[2] * dt;
 }
 
 /**
@@ -545,6 +553,17 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
     message("Note: order0_norm = %e", order0_norm);
     return 0;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* A single particle is a point mass, so all of its higher order terms vanish
+   * exactly. Any non-zero values are rounding errors in the centre of mass,
+   * e.g. when the multipole of a split cell holding a single particle has been
+   * shifted to a centre of mass that is very slightly offset from the particle
+   * position. Comparing them is meaningless since r_max, which sets the
+   * expected magnitude of the terms, is that same rounding error. All lower
+   * order quantities have been compared above, so we are done. */
+  if (ma->num_gpart == 1) return 1;
+#endif
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* Order of magnitude of the 1st order terms */

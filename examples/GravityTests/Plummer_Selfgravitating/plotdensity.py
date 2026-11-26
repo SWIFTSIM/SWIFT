@@ -1,15 +1,15 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import argparse
-from scipy.optimize import curve_fit
 import h5py
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parse user input
 parser = argparse.ArgumentParser(
     description="Plot multiple density profiles against theoretical prediction"
 )
 parser.add_argument("files", nargs="+", help="snapshot files to be imaged")
-parser.add_argument("--notex", action="store_true", help="Flag to not use LaTeX markup")
 parser.add_argument(
     "-a", type=float, default=0.1, help="Softening length of theoretical model"
 )
@@ -35,11 +35,7 @@ if len(fnames) > 20:
     )
 
 # Set parameters
-tex = not args.notex
-if tex:
-    plt.rcParams.update({"text.usetex": tex, "font.size": 14, "font.family": "serif"})
-else:
-    plt.rcParams.update({"font.size": 12})
+plt.rcParams.update({"font.size": 14})
 figsize = 7
 
 # Model Parameters (Mestel surface density)
@@ -48,29 +44,24 @@ rsp = np.logspace(np.log10(args.Rmin), np.log10(args.Rmax), args.nbsamples)
 
 
 def plummer_analytical(r):
-    return (
-        3.0
-        * args.M
-        / (4.0 * np.pi * args.a ** 3)
-        * (1.0 + r ** 2 / args.a ** 2) ** (-2.5)
-    )
+    return 3.0 * args.M / (4.0 * np.pi * args.a**3) * (1.0 + r**2 / args.a**2) ** (-2.5)
 
 
 # Plot densities
 fig, ax = plt.subplots(figsize=(1.2 * figsize, figsize))
 for fname in fnames:
     print(fname)
-    f = h5py.File(fname, "r")
-    pos = np.array(f["DMParticles"]["Coordinates"]) - args.shift
-    time = (
-        f["Header"].attrs["Time"][0]
-        * f["Units"].attrs["Unit time in cgs (U_t)"][0]
-        / 31557600.0e9
-    )
-    mass = np.array(f["DMParticles"]["Masses"])
+    with h5py.File(fname, "r") as f:
+        pos = f["DMParticles"]["Coordinates"][:] - args.shift
+        time = (
+            f["Header"].attrs["Time"][0]
+            * f["Units"].attrs["Unit time in cgs (U_t)"][0]
+            / 31557600.0e9
+        )
+        mass = f["DMParticles"]["Masses"][:]
     x = pos[:, 0]
     y = pos[:, 1]
-    r = np.sqrt(np.sum(pos ** 2, 1))
+    r = np.sqrt(np.sum(pos**2, 1))
 
     # Methods to compute density profile
     def mass_ins(R):

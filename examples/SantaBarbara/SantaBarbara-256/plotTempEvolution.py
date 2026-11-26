@@ -69,6 +69,7 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
+
 # Primoridal mean molecular weight as a function of temperature
 def mu(T, H_frac=H_mass_fraction, T_trans=H_transition_temp):
     if T > T_trans:
@@ -115,7 +116,7 @@ for i in range(n_snapshots):
     u = sim["/PartType0/InternalEnergies"][:]
 
     # Compute the temperature
-    u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+    u *= unit_length_in_si**2 / unit_time_in_si**2
     u /= a[i] ** (3 * (gas_gamma - 1.0))
     Temp = T(u)
 
@@ -147,7 +148,7 @@ plt.fill_between(
     color="C1",
     alpha=0.1,
 )
-plt.plot(a, 10 ** T_log_mean, color="C1", label="${\\rm mean}~{\\rm log} T$", lw=1.5)
+plt.plot(a, 10**T_log_mean, color="C1", label="${\\rm mean}~{\\rm log} T$", lw=1.5)
 plt.plot(a, T_median, color="C2", label="${\\rm median}~T$", lw=1.5)
 
 plt.legend(loc="upper left", frameon=False, handlelength=1.5)
@@ -157,13 +158,13 @@ if cooling_model == "Constant Lambda":
     plt.text(
         1e-2,
         6e4,
-        "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"
-        % (Lambda / 10.0 ** (int(log10(Lambda))), log10(Lambda)),
+        r"$\Lambda_{\rm const}/n_{\rm H}^2 = %.1f\times10^{%d}~[\rm{cgs}]$"
+        % (Lambda / 10.0 ** (int(np.log10(Lambda))), np.log10(Lambda)),
         fontsize=7,
     )
 elif cooling_model == "EAGLE":
     plt.text(1e-2, 6e4, "EAGLE (Wiersma et al. 2009)")
-elif cooling_model == b"Grackle":
+elif cooling_model.startswith("Grackle"):
     plt.text(1e-2, 6e4, "Grackle (Smith et al. 2016)")
 else:
     plt.text(1e-2, 6e4, "No cooling")

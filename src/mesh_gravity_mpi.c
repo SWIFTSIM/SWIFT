@@ -370,6 +370,9 @@ void mpi_mesh_local_patches_to_slices(const int N, const int local_n0,
     /* Find the first mesh cell in that bucket */
     const size_t j = sorted_offsets[i];
 
+    /* This bucket and all the following ones are empty */
+    if (j == count) break;
+
     /* Get the x coordinate of this mesh cell in the global mesh */
     const int mesh_x =
         get_xcoord_from_padded_row_major_id((size_t)mesh_sendbuf[j].key, N);
@@ -832,6 +835,9 @@ void mpi_mesh_fetch_potential(const int N, const double fac,
 
     /* Find the first mesh cell in that bucket */
     const size_t j = sorted_offsets[i];
+
+    /* This bucket and all the following ones are empty */
+    if (j == nr_send_tot) break;
 
     /* Get the x coordinate of this mesh cell in the global mesh */
     const int mesh_x =

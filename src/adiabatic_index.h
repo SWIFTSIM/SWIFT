@@ -98,6 +98,22 @@
 #define hydro_two_gamma_over_gamma_minus_one 4.f
 #define hydro_one_over_gamma 0.5f
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+/* Nearly isothermal gas (Bauer & Springel 2012): gamma = 1.001 */
+#define hydro_gamma 1.001f
+#define hydro_gamma_minus_one 0.001f
+#define hydro_gamma_plus_one 2.001f
+#define hydro_one_over_gamma_minus_one 1000.f
+#define hydro_gamma_plus_one_over_two_gamma 0.999500499500499f
+#define hydro_gamma_minus_one_over_two_gamma 0.000499500499500f
+#define hydro_gamma_minus_one_over_gamma_plus_one 0.000499750124938f
+#define hydro_two_over_gamma_plus_one 0.999500249875062f
+#define hydro_two_over_gamma_minus_one 2000.f
+#define hydro_gamma_minus_one_over_two 0.0005f
+#define hydro_two_gamma_over_gamma_minus_one 2002.f
+#define hydro_one_over_gamma 0.999000999000999f
+
 #else
 
 #error "An adiabatic index needs to be chosen in const.h !"
@@ -137,6 +153,10 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma(float x) {
 #elif defined(HYDRO_GAMMA_2_1)
 
   return x * x;
+
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, hydro_gamma);
 
 #else
 
@@ -182,6 +202,10 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma_minus_one(
 
   return x;
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, hydro_gamma_minus_one);
+
 #else
 
   error("The adiabatic index is not defined !");
@@ -224,6 +248,10 @@ pow_minus_gamma_minus_one(float x) {
 #elif defined(HYDRO_GAMMA_2_1)
 
   return 1.f / x;
+
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, -hydro_gamma_minus_one);
 
 #else
 
@@ -276,6 +304,10 @@ __attribute__((always_inline, const)) INLINE static float pow_minus_gamma(
   const float inv = 1.f / x;
   return inv * inv;
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, -hydro_gamma);
+
 #else
 
   error("The adiabatic index is not defined !");
@@ -314,6 +346,10 @@ pow_two_over_gamma_minus_one(float x) {
 #elif defined(HYDRO_GAMMA_2_1)
 
   return x * x; /* x^2 */
+
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, hydro_two_over_gamma_minus_one);
 
 #else
 
@@ -359,6 +395,10 @@ pow_two_gamma_over_gamma_minus_one(float x) {
   const float x2 = x * x;
   return x2 * x2; /* x^4 */
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, hydro_two_gamma_over_gamma_minus_one);
+
 #else
 
   error("The adiabatic index is not defined !");
@@ -395,6 +435,10 @@ pow_gamma_minus_one_over_two_gamma(float x) {
 #elif defined(HYDRO_GAMMA_2_1)
 
   return powf(x, 0.25f); /* x^0.25 */
+
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, hydro_gamma_minus_one_over_two_gamma);
 
 #else
 
@@ -433,6 +477,10 @@ pow_minus_gamma_plus_one_over_two_gamma(float x) {
 
   return powf(x, -0.75f); /* x^-0.75 */
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, -hydro_gamma_plus_one_over_two_gamma);
+
 #else
 
   error("The adiabatic index is not defined !");
@@ -468,6 +516,10 @@ __attribute__((always_inline, const)) INLINE static float pow_one_over_gamma(
 
   return sqrtf(x); /* x^(1/2) */
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, hydro_one_over_gamma);
+
 #else
 
   error("The adiabatic index is not defined !");
@@ -501,6 +553,10 @@ pow_three_gamma_minus_two(float x) {
 #elif defined(HYDRO_GAMMA_2_1)
 
   return x * x * x * x; /* x^(4) */
+
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, 3.f * hydro_gamma - 2.f);
 
 #else
 
@@ -537,6 +593,10 @@ pow_three_gamma_minus_five_over_two(float x) {
 
   return sqrtf(x); /* x^(1/2) */
 
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, 1.5f * hydro_gamma - 2.5f);
+
 #else
 
   error("The adiabatic index is not defined !");
@@ -570,6 +630,10 @@ pow_three_gamma_minus_one(float x) {
 #elif defined(HYDRO_GAMMA_2_1)
 
   return x * x * x; /* x^(3) */
+
+#elif defined(HYDRO_GAMMA_1_001)
+
+  return powf(x, 3.f * hydro_gamma_minus_one);
 
 #else
 

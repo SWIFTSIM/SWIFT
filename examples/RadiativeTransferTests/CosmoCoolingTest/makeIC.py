@@ -26,8 +26,8 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 import yaml
 
 with open(r"rt_cooling_test.yml") as paramfile:
@@ -38,7 +38,7 @@ with open(r"rt_cooling_test.yml") as paramfile:
 
 # number of particles in each dimension
 n_p = 10
-nparts = n_p ** 3
+nparts = n_p**3
 # filename of ICs to be generated
 outputfilename = "cooling_test.hdf5"
 # adiabatic index
@@ -53,10 +53,10 @@ boxsize = 1 * unyt.kpc
 initial_temperature = 1e6 * unyt.K
 
 # Initial particle density and mass
-gas_density_phys_cgs = 1.6756058890024518e-25 * unyt.g / unyt.cm ** 3
+gas_density_phys_cgs = 1.6756058890024518e-25 * unyt.g / unyt.cm**3
 
 # Include a^3 to convert physical density to comoving
-pmass = (gas_density_phys_cgs) * (boxsize ** 3 / nparts) * a_begin ** 3
+pmass = (gas_density_phys_cgs) * (boxsize**3 / nparts) * a_begin**3
 pmass = pmass.to("Msun")
 # -----------------------------------------------
 
@@ -75,7 +75,7 @@ def internal_energy(T, mu):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -119,15 +119,42 @@ for i in range(n_p):
             xp[ind] = (x, y, z)
             ind += 1
 
-w = Writer(cosmo_units, boxsize, dimension=3)
+boxsize_cosmo = sw.cosmo_array(
+    [boxsize.value, boxsize.value, boxsize.value],
+    boxsize.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+w = sw.Writer(unit_system=cosmo_units, boxsize=boxsize_cosmo, dimension=3)
 
-w.gas.coordinates = xp
-w.gas.velocities = np.zeros(xp.shape, dtype=np.float32) * (unyt.km / unyt.s)
-w.gas.masses = np.ones(nparts, dtype=np.float32) * pmass
-w.gas.internal_energy = np.ones(nparts, dtype=np.float32) * u_part
+w.gas.coordinates = sw.cosmo_array(
+    xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.gas.velocities = sw.cosmo_array(
+    np.zeros(xp.shape, dtype=np.float32),
+    unyt.km / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.gas.masses = sw.cosmo_array(
+    np.ones(nparts, dtype=np.float32) * pmass.value,
+    pmass.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.gas.internal_energy = sw.cosmo_array(
+    np.ones(nparts, dtype=np.float32) * u_part.value,
+    u_part.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=-2,
+)
 
 # Generate initial guess for smoothing lengths based on MIPS
-w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+w.gas.generate_smoothing_lengths()
 
 # If IDs are not present, this automatically generates
 w.write(outputfilename)

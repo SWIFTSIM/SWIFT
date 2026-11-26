@@ -135,4 +135,29 @@ INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
 
+/**
+ * @brief Add the SFR tracer to the total active SFR of this cell
+ *
+ * Nothing to do here
+ *
+ * @param sink the #sink
+ * @param sf the SFH logger struct
+ * @param dt_star The length of the time-step in physical internal units.
+ */
+INLINE static void star_formation_logger_log_active_sink(
+    const struct sink *sink, struct star_formation_history *sf,
+    const double dt_star) {}
+
+/**
+ * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
+ * the SFR tracer is larger than 0
+ *
+ * Nothing to do here
+ *
+ * @param sink the #sink
+ * @param sf the SFH logger struct
+ */
+INLINE static void star_formation_logger_log_inactive_sink(
+    const struct sink *sink, struct star_formation_history *sf) {}
+
 #endif /* SWIFT_NONE_STARFORMATION_LOGGER_H */

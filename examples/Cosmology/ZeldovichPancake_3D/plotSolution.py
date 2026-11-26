@@ -50,9 +50,9 @@ redshift = sim["/Header"].attrs["Redshift"][0]
 a = sim["/Header"].attrs["Scale-factor"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
-alpha = sim["/HydroScheme"].attrs["Alpha viscosity"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
+alpha = sim["/HydroScheme"].attrs["Alpha viscosity"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 # Cosmological parameters
@@ -84,7 +84,7 @@ if os.path.exists(filename_g):
     u_g = sim_g["/PartType0/InternalEnergies"][:]
     rho_g = sim_g["/PartType0/Densities"][:]
     phi_g = sim_g["/PartType0/Potential"][:]
-    a_g = sim_g["/Header"].attrs["Time"]
+    a_g = float(np.squeeze(sim_g["/Header"].attrs["Time"]))  # scalar in Gadget files
     print("Gadget Scale-factor:", a_g, "redshift:", 1 / a_g - 1.0)
 
     x_g -= 0.5 * boxSize
@@ -96,7 +96,7 @@ else:
     phi_g = np.zeros(1)
 
 # Derived parameters
-rho_0 = m.sum() / (boxSize ** 3)  # critical density of the box
+rho_0 = m.sum() / (boxSize**3)  # critical density of the box
 lambda_i = boxSize  # wavelength of the perturbation
 
 
@@ -110,9 +110,9 @@ v_s = -H_0 * (1.0 + z_c) / np.sqrt(1.0 + redshift) * np.sin(k_i * q) / k_i
 T_s = T_i * (((1.0 + redshift) / (1.0 + z_i)) ** 3.0 * rho_s / rho_0) ** (2.0 / 3.0)
 
 
-unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
-unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"]
-unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"]
+unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"][0]
+unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"][0]
+unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"][0]
 
 unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
@@ -164,8 +164,8 @@ plt.ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Temperature profile -------------------------
 plt.subplot(234)  # , yscale="log")
-u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
-u_g *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+u *= unit_length_in_si**2 / unit_time_in_si**2
+u_g *= unit_length_in_si**2 / unit_time_in_si**2
 u /= a ** (3 * (gas_gamma - 1.0))
 u_g /= a ** (3 * (gas_gamma - 1.0))
 T = (gas_gamma - 1.0) * u * mH_in_kg / k_in_J_K

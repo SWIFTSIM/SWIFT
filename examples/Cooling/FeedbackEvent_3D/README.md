@@ -22,6 +22,7 @@ This test emulates what the EAGLE model does to particles for feedback, i.e.
 Running Multiple Tests
 ----------------------
 
-If you would like to run a suite of tests, try the runs.sh script. You'll
-need to set the directories in the parameter file to be one higher, i.e.
-../coolingtables rather than ./coolingtables.
+If you would like to run a suite of tests, try the runs.sh script. It runs
+SWIFT in one subdirectory per test, so you'll need to set the paths in the
+parameter file to be one higher, i.e. ../feedback.hdf5 rather than
+./feedback.hdf5 and ../coolingtables rather than ./coolingtables.

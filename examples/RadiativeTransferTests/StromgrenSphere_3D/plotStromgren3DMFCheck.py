@@ -16,6 +16,8 @@ from matplotlib import pyplot as plt
 
 import stromgren_plotting_tools as spt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Plot parameters
 params = {
     "axes.labelsize": 14,
@@ -31,7 +33,6 @@ params = {
     "xtick.major.width": 1.5,
     "ytick.major.width": 1.5,
     "axes.linewidth": 1.5,
-    "text.usetex": True,
     "figure.figsize": (10, 4),
     "figure.subplot.left": 0.045,
     "figure.subplot.right": 0.99,
@@ -69,7 +70,7 @@ snapshot_base = "output_MF"
 
 def get_TT1Dsolution():
     """
-    Reading the reference solution from the test in Section 5.2.2 
+    Reading the reference solution from the test in Section 5.2.2
     of Pawlik & Schaye 2011 doi:10.1111/j.1365-2966.2010.18032.x
     Output the radius, neutral fraction, and temperature at t = 100Myr
     """
@@ -103,7 +104,7 @@ def plot_compare(filename):
     xstar = data.stars.coordinates
     xpart = data.gas.coordinates
     dxp = xpart - xstar
-    r = np.sqrt(np.sum(dxp ** 2, axis=1))
+    r = np.sqrt(np.sum(dxp**2, axis=1))
 
     imf = spt.get_imf(scheme, data)
     xHI = imf.HI / (imf.HI + imf.HII)

@@ -55,6 +55,7 @@ if len(sys.argv) == 1:
 else:
     filenames = sys.argv[1:]
 
+
 # Parse file and return total time taken, speed up and parallel efficiency
 def parse_files():
 

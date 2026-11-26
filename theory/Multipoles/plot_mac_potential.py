@@ -6,7 +6,6 @@ from scipy import special
 import numpy as np
 import math
 
-
 e_plummer = 1.0 / 3.0
 box_size = 25000
 mesh_size = 64
@@ -44,22 +43,22 @@ print(("Potential softened below", H, "kpc and truncated above", r_s, "kpc"))
 r = np.logspace(np.log10(e_plummer) - 1.2, np.log10(box_size) + 0.2, 10000)
 
 # Newtonian gravity
-f_newton = 1 / r ** 2
+f_newton = 1 / r**2
 
 # Simulated gravity
 u = r / H
 u = u[u <= 1]
 
-W_swift = 21.0 * u ** 6 - 90.0 * u ** 5 + 140.0 * u ** 4 - 84.0 * u ** 3 + 14.0 * u
+W_swift = 21.0 * u**6 - 90.0 * u**5 + 140.0 * u**4 - 84.0 * u**3 + 14.0 * u
 f_swift = f_newton * (
     special.erfc(0.5 * r / r_s)
     + (1.0 / math.sqrt(math.pi)) * (r / r_s) * np.exp(-0.25 * (r / r_s) ** 2)
 )
-f_swift[r <= H] = W_swift / H ** 2
+f_swift[r <= H] = W_swift / H**2
 f_swift[r > r_cut] = 0
 
 W_gadget = u * (
-    21.333333 - 48 * u + 38.4 * u ** 2 - 10.6666667 * u ** 3 - 0.06666667 * u ** -3
+    21.333333 - 48 * u + 38.4 * u**2 - 10.6666667 * u**3 - 0.06666667 * u**-3
 )
 W_gadget[u < 0.5] = u[u < 0.5] * (
     10.666667 + u[u < 0.5] ** 2 * (32.0 * u[u < 0.5] - 38.4)
@@ -68,12 +67,12 @@ f_gadget = f_newton * (
     special.erfc(0.5 * r / r_s)
     + (1.0 / math.sqrt(math.pi)) * (r / r_s) * np.exp(-0.25 * (r / r_s) ** 2)
 )
-f_gadget[r <= H] = W_gadget / H ** 2
+f_gadget[r <= H] = W_gadget / H**2
 f_gadget[r > r_cut] = 0
 
 f_MAC = np.copy(f_newton)
-f_MAC[r < MAC_lo_limit] = (1 / r[r < MAC_lo_limit]) ** 0 * MAC_lo_limit ** -2
-f_MAC[r > MAC_hi_limit] = (1 / r[r > MAC_hi_limit]) ** 4 * MAC_hi_limit ** 2
+f_MAC[r < MAC_lo_limit] = (1 / r[r < MAC_lo_limit]) ** 0 * MAC_lo_limit**-2
+f_MAC[r > MAC_hi_limit] = (1 / r[r > MAC_hi_limit]) ** 4 * MAC_hi_limit**2
 f_MAC[r > r_cut] = 0
 
 # range_test = np.logical_and(r > 0.01 * e_plummer, r < 2 * r_cut)
@@ -169,9 +168,9 @@ ylabel("$|f(r)|$", labelpad=-2)
 fig.add_subplot(gs1[3, :], xscale="log", yscale="log")
 
 
-plot(r, f_newton * r ** 2, "--", color=colors[0], label="Newtonian")
-plot(r, f_swift * r ** 2, "-", color=colors[3], label="SWIFT")
-plot(r, f_MAC * r ** 2, "-.", color=colors[2], label="MAC estimator")
+plot(r, f_newton * r**2, "--", color=colors[0], label="Newtonian")
+plot(r, f_swift * r**2, "-", color=colors[3], label="SWIFT")
+plot(r, f_MAC * r**2, "-.", color=colors[2], label="MAC estimator")
 # plot(r, f_gadget * r**2, '-.', color=colors[2], label="Gadget")
 
 plot([e_plummer, e_plummer], [1e-20, 1e20], "k--", alpha=0.3, lw=0.7)

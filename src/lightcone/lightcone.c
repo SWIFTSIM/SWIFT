@@ -1359,6 +1359,7 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
     char fname[500];
     sprintf(fname, "replication_list.%d.txt", output_nr);
     FILE *fd_rep = fopen(fname, "w");
+    if (fd_rep == NULL) error("Failed to open '%s' for writing.", fname);
     fprintf(fd_rep, "# Observer x, y, z\n");
     fprintf(fd_rep, "%e, %e, %e\n", props->observer_position[0],
             props->observer_position[1], props->observer_position[2]);

@@ -33,6 +33,8 @@ import unyt
 from matplotlib import pyplot as plt
 from matplotlib import ticker as mticker
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
 # arguments for plot of references
@@ -46,13 +48,13 @@ plot_time = False
 
 # -----------------------------------------------------------------------
 
-energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
+energy_units = unyt.Msun * unyt.kpc**2 / unyt.kyr**2
 mass_units = unyt.Msun
 
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -79,7 +81,7 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 def gas_temperature(u, mu, gamma):
     """
-    Compute the gas temperature given the specific internal 
+    Compute the gas temperature given the specific internal
     energy u and the mean molecular weight mu
     """
 
@@ -93,7 +95,7 @@ def gas_temperature(u, mu, gamma):
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -158,7 +160,7 @@ def get_snapshot_data(snaplist):
     Returns:
         numpy arrays of:
             time
-            temperatures 
+            temperatures
             mean molecular weights
             mass fractions
     """
@@ -175,7 +177,6 @@ def get_snapshot_data(snaplist):
     internal_energies = np.zeros(nsnaps) * energy_units
     photon_energies = np.zeros((ngroups, nsnaps)) * energy_units
 
-    time_first = firstdata.metadata.time.copy()
     for i, snap in enumerate(snaplist):
 
         data = swiftsimio.load(snap)
@@ -279,7 +280,7 @@ if __name__ == "__main__":
     ax4.plot(
         xcoords,
         tot_energy,
-        label=f"total energy budget",
+        label="total energy budget",
         color="k",
         ls="--",
         **plotkwargs,
@@ -297,7 +298,6 @@ if __name__ == "__main__":
     ax4.set_xlabel(xlabel)
     ax4.set_ylabel(
         r"energy budget [$" + energy_units.units.latex_representation() + "$]",
-        usetex=True,
     )
     ax4.legend(prop=legendprops)
     ax4.grid()

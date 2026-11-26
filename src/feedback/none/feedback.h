@@ -144,6 +144,19 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
     struct spart *sp, const struct feedback_props *feedback_props) {}
 
 /**
+ * @brief Prepare the feedback fields after a star is born (nothing to do).
+ *
+ * @param sp The #spart to act upon.
+ * @param feedback_props The properties of the feedback model.
+ * @param star_type The stellar type, an int since the enum only exists under
+ * --with-stars=GEAR.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_init_after_star_formation(struct spart *sp,
+                                   const struct feedback_props *feedback_props,
+                                   const int star_type) {}
+
+/**
  * @brief Initialises the s-particles feedback props for the first time
  *
  * This function is called only once just after the ICs have been
@@ -207,12 +220,15 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
  * @param with_cosmology Are we running with cosmology on?
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (unused: this module does no feedback at all).
  */
 __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     const struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {}
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {}
 
 /**
  * @brief Clean-up the memory allocated for the feedback routines

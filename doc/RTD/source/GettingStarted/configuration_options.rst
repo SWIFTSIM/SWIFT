@@ -24,8 +24,11 @@ Some hydrodynamical schemes, for example GIZMO, require a Riemann solver.
 
 ``--with-kernel=cubic-spline``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Several kernels are made available for use with the hydrodynamical schemes.
-Choose between them with this compile-time flag.
+Several kernels are made available for use with the hydrodynamical schemes:
+``cubic-spline`` (default), ``quartic-spline``, ``quintic-spline``,
+``wendland-C2``, ``wendland-C4`` and ``wendland-C6``. See :ref:`sph_kernels`
+for their definition and the way they are evaluated. The hand-vectorised
+interaction functions (see ``--disable-hand-vec``) support all of them.
 
 ``--with-hydro-dimension=3``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -109,20 +109,28 @@ void gravity_exact_force_ewald_init(const double boxSize) {
     /* Now read the tables themselves */
     hid_t h_data;
     h_data = H5Dopen(h_file, "Ewald_x", H5P_DEFAULT);
-    H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            &(fewald_x[0][0][0]));
+    if (h_data < 0) error("Error opening the 'Ewald_x' dataset.");
+    if (H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                &(fewald_x[0][0][0])) < 0)
+      error("Error reading the 'Ewald_x' dataset.");
     H5Dclose(h_data);
     h_data = H5Dopen(h_file, "Ewald_y", H5P_DEFAULT);
-    H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            &(fewald_y[0][0][0]));
+    if (h_data < 0) error("Error opening the 'Ewald_y' dataset.");
+    if (H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                &(fewald_y[0][0][0])) < 0)
+      error("Error reading the 'Ewald_y' dataset.");
     H5Dclose(h_data);
     h_data = H5Dopen(h_file, "Ewald_z", H5P_DEFAULT);
-    H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            &(fewald_z[0][0][0]));
+    if (h_data < 0) error("Error opening the 'Ewald_z' dataset.");
+    if (H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                &(fewald_z[0][0][0])) < 0)
+      error("Error reading the 'Ewald_z' dataset.");
     H5Dclose(h_data);
     h_data = H5Dopen(h_file, "Ewald_pot", H5P_DEFAULT);
-    H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            &(potewald[0][0][0]));
+    if (h_data < 0) error("Error opening the 'Ewald_pot' dataset.");
+    if (H5Dread(h_data, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                &(potewald[0][0][0])) < 0)
+      error("Error reading the 'Ewald_pot' dataset.");
     H5Dclose(h_data);
 
     /* Done */
@@ -611,6 +619,13 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
           a_grav_long[1] += mj * corr_f[1];
           a_grav_long[2] += mj * corr_f[2];
         }
+      }
+
+      /* Add the potential of the particle's own periodic images */
+      if (periodic) {
+        double corr_f[3], corr_pot;
+        gravity_exact_force_ewald_evaluate(0., 0., 0., corr_f, &corr_pot);
+        pot += gpi->mass * corr_pot;
       }
 
       /* Store the exact answer */

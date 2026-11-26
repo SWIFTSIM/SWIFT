@@ -19,3 +19,6 @@ This is at much lower resolution than the original test in Agertz+ 2007.
 To change the resolution, you will need to edit the `makeIC.py` file.
 A similar resolution to the GAD\_10M presented in that paper can be gained
 by using `num_on_side=128`.
+
+The movie scripts need the python package p_tqdm, besides the packages of
+`examples/requirements.txt`.

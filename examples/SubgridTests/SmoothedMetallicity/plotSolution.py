@@ -29,6 +29,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Parameters
 low_metal = -6  # low metal abundance
 high_metal = -5.5  # High metal abundance
@@ -38,9 +40,9 @@ max_shift = 1  # Shift between the different elements
 Nelem = 10
 # shift all metals in order to obtain nicer plots
 low_metal = [low_metal] * Nelem + np.linspace(0, max_shift, Nelem)
-low_metal = 10 ** low_metal
+low_metal = 10**low_metal
 high_metal = [high_metal] * Nelem + np.linspace(0, max_shift, Nelem)
-high_metal = 10 ** high_metal
+high_metal = 10**high_metal
 
 # ---------------------------------------------------------------
 # Don't touch anything after this.
@@ -54,7 +56,6 @@ params = {
     "legend.fontsize": 12,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (9.90, 6.45),
     "figure.subplot.left": 0.045,
     "figure.subplot.right": 0.99,
@@ -78,8 +79,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 chemistry = sim["/SubgridScheme"].attrs["Chemistry Model"]
 chemistry = str(chemistry)
 git = sim["Code"].attrs["Git Revision"]

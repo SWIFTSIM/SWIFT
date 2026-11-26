@@ -14,8 +14,14 @@ We have modified these initial conditions (initially Gadget binary)
 to work with SWIFT, which only accepts HDF5. There are scripts
 in this folder that download the required python modules and
 create the initial conditions from the Gadget style ones, should
-you have them available. Alternatively you can download the
-initial conditions from our webstorage with the getIC.sh script.
+you have them available:
+
+```
+./create_ics.sh /path/to/IC_CLUSTER_00019
+```
+
+Alternatively you can download the initial conditions from our
+webstorage with the getIC.sh script.
 
 
 About the simulation

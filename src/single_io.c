@@ -102,8 +102,9 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
     } else {
 
       /* Create a single instance of the default value */
-      float *temp = (float *)malloc(copySize);
-      for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
+      void *temp = malloc(copySize);
+      io_fill_default_value(temp, props.type, props.dimension,
+                            props.default_value);
 
       /* Copy it everywhere in the particle array */
       for (size_t i = 0; i < N; ++i)
@@ -897,8 +898,9 @@ void write_output_single(struct engine *e,
       e->stf_output_count, e->snapshot_output_count, e->snapshot_subdir,
       snapshot_subdir_name, e->snapshot_base_name, snapshot_base_name);
 
-  /* Create the directory */
-  safe_checkdir(snapshot_subdir_name, /*create=*/1);
+  /* Create the directory (if its name is not an empty string)*/
+  if (strnlen(snapshot_subdir_name, FILENAME_BUFFER_SIZE) > 0)
+    safe_checkdir(snapshot_subdir_name, /*create=*/1);
 
   /* Do we want to sub-sample any of the arrays */
   int subsample[swift_type_count];

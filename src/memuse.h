@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* Includes. */
+#include <stdint.h>
 #include <stdlib.h>
 
 /* API. */
@@ -154,19 +155,28 @@ __attribute__((always_inline)) inline void *swift_calloc(const char *label,
 __attribute__((always_inline)) inline void *swift_realloc(const char *label,
                                                           void *ptr,
                                                           size_t size) {
+#ifdef SWIFT_MEMUSE_REPORTS
+  /* Keep the old address as an integer: the pointer itself is indeterminate
+   * once realloc() has run and must not be used any more. */
+  const uintptr_t old_address = (uintptr_t)ptr;
+#endif
   void *memptr = realloc(ptr, size);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
 
-    /* On reallocation we free the previous memory. */
-    if (ptr != NULL && ptr != memptr) memuse_log_allocation(label, ptr, 0, 0);
+    /* The old block is gone, also when the block grew in place: log its
+     * release before the new allocation so that the log never holds two live
+     * allocations for the same address. */
+    if (old_address != 0)
+      memuse_log_allocation(label, (void *)old_address, 0, 0);
     memuse_log_allocation(label, memptr, 1, size);
 
   } else {
 
     /* Can be NULL if size is zero, we have just freed the memory. */
     if (size == 0) {
-      memuse_log_allocation(label, ptr, 0, 0);
+      if (old_address != 0)
+        memuse_log_allocation(label, (void *)old_address, 0, 0);
     } else {
 
       /* Failed allocations are interesting as well. */

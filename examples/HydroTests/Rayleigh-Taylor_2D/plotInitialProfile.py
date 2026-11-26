@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from swiftsimio import load
 import numpy as np
 
-
 N = 1000
 filename = "rayleigh_taylor_0000.hdf5"
 

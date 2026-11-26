@@ -32,12 +32,14 @@ import gc
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -50,7 +52,6 @@ do_stromgren_sphere = True
 # fancy up the plots a bit?
 fancy = True
 
-mpl.rcParams["text.usetex"] = True
 
 # parameters for imshow plots
 imshow_kwargs = {"origin": "lower", "cmap": "viridis"}
@@ -80,7 +81,7 @@ def get_units(scheme, unit_system="cgs_units"):
         energy_units = unyt.erg
         energy_units_str = "\\rm{erg}"
         if scheme.startswith("GEAR M1closure"):
-            flux_units = 1e-2 * energy_units / unyt.cm ** 2 / unyt.s
+            flux_units = 1e-2 * energy_units / unyt.cm**2 / unyt.s
             flux_units_str = "10^{-2} \\rm{erg} \\ \\rm{cm}^{-2} \\ \\rm{s}^{-1}"
         elif scheme.startswith("SPH M1closure"):
             flux_units = 1e10 * energy_units * unyt.cm / unyt.s
@@ -93,7 +94,7 @@ def get_units(scheme, unit_system="cgs_units"):
         energy_units = 1e50 * unyt.erg
         energy_units_str = "10^{50} \\rm{erg}"
         if scheme.startswith("GEAR M1closure"):
-            flux_units = 1e50 * unyt.erg / unyt.kpc ** 2 / unyt.Gyr
+            flux_units = 1e50 * unyt.erg / unyt.kpc**2 / unyt.Gyr
             flux_units_str = "10^{50} \\rm{erg} \\ \\rm{kpc}^{-2} \\ \\rm{Gyr}^{-1}"
         elif scheme.startswith("SPH M1closure"):
             flux_units = 1e50 * unyt.erg * unyt.kpc / unyt.Gyr
@@ -165,18 +166,17 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     meta = data.metadata
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
     if do_stromgren_sphere:
-        time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-            scheme, unit_system="stromgren_units"
+        time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+            get_units(scheme, unit_system="stromgren_units")
         )
     else:
-        time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-            scheme, unit_system="cgs_units"
+        time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+            get_units(scheme, unit_system="cgs_units")
         )
 
     ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
     xlabel_units_str = meta.boxsize.units.latex_representation()
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [0, meta.boxsize[0].v, 0, meta.boxsize[1].v]
 
     for g in range(ngroups):
@@ -199,9 +199,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 setattr(data.gas, new_attribute_str, f)
 
     # get mass surface density projection that we'll use to remove density dependence in image
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
 
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 3, 5.05 * ngroups), dpi=200)
@@ -211,7 +209,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get energy projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            mass_weighted_photon_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_photon_map /= mass_map may cause RecursionErrors...
@@ -236,7 +234,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux X projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "X"
-            mass_weighted_flux_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_flux_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_flux_map /= mass_map may cause RecursionErrors...
@@ -260,7 +258,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux Y projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "Y"
-            mass_weighted_flux_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_flux_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_flux_map /= mass_map may cause RecursionErrors...
@@ -284,7 +282,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            mass_weighted_photon_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_photon_map /= mass_map may cause RecursionErrors...
@@ -304,7 +302,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies [$" + energy_units_str + "$]")
 
     # Add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to(time_units))
@@ -344,12 +342,12 @@ def get_minmax_vals(snaplist):
         meta = data.metadata
         scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
         if do_stromgren_sphere:
-            time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-                scheme, unit_system="stromgren_units"
+            time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+                get_units(scheme, unit_system="stromgren_units")
             )
         else:
-            time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-                scheme, unit_system="cgs_units"
+            time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+                get_units(scheme, unit_system="cgs_units")
             )
 
         ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])

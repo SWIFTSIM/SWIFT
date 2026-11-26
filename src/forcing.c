@@ -35,6 +35,10 @@ void forcing_terms_struct_dump(const struct forcing_terms *terms,
                                FILE *stream) {
   restart_write_blocks((void *)terms, sizeof(struct forcing_terms), 1, stream,
                        "forcingterms", "forcing terms");
+
+#ifdef FORCING_DRIVEN_TURBULENCE
+  forcing_terms_dump_arrays(terms, stream);
+#endif
 }
 
 /**
@@ -44,8 +48,11 @@ void forcing_terms_struct_dump(const struct forcing_terms *terms,
  * @param terms the struct
  * @param stream the file stream
  */
-void forcing_terms_struct_restore(const struct forcing_terms *terms,
-                                  FILE *stream) {
+void forcing_terms_struct_restore(struct forcing_terms *terms, FILE *stream) {
   restart_read_blocks((void *)terms, sizeof(struct forcing_terms), 1, stream,
                       NULL, "forcing terms");
+
+#ifdef FORCING_DRIVEN_TURBULENCE
+  forcing_terms_restore_arrays(terms, stream);
+#endif
 }
