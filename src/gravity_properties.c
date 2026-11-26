@@ -51,6 +51,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
+                        const double total_matter_mass, const int dry_run,
                         const int periodic, const double dim[3],
                         const int cdim[3]) {
 
@@ -173,6 +174,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
         "Gadget2-type softening kernel");
 #endif
 
+  /* Mean matter density that sets the softening of background particles */
+  double mean_matter_density = 0.;
+
   /* Softening parameters */
   if (with_cosmology) {
 
@@ -207,22 +211,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     }
 
     if (is_zoom_simulation) {
-
-      /* Compute the comoving softening length for background particles as
-       * a fraction of the mean inter-particle density of the background DM
-       * particles Since they have variable masses the mass factor will be
-       * multiplied in later on. Note that we already multiply in the conversion
-       * from Plummer -> real softening length */
-      const double ratio_background =
-          parser_get_param_double(params, "Gravity:softening_ratio_background");
-
       const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
-
-      const double mean_matter_density = Omega_m * cosmo->critical_density_0;
-
-      p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
-                                  ratio_background *
-                                  cbrt(1. / mean_matter_density);
+      mean_matter_density = Omega_m * cosmo->critical_density_0;
     }
 
   } else {
@@ -248,6 +238,33 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
     p->epsilon_DM_comoving = p->epsilon_DM_max_physical;
     p->epsilon_baryon_comoving = p->epsilon_baryon_max_physical;
+
+    /* The mean matter density of the box replaces Omega_m * rho_crit_0. A
+     * dry run reads no masses, so the factor stays zero. */
+    if (is_zoom_simulation && !dry_run) {
+      if (total_matter_mass <= 0.)
+        error("Invalid total matter mass (%e) for the background softening.",
+              total_matter_mass);
+
+      const double volume = dim[0] * dim[1] * dim[2];
+      mean_matter_density = total_matter_mass / volume;
+    }
+  }
+
+  if (is_zoom_simulation) {
+
+    /* Compute the softening length for background particles as a fraction
+     * of the mean inter-particle distance at the mean matter density. Since
+     * they have variable masses the mass factor will be multiplied in later
+     * on. Note that we already multiply in the conversion from Plummer ->
+     * real softening length */
+    const double ratio_background =
+        parser_get_param_double(params, "Gravity:softening_ratio_background");
+
+    if (mean_matter_density > 0.)
+      p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
+                                  ratio_background *
+                                  cbrt(1. / mean_matter_density);
   }
 
   /* Adaptive softening properties */
