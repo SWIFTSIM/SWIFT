@@ -84,7 +84,14 @@ typedef enum hii_search_stop (*test_stop_rule)(float, float, float, int, int,
  * lands on the covered radius stops as a one-probe stop, so its photons
  * escape and it never asks for a wider tree.
  *
- * Same parameters as runner_hii_search_stop().
+ * @param radius The radius just searched.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ * @param covered_radius The covered radius of the pass.
+ * @param num_expansions Expansions done so far in this pass.
+ * @param max_expansions Stars:HII_max_radius_expansion_tries.
+ * @param count_found Candidates found at @p radius.
+ * @param count_held Gas the star already held at the start of the pass.
+ * @param num_empty_expansions Consecutive empty probes of a star holding gas.
  */
 static enum hii_search_stop old_order_search_stop(
     const float radius, const float max_search_radius,
@@ -147,6 +154,12 @@ static struct test_pass run_empty_pass_with_rule(const test_stop_rule stop_rule,
 
 /**
  * @brief run_empty_pass_with_rule() under runner_hii_search_stop().
+ *
+ * @param start_radius The shared start radius of the leaf.
+ * @param max_reachable The radius no search of the pass goes beyond.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ * @param count_held Gas the star holds at the start of the pass.
+ * @param with_request 0 to model the code before the request existed.
  */
 static struct test_pass run_empty_pass(const float start_radius,
                                        const float max_reachable,
