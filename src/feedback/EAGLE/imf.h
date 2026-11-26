@@ -191,73 +191,257 @@ INLINE static double integrate_imf(
 }
 
 /**
- * @brief Allocate space for IMF table and compute values to populate this
- * table.
- *
- * @param feedback_props #feedback_props data structure
+ * @brief Supported IMF model choices when reading from YAML or options.
  */
-INLINE static void init_imf(struct feedback_props *feedback_props) {
+enum eagle_imf_model {
+  eagle_imf_model_chabrier = 0,
+  eagle_imf_model_kroupa = 1,
+  eagle_imf_model_salpeter = 2,
+  eagle_imf_model_custom = 3
+} __attribute__((packed));
 
-  /* Compute size of mass bins in log10 space */
-  const double imf_log10_mass_bin_size =
-      (feedback_props->log10_imf_max_mass_msun -
-       feedback_props->log10_imf_min_mass_msun) /
-      (double)(eagle_feedback_N_imf_bins - 1);
+/**
+ * @brief Options describing an IMF. Any value <= 0 is treated as "unset" and
+ * falls back to the model defaults. All units are in Msun and dimensionless
+ * slopes (phi ~ m^-alpha).
+ */
+struct eagle_imf_options {
+  enum eagle_imf_model model; /*<! Named model */
 
-  /* Allocate IMF array */
+  /* Common optional parameters (interpreted per model) */
+  double high_mass_slope; /*<! alpha_high for m > pivot */
+  double low_mass_slope;  /*<! alpha_low  for m <= pivot (Kroupa/custom) */
+  double pivot_mass_msun; /*<! break mass (default 1.0 for Chabrier, 0.5 for
+                             Kroupa) */
+
+  /* Chabrier low-mass lognormal parameters (optional) */
+  double chabrier_m_c_msun;    /*<! characteristic mass ~ 0.079 */
+  double chabrier_sigma_log10; /*<! dispersion in log10, ~ 0.69 */
+};
+
+/**
+ * @brief Internal helper: allocate arrays and precompute binning for IMF.
+ * Returns the log10 mass bin size via out pointer.
+ */
+INLINE static void eagle_imf_allocate_arrays(
+    struct feedback_props *feedback_props, double *imf_log10_mass_bin_size) {
+  const double dlog10 = (feedback_props->log10_imf_max_mass_msun -
+                         feedback_props->log10_imf_min_mass_msun) /
+                        (double)(eagle_feedback_N_imf_bins - 1);
+
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
-  /* Allocate array to store IMF mass bins */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
-  /* Allocate array to store IMF mass bins in log10 space */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
-  /* Set IMF from Chabrier 2003, PASP, 115, 763
-   * Eq. 17 with values from table 1 */
-  for (int i = 0; i < eagle_feedback_N_imf_bins; i++) {
+  *imf_log10_mass_bin_size = dlog10;
+}
 
-    /* Logarithmically-spaced bins in units of solar masses */
-    const double log10_mass_msun =
-        feedback_props->log10_imf_min_mass_msun + i * imf_log10_mass_bin_size;
-
-    const double mass_msun = exp10(log10_mass_msun);
-
-    feedback_props->imf_mass_bin[i] = mass_msun;
-    feedback_props->imf_mass_bin_log10[i] = log10_mass_msun;
-
-    if (mass_msun > 1.0) {
-
-      /* High-mass end */
-      feedback_props->imf[i] = 0.237912 * pow(mass_msun, -2.3);
-    } else {
-
-      /* Low-mass end */
-      feedback_props->imf[i] =
-          0.852464 *
-          exp((log10_mass_msun - log10(0.079)) *
-              (log10_mass_msun - log10(0.079)) / (-2.0 * 0.69 * 0.69)) /
-          mass_msun;
-    }
-  }
-
-  /* Normalize the IMF */
+/**
+ * @brief Internal helper: normalize IMF so that ∫ m φ(m) dm = 1 across [m_min,
+ * m_max].
+ */
+INLINE static void eagle_imf_normalize(struct feedback_props *feedback_props) {
   const float norm = integrate_imf(feedback_props->log10_imf_min_mass_msun,
                                    feedback_props->log10_imf_max_mass_msun,
                                    eagle_imf_integration_mass_weight,
-                                   /*(stellar_yields=)*/ NULL, feedback_props);
-
+                                   /* yields */ NULL, feedback_props);
   for (int i = 0; i < eagle_feedback_N_imf_bins; i++)
     feedback_props->imf[i] /= norm;
+}
+
+/**
+ * @brief Initialize a Chabrier (2003) IMF with optional overrides.
+ * - Low-mass: lognormal with m_c and sigma in log10.
+ * - High-mass: power-law with slope alpha_high, matched continuously at pivot.
+ */
+INLINE static void init_imf_chabrier(struct feedback_props *feedback_props,
+                                     double alpha_high_opt,
+                                     double pivot_mass_opt, double m_c_opt,
+                                     double sigma_log10_opt) {
+  const double alpha_high =
+      (alpha_high_opt > 0.0) ? alpha_high_opt : 2.3; /* default Chabrier */
+  const double pivot_mass = (pivot_mass_opt > 0.0) ? pivot_mass_opt : 1.0;
+  const double m_c = (m_c_opt > 0.0) ? m_c_opt : 0.079;
+  const double sig_log10 = (sigma_log10_opt > 0.0) ? sigma_log10_opt : 0.69;
+
+  double dlog10;
+  eagle_imf_allocate_arrays(feedback_props, &dlog10);
+
+  /* Low-mass lognormal normalization constant used historically in SWIFT */
+  const double log10_mc = log10(m_c);
+
+  /* Value of the lognormal at the pivot to match continuity */
+  const double log10_pivot = log10(pivot_mass);
+  const double phi_low_at_pivot =
+      0.852464 *
+      exp((log10_pivot - log10_mc) * (log10_pivot - log10_mc) /
+          (-2.0 * sig_log10 * sig_log10)) /
+      pivot_mass;
+
+  /* High-mass normalization to ensure continuity at pivot */
+  const double A_high = phi_low_at_pivot * pow(pivot_mass, alpha_high);
+
+  for (int i = 0; i < eagle_feedback_N_imf_bins; i++) {
+    const double log10_m = feedback_props->log10_imf_min_mass_msun + i * dlog10;
+    const double m = exp10(log10_m);
+
+    feedback_props->imf_mass_bin[i] = m;
+    feedback_props->imf_mass_bin_log10[i] = log10_m;
+
+    if (m > pivot_mass) {
+      feedback_props->imf[i] = A_high * pow(m, -alpha_high);
+    } else {
+      feedback_props->imf[i] = 0.852464 *
+                               exp((log10_m - log10_mc) * (log10_m - log10_mc) /
+                                   (-2.0 * sig_log10 * sig_log10)) /
+                               m;
+    }
+  }
+
+  eagle_imf_normalize(feedback_props);
+}
+
+/**
+ * @brief Initialize a Kroupa (2001) broken power-law IMF.
+ * Defaults: alpha_low=1.3 below pivot=0.5 Msun, alpha_high=2.3 above.
+ */
+INLINE static void init_imf_kroupa(struct feedback_props *feedback_props,
+                                   double alpha_low_opt, double alpha_high_opt,
+                                   double pivot_mass_opt) {
+  const double alpha_low = (alpha_low_opt > 0.0) ? alpha_low_opt : 1.3;
+  const double alpha_high = (alpha_high_opt > 0.0) ? alpha_high_opt : 2.3;
+  const double pivot_mass = (pivot_mass_opt > 0.0) ? pivot_mass_opt : 0.5;
+
+  double dlog10;
+  eagle_imf_allocate_arrays(feedback_props, &dlog10);
+
+  /* Choose A_low arbitrarily; continuity determines A_high; mass-normalization
+   * comes later. */
+  const double A_low = 1.0;
+  const double A_high = A_low * pow(pivot_mass, alpha_high - alpha_low);
+
+  for (int i = 0; i < eagle_feedback_N_imf_bins; i++) {
+    const double log10_m = feedback_props->log10_imf_min_mass_msun + i * dlog10;
+    const double m = exp10(log10_m);
+
+    feedback_props->imf_mass_bin[i] = m;
+    feedback_props->imf_mass_bin_log10[i] = log10_m;
+
+    if (m > pivot_mass) {
+      feedback_props->imf[i] = A_high * pow(m, -alpha_high);
+    } else {
+      feedback_props->imf[i] = A_low * pow(m, -alpha_low);
+    }
+  }
+
+  eagle_imf_normalize(feedback_props);
+}
+
+/**
+ * @brief Initialize a Salpeter (1955) single power-law IMF.
+ * Default slope alpha=2.35.
+ */
+INLINE static void init_imf_salpeter(struct feedback_props *feedback_props,
+                                     double alpha_opt) {
+  const double alpha = (alpha_opt > 0.0) ? alpha_opt : 2.35;
+
+  double dlog10;
+  eagle_imf_allocate_arrays(feedback_props, &dlog10);
+
+  const double A = 1.0; /* arbitrary; normalize by mass afterwards */
+
+  for (int i = 0; i < eagle_feedback_N_imf_bins; i++) {
+    const double log10_m = feedback_props->log10_imf_min_mass_msun + i * dlog10;
+    const double m = exp10(log10_m);
+
+    feedback_props->imf_mass_bin[i] = m;
+    feedback_props->imf_mass_bin_log10[i] = log10_m;
+
+    feedback_props->imf[i] = A * pow(m, -alpha);
+  }
+
+  eagle_imf_normalize(feedback_props);
+}
+
+/**
+ * @brief Initialize a custom IMF. Behavior:
+ * - If both low_mass_slope and high_mass_slope are set (>0) and pivot set (>0):
+ *   broken power-law with continuity at pivot.
+ * - Else if only high_mass_slope is set (>0): Chabrier low-mass lognormal +
+ * that high-mass slope at pivot=1 Msun.
+ * - Else: falls back to classic Chabrier.
+ */
+INLINE static void init_imf_custom(struct feedback_props *feedback_props,
+                                   const struct eagle_imf_options *opt) {
+  const double alpha_low =
+      (opt && opt->low_mass_slope > 0.0) ? opt->low_mass_slope : -1.0;
+  const double alpha_high =
+      (opt && opt->high_mass_slope > 0.0) ? opt->high_mass_slope : -1.0;
+  const double pivot_mass =
+      (opt && opt->pivot_mass_msun > 0.0) ? opt->pivot_mass_msun : -1.0;
+
+  if (alpha_low > 0.0 && alpha_high > 0.0 && pivot_mass > 0.0) {
+    init_imf_kroupa(feedback_props, alpha_low, alpha_high, pivot_mass);
+  } else if (alpha_high > 0.0) {
+    /* Chabrier-like with custom high-mass slope */
+    init_imf_chabrier(
+        feedback_props, alpha_high,
+        (opt && opt->pivot_mass_msun > 0.0) ? opt->pivot_mass_msun : 1.0,
+        (opt && opt->chabrier_m_c_msun > 0.0) ? opt->chabrier_m_c_msun : 0.079,
+        (opt && opt->chabrier_sigma_log10 > 0.0) ? opt->chabrier_sigma_log10
+                                                 : 0.69);
+  } else {
+    init_imf_chabrier(feedback_props, -1.0, -1.0, -1.0, -1.0);
+  }
+}
+
+/**
+ * @brief Initialize IMF from options (e.g. read from YAML). Defaults to
+ * Chabrier when options are NULL or fields are unset.
+ */
+INLINE static void init_imf_from_options(struct feedback_props *feedback_props,
+                                         const struct eagle_imf_options *opt) {
+  enum eagle_imf_model model = (opt) ? opt->model : eagle_imf_model_chabrier;
+  switch (model) {
+    case eagle_imf_model_chabrier:
+      init_imf_chabrier(feedback_props, (opt ? opt->high_mass_slope : -1.0),
+                        (opt ? opt->pivot_mass_msun : -1.0),
+                        (opt ? opt->chabrier_m_c_msun : -1.0),
+                        (opt ? opt->chabrier_sigma_log10 : -1.0));
+      break;
+    case eagle_imf_model_kroupa:
+      init_imf_kroupa(feedback_props, (opt ? opt->low_mass_slope : -1.0),
+                      (opt ? opt->high_mass_slope : -1.0),
+                      (opt ? opt->pivot_mass_msun : -1.0));
+      break;
+    case eagle_imf_model_salpeter:
+      init_imf_salpeter(feedback_props, (opt ? opt->high_mass_slope : -1.0));
+      break;
+    case eagle_imf_model_custom:
+    default:
+      init_imf_custom(feedback_props, opt);
+      break;
+  }
+}
+
+/**
+ * @brief Backward-compatible wrapper: initialize IMF with default (Chabrier)
+ * high-mass slope.
+ */
+INLINE static void init_imf(struct feedback_props *feedback_props) {
+  init_imf_chabrier(feedback_props, /*alpha_high=*/-1.0, /*pivot=*/-1.0,
+                    /*m_c=*/-1.0, /*sigma_log10=*/-1.0);
 }
 
 /**
