@@ -332,23 +332,46 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_sizes_to_edges(s, weights_v, weights_e, cell_edge_offsets);
     }
 
+    /* Add the volume weights as a second balance constraint, if requested.
+     * With a single constraint we just pass on the usual weights untouched
+     * (which may be NULL). */
+    double *vertexw = weights_v;
+    int ncon = 1;
+    if (initial_partition->volume_weights) {
+      double *volumew = NULL;
+      if ((volumew = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL) {
+        error("Failed to allocate volume weights buffer.");
+      }
+      if ((vertexw = (double *)malloc(sizeof(double) * 2 * s->nr_cells)) ==
+          NULL) {
+        error("Failed to allocate packed vertex weights buffer.");
+      }
+      partition_volume_weights(s, volumew);
+      partition_interleave_weights(weights_v, volumew, s->nr_cells, vertexw);
+      free(volumew);
+      ncon = 2;
+    }
+
     /* Do the calculation. */
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+      partition_pick_metis(nodeID, s, nr_nodes, vertexw, ncon,
+                           initial_partition->volume_imbalance, weights_e,
                            initial_partition->metis_seed, s->e->verbose,
                            celllist, cell_edge_offsets, nadjcny);
     } else {
-      partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0,
-                              0.0f, initial_partition->metis_seed,
+      partition_pick_parmetis(nodeID, s, nr_nodes, vertexw, ncon,
+                              initial_partition->volume_imbalance, weights_e, 0,
+                              0, 0.0f, initial_partition->metis_seed,
                               s->e->verbose, celllist, cell_edge_offsets,
                               nadjcny);
     }
 #else
-    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+    partition_pick_metis(nodeID, s, nr_nodes, vertexw, ncon,
+                         initial_partition->volume_imbalance, weights_e,
                          initial_partition->metis_seed, s->e->verbose, celllist,
                          cell_edge_offsets, nadjcny);
 #endif
@@ -365,6 +388,7 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
+    if (ncon == 2) free(vertexw);
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) swift_free("partition_edge_weights", weights_e);
     free(celllist);
@@ -532,6 +556,20 @@ void partition_init(struct partition *partition,
   repartition->metis_seed =
       parser_get_opt_param_int(params, "DomainDecomposition:metis_seed", -1);
   partition->metis_seed = repartition->metis_seed;
+
+  /* Balance the volume of the domains as well as the usual weights? */
+  repartition->volume_weights =
+      parser_get_opt_param_int(params, "DomainDecomposition:volume_weights", 0);
+  partition->volume_weights = repartition->volume_weights;
+
+  /* Imbalance tolerance of the volume constraint. */
+  repartition->volume_imbalance = parser_get_opt_param_float(
+      params, "DomainDecomposition:volume_imbalance", 2.0f);
+  if (repartition->volume_imbalance <= 1.f) {
+    error(
+        "Invalid DomainDecomposition:volume_imbalance, must be greater than 1");
+  }
+  partition->volume_imbalance = repartition->volume_imbalance;
 
   /* Use adaptive or simple refinement when repartitioning. */
   repartition->adaptive =

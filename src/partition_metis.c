@@ -753,8 +753,13 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @param nodeID our nodeID.
  * @param s the space of cells to partition.
  * @param nregions the number of regions required in the partition.
- * @param vertexw weights for the cells, sizeof number of cells if used,
- *        NULL for unit weights. Need to be in the range of idx_t.
+ * @param vertexw weights for the cells, sizeof number of cells times
+ *        ncon_in if used (the ncon_in weights of a cell are contiguous), NULL
+ *        for unit weights. Need to be in the range of idx_t.
+ * @param ncon_in the number of weights (balance constraints) per cell, 1
+ *        or 2. When 2 the second weight is the volume weight of the cell.
+ * @param volume_imbalance the load imbalance tolerance of the volume
+ *        constraint, only used when ncon_in is 2.
  * @param edgew weights for the graph edges between all cells, sizeof number
  *        of graph edges if used, NULL for unit weights. Need to be packed
  *        in CSR format, so same as adjncy array. Need to be in the range of
@@ -773,7 +778,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @param nedges total number of edges in the graph.
  */
 void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
-                             double *vertexw, double *edgew, int refine,
+                             double *vertexw, int ncon_in,
+                             float volume_imbalance, double *edgew, int refine,
                              int adaptive, float itr, int metis_seed,
                              int verbose, int *celllist,
                              const int *cell_edge_offsets, int nedges) {
@@ -836,7 +842,7 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
   idx_t *weights_v = NULL;
   if (vertexw != NULL)
-    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts * ncon_in)) == NULL)
       error("Failed to allocate vertex weights array");
 
   idx_t *weights_e = NULL;
@@ -883,7 +889,8 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
       error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
-      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((full_weights_v =
+               (idx_t *)malloc(sizeof(idx_t) * ncells * ncon_in)) == NULL)
         error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
@@ -899,7 +906,7 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < ncells * ncon_in; k++) {
         if (vertexw[k] > 1) {
           full_weights_v[k] = vertexw[k];
         } else {
@@ -910,7 +917,7 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < ncells * ncon_in; k++) {
         if ((idx_t)vertexw[k] < 0) {
           message("Input vertex weight out of range: %ld", (long)vertexw[k]);
           failed++;
@@ -995,7 +1002,8 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
         if (weights_e != NULL)
           memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
         if (weights_v != NULL)
-          memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
+          memcpy(weights_v, &full_weights_v[j3 * ncon_in],
+                 sizeof(idx_t) * nvt * ncon_in);
         if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
       } else {
@@ -1008,8 +1016,8 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
           res = MPI_Isend(&full_weights_e[j2], nedge, IDX_T, rank, 2, comm,
                           &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
-          res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
-                          &reqs[5 * rank + 3]);
+          res = MPI_Isend(&full_weights_v[j3 * ncon_in], nvt * ncon_in, IDX_T,
+                          rank, 3, comm, &reqs[5 * rank + 3]);
         if (refine && res == MPI_SUCCESS)
           res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
                           &reqs[5 * rank + 4]);
@@ -1057,7 +1065,7 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
     if (res == MPI_SUCCESS && weights_e != NULL)
       res = MPI_Irecv(weights_e, nedge, IDX_T, 0, 2, comm, &reqs[1]);
     if (res == MPI_SUCCESS && weights_v != NULL)
-      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[2]);
+      res = MPI_Irecv(weights_v, nverts * ncon_in, IDX_T, 0, 3, comm, &reqs[2]);
     if (refine && res == MPI_SUCCESS)
       res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[3]);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
@@ -1076,11 +1084,13 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   }
 
-  /* Set up the tpwgts array. This is just 1/nregions. */
+  /* Set up the tpwgts array. This is just 1/nregions for every constraint. */
   real_t *tpwgts;
-  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
+  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions * ncon_in)) == NULL)
     error("Failed to allocate tpwgts array");
-  for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
+  for (int i = 0; i < nregions * ncon_in; i++) {
+    tpwgts[i] = 1.0 / (real_t)nregions;
+  }
 
   /* Common parameters. */
   idx_t options[4];
@@ -1088,15 +1098,17 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
   options[1] = 0;
 
   idx_t edgecut;
-  idx_t ncon = 1;
+  idx_t ncon = ncon_in;
   idx_t nparts = nregions;
   idx_t numflag = 0;
   idx_t wgtflag = 0;
   if (edgew != NULL) wgtflag += 1;
   if (vertexw != NULL) wgtflag += 2;
 
-  real_t ubvec[1];
+  /* Imbalance tolerances, the second is only read when ncon is 2. */
+  real_t ubvec[2];
   ubvec[0] = 1.001;
+  ubvec[1] = volume_imbalance;
 
   const int seed = partition_get_metis_seed(nodeID, metis_seed, 1);
 
@@ -1290,8 +1302,13 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param nodeID the rank of our node.
  * @param s the space of cells to partition.
  * @param nregions the number of regions required in the partition.
- * @param vertexw weights for the cells, sizeof number of cells if used,
- *        NULL for unit weights. Need to be in the range of idx_t.
+ * @param vertexw weights for the cells, sizeof number of cells times
+ *        ncon_in if used (the ncon_in weights of a cell are contiguous), NULL
+ *        for unit weights. Need to be in the range of idx_t.
+ * @param ncon_in the number of weights (balance constraints) per cell, 1
+ *        or 2. When 2 the second weight is the volume weight of the cell.
+ * @param volume_imbalance the load imbalance tolerance of the volume
+ *        constraint, only used when ncon_in is 2.
  * @param edgew weights for the graph edges between all cells, sizeof number
  *        of graph edges if used, NULL for unit weights. Need to be packed
  *        in CSR format, so same as adjncy array. Need to be in the range of
@@ -1302,9 +1319,10 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param nedges total number of edges in the graph.
  */
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int metis_seed,
-                          int verbose, int *celllist,
-                          const int *cell_edge_offsets, int nedges) {
+                          double *vertexw, int ncon_in, float volume_imbalance,
+                          double *edgew, int metis_seed, int verbose,
+                          int *celllist, const int *cell_edge_offsets,
+                          int nedges) {
 
   /* Total number of cells. */
   int ncells = s->nr_cells;
@@ -1331,7 +1349,8 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
       error("Failed to allocate adjncy array.");
     idx_t *weights_v = NULL;
     if (vertexw != NULL)
-      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells * ncon_in)) ==
+          NULL)
         error("Failed to allocate vertex weights array");
     idx_t *weights_e = NULL;
     if (edgew != NULL)
@@ -1344,7 +1363,7 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
 
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < ncells * ncon_in; k++) {
         if (vertexw[k] > 1) {
           weights_v[k] = vertexw[k];
         } else {
@@ -1355,7 +1374,7 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < ncells * ncon_in; k++) {
         if ((idx_t)vertexw[k] < 0) {
           message("Input vertex weight out of range: %ld", (long)vertexw[k]);
           failed++;
@@ -1417,18 +1436,24 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
     if (verbose) message("METIS partition seed: %d", seed);
 
     /* Call METIS. */
-    idx_t one = 1;
+    idx_t ncon = ncon_in;
     idx_t idx_ncells = ncells;
     idx_t idx_nregions = nregions;
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+    /*dumpMETISGraph("metis_graph", idx_ncells, ncon, xadj, adjncy, weights_v,
                    NULL, weights_e);*/
 
-    if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
-                            weights_e, &idx_nregions, NULL, NULL, options,
-                            &objval, regionid) != METIS_OK)
+    /* Imbalance tolerances. A single constraint uses the METIS default, with
+     * the volume constraint we need to give both, so repeat that default
+     * (1.03) for the first. */
+    real_t ubvec[2] = {1.03, volume_imbalance};
+
+    if (METIS_PartGraphKway(&idx_ncells, &ncon, xadj, adjncy, weights_v, NULL,
+                            weights_e, &idx_nregions, NULL,
+                            (ncon == 1) ? NULL : ubvec, options, &objval,
+                            regionid) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
 
     /* Check that the regionids are ok. */
@@ -1451,6 +1476,58 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
   /* Calculations all done, now everyone gets a copy. */
   int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+}
+
+/**
+ * @brief Compute the volume weights of the top-level cells.
+ *
+ * METIS weights are integers, so the volumes are given in units of the
+ * top-level cell volume.
+ *
+ * @param s the space of cells.
+ * @param weights (return) the volume weights, sizeof number of cells.
+ */
+void partition_volume_weights(const struct space *s, double *weights) {
+
+  /* Convert to units of the top-level cell volume. The factor of 2 is needed
+   * as the pick functions zero weights that are not larger than 1. */
+  double scale = 2.0 / (s->width[0] * s->width[1] * s->width[2]);
+
+  /* Unless that would take the sum out of the range of idx_t. */
+  const double sum = s->dim[0] * s->dim[1] * s->dim[2];
+  if (sum * scale > (double)IDX_MAX) {
+    scale = (double)(IDX_MAX - 1000) / sum;
+  }
+
+  for (int k = 0; k < s->nr_cells; k++) {
+    const struct cell *c = &s->cells_top[k];
+    weights[k] = c->width[0] * c->width[1] * c->width[2] * scale;
+  }
+}
+
+/**
+ * @brief Pack the usual vertex weights and the volume weights into the two
+ *        constraint layout expected by METIS and ParMETIS.
+ *
+ * @param vertexw the usual vertex weights, sizeof number of cells. NULL for
+ *        unit weights.
+ * @param volumew the volume weights, sizeof number of cells.
+ * @param nr_cells the number of cells.
+ * @param weights (return) the packed weights, sizeof two times the number of
+ *        cells.
+ */
+void partition_interleave_weights(const double *vertexw, const double *volumew,
+                                  int nr_cells, double *weights) {
+
+  /* The weights of a cell are contiguous, the usual weight first and the
+   * volume weight second. */
+  for (int k = 0; k < nr_cells; k++) {
+
+    /* The pick functions zero vertex weights that are not larger than 1, so
+     * the unit weight needs to be 2 to give a non-zero constraint. */
+    weights[2 * k] = (vertexw != NULL) ? vertexw[k] : 2.0;
+    weights[2 * k + 1] = volumew[k];
+  }
 }
 
 #endif

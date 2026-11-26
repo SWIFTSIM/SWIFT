@@ -56,6 +56,10 @@ struct partition {
   int grid[3];
   int usemetis;
   int metis_seed;
+
+  /* Also balance the volume of the domains, and the tolerance of that. */
+  int volume_weights;
+  float volume_imbalance;
 };
 
 /* Repartition type to use. */
@@ -76,6 +80,10 @@ struct repartition {
   int usemetis;
   int metis_seed;
   int adaptive;
+
+  /* Also balance the volume of the domains, and the tolerance of that. */
+  int volume_weights;
+  float volume_imbalance;
 
   int use_fixed_costs;
   int use_ticks;
@@ -142,15 +150,20 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                           int *nadjcny, idx_t *xadj, int *nxadj,
                           const int *cell_edge_offsets);
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int metis_seed,
-                          int verbose, int *celllist,
-                          const int *cell_edge_offsets, int nedges);
+                          double *vertexw, int ncon_in, float volume_imbalance,
+                          double *edgew, int metis_seed, int verbose,
+                          int *celllist, const int *cell_edge_offsets,
+                          int nedges);
 void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
-                             double *vertexw, double *edgew, int refine,
+                             double *vertexw, int ncon_in,
+                             float volume_imbalance, double *edgew, int refine,
                              int adaptive, float itr, int metis_seed,
                              int verbose, int *celllist,
                              const int *cell_edge_offsets, int nedges);
 void partition_split_metis(struct space *s, int nregions, int *celllist);
+void partition_volume_weights(const struct space *s, double *weights);
+void partition_interleave_weights(const double *vertexw, const double *volumew,
+                                  int nr_cells, double *weights);
 #endif
 
 /* Debugging. */

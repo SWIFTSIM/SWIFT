@@ -1741,6 +1741,32 @@ seed directly, but ParMETIS initial partitioning tries 10 candidate seeds using
 ``metis_seed + i`` and keeps the best partition. When running with verbose
 output, SWIFT prints the seed that was used for the partition it kept.
 
+Balancing the particles or the work can produce domains that cover a very
+large volume when the particle distribution is very inhomogeneous, as can be
+the case in a zoom. This can be costly, for instance in the memory such a
+domain needs for its share of the distributed gravity mesh. The optional::
+
+  DomainDecomposition:
+    volume_weights:   0
+    volume_imbalance: 2.0
+
+parameters guard against this (defaults shown). Setting ``volume_weights`` to
+1 gives METIS or ParMETIS the volume of the top-level cells as a
+second set of vertex weights. This applies to the *memory*, *edgememory* and
+*region* initial partitions (not *grid* or *vectorized*) and to all the
+repartition types.
+
+The two sets of weights are independent of each other. Each is a
+separate constraint with its own tolerance, and METIS or ParMETIS looks for a
+partition that keeps both within tolerance. ``volume_imbalance`` is the
+tolerance of the volume, the largest volume a domain may cover as a multiple
+of the mean domain volume, and must be greater than 1. The usual vertex
+weights and their tolerance are unchanged when running with the additional
+volume weights. However, neither is guaranteed, METIS or ParMETIS will do the
+best it can and may exceed a tolerance when both cannot be met, so a smaller
+``volume_imbalance`` may give a better volume balance but can cost particle or
+work balance.
+
 Repartitioning:
 ^^^^^^^^^^^^^^^
 
