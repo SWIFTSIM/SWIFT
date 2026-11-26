@@ -39,7 +39,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline testSortShiftBound  # testMatrixInversion
+        testLog testDistance testTimeline testSortShiftBound testCompression  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -54,10 +54,13 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSortShiftBound
+		 testNeutrinoFermiDirac testLog testTimeline testSortShiftBound testCompression
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
+
+# Files written by the tests that are not removed when a test fails
+CLEANFILES = testCompression.hdf5
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -79,6 +82,8 @@ testRandomCone_SOURCES = testRandomCone.c
 testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
+
+testCompression_SOURCES = testCompression.c
 
 testCosmologyAccuracy_SOURCES = testCosmologyAccuracy.c
 
