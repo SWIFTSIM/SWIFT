@@ -144,8 +144,7 @@ strength_state_get_phase(struct strength_state *s,
 
 /**
  * @brief Get the pressure, from the EoS, with tension limited by the minimum
- * pressure and by damage, depending on the yield stress method, for solids,
- * and with no tension for fluids.
+ * pressure and by damage, depending on the yield stress method.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -156,17 +155,15 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
   if (!s->cache.pressure_computed) {
     float pressure =
         gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
+    pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
 
-    /* Solids are limited in tension by the minimum pressure and by damage,
-     * while fluids do not support tension. */
+    /* Methods for solids. */
     if (strength_state_get_phase(s, mp) == mat_phase_solid) {
-      pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
       if (pressure < 0.f) {
         yield_apply_damage_to_tensile_pressure(&pressure, s, mp);
       }
-    } else {
-      pressure = fmaxf(pressure, 0.f);
     }
+
     s->cache.pressure = pressure;
     s->cache.pressure_computed = true;
   }
@@ -270,23 +267,28 @@ __attribute__((always_inline)) INLINE static float strength_state_get_P_min(
     struct strength_state *s, const struct mat_params *mp) {
 
   if (!s->cache.P_min_computed) {
-    switch (mp->P_min_scheme) {
-      case P_min_scheme_none:
-        s->cache.P_min = -FLT_MAX;
-        break;
+    /* Fluids do not support tension, whatever the material's scheme. */
+    if (strength_state_get_phase(s, mp) != mat_phase_solid) {
+      s->cache.P_min = 0.f;
+    } else {
+      switch (mp->P_min_scheme) {
+        case P_min_scheme_none:
+          s->cache.P_min = -FLT_MAX;
+          break;
 
-      case P_min_scheme_constant:
-        s->cache.P_min = material_P_min_constant(mp);
-        yield_weakening_apply_to_yield_stress(&s->cache.P_min, s, mp);
-        break;
+        case P_min_scheme_constant:
+          s->cache.P_min = material_P_min_constant(mp);
+          yield_weakening_apply_to_yield_stress(&s->cache.P_min, s, mp);
+          break;
 
-      case P_min_scheme_yield_envelope:
-        s->cache.P_min = material_P_min_yield_envelope(mp, s->mat_id);
-        yield_weakening_apply_to_yield_stress(&s->cache.P_min, s, mp);
-        break;
+        case P_min_scheme_yield_envelope:
+          s->cache.P_min = material_P_min_yield_envelope(mp, s->mat_id);
+          yield_weakening_apply_to_yield_stress(&s->cache.P_min, s, mp);
+          break;
 
-      default:
-        error("Unknown P_min scheme %d", mp->P_min_scheme);
+        default:
+          error("Unknown P_min scheme %d", mp->P_min_scheme);
+      }
     }
     s->cache.P_min_computed = true;
   }
