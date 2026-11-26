@@ -84,6 +84,22 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 }
 
 /**
+ * @brief Compute the contribution to the gravitational tidal tensor 
+ * from a constant potential.
+ *
+ * T_xx = 0
+ * T_xy = 0
+ *
+ * @param time The current time.
+ * @param potential The proerties of the external potential.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static void external_gravity_tidal_tensor(
+    double time, const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* g) {}
+
+/**
  * @brief Computes the gravitational potential energy of a particle in an
  * constant acceleration.
  *

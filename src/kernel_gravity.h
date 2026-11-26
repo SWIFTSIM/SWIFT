@@ -98,6 +98,32 @@ __attribute__((const)) INLINE static float kernel_grav_force_eval(
   return W;
 }
 
+/**
+ * @brief Computes the gravity softening function for tidal tensors.
+ *
+ * This functions assumes 0 < u < 1.
+ *
+ * @param u The ratio of the distance to the softening length $u = x/h$.
+ */
+__attribute__((const)) INLINE static float kernel_grav_tensor_eval(
+    const float u) {
+
+  float W;
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5f)
+    W = 76.8f - 96.f * u;
+  else
+    W = (-0.2f / (u * u * u * u * u) + 48.0f / u - 76.8f + 32.0f * u);
+#else
+
+  /* W(u) = -105u^3 + 360u^2 - 420u + 168 */
+  W = -105.f * u + 360.f;
+  W = W * u - 420.f;
+  W = W * u + 168.f;
+#endif
+  return W;
+}
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
 /**

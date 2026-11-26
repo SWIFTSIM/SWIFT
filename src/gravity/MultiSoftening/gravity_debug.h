@@ -31,6 +31,10 @@ __attribute__((always_inline)) INLINE static void gravity_debug_particle(
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   printf("pot=%e\n", p->potential);
 #endif
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  printf("T_xx=%e, T_yy=%e, T_zz=%e, T_xy=%e, T_xz=%e, T_yz=%e\n", p->T_xx,
+         p->T_yy, p->T_zz, p->T_xy, p->T_xz, p->T_yz);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   printf("num_interacted=%lld ti_drift=%lld ti_kick=%lld\n", p->num_interacted,
          p->ti_drift, p->ti_kick);

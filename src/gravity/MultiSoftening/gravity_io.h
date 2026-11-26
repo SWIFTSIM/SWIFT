@@ -90,6 +90,22 @@ INLINE static void convert_gpart_potential(const struct engine *e,
   ret[0] = gravity_get_comoving_potential(gp);
 }
 
+INLINE static void convert_gpart_tidal_tensors(const struct engine *e,
+                                               const struct gpart *gp,
+                                               float *ret) {
+  if (gp != NULL)
+    gravity_get_comoving_tidal_tensor(gp, &ret[0], &ret[1], &ret[2],
+                                      &ret[3], &ret[4], &ret[5]);
+  else {
+    ret[0] = 0.f;
+    ret[1] = 0.f;
+    ret[2] = 0.f;
+    ret[3] = 0.f;
+    ret[4] = 0.f;
+    ret[5] = 0.f;
+  }
+}
+
 /**
  * @brief Specifies which g-particle fields to read from a dataset
  *
@@ -127,7 +143,7 @@ INLINE static void darkmatter_write_particles(const struct gpart *gparts,
                                               int *num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 6;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
@@ -154,6 +170,17 @@ INLINE static void darkmatter_write_particles(const struct gpart *gparts,
   list[5] = io_make_output_field_convert_gpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, gparts,
       convert_gpart_potential, "Gravitational potentials of the particles");
+
+  list[6] =
+      io_make_output_field("TimeBins", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
+                           time_bin, "Time-bins of the particles");
+
+  list[7] = io_make_output_field_convert_gpart(
+      "TidalTensors", FLOAT, 6, UNIT_CONV_TIDAL_TENSOR, -3.f, gparts,
+      convert_gpart_tidal_tensors,
+      "Components of co-moving the tidal tensor (Hessian matrix of the "
+      "gravitational potential). Since the matrix is symmetric, only 6 values "
+      "per tensor are stored (xx, yy, zz, xy, xz, yz)");                           
 }
 
 #endif /* SWIFT_MULTI_SOFTENING_GRAVITY_IO_H */

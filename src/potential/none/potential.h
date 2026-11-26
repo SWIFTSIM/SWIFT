@@ -69,6 +69,22 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     const struct phys_const *restrict phys_const, struct gpart *restrict g) {}
 
 /**
+ * @brief Computes the contribution to the gravitational tidal tensor 
+ * due to nothing.
+ *
+ * We do nothing.
+ *
+ * @param time The current time.
+ * @param potential The proerties of the external potential.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static void external_gravity_tidal_tensor(
+    double time, const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* g) {}
+
+
+/**
  * @brief Computes the gravitational potential energy due to nothing.
  *
  * We return 0.

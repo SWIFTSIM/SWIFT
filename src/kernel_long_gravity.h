@@ -263,6 +263,35 @@ kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
 }
 
 /**
+ * @brief Computes the long-range correction term for the tidal tensor
+ * calculation coming from FFT.
+ *
+ * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
+ * @param W (return) The value of the kernel function.
+ */
+__attribute__((always_inline, nonnull)) INLINE static void
+kernel_long_grav_tensor_eval(const float u, float *const W) {
+
+#ifdef GADGET2_LONG_RANGE_CORRECTION
+
+  const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
+
+  const float arg1 = u * 0.5f;
+  const float arg2 = -arg1 * arg1;
+
+  *W = 0.5f * u * u * u * one_over_sqrt_pi * expf(arg2);
+#else
+
+  const float x = 2.f * u;
+  const float exp_x = expf(x);  // good_approx_expf(x);
+  const float alpha = 1.f / (1.f + exp_x);
+
+  /* We want 2 * x^2 * exp(x) * (exp(x)-1)*alpha^3 */
+  *W = 2.f * x * x * exp_x * (exp_x - 1.f) * alpha * alpha * alpha;
+#endif
+}
+
+/**
  * @brief Computes the long-range correction term for the force calculation
  * coming from FFT in double precision.
  *
