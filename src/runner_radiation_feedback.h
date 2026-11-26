@@ -140,11 +140,12 @@ enum hii_search_stop {
  * A star already holding an equilibrium region gets one empty probe past it
  * and no more: a pixel left with a sliver of budget never ends the pass, so
  * it would otherwise spend every expansion on ever larger empty volumes. A
- * star holding nothing keeps its full configured reach, the case the
- * expansion exists for (a fresh star, or one in a cavity whose nearest gas is
- * several expansions away). The covered radius is tested before the one
- * probe: a walk at the covered radius cannot grow whatever gas lies beyond,
- * so the cell layout, not the empty probe, stops it.
+ * probe that meets gas other stars hold is not empty: the front of the star
+ * lies past their regions. A star holding nothing keeps its full configured
+ * reach, the case the expansion exists for (a fresh star, or one in a cavity
+ * whose nearest gas is several expansions away). The covered radius is tested
+ * before the one probe: a walk at the covered radius cannot grow whatever gas
+ * lies beyond, so the cell layout, not the empty probe, stops it.
  *
  * @param radius The radius just searched.
  * @param max_search_radius Stars:HII_max_search_radius.
@@ -152,23 +153,37 @@ enum hii_search_stop {
  * that held gas at the last rebuild (cell_radiation_covered_radius()).
  * @param num_expansions Expansions done so far in this pass.
  * @param max_expansions Stars:HII_max_radius_expansion_tries.
- * @param count_found Candidates found at @p radius.
+ * @param count_met Gas the search at @p radius met that the star does not
+ * hold (runner_hii_probe_count_met()).
  * @param count_held Gas the star already held at the start of the pass.
  * @param num_empty_expansions Consecutive empty probes of a star holding gas.
  */
 __attribute__((always_inline)) INLINE static enum hii_search_stop
 runner_hii_search_stop(const float radius, const float max_search_radius,
                        const float covered_radius, const int num_expansions,
-                       const int max_expansions, const int count_found,
+                       const int max_expansions, const int count_met,
                        const int count_held, const int num_empty_expansions) {
 
   if (num_expansions >= max_expansions) return hii_search_stop_tries;
   if (radius >= max_search_radius) return hii_search_stop_ceiling;
   if (radius >= covered_radius) return hii_search_stop_covered_radius;
   const int probe_used =
-      count_found == 0 && count_held > 0 && num_empty_expansions >= 1;
+      count_met == 0 && count_held > 0 && num_empty_expansions >= 1;
   if (probe_used) return hii_search_stop_one_probe;
   return hii_search_grow;
+}
+
+/**
+ * @brief Consecutive empty probes of a star after one more search.
+ *
+ * @param count_met Gas the search met that the star does not hold
+ * (runner_hii_probe_count_met()).
+ * @param count_held Gas the star already held at the start of the pass.
+ * @param num_empty_expansions Consecutive empty probes before this search.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_next_empty_probes(
+    const int count_met, const int count_held, const int num_empty_expansions) {
+  return (count_met == 0 && count_held > 0) ? num_empty_expansions + 1 : 0;
 }
 
 /**
@@ -382,7 +397,26 @@ struct hii_gather_state {
 
   /*! Rotation of the cone frame (row-major 3x3), or NULL for the box axes. */
   const double *frame;
+
+  /*! Squared distance beyond which gas other stars hold counts in
+      @a count_held_by_others. */
+  float r2_others_min;
+
+  /*! (return) Gas held by other stars between @a r2_others_min and the search
+      radius, in a pixel with photons left. Counted for new candidates only. */
+  int count_held_by_others;
 };
+
+/**
+ * @brief Gas a search of the claim walk met that its star does not hold:
+ * the candidates, and the gas other stars hold that the search reached first.
+ *
+ * @param gather The #hii_gather_state after the traversal.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_probe_count_met(
+    const struct hii_gather_state *gather) {
+  return gather->count_found + gather->count_held_by_others;
+}
 
 int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const struct cell *cj, const int sid,
@@ -429,8 +463,8 @@ feedback_radiation_startup_diagnostics(const struct engine *e) {}
 #ifdef IONIZATION_FEEDBACK_LOOP
 /**
  * @brief Counts of the HII passes stopped at the edge of the gas the tree
- * covers or by the one empty probe. Doubles only, so that the ranks sum them
- * in one reduction.
+ * covers, by the one empty probe, or by the tries or the ceiling. Doubles
+ * only, so that the ranks sum them in one reduction.
  */
 struct radiation_hii_coverage_stats {
 
@@ -441,9 +475,10 @@ struct radiation_hii_coverage_stats {
   double released_passes;
 
   /*! Photons released by those passes. Only coverage stops count here:
-      photons left at a one-probe stop count in one_probe_photons; at any
-      other stop they escape uncounted, carried ones included, and so does a
-      carry cleared at death or at the end of the age window. */
+      photons left at a one-probe stop count in one_probe_photons, at a tries
+      or ceiling stop in growth_limit_photons; at any other stop they escape
+      uncounted, carried ones included, and so does a carry cleared at death
+      or at the end of the age window. */
   double released_photons;
 
   /*! Claim walks whose start radius was cut to the covered radius. */
@@ -455,6 +490,13 @@ struct radiation_hii_coverage_stats {
 
   /*! Photons left, and escaped, at those stops. */
   double one_probe_photons;
+
+  /*! Passes stopped by Stars:HII_max_radius_expansion_tries or
+      Stars:HII_max_search_radius with photons left. */
+  double growth_limit_stops;
+
+  /*! Photons left, and escaped, at those stops. */
+  double growth_limit_photons;
 };
 
 double runner_hii_carry_at_coverage_stop(
