@@ -2022,7 +2022,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
 
-    if (c->top->hydro.star_formation != NULL) {
+    /* Activate the star formation task of the top-level cell and the drifts
+     * of its stars.
+     * Note: since this involves a tree walk, we only do it once. */
+    if (c->top->hydro.star_formation != NULL &&
+        !task_is_activated(c->top->hydro.star_formation)) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
     }

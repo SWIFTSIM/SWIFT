@@ -302,6 +302,16 @@ struct task {
 
 } SWIFT_STRUCT_ALIGN;
 
+/**
+ * @brief Has a #task already been activated?
+ *
+ * @param t The #task
+ */
+__attribute__((always_inline)) INLINE int task_is_activated(
+    const struct task *t) {
+  return !(t->skip);
+}
+
 /* Function prototypes. */
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
