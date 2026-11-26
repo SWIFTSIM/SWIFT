@@ -727,10 +727,12 @@ candidate. A walk that starts inside the region therefore finds nothing new
 there, and a star holding gas stops after one empty probe (the radius grown
 once by \code{Stars:HII\_radius\_expansion\_factor}). Starting beyond the held
 gas keeps that one probe for the gas outside the region. A star that holds
-nothing starts at $r_{\rm start}$. When $r_0$ is
-cut to $r_{\rm cov}$ and nothing is found there, the pass stops at the
-covered radius, and its photons follow the carry rule of
-Section~\ref{sec:budget-carry}. The step log counts the one-probe stops of a
+nothing starts at $r_{\rm start}$. The covered radius is tested before the
+one probe. A walk that reaches $r_{\rm cov}$ with nothing found, at its start
+or after its one probe, cannot grow, so the pass stops at the covered radius.
+It asks for a wider tree, and its photons follow the carry rule of
+Section~\ref{sec:budget-carry}. A one-probe stop is therefore always inside
+$r_{\rm cov}$. The step log counts the one-probe stops of a
 star that holds gas with photons left, and the photons left at those stops.
 Those photons escape. Their share of the issued photons measures how often
 the search still falls short.
@@ -740,7 +742,7 @@ the search still falls short.
 \code{feedback\_part\_can\_be\_ionized}
 (\code{src/feedback/GEAR/feedback\_common.c:743-777}). Its reach and
 Eq.~\eqref{eq:hii-claim-start} are \code{runner\_hii\_held\_search\_radius} and
-\code{runner\_hii\_claim\_start\_radius} (\code{src/runner\_radiation\_feedback.h:173-210}).
+\code{runner\_hii\_claim\_start\_radius} (\code{src/runner\_radiation\_feedback.h:174-211}).
 The one-probe stops are counted in \code{runner\_hii\_count\_one\_probe\_stop}
 (\code{src/runner\_radiation\_feedback.c:1106}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}

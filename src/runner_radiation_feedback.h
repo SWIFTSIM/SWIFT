@@ -124,11 +124,12 @@ enum hii_search_stop {
   /*! The radius is at Stars:HII_max_search_radius. */
   hii_search_stop_ceiling = 2,
 
-  /*! The radius is at the edge of the gas the tree covers, and nothing else
-      binds. */
+  /*! The radius is at the edge of the gas the tree covers, and neither the
+      try count nor the ceiling binds. */
   hii_search_stop_covered_radius = 3,
 
-  /*! A star that holds gas has had its one empty probe. */
+  /*! A star that holds gas has had its one empty probe inside the covered
+      radius. */
   hii_search_stop_one_probe = 4,
 };
 
@@ -141,9 +142,9 @@ enum hii_search_stop {
  * it would otherwise spend every expansion on ever larger empty volumes. A
  * star holding nothing keeps its full configured reach, the case the
  * expansion exists for (a fresh star, or one in a cavity whose nearest gas is
- * several expansions away). The covered radius is reported only when no
- * other limit binds, so it marks a star that the cell layout alone holds
- * back.
+ * several expansions away). The covered radius is tested before the one
+ * probe: a walk at the covered radius cannot grow whatever gas lies beyond,
+ * so the cell layout, not the empty probe, stops it.
  *
  * @param radius The radius just searched.
  * @param max_search_radius Stars:HII_max_search_radius.
@@ -163,10 +164,10 @@ runner_hii_search_stop(const float radius, const float max_search_radius,
 
   if (num_expansions >= max_expansions) return hii_search_stop_tries;
   if (radius >= max_search_radius) return hii_search_stop_ceiling;
+  if (radius >= covered_radius) return hii_search_stop_covered_radius;
   const int probe_used =
       count_found == 0 && count_held > 0 && num_empty_expansions >= 1;
   if (probe_used) return hii_search_stop_one_probe;
-  if (radius >= covered_radius) return hii_search_stop_covered_radius;
   return hii_search_grow;
 }
 
