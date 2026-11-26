@@ -5,7 +5,7 @@ A single star ionizes the gas around it and grows an HII region (a Stromgren sph
 
 `stromgren_analytic_check.py` compares the simulated HII region growth with the classical Spitzer (1978) D-type formula. It uses only the snapshots where the analytic radius is within the box half-width, and says so when none qualifies. `hii_anisotropy_check.py` additionally checks tagging isotropy (no octant of the region left un-ionized) under the `IONIZATION_FEEDBACK_DEBUG_NO_COOLING` build.
 
-Note `Stars:HII_radius_expansion_factor` and `Stars:HII_max_radius_expansion_tries` bound how fast the search radius can grow: at most a factor `radius_expansion_factor^max_radius_expansion_tries` per rebuild.
+Note `Stars:HII_radius_expansion_factor` and `Stars:HII_max_radius_expansion_tries` bound how fast the search radius can grow: at most a factor `radius_expansion_factor^max_radius_expansion_tries` per pass, and never beyond `Stars:HII_max_search_radius` or the radius the cell tree covers.
 
 # Configure
 Standard build, for the physics run:

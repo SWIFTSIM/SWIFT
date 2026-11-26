@@ -91,7 +91,8 @@ for ionization only if
 
 \begin{enumerate}
 \item it is not already tagged,
-\item is denser than \code{GEARFeedback:HII\_min\_density\_Hpcm3},
+\item has a physical density of at least
+  \code{GEARFeedback:HII\_min\_density\_Hpcm3} (nucleons per cm$^3$),
 \item and is not already above $\approx 10^4\,$K.
 \end{enumerate}
 
@@ -727,15 +728,25 @@ candidate. A walk that starts inside the region therefore finds nothing new
 there, and a star holding gas stops after one empty probe (the radius grown
 once by \code{Stars:HII\_radius\_expansion\_factor}). Starting beyond the held
 gas keeps that one probe for the gas outside the region. A star that holds
-nothing starts at $r_{\rm start}$. The covered radius is tested before the
-one probe. A walk that reaches $r_{\rm cov}$ with nothing found, at its start
-or after its one probe, cannot grow, so the pass stops at the covered radius.
-It asks for a wider tree, and its photons follow the carry rule of
+nothing starts at $r_{\rm start}$.
+
+A pass that finds nothing more within its radius and still has photons ends
+for one of four reasons. They are tested in this order, and the first that
+holds ends the pass: (1) \code{Stars:HII\_max\_radius\_expansion\_tries}
+expansions are used up; (2) the radius is at \code{Stars:HII\_max\_search\_radius};
+(3) the radius is at $r_{\rm cov}$; (4) a star holding gas has had its one
+empty probe. A walk that reaches $r_{\rm cov}$ with nothing found, at its start
+or after its one probe, cannot grow, so the covered radius is tested before the
+one probe and the pass stops at the covered radius. It asks for a wider tree,
+and its photons follow the carry rule of
 Section~\ref{sec:budget-carry}. A one-probe stop is therefore always inside
-$r_{\rm cov}$. The step log counts the one-probe stops of a
-star that holds gas with photons left, and the photons left at those stops.
-Those photons escape. Their share of the issued photons measures how often
-the search still falls short.
+$r_{\rm cov}$. Its photons escape. The step log counts the coverage stops
+(carried and released passes, released photons, start radii cut to $r_{\rm cov}$)
+and, apart, the one-probe stops with photons left and those photons. The share
+of the issued photons that escape at one-probe stops measures how often
+the search still falls short. The counters are cumulative over the run,
+are summed over the MPI ranks at the end of each step, and start again from
+zero at a restart: they are not in the restart file.
 
 \paragraph{Implementation.} The gather is in \code{runner\_hii\_maintain\_held\_region}
 (\code{src/runner\_radiation\_feedback.c:850}), exempt from
@@ -743,8 +754,16 @@ the search still falls short.
 (\code{src/feedback/GEAR/feedback\_common.c:743-777}). Its reach and
 Eq.~\eqref{eq:hii-claim-start} are \code{runner\_hii\_held\_search\_radius} and
 \code{runner\_hii\_claim\_start\_radius} (\code{src/runner\_radiation\_feedback.h:174-211}).
-The one-probe stops are counted in \code{runner\_hii\_count\_one\_probe\_stop}
-(\code{src/runner\_radiation\_feedback.c:1106}). The charge and renewal are
+The stop order is \code{runner\_hii\_search\_stop}
+(\code{src/runner\_radiation\_feedback.h:159-172}). The carry decision is
+\code{feedback\_carry\_star\_HII\_unspent\_photons}
+(\code{src/feedback/GEAR/feedback\_common.c:1336-1348}). The one-probe stops are
+counted in \code{runner\_hii\_count\_one\_probe\_stop}
+(\code{src/runner\_radiation\_feedback.c:1106}). The counters are summed in
+\code{feedback\_radiation\_hii\_coverage\_reduce}, called at
+\code{src/engine\_collect\_end\_of\_step.c:273}, and printed by
+\code{feedback\_radiation\_hii\_coverage\_report}, called at
+\code{src/engine.c:2798}. The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
 (\code{feedback\_common.c:946-1016}), called at
 \code{src/runner\_radiation\_feedback.c:939}.
@@ -779,8 +798,9 @@ has ever claimed: see Section~\ref{sec:front-radius} for the
 distinct, historical-extent measure used to read out this model's
 region from the outside.
 
-Budget opening, with nothing carried over between passes, is
-Eq.~\ref{eq:budget-open} (Section~\ref{sec:angular-splitting}); the
+Budget opening is Eq.~\ref{eq:budget-open}, plus the carry of
+Eq.~\eqref{eq:budget-carry} after a coverage stop
+(Section~\ref{sec:angular-splitting}); the
 same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
