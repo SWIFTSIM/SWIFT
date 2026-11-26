@@ -173,8 +173,8 @@ what the run happens to produce.
   trapezoid/lag error (see the thin budget above) is a larger relative
   error on the numerator.
 
-* Self-shielded configuration, rate identity. The median bar above passes a
-  coefficient 11 per cent low. The identity gate holds every particle to
+* Self-shielded configuration, rate identity. The median bar above cannot see a
+  coefficient error below 25 per cent. The identity gate holds every particle to
 
       |q - 1| <= (L + 1/2) max(S_0, S_1) / I + (n + 2) 2^-24 / I ,
 

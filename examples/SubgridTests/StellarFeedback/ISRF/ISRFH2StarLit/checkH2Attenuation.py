@@ -2041,10 +2041,13 @@ def gate_merge(args: argparse.Namespace) -> int:
     Reference. The merged transmission is T_AB = D_AB / E_AB from the own fields of the
     two-star run. With the shares kept apart, each at its own column, the transmission is
     T_ref = w_A t_A + w_B t_B, with t_s = D_s / E_s from the one-star run of star s and
-    w_s = E_s / (E_A + E_B). In one gas (an isothermal fit, where the exponent does not
-    depend on the density) the merge never shields more than the separate shares and
-    shields less by at most a factor 1 / w_l, with w_l the energy fraction of the
-    least-shielded light (derivation_h2_merge_bounds, sections 3 and 5):
+    w_s = E_s / (E_A + E_B). The merge sets the transmission of the merged light to the
+    energy-weighted mean of the shares and infers a column from it with the fit. In one gas
+    (an isothermal fit, where the exponent does not depend on the density) the fit is
+    log-convex in the column, so by Jensen's inequality the merged light is shielded no
+    more than the shares kept apart. The merged column is at least the smallest share
+    column, so the merged light is shielded less by at most a factor 1 / w_l, with w_l the
+    energy fraction of the least-shielded light:
 
         1 - e  <=  R = T_AB / T_ref  <=  (1 / w_l) (1 + e).
 
@@ -2066,10 +2069,11 @@ def gate_merge(args: argparse.Namespace) -> int:
     then not larger than at the merge, where the packet was nearer to A), with the whole
     segment between the stars in the slot of the receiver (the merged origin is a mean of
     origins on the segment), and with the angle subtended by the stars at the receiver at
-    most --max-subtended-deg. Beyond that angle the merged packet does not follow the
-    one-star flows: E_AB differs from E_A + E_B by percents, the shares of the merged
-    packet differ from w_s, and R below 1 occurs. The angle limit is not derived. The
-    count outside it is printed.
+    most --max-subtended-deg. Beyond that angle the weights w_s of the one-star runs no
+    longer give the composition of the merged light (E_AB differs from E_A + E_B by
+    percents), and R below 1 occurs, while the bound without weights still holds. The angle
+    limit is not derived. The bound without weights is held on every receiver ahead of
+    star A with the segment in one slot, and the count beyond the angle limit is printed.
 
     Controls. The gate is void if fewer than MERGE_MIN_PROBES probes remain, if fewer than
     MERGE_MIN_ACTIVE have R above 1 + 2 e (the merge changes nothing otherwise), or if a
@@ -2248,17 +2252,25 @@ def gate_merge(args: argparse.Namespace) -> int:
         f"{int(high.sum())} of {n_probes} probes with R w_l > 1 + e; largest R w_l "
         f"{float(np.max((r_ratio * w_least)[probes])):.6g}",
     )
-    outside = probes & (
+    require_finite(
+        "ratios of the receivers ahead of star A",
+        t_a=t_a[shared],
+        t_b=t_b[shared],
+        t_ab=t_ab[shared],
+    )
+    outside = shared & (
         (t_ab > np.maximum(t_a, t_b) * (1.0 + eps))
         | (t_ab < np.minimum(t_a, t_b) * (1.0 - eps))
     )
     rep.check(
         "merged transmission between the transmissions of the two stars",
         not outside.any(),
-        f"{int(outside.sum())} of {n_probes} probes outside [min t, max t] widened by e",
+        f"{int(outside.sum())} of {int(shared.sum())} receivers ahead of star A outside "
+        f"[min t, max t] widened by e",
     )
 
-    active = int(np.sum(probes & (r_ratio > 1.0 + 2.0 * eps)))
+    merged = probes & (r_ratio > 1.0 + 2.0 * eps)
+    active = int(merged.sum())
     rep.info("merge acts", f"{active} probes with R above 1 + 2 e")
     if active < MERGE_MIN_ACTIVE:
         raise GateExit(
@@ -2269,8 +2281,13 @@ def gate_merge(args: argparse.Namespace) -> int:
         ("transmission x0.98", t_ab * 0.98),
         ("merged column x1.05", column_error(t_ab, 1.05)),
     ):
-        seen = int(np.sum(t_plant[probes] / t_ref[probes] < 1.0 - eps[probes]))
-        rep.info(f"plant {what}", f"outside the bar at {seen} of {n_probes} probes")
+        caught = probes & (t_plant / np.where(t_ref > 0.0, t_ref, 1.0) < 1.0 - eps)
+        seen = int(caught.sum())
+        rep.info(
+            f"plant {what}",
+            f"outside the bar at {seen} of {n_probes} probes, {int((caught & merged).sum())} "
+            f"of them where the merge acts ({active} such probes)",
+        )
         if seen == 0:
             raise GateExit(
                 EXIT_VOID,
