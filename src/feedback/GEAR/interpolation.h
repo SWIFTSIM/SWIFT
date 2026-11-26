@@ -297,12 +297,6 @@ struct interpolation_2d {
 
   /* Type of boundary condition applied when y is out of the data range. */
   enum interpolate_boundary_condition boundary_condition_y;
-
-  /* Does a query that no zero policy resolves, outside the table on one axis,
-     still interpolate along the other axis (see
-     #interpolate_axis_bracket_clamped)? If 0, it returns the stored node at the
-     truncated index of the other axis. */
-  int edge_interpolates_inside_axis;
 };
 
 /* #interpolation_2d.xvals falls inside an #interpolation_1d's footprint, so
@@ -581,8 +575,6 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_bracket_x(
  * when x is out of the data range.
  * @param boundary_condition_y The #interpolate_boundary_condition applied
  * when y is out of the data range.
- * @param edge_interpolates_inside_axis See
- * #interpolation_2d.edge_interpolates_inside_axis.
  */
 __attribute__((always_inline)) static INLINE void
 interpolate_2d_init_from_x_indices(
@@ -591,8 +583,7 @@ interpolate_2d_init_from_x_indices(
     float log_dx, float log_ymin, float log_ymax, int Ny, float log_data_ymin,
     float log_step_size_y, int N_data_x, int N_data_y, const double *data,
     enum interpolate_boundary_condition boundary_condition_x,
-    enum interpolate_boundary_condition boundary_condition_y,
-    int edge_interpolates_inside_axis) {
+    enum interpolate_boundary_condition boundary_condition_y) {
 
   /* Save the variables */
   interp->Nx = Nx;
@@ -601,7 +592,6 @@ interpolate_2d_init_from_x_indices(
   interp->dx = log_dx;
   interp->boundary_condition_x = boundary_condition_x;
   interp->boundary_condition_y = boundary_condition_y;
-  interp->edge_interpolates_inside_axis = edge_interpolates_inside_axis;
 
   interp->Ny = Ny;
   interp->ymin = log_ymin;
@@ -645,7 +635,7 @@ interpolate_2d_init_from_x_indices(
 
         if (is_zero) {
           interp->data[current_cell] = 0;
-        } else if (edge_interpolates_inside_axis) {
+        } else {
           int x_lo, x_hi, y_lo, y_hi;
           float fx_edge, fy_edge;
           interpolate_axis_bracket_clamped(x_k, N_data_x, &x_lo, &x_hi,
@@ -657,19 +647,6 @@ interpolate_2d_init_from_x_indices(
           const float fx2 = data[x_lo * N_data_y + y_hi] * (1. - fx_edge) +
                             data[x_hi * N_data_y + y_hi] * fx_edge;
           interp->data[current_cell] = fx1 * (1. - fy_edge) + fx2 * fy_edge;
-        } else {
-          const int midx = max(idx, 0);
-          const int midy = max(idy, 0);
-          const int row = min(midx, N_data_x - 1);
-          const int col = min(midy, N_data_y - 1);
-          const int cell_to_get = row * N_data_y + col;
-          if (cell_to_get >= N_data_x * N_data_y) {
-            error(
-                "Index row=%d col=%d is out of boundary for the target data "
-                "which has dimension row=%d col=%d",
-                row, col, N_data_x, N_data_y);
-          }
-          interp->data[current_cell] = data[cell_to_get];
         }
         continue;
       }
@@ -716,8 +693,6 @@ interpolate_2d_init_from_x_indices(
  * when x is out of the data range.
  * @param boundary_condition_y The #interpolate_boundary_condition applied
  * when y is out of the data range.
- * @param edge_interpolates_inside_axis See
- * #interpolation_2d.edge_interpolates_inside_axis.
  */
 __attribute__((always_inline)) static INLINE void interpolate_2d_init(
     struct interpolation_2d *interp, const float *log_data_x, int N_data_x,
@@ -725,8 +700,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
     float log_data_ymin, float log_step_size_y, int N_data_y,
     const double *data,
     enum interpolate_boundary_condition boundary_condition_x,
-    enum interpolate_boundary_condition boundary_condition_y,
-    int edge_interpolates_inside_axis) {
+    enum interpolate_boundary_condition boundary_condition_y) {
 
   if (N_data_x < 2)
     error("An interpolation source x axis needs at least 2 nodes, got %d",
@@ -760,8 +734,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
   interpolate_2d_init_from_x_indices(
       interp, x_index, log_x_out, Nx, /*is_uniform_x=*/0, log_x_out[0],
       /*log_dx=*/0.f, log_ymin, log_ymax, Ny, log_data_ymin, log_step_size_y,
-      N_data_x, N_data_y, data, boundary_condition_x, boundary_condition_y,
-      edge_interpolates_inside_axis);
+      N_data_x, N_data_y, data, boundary_condition_x, boundary_condition_y);
 
   free(x_index);
 }
@@ -802,8 +775,6 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
  * when x is out of the data range.
  * @param boundary_condition_y The #interpolate_boundary_condition applied
  * when y is out of the data range.
- * @param edge_interpolates_inside_axis See
- * #interpolation_2d.edge_interpolates_inside_axis.
  */
 __attribute__((always_inline)) static INLINE void interpolate_2d_init_uniform_x(
     struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx,
@@ -811,8 +782,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init_uniform_x(
     float log_data_ymin, float log_step_size_x, float log_step_size_y,
     int N_data_x, int N_data_y, const double *data,
     enum interpolate_boundary_condition boundary_condition_x,
-    enum interpolate_boundary_condition boundary_condition_y,
-    int edge_interpolates_inside_axis) {
+    enum interpolate_boundary_condition boundary_condition_y) {
 
   if (N_data_x < 2 || Nx < 2)
     error(
@@ -834,8 +804,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init_uniform_x(
   interpolate_2d_init_from_x_indices(
       interp, x_index, log_x_out, Nx, /*is_uniform_x=*/1, log_xmin, dx,
       log_ymin, log_ymax, Ny, log_data_ymin, log_step_size_y, N_data_x,
-      N_data_y, data, boundary_condition_x, boundary_condition_y,
-      edge_interpolates_inside_axis);
+      N_data_y, data, boundary_condition_x, boundary_condition_y);
 
   free(log_x_out);
   free(x_index);
@@ -888,30 +857,22 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
     interpolate_axis_bracket_clamped(i, Nx, &x_lo, &x_hi, &fx_edge);
     interpolate_axis_bracket_clamped(j, Ny, &y_lo, &y_hi, &fy_edge);
 
-    if (interp->edge_interpolates_inside_axis) {
-      const float fx1 = interp->data[x_lo * Ny + y_lo] * (1. - fx_edge) +
-                        interp->data[x_hi * Ny + y_lo] * fx_edge;
-      const float fx2 = interp->data[x_lo * Ny + y_hi] * (1. - fx_edge) +
-                        interp->data[x_hi * Ny + y_hi] * fx_edge;
-      return fx1 * (1. - fy_edge) + fx2 * fy_edge;
-    }
-
-    /* The stored node at the lower bracketing index of each axis. */
-    const int row = x_lo;
-    const int col = y_lo;
-    const int cell_to_get = row * Ny + col;
-    if (cell_to_get >= array_size) {
-      error("Index %d is out of boundary for the target data", cell_to_get);
-    }
 #if defined(SWIFT_TEST_STELLAR_WIND)
+    /* Reports the stored node at the lower bracketing index of each axis. */
+    const int cell_to_get = x_lo * Ny + y_lo;
     message(
         "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
         "interp->dx=%g interp->dy=%g idx=%d idy=%d "
         "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
         Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx, idy,
-        cell_to_get, row, col, exp10(interp->data[cell_to_get]));
+        cell_to_get, x_lo, y_lo, exp10(interp->data[cell_to_get]));
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
-    return interp->data[cell_to_get];
+
+    const float fx1 = interp->data[x_lo * Ny + y_lo] * (1. - fx_edge) +
+                      interp->data[x_hi * Ny + y_lo] * fx_edge;
+    const float fx2 = interp->data[x_lo * Ny + y_hi] * (1. - fx_edge) +
+                      interp->data[x_hi * Ny + y_hi] * fx_edge;
+    return fx1 * (1. - fy_edge) + fx2 * fy_edge;
   }
 
   /* interpolate */
@@ -972,7 +933,6 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_zero_pointers(
   interp->dy = 0.0;
   interp->boundary_condition_x = boundary_condition_error;
   interp->boundary_condition_y = boundary_condition_error;
-  interp->edge_interpolates_inside_axis = 0;
 }
 
 #endif  // SWIFT_GEAR_INTERPOLATION_H

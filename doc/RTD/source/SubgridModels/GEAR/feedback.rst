@@ -137,6 +137,8 @@ The ejected power and mass of a Single star population (SSP) or Continuous star 
 
 Where :math:`Q(m)` is the desired quantity (either :math:`\dot{M}` or :math:`L`) for a single star of mass :math:`m`, :math:`Q_{\star}` the wanted quantity of the stellar particle, :math:`M_u` the upper mass limits for a dying (or exploding) star, :math:`M_{min}` the minimal mass of the IMF, :math:`\delta` is the Dirac function and :math:`\phi` is the initial mass function (in mass).
 
+GEAR reads these quantities from mass x metallicity tables. A star outside a table in metallicity, such as a star of zero metallicity, reads the table at its edge metallicity and is still interpolated in mass. A star outside the table in mass reads it at the edge mass and is still interpolated in metallicity. No axis is extrapolated.
+
 Stellar evolution table
 ^^^^^^^^^^^^^^^^^^^^^^^
 
