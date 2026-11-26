@@ -36,7 +36,7 @@ implementation splits the work into two different kinds of task:
     \code{\_out}} (self and pair): created once at the
     \emph{top-level} cell grid (27-neighbour stencil,
     \code{engine\_make\_radiationloop\_tasks\_mapper},
-    \code{engine\_maketasks.c:4829-4902}), \textbf{as implicit tasks}
+    \code{engine\_maketasks.c:5061-5196}), \textbf{as implicit tasks}
     (\code{implicit=1} in \code{scheduler\_addtask}): they run no
     compute code at all (no case for them in \code{runner\_main.c}'s
     dispatch switch). Their only job is to exist as dependency nodes:
@@ -57,7 +57,7 @@ implementation splits the work into two different kinds of task:
     (subtype \code{none}): a \emph{single, coarse-grained} task
     created once per \code{radiation\_level} cell
     (\code{engine\_make\_hierarchical\_tasks\_radiation\_subgrid},
-    \code{engine\_maketasks.c:2539-2593}). This is the only task that
+    \code{engine\_maketasks.c:2548-2602}). This is the only task that
     actually runs code (\code{runner\_do\_stars\_hii\_\allowbreak
     ionization\_feedback}, dispatched at \code{runner\_main.c:639}).
     It performs its own manual, run-time recursion down to the
@@ -274,11 +274,15 @@ first search radius $r_0$ beyond that gas:
     budget remains, the radius itself is the bottleneck: expand it
     by \code{Stars:HII\_radius\_expansion\_factor}, up to
     \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
-    \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
+    \code{Stars:HII\_max\_search\_radius} and by the covered radius
+    $r_{\rm cov}$ of Eq.~\eqref{eq:hii-covered-radius}. A star that holds
+    gas gets one empty expansion only, tested after $r_{\rm cov}$
+    (Section~\ref{sec:hii-claim-start} of the algorithm document). These
+    two retry kinds are
     genuinely different failure modes and must not be conflated (see
     the comment at \code{runner\_radiation\_feedback.c:1214-1237}); the
-    loop breaks once the budget is exhausted or both retry budgets run
-    out.
+    loop breaks once the budget is exhausted or the retry or expansion
+    limit that applies is reached.
 \end{enumerate}
 
 \begin{figure}[h]
@@ -615,6 +619,7 @@ model must set explicitly.
   \code{Stars:HII\_max\_retry\_full\_buffer} & 10 & same-radius retry count (\S\ref{sec:runtime}) \\
   \code{Stars:HII\_max\_radius\_expansion\_tries} & 5 & radius-expansion retry count (\S\ref{sec:runtime}) \\
   \code{Stars:HII\_radius\_expansion\_factor} & 1.1 & radius growth per expansion (\S\ref{sec:runtime}) \\
+  \code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop} & 1 & keep the unspent photons of a pass stopped at $r_{\rm cov}$ (algorithm doc, \S\ref{sec:budget-carry}) \\
   \code{Stars:min\_star\_timestep\_Myr} & $10^{-4}$ & generic star $dt$ floor, distinct from \code{HII\_rebuild\_floor\_Myr} \\
   \hline
 \end{tabular}
@@ -630,4 +635,4 @@ Separately, any run requesting \code{GEARFeedback:HII\_angular\_nside
 \code{--with-chealpix}: the angular pixel assignment itself goes
 through the HEALPix C API, and without it the code errors at start-up
 rather than silently falling back to the spherical ($\text{nside}=0$)
-case (\code{radiation.c:308-314}).
+case (\code{src/feedback/GEAR/radiation.c:319-324}).
