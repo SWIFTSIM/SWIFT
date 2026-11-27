@@ -620,8 +620,8 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
                            bpi_dyn_mass * bpi->v[1] + bpj_dyn_mass * bpj->v[1],
                            bpi_dyn_mass * bpi->v[2] + bpj_dyn_mass * bpj->v[2]};
 
-  /* Divide by the pre-merger total dynamical mass: GW emission is symmetric
-   * in the centre-of-mass frame, so the remnant moves with the CoM velocity */
+  /* Divide by the pre-merger total dynamical mass so that the remnant
+   * moves with the centre-of-mass velocity */
   const float total_dyn_mass = bpi_dyn_mass + bpj_dyn_mass;
   bpi->v[0] = BH_mom[0] / total_dyn_mass;
   bpi->v[1] = BH_mom[1] / total_dyn_mass;
