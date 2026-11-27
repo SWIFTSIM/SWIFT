@@ -77,8 +77,8 @@ Section~\ref{sec:front-radius} relies on. ``Tagged'' below always
 means holding an active (not yet lapsed) claim.
 
 \paragraph{Implementation.} The tag is applied by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:424-440}) and reset by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:448-452}),
+(\code{src/feedback/GEAR/radiation\_gas.c:437-453}) and reset by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:461-465}),
 which leaves the star id in place.
 
 \subsubsection{Candidate Gating and the Recombination Rate}
@@ -91,7 +91,8 @@ for ionization only if
 
 \begin{enumerate}
 \item it is not already tagged,
-\item is denser than \code{GEARFeedback:HII\_min\_density\_Hpcm3},
+\item has a physical density of at least
+  \code{GEARFeedback:HII\_min\_density\_Hpcm3} (nucleons per cm$^3$),
 \item and is not already above $\approx 10^4\,$K.
 \end{enumerate}
 
@@ -114,7 +115,7 @@ identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. 
 
 \paragraph{Implementation.} The candidate filter is \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:740-774}).
+(\code{src/feedback/GEAR/feedback\_common.c:743-777}).
 
 \subsubsection{Claim Cost vs.\ Maintenance Rate}
 
@@ -255,7 +256,7 @@ Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
 at all: both simply clamp ionized gas to a flat $10^4\,$K.
 
 \paragraph{Implementation.} The floor is set in \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-152}), called from the
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-153}), called from the
 cooling task.
 
 \subsubsection{Applying the Floor: Energy Accounting}
@@ -313,7 +314,7 @@ evaluated at it whenever $u_{\rm collisional} < \Delta u_{\rm
 ionized}$).
 
 \paragraph{Implementation.} \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-152}) returns $u_{\rm new}$ to
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-153}) returns $u_{\rm new}$ to
 \code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1263-1274}, which calls \code{cooling\_new\_energy\_or\_keep\_previous}, \code{cooling.c:1053-1240}), which
 skips Grackle's \code{local\_solve\_chemistry} on a tagged particle. The
 cooling step that applies Eq.~\ref{eq:cool-dudt} and records the radiated
@@ -450,14 +451,14 @@ differently; see Section~\ref{sec:front-radius}.
 
 \paragraph{Implementation.} The flag is read in
 \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-152}) inside
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:90-153}) inside
 \code{\#if COOLING\_NETWORK > 0} (the chemical-network level of the cooling library), at lines 100-101; the same compile-time
 gate recurs at line 125. The rate-coupled branch starts at line 101 and leaves the energy alone.
 $\Gamma_{\rm HI}$ is
 \code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
-(\code{src/feedback/GEAR/radiation\_gas.c:551-560}); the excess photon energy is
+(\code{src/feedback/GEAR/radiation\_gas.c:564-573}); the excess photon energy is
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
-(\code{src/feedback/GEAR/radiation\_getters.c:575-582}); the fields are handed to
+(\code{src/feedback/GEAR/radiation\_getters.c:578-585}); the fields are handed to
 Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
 (\code{src/cooling/radiation\_rates\_to\_chemistry.h:251-276}).
 
@@ -543,10 +544,9 @@ tracks the star's own timestep, which can be arbitrarily small; the
 nominal cadence used to bound how large a single pass's
 $\Delta t_{\rm back}$ is trusted to be is floored at
 $\Delta t_{\rm floor}$, the same constant that also floors the star's
-own timestep in that mode so it cannot collapse toward zero. Nothing
-carries over from the last
-pass. Unspent budget is dropped: those photons reached no gas and
-escaped. No pass leaves a debt either: a pixel's count never goes
+own timestep in that mode so it cannot collapse toward zero. Unspent
+budget is dropped, with one exception given below: those photons reached
+no gas and escaped. No pass leaves a debt either: a pixel's count never goes
 below zero, because a charge larger than what is left takes only
 what is left. A claim of a particle the pixel cannot afford is
 therefore not repaid later; the boundary roll
@@ -568,12 +568,47 @@ photons of the skipped interval escaped, and the next real pass does not
 cover them. The cached previous rate is resynced to the current one on
 that skip, so the trapezoid never averages against a stale rate.
 
+\paragraph{Carry at the coverage stop.}\label{sec:budget-carry} A pass can
+stop because its search reached the covered radius $r_{\rm cov}$, the
+radius inside which the pass visits every cell that held gas at the last rebuild
+(Eq.~\eqref{eq:hii-covered-radius}). Its photons did not escape: the gas beyond
+$r_{\rm cov}$ was not visible. The pass asks for a wider tree, and its
+unspent photons are kept per pixel and added to the next budget,
+\begin{equation}
+  N_{{\rm ion},p}^{\rm open} =
+  \dot N_{{\rm ion},p}\,\Delta t_{\rm back} + N_{{\rm ion},p}^{\rm left},
+  \label{eq:budget-carry}
+\end{equation}
+where $N_{{\rm ion},p}^{\rm left}$ is the count pixel $p$ had at the end of
+the stopped pass. A carry is used once, and its tree reach is kept for the
+next coverage stop. At every coverage stop, the photons
+are kept only if the tree reach $w_{\rm level} + w_{\rm min}$ is larger than
+at the star's last coverage stop, whether that stop carried or released;
+$w_{\rm level}$ is the width of the \code{radiation\_level} cell. Otherwise
+the rebuild did not widen the tree (for example the top-level grid cannot
+coarsen further) and the photons are counted as escaped at the coverage
+limit. The tree reach is compared, not $r_{\rm cov}$: $r_{\rm cov}$ grows
+when the star drifts away from a face of the same cell, and a carry on that
+growth would pile up the photons of every pass. In a tree that cannot widen
+a star therefore carries at most once. Each pass therefore
+closes the ledger issued plus carried in equals spent plus escaped plus
+carried out. A pass with no photons to issue and a gas-free skip both
+return before the budget opens, so they keep the carry. Birth, death and the end of
+the HII age window clear it. With
+\code{GEARFeedback:HII\_carry\_photons\_at\_coverage\_stop}$\,=0$ the photons
+of a stopped pass escape. The step log reports the carried and released
+passes and the photons released at coverage stops. Photons left at a
+one-probe, tries or ceiling stop are counted apart
+(Section~\ref{sec:hii-claim-start}). Photons left at any other stop escape
+uncounted there, carried ones included, and so does a carry cleared at death
+or at the end of the age window.
+
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1254-1265}). The issued
+(\code{src/feedback/GEAR/feedback\_common.c:1257-1268}). The issued
 interval, the skips and the tag gap are set in
 \code{runner\_hii\_open\_star\_pass}
-(\code{src/runner\_radiation\_feedback.c:721-819}).
+(\code{src/runner\_radiation\_feedback.c:768-864}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -608,10 +643,7 @@ claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
     ionized mass is the Strömgren mass when the gas recombination time
     is short compared with the pass interval. When it is longer, the
     pixel pays the neutral hydrogen again at each re-claim and holds
-    less. In a clump of 95\,M$_\odot$ gas particles with four stars and
-    12 cones (fixed $10^4$\,K, one run each) the recombination rate of
-    the ionized gas is 0.98 of the stars' photon rate at a pass
-    interval of 0.01\,Myr and 0.51 at 0.001\,Myr.
+    less.
 \end{itemize}
 A boundary particle that is not claimed is the ionization front of
 the pixel: it absorbs the pixel's remaining budget, which ends the
@@ -641,13 +673,12 @@ on the star's next rebuild pass. Each star's rebuild is scheduled
 independently off its own age and its own last-rebuild time; there is no cross-star coordination or
 deliberate synchronous/asynchronous toggle like the one
 \citet{Smith2021} implemented (they found no difference between the
-two). For the co-located, simultaneously-born stars in the validation
-example this produces synchronous rebuilds in practice, simply because
-the stars are identical, not because the code enforces it.
+two). Stars of identical age and position rebuild together, because
+they are identical, not because the code enforces it.
 
 \paragraph{Implementation.} The per-star rebuild schedule is decided in
 \code{feedback\_will\_do\_HII\_ionization}
-(\code{src/feedback/GEAR/feedback\_common.c:438-510}), from
+(\code{src/feedback/GEAR/feedback\_common.c:438-513}), from
 \code{HII\_rebuild\_time} at lines 451-486.
 
 \subsubsection{Maintenance: Renewing Gas Already Held Ionized}
@@ -672,13 +703,99 @@ costs more upkeep than the pixel emits, once won by a claim, would stay
 ionized for ever, and a pixel whose Strömgren mass is below one
 particle would hold a whole particle permanently.
 
-\paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{src/runner\_radiation\_feedback.c:1265}), exempt from
+\paragraph{Reach of the gather and start of the claim walk.}\label{sec:hii-claim-start} The held gas is
+gathered out to $\min(r_{\rm cov}, r_{\max})$, where $r_{\rm cov}$ is the
+covered radius (Eq.~\eqref{eq:hii-covered-radius}) and $r_{\max}$ is
+\code{Stars:HII\_max\_search\_radius}. It is not gathered out to the start
+radius $r_{\rm start} = \min(1.2\,\gamma_K \max(h_{\rm hii}, h), r_{\max})$ of
+the working-level cell, where $h_{\rm hii}$ and $h$ are the largest over the
+active stars of the cell and $\gamma_K$ is the kernel's support radius in
+units of $h$. In an expanding region the held gas flows beyond
+$r_{\rm start}$ between passes, and that gas is still charged and still sets
+the extent. Held gas beyond $\min(r_{\rm cov}, r_{\max})$ is not charged, and
+its tag lapses. The claim walk for new gas then starts at
+\begin{equation}
+  r_0 = \min\left[\max\left(r_{\rm start},\, 1.2\, r_{\rm held}\right),\,
+        r_{\max},\, r_{\rm cov}\right],
+  \label{eq:hii-claim-start}
+\end{equation}
+where $r_{\rm held}$ is the distance of the farthest held particle found by
+the gather (0 if the star holds none). Held gas is tagged and never a
+candidate. A walk that starts inside the region therefore finds nothing new
+there. A search is one gather of the candidates within the current radius. A
+search of a star holding gas is empty if it meets no candidate and no gas of
+another star (below). The walk grows the radius by
+\code{Stars:HII\_radius\_expansion\_factor} $f$ after each search and stops at
+the second empty search in a row, the one-probe stop. Starting beyond the held
+gas keeps the first empty search for the gas outside the region, so the one
+grown search that follows it, the probe, is the last. A star that holds nothing
+starts at $r_{\rm start}$ and has no such stop.
+
+Gas that another star holds is not a candidate, but it can show that the front
+of the star lies farther out. A star whose region lies inside the regions of
+other stars sees their gas beyond the radius of the previous search
+($r_{\rm held}$ for the first search). A search that meets such gas is not
+empty, so the walk grows through it and then spends the photons of the pass on
+the first candidates past the other regions. Gas of other stars inside that
+radius does not count: it says nothing about the gas past the region. Only gas
+in a pixel with photons left counts. A star alone, or one that holds nothing,
+is not affected.
+
+A nested star with photons left makes up to $N_{\rm tries}+1$ searches per pass
+instead of two, where $N_{\rm tries}$ is
+\code{Stars:HII\_max\_radius\_expansion\_tries}. With the defaults
+($N_{\rm tries}=5$, $f=1.1$) that is six searches, reaching
+$f^{N_{\rm tries}} r_0 = 1.61\,r_0$. The star can therefore reach $r_{\rm cov}$
+and ask for a wider tree, and so for wider locks, where the earlier stop would
+have ended the pass. \code{Stars:HII\_max\_search\_radius} bounds the reach.
+
+A pass that finds nothing more within its radius and still has photons ends
+for one of four reasons. They are tested in this order, and the first that
+holds ends the pass: (1) the $N_{\rm tries}$ expansions are used up; (2) the
+radius is at \code{Stars:HII\_max\_search\_radius}; (3) the radius is at
+$r_{\rm cov}$; (4) a star holding gas has had two empty searches in a row. A
+walk that reaches $r_{\rm cov}$ with nothing found cannot grow, so the covered
+radius is tested before the one-probe stop and the pass stops at the covered
+radius, unless the tries or the ceiling bind first. A stop on the tries or the
+ceiling asks for no wider tree and keeps no photons. A stop at the covered
+radius asks for a wider tree, and its photons follow the carry rule of
+Section~\ref{sec:budget-carry}. A one-probe stop is therefore always inside
+$r_{\rm cov}$. Its photons escape. A star nested in other regions whose front
+lies beyond $1.2\,f^{N_{\rm tries}} r_{\rm held}$ ($1.93\,r_{\rm held}$ with
+the defaults) stops on the tries, and its photons escape. The step log counts
+the coverage stops (carried and released passes, released photons, start radii
+cut to $r_{\rm cov}$) and, apart, the one-probe stops and the tries or ceiling
+stops with photons left, with those photons. The share of the issued photons
+that escape at these stops measures how often the search still falls short. The
+counters are cumulative over the run, are summed over the MPI ranks at the end
+of each step, and start again from zero at a restart: they are not in the
+restart file.
+
+\paragraph{Implementation.} The gather is in \code{runner\_hii\_maintain\_held\_region}
+(\code{src/runner\_radiation\_feedback.c:914}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:740-774}). The charge and renewal are
+(\code{src/feedback/GEAR/feedback\_common.c:743-777}). Its reach and
+Eq.~\eqref{eq:hii-claim-start} are \code{runner\_hii\_held\_search\_radius} and
+\code{runner\_hii\_claim\_start\_radius} (\code{src/runner\_radiation\_feedback.h:189-226}).
+The stop order is \code{runner\_hii\_search\_stop} and the empty-probe count
+\code{runner\_hii\_next\_empty\_probes}
+(\code{src/runner\_radiation\_feedback.h:161-187}). The gas of other stars is
+counted in \code{runner\_hii\_count\_held\_by\_other\_star}
+(\code{src/runner\_radiation\_feedback.c:196}) and added to the candidates by
+\code{runner\_hii\_probe\_count\_met} (\code{src/runner\_radiation\_feedback.h:407}).
+The carry decision is
+\code{feedback\_carry\_star\_HII\_unspent\_photons}
+(\code{src/feedback/GEAR/feedback\_common.c:1336-1348}). The one-probe stops are
+counted in \code{runner\_hii\_count\_one\_probe\_stop}
+(\code{src/runner\_radiation\_feedback.c:1160}), the tries and ceiling stops in
+\code{runner\_hii\_count\_growth\_limit\_stop} (\code{:1208}). The counters are summed in
+\code{feedback\_radiation\_hii\_coverage\_reduce}, called at
+\code{src/engine\_collect\_end\_of\_step.c:273}, and printed by
+\code{feedback\_radiation\_hii\_coverage\_report}, called at
+\code{src/engine.c:2798}. The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{feedback\_common.c:943-1013}), called at
-\code{src/runner\_radiation\_feedback.c:915}.
+(\code{feedback\_common.c:946-1016}), called at
+\code{src/runner\_radiation\_feedback.c:996}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
@@ -710,16 +827,17 @@ has ever claimed: see Section~\ref{sec:front-radius} for the
 distinct, historical-extent measure used to read out this model's
 region from the outside.
 
-Budget opening, with nothing carried over between passes, is
-Eq.~\ref{eq:budget-open} (Section~\ref{sec:angular-splitting}); the
+Budget opening is Eq.~\ref{eq:budget-open}, plus the carry of
+Eq.~\eqref{eq:budget-carry} after a coverage stop
+(Section~\ref{sec:angular-splitting}); the
 same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
 \paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{src/feedback/GEAR/feedback\_common.c:943-1013}) passes the pixel index found
+(\code{src/feedback/GEAR/feedback\_common.c:946-1016}) passes the pixel index found
 for the particle's current direction when it was gathered to
 \code{radiation\_consume\_ionizing\_photons}
-(\code{src/feedback/GEAR/radiation\_gas.c:393-406}).
+(\code{src/feedback/GEAR/radiation\_gas.c:406-419}).
 
 \subsection{Front-radius measure}
 \label{sec:front-radius}
@@ -761,16 +879,15 @@ historical-extent measure would instead freeze at the historical
 maximum once the region starts to recede.
 
 \paragraph{Implementation.} The id is written by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:424-440}) and is left in place by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:448-452}).
+(\code{src/feedback/GEAR/radiation\_gas.c:437-453}) and is left in place by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:461-465}).
 
 \subsubsection{Robust Historical Extent: Gap-Aware Outlier Rejection}
 
 A
 single particle whose tag lapsed early and then advected outward for
 several dynamical times can dominate a plain maximum over ever-owned
-distances and inflate the reported extent by double digits percent,
-without any genuine coverage problem. The robust extent rule, a post-processing
+distances and inflate the reported extent, without any genuine coverage problem. The robust extent rule, a post-processing
 estimate made from snapshots that SWIFT does not compute, therefore does not
 take this maximum directly. It sorts ever-owned distances descending, estimates a local point
 spacing from the median gap among the outermost few percent of

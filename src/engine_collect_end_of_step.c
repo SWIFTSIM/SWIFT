@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "active.h"
 #include "lightcone/lightcone_array.h"
+#include "runner_radiation_feedback.h"
 #include "star_formation_logger.h"
 #include "timeline.h"
 
@@ -268,6 +269,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
       data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
       data.csds_file_size_gb);
+
+  feedback_radiation_hii_coverage_reduce();
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI

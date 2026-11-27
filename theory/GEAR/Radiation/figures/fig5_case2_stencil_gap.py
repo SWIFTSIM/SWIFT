@@ -2,7 +2,7 @@
 
 When radiation_level coarsening has not (yet) happened, each leaf is its own
 radiation_level region, so the wired stencil is only the leaf's up-to-26
-immediate neighbours (runner_radiation_feedback.c:496-504). A cell two
+immediate neighbours (runner_radiation_feedback.c:539-547). A cell two
 regions away is structurally absent from radiation_in (not filtered by the
 bounds check, simply never an edge in the graph), even if the search radius
 geometrically reaches into it. Three guards bound how bad this gets, and a
@@ -117,8 +117,8 @@ def make_figure(output_path: str) -> None:
         "1. Split gate: a region stops splitting once "
         "factor . kernel_gamma . h_hii_max >= 0.5 . dmin\n"
         "2. Rebuild criterion: whole-tree rebuild fires once reach + drift > dmin\n"
-        "3. In-pass clamp: dynamic_search_radius capped at interaction_limit + dmin this pass;\n"
-        "   the outer shell is deferred to the next rebuild, never lost"
+        "3. In-pass clamp: dynamic_search_radius capped at the covered radius r_cov;\n"
+        "   its photons are kept only if the tree reach grew, else released as escaped"
     )
     fig.text(
         0.5,

@@ -3,12 +3,12 @@
 
 One star sits in an isolated, dust-free box of H2-poor gas. The check reads the
 luminosity L of the star from the radiation table, not from the transported field.
-Two tests gate the run. Two other numbers are reported without a bar.
+Three tests gate the run. Two other numbers are reported without a bar.
 
 Luminosity (gate). The star's LWLuminosities against the table L_LW as SWIFT reads
-it. For Z = 0, below the first table row, SWIFT takes the first row and the node of its
-own mass grid below the star's mass, with no interpolation in mass (interpolate_2d,
-constant boundary branch). SWIFT's mass grid runs from the IMF minimum to the IMF
+it. For Z = 0, below the first table row, SWIFT takes the first row and interpolates
+log10 L linearly in log M between the two nodes of its own mass grid around the star's
+mass (interpolate_2d, clamped on the Z axis). SWIFT's mass grid runs from the IMF minimum to the IMF
 maximum mass of the table in GEARRadiation:interpolation_size_mass steps. The check
 follows that rule where this grid equals the mass grid of the table file. Where the two
 differ, the run is void (exit 4). The bar is 8 float32 ulp of log10 L (a chosen margin
@@ -33,20 +33,61 @@ particle's own LW energy before line absorption, over L / (4 pi r^2) is
 
     Q(r) = sum_i V_i c rho_i u_i / sum_i V_i L / (4 pi r_i^2),   V_i = m_i / rho_i.
 
-Q depends on the cone power of the transport. No bar derived from the mechanism exists,
-so Q is printed with its bootstrap error and not gated. The ratio of the measured dissociation to the
+Q depends on the cone power of the transport. The reported Q is printed with its
+bootstrap error and not gated. The ratio of the measured dissociation to the
 kernel-mean thin limit (2b) is reported the same way: it carries the same Q.
 
-What a PASS proves: the star's table luminosity matches the SWIFT value, and the H2
+Geometry bar on Q (gate, test Q). The bar is two-sided and comes from the geometry of
+the run, not from a clean run. A model of the transport on the gas of the run gives the
+expected Q of three radial shells, and the scatter of that expectation.
+
+Model. Symbols: r [pc] distance to the star; V [pc^3] volume m / rho of a particle;
+h [pc] smoothing length of a particle; h_s [pc] smoothing length of the star;
+gamma = 1.936492 (kernel support over h); p (dimensionless) the cone power
+GEARFeedback:ISRF_packet_cone_power; mu (dimensionless) the cosine between the
+direction of the light of the sender (radial from the star) and the vector to the
+receiver; l [pc] the weighted mean advance r mu of the hops of one particle; E
+(dimensionless) the energy of a particle in units of the energy emitted per step.
+  1. Hop weight from sender i to receiver j: V_j W(r_ij / (gamma H)) mu^p / H^3, with W
+     the Wendland C2 kernel, H = max(h_i, h_j), for r_ij < gamma h_i or gamma h_j and
+     mu > 1e-3 (radiation_packet.c, hop weights). The weights of one sender are
+     normalised to 1 and form the matrix Phi.
+  2. Emission per step: the gas with r < 0.95 gamma h_s gets the tent weight
+     V (1 - r / (0.95 gamma h_s)) (star_gas_weights.h). The weights are summed in the 12
+     HEALPix cells (nside 1) of a frame rotated at random each step. A cell whose sum is
+     below the cone floor 0.5 (pi / 3) (0.95 gamma h_s)^3 / 12 sends the missing fraction
+     of its 1 / 12 out of the box. The delivered light, 1 minus that escaped fraction, is
+     shared over all receivers in proportion to their weight (star_gas_global_share in
+     star_gas_weights.h). This gives the emission vector e.
+  3. One step: E <- Phi E + e (unlimited light speed: one hop per step). The stored
+     energy of a particle gives Q = 4 pi r^2 E l / V (the field formula of the transport).
+  4. A snapshot sees E after the steps that ended at or before its time. Q of a shell is
+     the volume mean, then the mean over the snapshots of the check window.
+The expectation is the mean of that shell Q over N_SEQUENCE independent random frame
+sequences (fixed seeds). The bar is the expectation +- 3 sigma, with sigma the standard
+deviation over the sequences of the window mean. The run fails if one shell lies
+outside. No datum of the Q of the run enters. The shells are fixed multiples of the
+median gas h: BAR_SHELLS_H.
+
+Q does not depend on the number of reception slots. With one star every share that
+reaches a particle has the star as origin, so the arrivals of a particle fall in one
+slot. The bar does not test the slot count.
+
+What a PASS proves: the star's table luminosity matches the SWIFT value, the H2
 dissociation follows the field that the cooling is given with no further factor (no
-second shielding). What it does not prove: that the field itself has the right size.
-A scale error of the LW field is not detected, because the rate and the field scale
-together. A loss of light that grows with the H2
+second shielding), and the stored light of the thin box equals the geometry model to 3
+sigma per shell (a scale error of Q of about 1 per cent is rejected). What it does not
+prove: that the model itself is right where it was not tested. The Q bar is a limit of
+the model: it is gated only at resolution level 5 and a star of 29.7 Msun, and other
+levels, star masses and slot counts are void or untested. A loss of light that grows with the H2
 column or the dust is not tested (the box is thin and dust-free), nor are errors that
-appear only with a limited light speed or several stars.
+appear only with a limited light speed or several stars. The rate identity alone does
+not see a scale error of the LW field, because the rate and the field scale together;
+the Q bar does.
 
 Exit status: 0 pass, 1 a failed bar, 2 a missing file or field, 3 a value that is not
-finite, 4 a void run.
+finite, 4 a void Q bar with no other failure (a failed gate always gives 1; the
+luminosity and the rate identity run at every level and star mass).
 
 The --plant-* options change the data as a known error would, to show that the check
 fails when it should. They act on the arrays read from the snapshots, not on SWIFT.
@@ -76,6 +117,15 @@ GAMMA_KERNEL = 1.936492
 N_LIT = 4
 N_MIN = 100
 N_BOOT = 300
+N_SEQUENCE = 24
+BAR_LEVEL = 5
+BAR_STAR_MASS_MSUN = 29.7
+BAR_SIGMA = 3.0
+BAR_SHELLS_H = (5.6, 7.7, 9.2, 11.2)
+MU_MIN = 1e-3
+STAR_EDGE = 0.95
+CONE_FLOOR_FRACTION = 0.5
+N_CONE = 12
 SPECIES = ["HI", "HII", "HM", "H2I", "H2II", "HeI", "HeII", "HeIII", "DI", "DII", "HDI"]
 SPECIES_A = [1, 1, 1, 2, 2, 4, 4, 4, 2, 2, 3]
 FIELDS = [
@@ -125,6 +175,201 @@ def kernel_mean_inverse_square(r: Arr, big_h: Arr) -> Arr:
     return (sphere * (kernel * w)[None, :]).sum(axis=1) / (kernel * w).sum()
 
 
+def random_rotation(rng: np.random.Generator) -> Arr:
+    """Return a uniform random rotation matrix from a random unit quaternion."""
+    quat = rng.normal(size=4)
+    a, b, c, d = quat / np.linalg.norm(quat)
+    return np.array(
+        [
+            [a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c)],
+            [2 * (b * c + a * d), a * a - b * b + c * c - d * d, 2 * (c * d - a * b)],
+            [2 * (b * d - a * c), 2 * (c * d + a * b), a * a - b * b - c * c + d * d],
+        ]
+    )
+
+
+def healpix_nside1(v: Arr) -> NDArray[np.int64]:
+    """Return the HEALPix ring pixel (nside 1) of the direction vectors v, shape (N, 3)."""
+    v = v / np.linalg.norm(v, axis=1)[:, None]
+    z = v[:, 2]
+    tt = (np.arctan2(v[:, 1], v[:, 0]) % (2.0 * np.pi)) / (0.5 * np.pi)
+    out = np.zeros(len(v), dtype=np.int64)
+    eq = np.abs(z) <= 2.0 / 3.0
+    t1 = 0.5 + tt[eq]
+    t2 = 0.75 * z[eq]
+    jp = np.floor(t1 - t2).astype(np.int64)
+    jm = np.floor(t1 + t2).astype(np.int64)
+    ir = 2 + jp - jm
+    ip = ((jp + jm + (1 - (ir & 1))) // 2) % 4
+    out[eq] = (ir - 1) * 4 + ip
+    pol = ~eq
+    tp = tt[pol] - np.floor(tt[pol])
+    tmp = np.sqrt(3.0 * (1.0 - np.abs(z[pol])))
+    jp = np.floor(tp * tmp).astype(np.int64)
+    jm = np.floor((1.0 - tp) * tmp).astype(np.int64)
+    ir = jp + jm + 1
+    ip = np.floor(tt[pol] * ir).astype(np.int64) % (4 * ir)
+    out[pol] = np.where(z[pol] > 0, 2 * ir * (ir - 1) + ip, 12 - 2 * ir * (ir + 1) + ip)
+    return out
+
+
+def hop_matrix(pos: Arr, h: Arr, vol: Arr, star: Arr, power: float) -> tuple:
+    """Return the hop matrix Phi (sparse, receiver by sender) and the advance l of each sender.
+
+    pos, h and vol are in pc, pc and pc^3. The light of every sender is radial from the star.
+    """
+    from scipy.sparse import csr_matrix
+    from scipy.spatial import cKDTree
+
+    pairs = cKDTree(pos).query_pairs(GAMMA_KERNEL * h.max(), output_type="ndarray")
+    i = np.concatenate([pairs[:, 0], pairs[:, 1]])
+    j = np.concatenate([pairs[:, 1], pairs[:, 0]])
+    dx = pos[j] - pos[i]
+    dist = np.linalg.norm(dx, axis=1)
+    reach = (dist < GAMMA_KERNEL * h[i]) | (dist < GAMMA_KERNEL * h[j])
+    radial = pos - star
+    radial /= np.linalg.norm(radial, axis=1)[:, None]
+    mu = np.einsum("ij,ij->i", dx, radial[i]) / dist
+    keep = reach & (mu > MU_MIN) & (dist > 0.0)
+    i, j, dist, mu = i[keep], j[keep], dist[keep], mu[keep]
+    big_h = np.maximum(h[i], h[j])
+    q = np.clip(dist / (GAMMA_KERNEL * big_h), 0.0, 1.0)
+    weight = vol[j] * (1.0 - q) ** 4 * (1.0 + 4.0 * q) / big_h**3 * mu**power
+    total = np.bincount(i, weight, len(pos))
+    advance = np.bincount(i, weight * dist * mu, len(pos))
+    length = np.where(total > 0.0, advance / np.where(total > 0.0, total, 1.0), 0.0)
+    phi = csr_matrix((weight / total[i], (j, i)), shape=(len(pos), len(pos)))
+    return phi, length
+
+
+def shell_mean(vol: Arr, r: Arr, q: Arr, lo: float, hi: float) -> float:
+    """Return the volume mean of q over the particles with lo <= r < hi."""
+    sel = (r >= lo) & (r < hi)
+    return float((vol[sel] * q[sel]).sum() / vol[sel].sum())
+
+
+def model_window_q(
+    pos: Arr,
+    vol: Arr,
+    star: Arr,
+    star_h: float,
+    hop: tuple,
+    step_of_snap: list[int],
+    shells: list[tuple[float, float]],
+    seed: int,
+) -> Arr:
+    """Return the model Q of each shell, averaged over the snapshots of the window.
+
+    One random frame sequence. step_of_snap lists the number of steps done at each snapshot.
+    """
+    rng = np.random.default_rng(seed)
+    phi, length = hop
+    offset = pos - star
+    r = np.linalg.norm(offset, axis=1)
+    support = STAR_EDGE * GAMMA_KERNEL * star_h
+    weight = np.where(r < support, vol * (1.0 - r / support), 0.0)
+    sel = np.where(weight > 0.0)[0]
+    floor = CONE_FLOOR_FRACTION * (np.pi / 3.0) * support**3 / N_CONE
+    factor = 4.0 * np.pi * r**2 / vol * length
+    energy = np.zeros(len(pos))
+    wanted = set(step_of_snap)
+    rows = []
+    for step in range(1, max(step_of_snap) + 1):
+        cell = healpix_nside1(offset[sel] @ random_rotation(rng).T)
+        cone = np.bincount(cell, weight[sel], N_CONE)
+        escape = np.where(
+            floor > cone,
+            np.where(cone > 0.0, (1.0 - cone / floor) / N_CONE, 1.0 / N_CONE),
+            0.0,
+        ).sum()
+        emit = np.zeros(len(pos))
+        emit[sel] = (1.0 - escape) * weight[sel] / cone.sum()
+        energy = phi @ energy + emit
+        if step in wanted:
+            q = factor * energy
+            rows.append([shell_mean(vol, r, q, lo, hi) for lo, hi in shells])
+    return np.mean(rows, axis=0)
+
+
+def bar_shells(s: dict) -> list[tuple[float, float]]:
+    """Return the radial shells of the Q bar [pc], fixed multiples of the median gas h."""
+    h_med = float(np.median(s["h"])) / PARSEC
+    edges = [x * h_med for x in BAR_SHELLS_H]
+    return list(zip(edges[:-1], edges[1:]))
+
+
+def geometry_bar(s: dict, step_of_snap: list[int]) -> dict:
+    """Return the model centre and standard deviation of Q in each bar shell.
+
+    s is the last snapshot: its gas is the geometry of the model.
+    """
+    pos, h = s["pos"] / PARSEC, s["h"] / PARSEC
+    vol = s["mass"] / s["rho"] / PARSEC**3
+    star = s["star_pos"] / PARSEC
+    shells = bar_shells(s)
+    hop = hop_matrix(pos, h, vol, star, s["cone_power"])
+    seqs = np.array(
+        [
+            model_window_q(
+                pos, vol, star, s["star_h"] / PARSEC, hop, step_of_snap, shells, 100 + k
+            )
+            for k in range(N_SEQUENCE)
+        ]
+    )
+    return {"centre": seqs.mean(axis=0), "sigma": seqs.std(axis=0, ddof=1)}
+
+
+def measured_window_q(snaps: list[dict], window: list[int], l_table: float) -> Arr:
+    """Return the measured Q of each bar shell, averaged over the snapshots of the window."""
+    s = snaps[-1]
+    r = np.linalg.norm(s["pos"] - s["star_pos"], axis=1)
+    vol = s["mass"] / s["rho"]
+    shells = [(lo * PARSEC, hi * PARSEC) for lo, hi in bar_shells(s)]
+    rows = []
+    for k in window:
+        q = (
+            C_LIGHT
+            * snaps[k]["rho"]
+            * snaps[k]["LWOwnSpecificEnergies"]
+            * 4.0
+            * np.pi
+            * r**2
+            / l_table
+        )
+        rows.append([shell_mean(vol, r, q, lo, hi) for lo, hi in shells])
+    return np.mean(rows, axis=0)
+
+
+def bar_void_reasons(s: dict) -> list[str]:
+    """Return why the Q geometry bar is not gated for this run (empty if it is).
+
+    The bar is gated only at resolution level BAR_LEVEL and for a star of
+    BAR_STAR_MASS_MSUN.
+    """
+    out = []
+    level = np.log2(len(s["mass"])) / 3.0
+    if abs(level - BAR_LEVEL) > 1e-9:
+        out.append(
+            f"{len(s['mass'])} gas particles: level {level:.3g}, not {BAR_LEVEL}"
+        )
+    mass = s["star_mass"] / MSUN
+    if abs(mass - BAR_STAR_MASS_MSUN) > 0.005 * BAR_STAR_MASS_MSUN:
+        out.append(f"star mass {mass:.4g} Msun, not {BAR_STAR_MASS_MSUN}")
+    return out
+
+
+def window_steps(snaps: list[dict], steps: Arr) -> tuple[list[int], list[int]]:
+    """Return the window snapshot indices and the number of steps done at each of them.
+
+    The first row of timesteps.txt is step 0, the initial state: it is not a step.
+    """
+    n = len(snaps)
+    window = list(range(max(12, n // 3), n - 1, 2))
+    tol = 1e-6 * float(steps[-1])
+    done = [int((steps[1:] <= snaps[k]["time_code"] + tol).sum()) for k in window]
+    return window, done
+
+
 def read_snapshot(path: Path) -> dict:
     """Read the gas and star fields of one snapshot in cgs."""
     with h5py.File(path, "r") as f:
@@ -158,9 +403,11 @@ def read_snapshot(path: Path) -> dict:
             out["star_mass"] = float(s["Masses"][0]) * um
             out["star_z"] = float(s["MetalMassFractions"][0][-1])
             out["star_L"] = float(s["LWLuminosities"][0]) * um * ul**2 / ut**3
+            out["star_h"] = float(s["SmoothingLengths"][0]) * ul
         else:
             out["star_pos"] = np.zeros(3)
             out["star_mass"] = out["star_z"] = out["star_L"] = 1.0
+            out["star_h"] = 1.0
         par = f["Parameters"].attrs
         out["interp_size_mass"] = int(
             float(par.get("GEARRadiation:interpolation_size_mass", 0))
@@ -169,6 +416,9 @@ def read_snapshot(path: Path) -> dict:
         out["periodic"] = float(par.get("InitialConditions:periodic", np.nan))
         raw = par.get("GEARFeedback:ISRF_packet_light_speed", b"")
         out["light_speed"] = raw.decode() if isinstance(raw, bytes) else str(raw)
+        out["cone_power"] = float(
+            par.get("GEARFeedback:ISRF_packet_cone_power", np.nan)
+        )
     return out
 
 
@@ -218,11 +468,12 @@ def table_luminosity(
     IMF maximum mass (Data/IMF Mmin and Mmax) in interpolation_size_mass nodes
     (src/feedback/GEAR/radiation_table_io.c), and interpolates log L bilinearly in
     log Z and log M. A metallicity below the first row of the table (here Z = 0)
-    takes the constant boundary branch of interpolate_2d
-    (src/feedback/GEAR/interpolation.h): the first row, and the node of the
-    resampled grid below the star's mass, with no interpolation in mass. This
-    function follows that branch, with the index formed in float32 as SWIFT does,
-    when the resampled grid equals the grid of the file.
+    is clamped to the first row, and log10 L is interpolated linearly in log M
+    between the two nodes of the resampled grid around the star's mass
+    (interpolate_axis_bracket_clamped in src/feedback/GEAR/interpolation.h, with
+    edge_interpolates_inside_axis = 1 for the radiation tables). This function
+    follows that rule, with the index and its fraction formed in float32 as SWIFT
+    does, when the resampled grid equals the grid of the file.
 
     The bar is 8 float32 ulp of log10 L as a relative error: 8 is a chosen margin
     on the one ulp, eps * |log10 L| * ln 10, which the float32 readout cannot resolve.
@@ -272,7 +523,14 @@ def table_luminosity(
     index = int((log_m - grid_min) / grid_step)
     if index < 0 or index >= n_mass - 1:
         raise ValueError(f"log10 mass {float(log_m):.4f} is outside the table")
-    value = float(lum[index])
+    frac = float(np.float32((log_m - grid_min) / grid_step) - np.float32(index))
+    value = float(
+        10.0
+        ** (
+            (1.0 - frac) * np.log10(float(lum[index]))
+            + frac * np.log10(float(lum[index + 1]))
+        )
+    )
     bar = 8.0 * float(np.finfo(np.float32).eps) * abs(np.log10(value)) * np.log(10.0)
     return value, bar
 
@@ -545,6 +803,12 @@ def main() -> int:
         help="plant: the star makes no update in one step",
     )
     p.add_argument(
+        "--plant-q-scale",
+        type=float,
+        default=None,
+        help="plant: scale the stored LW energy that gives Q (nan: make it not finite)",
+    )
+    p.add_argument(
         "--plant-nan",
         action="store_true",
         help="plant: one NaN in the density of the last snapshot",
@@ -593,6 +857,11 @@ def main() -> int:
         plant_double_shielding(snaps)
         print("PLANT: transported rate shielded a second time at the Jeans column")
 
+    if o.plant_q_scale is not None:
+        for s in snaps:
+            s["LWOwnSpecificEnergies"] = s["LWOwnSpecificEnergies"] * o.plant_q_scale
+        print(f"PLANT: stored LW energy (Q) x {o.plant_q_scale}")
+
     if o.plant_luminosity is not None:
         snaps[-1]["star_L"] *= o.plant_luminosity
         print(f"PLANT: star luminosity x {o.plant_luminosity}")
@@ -615,12 +884,20 @@ def main() -> int:
         f"interval {res['interval']}, dt {res['dt_s'] / 3.15576e7:.4f} yr, lit particles {res['n_lit_field']}"
     )
     print(
-        "Q and 2b are reported without a bar; only the luminosity and the rate identity (4) gate."
+        "Q and 2b are reported without a bar here; the luminosity, the rate identity (4) and the Q geometry bar gate."
     )
     print(
         f"{'r[pc]':>6} {'N':>6} {'Q mean':>8} {'Q med':>8} {'se':>7} | {'2b':>8} {'se':>7} | {'ln r4':>10} {'bar':>9}"
     )
     status = EXIT_PASS if lum["ok"] else EXIT_FAIL
+    void_q = bar_void_reasons(snaps[-1])
+    if not void_q:
+        window, done = window_steps(snaps, steps)
+        bar = geometry_bar(snaps[-1], done)
+        q_win = measured_window_q(snaps, window, lum["table_erg_s"])
+        if not (np.all(np.isfinite(q_win)) and np.all(np.isfinite(bar["centre"]))):
+            print("NON-FINITE geometry bar or measured Q")
+            return EXIT_NONFINITE
     n_tested = 0
     for sh in res["shells"]:
         cells = [f"{sh['r_pc']:6.2f}", f"{sh['n_field']:6d}"]
@@ -659,8 +936,33 @@ def main() -> int:
         )
     if n_tested == 0:
         print("VOID: no shell holds enough lit particles")
-        return EXIT_VOID
-    print("RESULT:", "PASS" if status == EXIT_PASS else "FAIL")
+        void_q = void_q + ["no shell holds enough lit particles"]
+    if void_q:
+        print("VOID: the Q geometry bar is not gated here:\n  " + "\n  ".join(void_q))
+    else:
+        print(
+            f"Q geometry bar: window snapshots {window[0]}..{window[-1]} step 2, cone power "
+            f"{snaps[-1]['cone_power']:g}, model {N_SEQUENCE} frame sequences, bar centre +- {BAR_SIGMA:g} sigma"
+        )
+        print(
+            f"{'r[pc]':>10} {'Q window':>9} {'centre':>8} {'sigma':>7} {'(Q-c)/sig':>10}"
+        )
+        if not (np.all(np.isfinite(bar["sigma"])) and np.all(bar["sigma"] > 0.0)):
+            print("NON-FINITE or not positive sigma of the geometry bar")
+            return EXIT_NONFINITE
+        for (lo, hi), q, c, sg in zip(
+            bar_shells(snaps[-1]), q_win, bar["centre"], bar["sigma"]
+        ):
+            z = (q - c) / sg
+            bad = abs(z) > BAR_SIGMA
+            if bad:
+                status = EXIT_FAIL
+            print(
+                f"{lo:4.2f}-{hi:4.2f} {q:9.4f} {c:8.4f} {sg:7.4f} {z:10.2f}  {'FAIL Q' if bad else 'ok'}"
+            )
+    if status == EXIT_PASS and void_q:
+        status = EXIT_VOID
+    print("RESULT:", {EXIT_PASS: "PASS", EXIT_VOID: "VOID"}.get(status, "FAIL"))
     if o.json:
         o.json.write_text(json.dumps({"exit": status, **res}, indent=1, default=float))
     return status

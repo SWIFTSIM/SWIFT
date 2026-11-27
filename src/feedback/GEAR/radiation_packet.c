@@ -3698,8 +3698,10 @@ void radiation_packet_line_refit(struct part *p, const float old_alpha,
  *
  * The origin is the energy-weighted mean of the arriving origins and the
  * direction points from it to the particle. The reservoir releases the part due
- * in the step that ends now, `dt / t_rem`, with `dt` and `t_rem` measured from
- * the start of that step, and all of it once `t_rem <= dt`. A share with `n dt`
+ * since the last merge, `dt / t_rem`, with `dt` and `t_rem` measured from that
+ * merge, and all of it once `t_rem <= dt`. A synchronisation or the time-step
+ * limiter can cut the step of an inactive particle without a merge, so the last
+ * merge can lie before the start of the time bin. A share with `n dt`
  * to run is met by `n` merges that release `1/n`, `1/(n-1)` of the rest, ...,
  * so each takes `1/n` of it. Same with proper-time steps.
  *
@@ -3707,7 +3709,7 @@ void radiation_packet_line_refit(struct part *p, const float old_alpha,
  *
  * @param sl The slot.
  * @param ti_current Time of the merge, the end of the particle's last step.
- * @param ti_step Length of that last step.
+ * @param ti_begin Time of the previous merge, the start of the light held now.
  * @param time_base Physical length of one integer time step. Under cosmology
  * it is a step in `ln a`, so @p cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.
@@ -3715,12 +3717,12 @@ void radiation_packet_line_refit(struct part *p, const float old_alpha,
  */
 static void radiation_packet_merge_slot_unlimited(
     struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
-    const integertime_t ti_step, const double time_base,
+    const integertime_t ti_begin, const double time_base,
     const struct cosmology *cosmo, const uint32_t salt) {
 
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
-    const integertime_t ti_begin = ti_current - ti_step;
+    const integertime_t ti_since_merge = ti_current - ti_begin;
     double t_rem;
     double dt;
     if (cosmo != NULL) {
@@ -3728,7 +3730,7 @@ static void radiation_packet_merge_slot_unlimited(
       dt = cosmology_get_delta_time(cosmo, ti_begin, ti_current);
     } else {
       t_rem = (double)(sl->reservoir_end_ti - ti_begin) * time_base;
-      dt = (double)ti_step * time_base;
+      dt = (double)ti_since_merge * time_base;
     }
 
     if (t_rem > dt) release = (float)(dt / t_rem);
@@ -4053,8 +4055,9 @@ INLINE static void radiation_packet_diag_waiting(
  *
  * @param p The particle, active.
  * @param ti_current Time of the merge, the end of the particle's last step.
- * @param ti_step Length of the particle's last step. It sets the release of
- * the reservoir and stands in for the next step in `step_end_ti`.
+ * @param ti_step Length of the particle's last step. It stands in for the next
+ * step in `step_end_ti`. The release of the reservoir counts from the previous
+ * merge, which is earlier than `ti_current - ti_step` after a cut step.
  * @param time_base Physical length of one integer time step. Under cosmology
  * it is a step in `ln a`, so @p cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.
@@ -4074,6 +4077,12 @@ void radiation_packet_merge(
     error("Particle %lld still holds a packet at its merge.", p->id);
 #endif
 
+  /* The last merge, read before the step fields are overwritten. It lies
+     before the start of the time bin when a cut shortened the step. */
+  integertime_t ti_last_merge = ti_current - ti_step;
+  if (pk->has_merged_step)
+    ti_last_merge = min(ti_last_merge, pk->step_end_ti - pk->step_ti);
+
   if (ti_step > 0) pk->has_merged_step = 1;
 
   const int with_dissociating =
@@ -4090,7 +4099,7 @@ void radiation_packet_merge(
                                     &line);
 
       radiation_packet_merge_slot_unlimited(
-          &pk->slot[s], ti_current, ti_step, time_base, cosmo,
+          &pk->slot[s], ti_current, ti_last_merge, time_base, cosmo,
           radiation_packet_salt_index(salt, (uint32_t)s));
       radiation_packet_check_slot_direction(&pk->slot[s], s,
                                             constants->octant_frame);
@@ -4180,7 +4189,7 @@ void radiation_packet_set_first_step(
  * @param p The particle.
  * @param a Current scale factor.
  * @param speed_of_light Speed of light.
- * @param dt Physical length of the particle's step.
+ * @param dt Physical time since the last merge of the particle.
  * @param tau Time constant of the running mean. 0 or less is off.
  * @param constants The #radiation_packet_constants.
  */

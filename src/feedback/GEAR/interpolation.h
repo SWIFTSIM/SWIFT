@@ -389,6 +389,51 @@ interpolate_2d_boundary_is_zero(
 }
 
 /**
+ * @brief Bracket one axis of a 2D query that falls outside the table on at
+ * least one axis.
+ *
+ * Outside the axis, both bracketing indices are the edge node and the
+ * fraction is 0: the axis is clamped, never extrapolated. Inside, they are
+ * the two nodes around @p raw, so a bilinear blend still interpolates along
+ * this axis. The integer check on the truncated index is a backstop for a
+ * NaN @p raw: callers MUST pass a finite query, because C does not guarantee
+ * that a NaN fails both range tests under -ffast-math.
+ *
+ * @param raw The raw (untruncated) coordinate in index space.
+ * @param n The number of nodes along the axis (at least 2).
+ * @param lo (output) The lower bracketing index.
+ * @param hi (output) The upper bracketing index.
+ * @param frac (output) The fraction of the way from @p lo to @p hi.
+ */
+__attribute__((always_inline)) static INLINE void
+interpolate_axis_bracket_clamped(float raw, int n, int *lo, int *hi,
+                                 float *frac) {
+
+  if (raw < 0) {
+    *lo = 0;
+    *hi = 0;
+    *frac = 0.f;
+    return;
+  }
+
+  if (raw >= n - 1) {
+    *lo = n - 1;
+    *hi = n - 1;
+    *frac = 0.f;
+    return;
+  }
+
+  const int i = raw;
+  if (i < 0 || i > n - 2)
+    error("Interpolation index %d is outside [0, %d]: is the query finite?", i,
+          n - 2);
+
+  *lo = i;
+  *hi = i + 1;
+  *frac = raw - i;
+}
+
+/**
  * @brief Convert a log-x query into the index space of a list of log-x
  * nodes.
  *
@@ -591,18 +636,17 @@ interpolate_2d_init_from_x_indices(
         if (is_zero) {
           interp->data[current_cell] = 0;
         } else {
-          const int midx = max(idx, 0);
-          const int midy = max(idy, 0);
-          const int row = min(midx, N_data_x - 1);
-          const int col = min(midy, N_data_y - 1);
-          const int cell_to_get = row * N_data_y + col;
-          if (cell_to_get >= N_data_x * N_data_y) {
-            error(
-                "Index row=%d col=%d is out of boundary for the target data "
-                "which has dimension row=%d col=%d",
-                row, col, N_data_x, N_data_y);
-          }
-          interp->data[current_cell] = data[cell_to_get];
+          int x_lo, x_hi, y_lo, y_hi;
+          float fx_edge, fy_edge;
+          interpolate_axis_bracket_clamped(x_k, N_data_x, &x_lo, &x_hi,
+                                           &fx_edge);
+          interpolate_axis_bracket_clamped(y_k, N_data_y, &y_lo, &y_hi,
+                                           &fy_edge);
+          const float fx1 = data[x_lo * N_data_y + y_lo] * (1. - fx_edge) +
+                            data[x_hi * N_data_y + y_lo] * fx_edge;
+          const float fx2 = data[x_lo * N_data_y + y_hi] * (1. - fx_edge) +
+                            data[x_hi * N_data_y + y_hi] * fx_edge;
+          interp->data[current_cell] = fx1 * (1. - fy_edge) + fx2 * fy_edge;
         }
         continue;
       }
@@ -808,27 +852,32 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       return 0;
     }
 
-    const int midx = max(idx, 0);
-    const int midy = max(idy, 0);
-    const int row = min(midx, Nx - 1);
-    const int col = min(midy, Ny - 1);
-    const int cell_to_get = row * Ny + col;
-    if (cell_to_get >= array_size) {
-      error("Index %d is out of boundary for the target data", cell_to_get);
-    }
+    int x_lo, x_hi, y_lo, y_hi;
+    float fx_edge, fy_edge;
+    interpolate_axis_bracket_clamped(i, Nx, &x_lo, &x_hi, &fx_edge);
+    interpolate_axis_bracket_clamped(j, Ny, &y_lo, &y_hi, &fy_edge);
+
 #if defined(SWIFT_TEST_STELLAR_WIND)
+    /* Reports the stored node at the lower bracketing index of each axis. */
+    const int cell_to_get = x_lo * Ny + y_lo;
     message(
         "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
         "interp->dx=%g interp->dy=%g idx=%d idy=%d "
         "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
         Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx, idy,
-        cell_to_get, row, col, exp10(interp->data[cell_to_get]));
+        cell_to_get, x_lo, y_lo, exp10(interp->data[cell_to_get]));
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
-    return interp->data[cell_to_get];
+
+    const float fx1 = interp->data[x_lo * Ny + y_lo] * (1. - fx_edge) +
+                      interp->data[x_hi * Ny + y_lo] * fx_edge;
+    const float fx2 = interp->data[x_lo * Ny + y_hi] * (1. - fx_edge) +
+                      interp->data[x_hi * Ny + y_hi] * fx_edge;
+    return fx1 * (1. - fy_edge) + fx2 * fy_edge;
   }
 
   /* interpolate */
-  if ((idx * Ny + idy) >= array_size || ((idx + 1) * Ny + idy) >= array_size ||
+  if (idx < 0 || idy < 0 || (idx * Ny + idy) >= array_size ||
+      ((idx + 1) * Ny + idy) >= array_size ||
       (idx * Ny + idy + 1) >= array_size ||
       ((idx + 1) * Ny + idy + 1) >= array_size) {
     error("Index is out of boundaries for the interpolation");

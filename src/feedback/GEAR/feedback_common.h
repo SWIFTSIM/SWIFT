@@ -112,6 +112,10 @@ void feedback_open_star_ionizing_photon_budget(struct spart *sp,
                                                double dt_back);
 void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp);
 void feedback_reset_star_HII_mass(struct spart *sp);
+float feedback_get_star_HII_carry_tree_reach(const struct spart *sp);
+double feedback_carry_star_HII_unspent_photons(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const float tree_reach, const float last_tree_reach);
 void feedback_set_star_HII_last_rebuild(struct spart *sp,
                                         double star_age_beg_step);
 double feedback_get_star_HII_last_attempt(const struct spart *sp);

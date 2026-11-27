@@ -41,8 +41,9 @@ def check_away_from_faces(pos, box, label, margin=1e-6):
     """Raise if a coordinate lies within margin * box of a box face.
 
     A particle on a face can drift out of the box by less than one ulp of the box size
-    and be assigned to a cell that does not exist.
+    and be assigned to a cell that does not exist. box is the side, or the three sides.
     """
+    box = np.asarray(box, dtype=float)
     d = np.minimum(pos, box - pos)
     bad = int(np.sum(d < margin * box))
     if bad:
@@ -62,11 +63,14 @@ def write_ic(
     star_mass_msun,
     star_type=0,
     star_ids=None,
+    star_h_factor=3.0,
 ):
     """Write gas and star particles in the SWIFT IC layout (internal units).
 
     The star IDs default to n_gas + 0, 1, ... . The ID seeds the random frame of the
-    emission pixels, so a star keeps its ID when it is written alone.
+    emission pixels, so a star keeps its ID when it is written alone. box is the side of a
+    cube, or the three sides. The star smoothing length starts at star_h_factor gas
+    smoothing lengths; the first neighbour search must fit in a third of the shortest side.
     """
     n_gas = len(pos)
     n_star = len(star_pos)
@@ -76,10 +80,12 @@ def write_ic(
     m_star = np.broadcast_to(np.asarray(star_mass_msun, float), (n_star,)) * (
         MSUN_CGS / UNIT_MASS_CGS
     )
-    h_gas = 1.2348 * (box**3 / n_gas) ** (1.0 / 3.0) * np.ones(n_gas)
+    sides = np.broadcast_to(np.asarray(box, dtype=float), 3).tolist()
+    volume = box**3 if np.ndim(box) == 0 else float(np.prod(sides))
+    h_gas = 1.2348 * (volume / n_gas) ** (1.0 / 3.0) * np.ones(n_gas)
     with h5py.File(filename, "w") as f:
         g = f.create_group("/Header")
-        g.attrs["BoxSize"] = [box, box, box]
+        g.attrs["BoxSize"] = sides
         g.attrs["NumPart_Total"] = [n_gas, 0, 0, 0, n_star, 0]
         g.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
         g.attrs["NumPart_ThisFile"] = [n_gas, 0, 0, 0, n_star, 0]
@@ -108,7 +114,7 @@ def write_ic(
         s.create_dataset("Masses", data=m_star, dtype="f")
         s.create_dataset("ParticleIDs", data=star_ids, dtype="L")
         s.create_dataset(
-            "SmoothingLength", data=np.full(n_star, 3 * h_gas[0]), dtype="f"
+            "SmoothingLength", data=np.full(n_star, star_h_factor * h_gas[0]), dtype="f"
         )
         s.create_dataset("BirthMass", data=m_star, dtype="f")
         s.create_dataset("BirthTime", data=np.zeros(n_star), dtype="f")

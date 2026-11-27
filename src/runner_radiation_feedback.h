@@ -28,6 +28,7 @@
 #endif
 
 /* Local headers. */
+#include "cell_stars.h"
 #include "error.h"
 #include "feedback.h"
 #include "hydro.h"
@@ -123,10 +124,12 @@ enum hii_search_stop {
   /*! The radius is at Stars:HII_max_search_radius. */
   hii_search_stop_ceiling = 2,
 
-  /*! The radius is at the neighbour cell margin, and nothing else binds. */
-  hii_search_stop_margin = 3,
+  /*! The radius is at the edge of the gas the tree covers, and neither the
+      try count nor the ceiling binds. */
+  hii_search_stop_covered_radius = 3,
 
-  /*! A star that holds gas has had its one empty probe. */
+  /*! A star that holds gas has had its one empty probe inside the covered
+      radius. */
   hii_search_stop_one_probe = 4,
 };
 
@@ -137,39 +140,115 @@ enum hii_search_stop {
  * A star already holding an equilibrium region gets one empty probe past it
  * and no more: a pixel left with a sliver of budget never ends the pass, so
  * it would otherwise spend every expansion on ever larger empty volumes. A
- * star holding nothing keeps its full configured reach, the case the
- * expansion exists for (a fresh star, or one in a cavity whose nearest gas is
- * several expansions away). The neighbour cell margin is reported only when
- * no other limit binds, so it marks a star that the cell layout alone holds
- * back.
+ * probe that meets gas other stars hold is not empty: the front of the star
+ * lies past their regions. A star holding nothing keeps its full configured
+ * reach, the case the expansion exists for (a fresh star, or one in a cavity
+ * whose nearest gas is several expansions away). The covered radius is tested
+ * before the one probe: a walk at the covered radius cannot grow whatever gas
+ * lies beyond, so the cell layout, not the empty probe, stops it.
  *
  * @param radius The radius just searched.
  * @param max_search_radius Stars:HII_max_search_radius.
- * @param max_reachable_radius The neighbour cell margin of this pass.
+ * @param covered_radius The radius inside which the pass visits every cell
+ * that held gas at the last rebuild (cell_radiation_covered_radius()).
  * @param num_expansions Expansions done so far in this pass.
  * @param max_expansions Stars:HII_max_radius_expansion_tries.
- * @param count_found Candidates found at @p radius.
+ * @param count_met Gas the search at @p radius met that the star does not
+ * hold (runner_hii_probe_count_met()).
  * @param count_held Gas the star already held at the start of the pass.
  * @param num_empty_expansions Consecutive empty probes of a star holding gas.
  */
 __attribute__((always_inline)) INLINE static enum hii_search_stop
 runner_hii_search_stop(const float radius, const float max_search_radius,
-                       const float max_reachable_radius,
-                       const int num_expansions, const int max_expansions,
-                       const int count_found, const int count_held,
-                       const int num_empty_expansions) {
+                       const float covered_radius, const int num_expansions,
+                       const int max_expansions, const int count_met,
+                       const int count_held, const int num_empty_expansions) {
 
   if (num_expansions >= max_expansions) return hii_search_stop_tries;
   if (radius >= max_search_radius) return hii_search_stop_ceiling;
+  if (radius >= covered_radius) return hii_search_stop_covered_radius;
   const int probe_used =
-      count_found == 0 && count_held > 0 && num_empty_expansions >= 1;
+      count_met == 0 && count_held > 0 && num_empty_expansions >= 1;
   if (probe_used) return hii_search_stop_one_probe;
-  if (radius >= max_reachable_radius) return hii_search_stop_margin;
   return hii_search_grow;
 }
 
 /**
- * @brief Search radius a pass stopped by the neighbour cell margin asks for:
+ * @brief Consecutive empty probes of a star after one more search.
+ *
+ * @param count_met Gas the search met that the star does not hold
+ * (runner_hii_probe_count_met()).
+ * @param count_held Gas the star already held at the start of the pass.
+ * @param num_empty_expansions Consecutive empty probes before this search.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_next_empty_probes(
+    const int count_met, const int count_held, const int num_empty_expansions) {
+  return (count_met == 0 && count_held > 0) ? num_empty_expansions + 1 : 0;
+}
+
+/**
+ * @brief Radius out to which an HII pass gathers the gas its star holds.
+ *
+ * The covered radius, not the start radius: held gas that flowed beyond the
+ * start radius is still charged and still sets the extent. The ceiling also
+ * bounds the region; held gas beyond it lapses.
+ *
+ * @param covered_radius The radius inside which the pass visits every cell
+ * that held gas at the last rebuild (cell_radiation_covered_radius()).
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static float
+runner_hii_held_search_radius(const float covered_radius,
+                              const float max_search_radius) {
+  return min(covered_radius, max_search_radius);
+}
+
+/**
+ * @brief Radius at which the claim walk of an HII pass starts, before the
+ * cut to the covered radius.
+ *
+ * The walk starts beyond all the gas the star holds. Held gas is tagged and
+ * so is no candidate: a walk that starts inside the region finds nothing new
+ * there, and a star holding gas then stops after its one empty probe.
+ *
+ * @param interaction_limit The start radius of the working-level cell.
+ * @param held_radius Distance to the star of the farthest gas it holds, 0 if
+ * it holds none.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static float
+runner_hii_claim_start_radius(const float interaction_limit,
+                              const float held_radius,
+                              const float max_search_radius) {
+  const float beyond_held = radiation_search_radius_factor * held_radius;
+  const float start = max(interaction_limit, beyond_held);
+  return min(start, max_search_radius);
+}
+
+/**
+ * @brief Is a one-probe stop a stall: does the walk leave a candidate it
+ * could have reached?
+ *
+ * The reach of any walk is the covered radius cut at the ceiling
+ * (runner_hii_held_search_radius()). The covered radius alone can exceed the
+ * ceiling, and has no bound at all in a box with walls on every side.
+ *
+ * @param stop_radius The radius the walk stopped at.
+ * @param nearest_candidate Distance of the nearest candidate the walk did not
+ * claim.
+ * @param covered_radius The covered radius of the pass.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_is_stall(
+    const float stop_radius, const float nearest_candidate,
+    const float covered_radius, const float max_search_radius) {
+  const float reach =
+      runner_hii_held_search_radius(covered_radius, max_search_radius);
+  return stop_radius < reach && nearest_candidate < reach;
+}
+
+/**
+ * @brief Search radius a pass stopped at the covered radius asks for:
  * the next radius it would have tried.
  *
  * @param radius The radius just searched.
@@ -183,15 +262,9 @@ __attribute__((always_inline)) INLINE static float runner_hii_requested_radius(
   return next < max_search_radius ? next : max_search_radius;
 }
 
-/* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
- * compile-time constant by design; see runner_dosub_stars_hii_ionization_
- * feedback()). Sized to comfortably cover a single rebuild's typical new
- * shell of gas at gas_mass=0.01-resolution test problems without needing
- * many retries (empirically ~a few thousand particles per shell in
- * StromgrenSphere); denser regions (e.g. clumps in a cosmological zoom-in)
- * rely on Stars:HII_max_retry_full_buffer (struct stars_props, runtime-
- * configurable) to cover the rest across several passes at the same
- * search radius. */
+/* Capacity of the HII neighbour buffer, a stack array in
+ * runner_hii_claim_and_retry(). A star with more candidates at one radius
+ * claims them over several retries (Stars:HII_max_retry_full_buffer). */
 #define max_ngbs 1024
 
 /**
@@ -260,22 +333,19 @@ struct hii_maintenance_context {
   /*! Time elapsed since this star's previous HII rebuild pass. */
   double dt_back;
 
-  /*! (return) Largest squared distance at which this star still holds gas
-      tagged and owned, i.e. the region's extent this pass. Independent of
-      what the budget could actually pay for, so it does not depend on
-      traversal order. */
+  /*! (return) Largest squared distance at which this star still holds gas,
+      the region's extent this pass. It does not depend on what the budget
+      can pay for, nor on traversal order. */
   float r2_max_maintained;
 
-  /*! (return) Photons charged to balance recombination this pass. Filled in
-      by the caller after the traversal returns and the buffered candidates
-      below have been sorted and charged in (r2, id) order; 0 during the
-      traversal itself. */
+  /*! (return) Photons charged to balance recombination this pass. The caller
+      fills it in after the traversal, once the buffered gas is charged in
+      (r2, id) order. */
   double photons_charged;
 
-  /*! Runner performing this pass. Already-ionized candidates found during
-      the traversal are appended to r->hii_maintenance_buffer instead of
-      being charged immediately, so the whole set can be sorted into
-      ascending (r2, id) order first. */
+  /*! Runner performing this pass. Held gas goes to
+      r->hii_maintenance_buffer, to be sorted by (r2, id) before it is
+      charged. */
   struct runner *r;
 
   /*! Number of candidates appended to r->hii_maintenance_buffer so far this
@@ -318,7 +388,26 @@ struct hii_gather_state {
 
   /*! Rotation of the cone frame (row-major 3x3), or NULL for the box axes. */
   const double *frame;
+
+  /*! Squared distance beyond which gas other stars hold counts in
+      @a count_held_by_others. */
+  float r2_others_min;
+
+  /*! (return) Gas held by other stars between @a r2_others_min and the search
+      radius, in a pixel with photons left. Counted for new candidates only. */
+  int count_held_by_others;
 };
+
+/**
+ * @brief Gas a search of the claim walk met that its star does not hold:
+ * the candidates, and the gas other stars hold that the search reached first.
+ *
+ * @param gather The #hii_gather_state after the traversal.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_probe_count_met(
+    const struct hii_gather_state *gather) {
+  return gather->count_found + gather->count_held_by_others;
+}
 
 int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const struct cell *cj, const int sid,
@@ -328,13 +417,15 @@ int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const float search_radius);
 
 /**
- * @brief Top-level steering function for HII ionization feedback, called
- * unconditionally from the runner's task dispatch (runner_main.c).
+ * @brief Run the HII ionization feedback of a cell, called from the task
+ * dispatch (runner_main.c).
  *
- * A no-op when GEAR ionization feedback is compiled out: the task type
- * still exists in the enum, but with_radiation_tasks
- * (#feedback_radiation_gather_tasks_needed) never creates the task, so
- * this is dead code reachable only by construction, not at runtime.
+ * A no-op when GEAR ionization feedback is compiled out: the task is then
+ * never created (#feedback_radiation_gather_tasks_needed).
+ *
+ * @param r The #runner thread.
+ * @param c The #cell to process.
+ * @param timer Record the timing of this call?
  */
 #ifdef IONIZATION_FEEDBACK_LOOP
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
@@ -346,12 +437,10 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 #endif
 
 /**
- * @brief Start-up of the subgrid radiation, called from engine_config() in a
- * stars run: prints warnings about the HII search-radius / box-size
- * relationship.
+ * @brief Warn at start-up about HII search radii that the box size makes
+ * unreachable. Called from engine_config() in a stars run.
  *
- * A no-op when the HII loop is not compiled. The packet transport start-up
- * is a separate call in engine_config(), made with or without stars.
+ * A no-op when the HII loop is not compiled.
  *
  * @param e The #engine.
  */
@@ -360,6 +449,78 @@ void feedback_radiation_startup_diagnostics(const struct engine *e);
 #else
 __attribute__((always_inline)) INLINE static void
 feedback_radiation_startup_diagnostics(const struct engine *e) {}
+#endif
+
+#ifdef IONIZATION_FEEDBACK_LOOP
+/**
+ * @brief Counts of the HII passes stopped at the edge of the gas the tree
+ * covers, by the one empty probe, or by the tries or the ceiling. Doubles
+ * only, so that the ranks sum them in one reduction.
+ */
+struct radiation_hii_coverage_stats {
+
+  /*! Passes that kept their unspent photons for the next pass. */
+  double carried_passes;
+
+  /*! Passes that released their unspent photons as escaped. */
+  double released_passes;
+
+  /*! Photons released by those passes. Only coverage stops count here:
+      photons left at a one-probe stop count in one_probe_photons, at a tries
+      or ceiling stop in growth_limit_photons; at any other stop, the two
+      full-buffer breaks included, they escape uncounted, carried ones
+      included, and so does a carry cleared at death or at the end of the age
+      window. */
+  double released_photons;
+
+  /*! Claim walks whose start radius was cut to the covered radius. */
+  double start_radius_cuts;
+
+  /*! Passes of a star holding gas that ended on its one empty probe with
+      photons left. */
+  double one_probe_stops;
+
+  /*! Photons left, and escaped, at those stops. */
+  double one_probe_photons;
+
+  /*! Passes stopped by Stars:HII_max_radius_expansion_tries or
+      Stars:HII_max_search_radius with photons left. */
+  double growth_limit_stops;
+
+  /*! Photons left, and escaped, at those stops. */
+  double growth_limit_photons;
+};
+
+double runner_hii_carry_at_coverage_stop(
+    const struct cell *c, struct spart *si,
+    const struct feedback_props *feedback_props, const float last_tree_reach,
+    struct radiation_hii_coverage_stats *stats);
+#endif
+
+/**
+ * @brief Sum the HII coverage stops of all the ranks for the step report.
+ * Collective: called on every rank from engine_collect_end_of_step().
+ *
+ * A no-op when the HII loop is not compiled.
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+void feedback_radiation_hii_coverage_reduce(void);
+#else
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_hii_coverage_reduce(void) {}
+#endif
+
+/**
+ * @brief Print the HII coverage stops of the run when a step added some.
+ * Called on rank 0 only, after the step line, from engine_step().
+ *
+ * A no-op when the HII loop is not compiled.
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+void feedback_radiation_hii_coverage_report(void);
+#else
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_hii_coverage_report(void) {}
 #endif
 
 void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
@@ -416,11 +577,18 @@ __attribute__((always_inline)) INLINE static int runner_hii_r2_id_before(
 }
 
 /**
- * @brief Maintain a buffer sorted in ascending (r2, id) order by inserting a
- * new neighbor at the correct position.
+ * @brief Insert a neighbour into a buffer sorted by ascending (r2, id).
  *
- * If the buffer is full, it replaces the furthest element if the new one
- * sorts before it.
+ * A full buffer drops its furthest element if the new one sorts before it.
+ *
+ * @param buffer The sorted buffer.
+ * @param max_size Capacity of @p buffer.
+ * @param count_found (in, out) Number of entries in @p buffer.
+ * @param r2 Squared distance between the star and the particle.
+ * @param p The gas particle.
+ * @param xp The particle's extended data, or NULL for a foreign cell.
+ * @param c The #cell holding the particle (kept for SWIFT_DEBUG_CHECKS).
+ * @param pixel Angular pixel of the particle.
  */
 __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
@@ -451,8 +619,8 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
 }
 
 /**
- * @brief Verify that the gathered HII neighbor buffer is properly sorted in
- * ascending (r2, id) order, matching #runner_hii_buffer_insert's tiebreak.
+ * @brief Check, under SWIFT_DEBUG_CHECKS, that the HII neighbour buffer is
+ * sorted by ascending (r2, id) as #runner_hii_buffer_insert keeps it.
  *
  * @param ngb_buffer The array of gathered #hii_neighbor structures.
  * @param count_found The number of valid neighbors stored in the buffer.
@@ -462,9 +630,8 @@ runner_do_stars_hii_ionization_feedback_check_sort(
     const struct hii_neighbor *ngb_buffer, const int count_found) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < count_found - 1; k++) {
-    /* Strict: (r2, id) is a total order over distinct particles (unique
-       ids), so two adjacent entries failing this means a genuine ordering
-       bug or a duplicate particle. */
+    /* Strict: (r2, id) is a total order over unique ids, so a failure means
+       an ordering bug or a duplicate particle. */
     if (!runner_hii_r2_id_before(ngb_buffer[k].r2, ngb_buffer[k].p->id,
                                  ngb_buffer[k + 1].r2,
                                  ngb_buffer[k + 1].p->id)) {

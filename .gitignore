@@ -194,6 +194,7 @@ tests/testRandom
 tests/testRandomSpacing
 tests/testRandomPoisson
 tests/testRandomCone
+tests/testPartitionSpaceToSpace
 tests/testThreadpool
 tests/testParser
 tests/testFeedback

@@ -496,17 +496,6 @@ struct engine {
   int rebuild_demand_depth;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! Cumulative HII search-radius expansions clamped at the reachable
-   * radiation_in stencil bound. A persistently growing count means a star's
-   * physical front is waiting on the next rebuild instead of being
-   * reach-limited by configuration; reported as a warning in
-   * engine_step(). */
-  long long radiation_reach_clamp_count;
-
-  /*! radiation_reach_clamp_count at the last per-step report, for printing the
-   * per-step delta. */
-  long long radiation_reach_clamp_count_last_step;
-
   /*! Cumulative owner-side HII merge collisions, summed across all ranks
    * (engine_collect_end_of_step.c reduces
    * radiation_hii_merge_collision_count_local into this field every step).
