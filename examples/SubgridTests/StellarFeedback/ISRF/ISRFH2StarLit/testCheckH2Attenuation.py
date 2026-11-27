@@ -1847,6 +1847,7 @@ def merge_cases(work):
         "--fixture", os.path.join(d, "fixture.json"),
         "--params", os.path.join(d, "merge/used_parameters.yml"),
         "--startup-log", os.path.join(d, "merge/output.log"),
+        "--timesteps", write_timesteps(d, n_gas),
         "--only-a", os.path.join(d, "only_a"),
         "--only-b", os.path.join(d, "only_b"),
         "--slots", "12",

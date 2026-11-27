@@ -617,7 +617,7 @@ def light_hops(first: dict, last: dict, timesteps: Optional[str] = None) -> int:
     step that ends at the last snapshot time. Without it, the count is Time_last /
     Time_first, which holds only if the first snapshot is written after step 1 and
     the step is constant. That ratio is wrong when the step is shorter than the snapshot
-    interval (a step of half dt_max gives half the count), so starlit and twosource require the
+    interval (a step of half dt_max gives half the count), so starlit, twosource and merge require the
     file. Only the parity check calls this without it.
     This assumes that every gas particle sits on one time bin: a particle on a shorter bin
     forwards the light more than once per base step, and the gate does not check it.
