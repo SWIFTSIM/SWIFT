@@ -1,0 +1,70 @@
+# Intro
+A sheet of stars inside uniform low-metallicity gas, with the ISRF transport on
+(`ISRF_propagation: 1`) and the H2 line absorption of the transport on
+(`ISRF_H2_line_absorption: 1`). Sixteen 4.9 Msun stars sit on a square grid,
+0.844 pc apart, in the mid-plane of a periodic box of 3.38 x 3.38 x 6.76 pc.
+The gas has n_H = 1000 cm^-3, T = 100 K and Z = 0.25 Zsun, and starts atomic.
+
+The Lyman-Werner (LW) light of the stars dissociates H2, and H2 forms on dust.
+An H2 layer grows on each side of the sheet. A reference slab model predicts
+its front (half the hydrogen in H2) about 1.46 pc from the sheet after 12 Myr;
+the example does not check the run against this number. Light reaches a gas particle
+from many stars at wide angles, so the H2 column that shields it differs from
+ray to ray. The surface luminosity puts the atomic layer at a dust optical depth
+of about 1.7, which slab theory (Sternberg et al. 2014, ApJ 790, 10, Eq. 40)
+writes as ln(alpha G / 2 + 1) with alpha G of about 8.7.
+
+The gas stays at rest: `GeajayCooling:with_radiative_cooling: 0` lets the
+chemistry evolve but keeps the internal energy, so the pressure stays uniform.
+The temperature then rises only through the mean molecular weight, by up to 86
+per cent in fully molecular gas. Photoionization, winds, supernovae and the
+UV background are off. The stars live about 90 Myr, longer than the run, and
+keep their young time step (`Stars:timestep_age_threshold_Myr`).
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+Use geajay commit `41b559b8` or later (library version `libgeajay.so.3`): the
+build must read the keys `GeajayCooling:with_radiative_cooling` and
+`GeajayCooling:solver`. `run.sh` fetches the radiation table
+`PopII_parsec_spectral.hdf5` and checks its checksum; the table must carry
+`L_LW_dissociating`, which `ISRF_LW_population_dissociation: 1` reads.
+
+# Run
+```
+./run.sh                 # the cooling reads the kernel mean of the light (default)
+leg=own ./run.sh         # the cooling reads the particle's own light
+```
+Each leg is kept in its own directory (`main`, `own`). `level`, `gas_mass`,
+`gas_density`, `star_mass`, `n_threads` and `swift_exe` override the defaults.
+The box side follows from `level` and `gas_mass`, and the number of stars per
+side from the box side and the spacing of 0.844 pc, so the surface luminosity
+stays the same:
+
+| `level` | `gas_mass` [Msun] | gas particles | h [pc] | box side [pc] | stars |
+|---|---|---|---|---|---|
+| 5 | 0.03825 | 65536 | 0.13 | 3.38 | 16 |
+| 4 | 0.306 | 8192 | 0.26 | 3.38 | 16 |
+| 4 | 2.448 | 8192 | 0.52 | 6.76 | 64 |
+| 4 | 19.58 | 8192 | 1.04 | 13.51 | 256 |
+| 4 | 156.6 | 8192 | 2.08 | 27.02 | 1024 |
+
+At h = 0.13 pc the front lies about 5.8 kernel supports (1.936 h) from the
+sheet; at h = 1.04 pc and above it lies inside one kernel. A box side below
+about six smoothing lengths stops SWIFT at start-up (the neighbour search must
+fit in a third of the box), so the coarse rows widen the box. The run lasts
+12 Myr and writes a snapshot every 0.25 Myr.
+
+# Output
+`makeIC.py` writes `fixture.json`: the box, the height of the sheet
+(`sheet_z_kpc`), the star positions and spacing, and the gas density. In the
+snapshots, `PartType0/H2I` over the hydrogen mass fraction gives the H2
+fraction, and the distance |z - sheet_z_kpc| the depth of a particle.
+`LWOwnSpecificEnergies` is the particle's own LW energy without the lines;
+`LWOwnDissociatingSpecificEnergies` over it, divided by the star's dissociation
+factor (`L_LW_dissociating / L_LW` of the radiation table, 0.978 for these
+stars), is the line transmission. `LWLineH2ColumnDensities` is the H2 column that the light
+carried. `LWSpecificEnergies` is the LW energy that the cooling reads: the
+kernel mean in the leg `main`, the particle's own light in the leg `own`.
