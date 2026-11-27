@@ -218,7 +218,7 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
       with_lines && !(p->feedback_data.H2_line_width_km_s > 0.f);
   if (with_lines) radiation_cache_H2_line_absorption(p, xp, e, first_fit);
 
-  /* Physical timestep of this particle. Can be exactly 0 before its first
+  /* Physical time since the last merge. Can be exactly 0 before its first
    * step: cached unfloored so readers can detect that case. */
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_step = get_integer_timestep(p->time_bin);

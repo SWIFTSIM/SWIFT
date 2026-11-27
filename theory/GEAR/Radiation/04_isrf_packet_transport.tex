@@ -1969,7 +1969,8 @@ The running mean averages a field in time (Eq.~\eqref{eq:packet-runmean}), and
 the kernel mean averages it over the neighbours
 (Eq.~\eqref{eq:packet-kernelmean}). Let $\mathcal F_k=a\,l_k/(m\,c\,\Delta t)$
 (1/mass) be the field factor of Eq.~\eqref{eq:packet-field}, with $l_k$ the
-advance of slot $k$, $m$ the particle mass and $\Delta t$ the physical step.
+advance of slot $k$, $m$ the particle mass and $\Delta t$ the time since the
+last merge.
 With $E_{k,{\rm LW}}$ the LW energy of the held packet of slot $k$,
 \begin{equation}
   u_{\rm LW}^{\rm own}=\sum_k E_{k,{\rm LW}}\,\mathcal F_k, \qquad
