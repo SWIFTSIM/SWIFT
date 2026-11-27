@@ -682,11 +682,16 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
     /* Maximum velocity difference between BHs allowed to merge */
     float v2_threshold;
 
+    /* Physical separation and smoothing length (r2 and h are comoving,
+     * whereas v2_pec is a physical peculiar velocity) */
+    const float r_phys = cosmo->a * sqrtf(r2);
+    const float h_phys = cosmo->a * h;
+
     if (bh_props->merger_threshold_type == BH_mergers_circular_velocity) {
 
       /* 'Old-style' merger threshold using circular velocity at the
        * edge of the more massive BH's kernel */
-      v2_threshold = G_Newton * M / (kernel_gamma * h);
+      v2_threshold = G_Newton * M / (kernel_gamma * h_phys);
     } else {
 
       /* Arguably better merger threshold using the escape velocity at
@@ -695,12 +700,12 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
       if (bh_props->merger_threshold_type == BH_mergers_escape_velocity) {
 
         /* Standard formula (not softening BH interactions) */
-        v2_threshold = 2.f * G_Newton * M / sqrt(r2);
+        v2_threshold = 2.f * G_Newton * M / r_phys;
       } else if (bh_props->merger_threshold_type ==
                  BH_mergers_dynamical_escape_velocity) {
 
         /* General two-body escape velocity based on dynamical masses */
-        v2_threshold = 2.f * G_Newton * (bi->mass + bj->mass) / sqrt(r2);
+        v2_threshold = 2.f * G_Newton * (bi->mass + bj->mass) / r_phys;
       } else {
         /* Cannot happen! */
 #ifdef SWIFT_DEBUG_CHECKS
