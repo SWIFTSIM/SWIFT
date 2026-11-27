@@ -1129,7 +1129,10 @@ def main():
         "outlier-filtered ever-tagged radius.)"
     )
     n_pass = np.sum(rel_error_w <= args.tol)
-    median_error = np.median(rel_error_w)
+    # A '*' row measures the source's own radius, not the front: left out of
+    # the median unless every row is one.
+    measured_w = ~r_ion_fallback_w if not np.all(r_ion_fallback_w) else slice(None)
+    median_error = np.median(rel_error_w[measured_w])
     within_tol = median_error <= args.tol
     # A reference computed for another density, temperature or composition
     # carries no verdict word, so a harness grepping for PASS cannot read it

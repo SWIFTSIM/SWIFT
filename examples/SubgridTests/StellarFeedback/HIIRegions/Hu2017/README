@@ -53,5 +53,5 @@ correct with or without the CFLAGS forcing flag above; pass
 Exit status: 0 when the median error is within `--tol`; 3 when a radius or
 error is not finite; 4 when the median error exceeds `--tol`; 5 when the
 reference was computed at a density, temperature or composition the run does
-not have (the verdict line then reads `UNVALIDATED`). `run.sh` still moves
+not have (the verdict line then reads `UNVALIDATED`). A table row marked `*` has no ionized particle in that snapshot; its `r_ion` is the source's own HII radius, and the median leaves the row out (unless every row is marked). `run.sh` still moves
 its output into `run_name` after a non-zero status and exits with it.

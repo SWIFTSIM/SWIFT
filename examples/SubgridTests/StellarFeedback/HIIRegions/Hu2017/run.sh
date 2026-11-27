@@ -148,7 +148,8 @@ else
         mv statistics.txt $run_name
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
-        mv *.png $run_name
+        # No png exists when the checker stops before plotting.
+        mv *.png $run_name 2>/dev/null || true
     fi
 fi
 
