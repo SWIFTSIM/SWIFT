@@ -704,7 +704,7 @@ struct feedback_part_data {
       transport. Seeded to 1 at first init, never 0. */
   float rho_prev;
 
-  /*! This particle's own physical timestep, cached once per step at the
+  /*! Physical time since the last packet merge, cached once per step at the
       drift. */
   float dt_prev;
 

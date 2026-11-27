@@ -1969,7 +1969,8 @@ The running mean averages a field in time (Eq.~\eqref{eq:packet-runmean}), and
 the kernel mean averages it over the neighbours
 (Eq.~\eqref{eq:packet-kernelmean}). Let $\mathcal F_k=a\,l_k/(m\,c\,\Delta t)$
 (1/mass) be the field factor of Eq.~\eqref{eq:packet-field}, with $l_k$ the
-advance of slot $k$, $m$ the particle mass and $\Delta t$ the physical step.
+advance of slot $k$, $m$ the particle mass and $\Delta t$ the time since the
+last merge.
 With $E_{k,{\rm LW}}$ the LW energy of the held packet of slot $k$,
 \begin{equation}
   u_{\rm LW}^{\rm own}=\sum_k E_{k,{\rm LW}}\,\mathcal F_k, \qquad
@@ -2243,9 +2244,17 @@ the particle sees is the sum over its slots,
   \tilde u_{b} = \sum_{k:\,S_k>0} \frac{E_{k,b}}{m}\,\frac{a\,l_k}{c\,\Delta t},
   \label{eq:packet-field}
 \end{equation}
-with $m$ the particle mass, $\Delta t$ the physical length of the step that
-ends now and $c$ the speed of light; the photon number $N_{k,b}$ gives the
-field of the photon number in the same way. The factor $a\,l_k/(c\Delta t)$ is
+with $m$ the particle mass, $\Delta t$ the physical time since the last merge
+of the particle and $c$ the speed of light. This is the length of the step that
+ends now, except after a synchronisation or a cut by the time-step limiter:
+either one cuts the step of an inactive particle without a merge, and the held
+light then arrived over both parts.
+In the unlimited mode the release of the reservoir,
+Eq.~\eqref{eq:packet-release}, still measures from the start of the time bin.
+After a cut the reservoir part of the field therefore reads low for one step;
+the energy is conserved.
+The photon number $N_{k,b}$ gives the field of the photon number in the same
+way. The factor $a\,l_k/(c\Delta t)$ is
 the hop speed over $c$ (Section~\ref{sec:packet-frame}). It is set to zero for
 $\Delta t\le0$ or $m\le0$.
 
@@ -3650,7 +3659,7 @@ without a speed limit is \code{radiation\_packet\_merge\_slot\_unlimited}
 (\code{radiation\_packet.c:3716-3796}). It is called for every slot by
 \code{radiation\_packet\_merge} (:4063-4133), which
 \code{radiation\_snapshot\_part\_propagation} calls for active particles
-(\code{radiation\_isrf.c:183-269}, the call at :255).
+(\code{radiation\_isrf.c:183-279}, the call at :265).
 Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3763-3771}. The
 sums of Eq.~\eqref{eq:packet-merge-origin} are formed in
 \code{radiation\_packet\_deliver\_share} as \code{inbox\_origin\_offset}
@@ -3926,7 +3935,7 @@ The departure time is not stored: it is the end of the step of the sender minus 
 booked at :3856-3863. A stored stamp is capped at the end of its bin or cell
 by \code{radiation\_packet\_time\_below\_end} (:2644-2648). The time-step bound of
 Eq.~\eqref{eq:isrf-dt} is \code{radiation\_isrf\_part\_timestep}
-(\code{radiation\_isrf.c:288-301}).
+(\code{radiation\_isrf.c:297-310}).
 
 \paragraph{The demand of near bins and the far share (Sec.~\ref{sec:packet-lightspeed}).}
 The start-up demand is \code{radiation\_packet\_bin\_demand}
@@ -3944,7 +3953,7 @@ of the whole run is printed by \code{radiation\_packet\_far\_share\_final}
 Eq.~\eqref{eq:packet-field} is \code{radiation\_packet\_end\_gradient}
 (\code{radiation\_packet.c:4187-4265}, the sum over slots at :4216-4250, the
 factor at :4223). It is called from \code{radiation\_end\_gradient\_propagation}
-(\code{radiation\_isrf.c:326-339}, the call at :335), which passes the true
+(\code{radiation\_isrf.c:336-349}, the call at :344), which passes the true
 speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:385-390}),
 applied at \code{radiation\_packet.c:4252-4256}; $\tau_{\rm m}$ is
@@ -3954,7 +3963,7 @@ Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1205-1230}, called at
 \code{radiation\_propagation\_iact.h:166-167}, :200). The self term and the
 division are \code{radiation\_packet\_end\_force}
-(\code{radiation\_packet.c:4273-4302}), called at \code{radiation\_isrf.c:315}.
+(\code{radiation\_packet.c:4273-4302}), called at \code{radiation\_isrf.c:325}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
 (\code{radiation\_packet.c:4318-4345}, called at \code{radiation\_isrf.c:316}).
 The kernel mean of the dissociating energy is capped at $f_{\rm max}$ times the
