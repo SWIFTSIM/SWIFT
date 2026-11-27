@@ -39,11 +39,10 @@ radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expan
 run_name=${run_name:=""}
 restart=${restart:=0}
 hydrogen_mass_fraction=${hydrogen_mass_fraction:=} # Empty keeps params.yml (0.76); 1 = the paper's pure hydrogen. Also sets SPH:H_mass_fraction
-hydrogen_key=${hydrogen_key:=GrackleCooling:HydrogenFractionByMass} # Use GeajayCooling:hydrogen_mass_fraction on a geajay build
 
 hydrogen_args=()
 if [ -n "$hydrogen_mass_fraction" ]; then
-    hydrogen_args=(-P "$hydrogen_key:$hydrogen_mass_fraction" -P "SPH:H_mass_fraction:$hydrogen_mass_fraction")
+    hydrogen_args=(-P "GrackleCooling:HydrogenFractionByMass:$hydrogen_mass_fraction" -P "SPH:H_mass_fraction:$hydrogen_mass_fraction")
 fi
 
 if [ -e ICs_husmith.hdf5 ]
@@ -130,8 +129,10 @@ else
                params.yml 2>&1 | tee output.log
 fi
 
-# Compare to the analytical solution
-python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5"
+# Compare to the analytical solution. A non-zero status (see README, Checking)
+# is returned after the output has been moved.
+check_status=0
+python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5" || check_status=$?
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
@@ -150,3 +151,5 @@ else
         mv *.png $run_name
     fi
 fi
+
+exit $check_status

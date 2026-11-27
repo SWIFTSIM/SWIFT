@@ -1,5 +1,5 @@
 # Intro
-Reproduces the D-type expansion convergence test from Hu et al. (2017, MNRAS 471, 2151), Appendix A. Four star particles co-located at the box center, each `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun`), `1e49` photons/s combined. Uniform pure-hydrogen medium, `n_H = 100 cm^-3`. Uses `makeIC_clump.py` (the same file as in `../ClumpSmith2021/`) with `clump_radius_pc=0` (degenerates to a uniform box, 0 clump particles).
+Reproduces the D-type expansion convergence test from Hu et al. (2017, MNRAS 471, 2151), Appendix A. Four star particles co-located at the box center, each `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun`), `1e49` photons/s combined. Uniform medium at a mass density of `100 m_p cm^-3`. The default run has a hydrogen mass fraction `X_H = 0.76` (`n_H = 76 cm^-3`); `hydrogen_mass_fraction=1` gives the paper's pure-hydrogen medium (`n_H = 100 cm^-3`). Uses `makeIC_clump.py` (the same file as in `../ClumpSmith2021/`) with `clump_radius_pc=0` (degenerates to a uniform box, 0 clump particles).
 
 This example uses the uniform (`nside=0`) budget-splitting scheme. `../ClumpSmith2021/` (clump intact) runs both the uniform and the angular (`nside=1`) scheme.
 
@@ -7,7 +7,7 @@ This example uses the uniform (`nside=0`) budget-splitting scheme. `../ClumpSmit
 Hu et al. (2017) and Smith et al. (2021, Fig. 1) both plot a late-time curve labeled "STARBENCH". This curve is Hosokawa & Inutsuka (2006)'s shell-inertia ODE (Raga-II, Eqn 11). `hu_smith_analytic_check.py` compares with Raga-II by default (`--reference raga2`); `--reference {raga1,starbench}` selects the others.
 
 ## Temperature
-`GEARChemistry:initial_metallicity=0` (pure hydrogen, matching both papers' medium). This code computes `T_i` from metallicity; at `Z=0` it gives `T_i~47500 K`, not the papers' flat `T_i=1e4 K`. To match their convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
+`GEARChemistry:initial_metallicity=0` (no metals, as in both papers; with `hydrogen_mass_fraction=1` the medium is pure hydrogen). This code computes `T_i` from metallicity; at `Z=0` it gives `T_i~47500 K`, not the papers' flat `T_i=1e4 K`. To match their convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
 
 ## Box size
 `boxsize=0.1` kpc (100 pc), `Stars:HII_max_search_radius=0.04` (40 pc). `hu_smith_analytic_check.py` limits its comparison window to when the analytic prediction fits in the box.
@@ -40,7 +40,7 @@ reproduce the papers' `T_i=1e4 K` convention (see Temperature above).
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh`. See `run.sh` for the full list. The default hydrogen mass fraction is 0.76 at the same mass density (`n_H = 76 cm^-3`); `hydrogen_mass_fraction=1 ./run.sh` gives the pure-hydrogen medium above (on a geajay build add `hydrogen_key=GeajayCooling:hydrogen_mass_fraction`).
+Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh`. See `run.sh` for the full list. The default hydrogen mass fraction is 0.76 at the same mass density (`n_H = 76 cm^-3`); `hydrogen_mass_fraction=1 ./run.sh` gives the pure-hydrogen medium above.
 
 # Checking
 ```
@@ -49,3 +49,9 @@ python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5"
 T_i is measured from the run's own tagged gas, so the same command is
 correct with or without the CFLAGS forcing flag above; pass
 `--T-ionized-K` only to override the measurement (it warns on mismatch).
+
+Exit status: 0 when the median error is within `--tol`; 3 when a radius or
+error is not finite; 4 when the median error exceeds `--tol`; 5 when the
+reference was computed at a density, temperature or composition the run does
+not have (the verdict line then reads `UNVALIDATED`). `run.sh` still moves
+its output into `run_name` after a non-zero status and exits with it.
