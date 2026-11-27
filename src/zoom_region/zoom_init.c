@@ -882,8 +882,7 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  * @return The background cdim.
  */
 static int zoom_get_bkg_cdim_for_void_cells(const double box,
-                                            const double max_dim,
-                                            const int k) {
+                                            const double max_dim, const int k) {
 
   /* The largest cdim with the parity of k whose k cells are at least
    * max_dim wide in total. */
