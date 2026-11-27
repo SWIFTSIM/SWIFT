@@ -1,8 +1,8 @@
 """Initial conditions of the H2 sheet: a square lattice of stars in the mid-plane of a uniform periodic box.
 
 The box is two glass cubes stacked along z, so it is L x L x 2L. The stars sit in the plane
-z = L at the centres of an n x n grid. The geometry file holds the box, the star positions
-and the gas, which the reference script reads.
+z = L at the centres of an n x n grid. The geometry file fixture.json holds the box, the
+star positions and the gas density.
 """
 
 import argparse

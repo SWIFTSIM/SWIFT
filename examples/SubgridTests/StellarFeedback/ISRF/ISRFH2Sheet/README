@@ -6,8 +6,9 @@ A sheet of stars inside uniform low-metallicity gas, with the ISRF transport on
 The gas has n_H = 1000 cm^-3, T = 100 K and Z = 0.25 Zsun, and starts atomic.
 
 The Lyman-Werner (LW) light of the stars dissociates H2, and H2 forms on dust.
-An H2 layer grows on each side of the sheet, with its front (half the hydrogen
-in H2) about 1.46 pc from the sheet after 12 Myr. Light reaches a gas particle
+An H2 layer grows on each side of the sheet. A reference slab model predicts
+its front (half the hydrogen in H2) about 1.46 pc from the sheet after 12 Myr;
+the example does not check the run against this number. Light reaches a gas particle
 from many stars at wide angles, so the H2 column that shields it differs from
 ray to ray. The surface luminosity puts the atomic layer at a dust optical depth
 of about 1.7, which slab theory (Sternberg et al. 2014, ApJ 790, 10, Eq. 40)
@@ -25,7 +26,8 @@ keep their young time step (`Stars:timestep_age_threshold_Myr`).
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
 make -j
 ```
-The geajay build must read the keys `GeajayCooling:with_radiative_cooling` and
+Use geajay commit `41b559b8` or later (library version `libgeajay.so.3`): the
+build must read the keys `GeajayCooling:with_radiative_cooling` and
 `GeajayCooling:solver`. `run.sh` fetches the radiation table
 `PopII_parsec_spectral.hdf5` and checks its checksum; the table must carry
 `L_LW_dissociating`, which `ISRF_LW_population_dissociation: 1` reads.
