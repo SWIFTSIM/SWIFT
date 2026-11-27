@@ -1199,6 +1199,72 @@ struct hii_claim_summary {
 };
 
 /**
+ * @brief Offer the gathered candidates to a star in distance order, each
+ * pixel spending its own photon budget.
+ *
+ * @param r The #runner thread.
+ * @param si The #spart.
+ * @param buffer The gathered candidates, checked for sort order here.
+ * @param count_found Number of entries in @p buffer.
+ * @param dt_back Interval whose photons this pass issues.
+ * @param dt_tag Gap since the star's previous pass, which tags outlive.
+ * @param diag The #hii_pass_diagnostics.
+ * @param claimed_count (in, out) Candidates claimed by the star, over all
+ * pixels.
+ * @param front_count (in, out) Fronts met: each empties its cone.
+ */
+static void runner_hii_claim_candidates(
+    struct runner *r, struct spart *si, struct hii_neighbor *buffer,
+    const int count_found, const double dt_back, const double dt_tag,
+    struct hii_pass_diagnostics *diag, int *claimed_count, int *front_count) {
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct unit_system *us = e->internal_units;
+  const struct cooling_function_data *cooling = e->cooling_func;
+  const struct feedback_props *feedback_props = e->feedback_props;
+  const double time = e->time;
+
+  runner_do_stars_hii_ionization_feedback_check_sort(buffer, count_found);
+
+  const integertime_t ti_begin =
+      get_integer_time_begin(e->ti_current - 1, si->time_bin);
+
+  for (int k = 0; k < count_found; k++) {
+
+    const int pixel = buffer[k].pixel;
+
+    /* Skip, do not break: later entries may sit in a pixel with photons. */
+    if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) continue;
+
+    struct part *pj = buffer[k].p;
+    struct xpart *xpj = buffer[k].xp;
+    const float r2 = buffer[k].r2;
+    const int was_tagged_before = radiation_is_part_tagged_as_ionized(pj, xpj);
+
+    const int outcome = feedback_iact_HII_ionization(
+        si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo, cooling,
+        feedback_props, ti_begin, time, dt_back, dt_tag);
+
+    if (outcome == hii_candidate_front) ++(*front_count);
+
+    /* The candidate starts untagged, so a tag with si->id means this star
+       claimed it. A claim by another star tags a different id. An
+       untagged result means a lost roll or a front, because
+       feedback_hii_claim_part tags and spends budget together. */
+    const int claimed_this_candidate =
+        !was_tagged_before && radiation_is_part_tagged_as_ionized(pj, xpj) &&
+        radiation_get_part_ionized_star_id(pj, xpj) == si->id;
+    if (claimed_this_candidate) ++(*claimed_count);
+
+    hii_pass_diagnostics_record_candidate(
+        diag, pj, pixel, outcome, claimed_this_candidate, was_tagged_before);
+  }
+}
+
+/**
  * @brief Claim new candidates with the photons the star has left, retrying
  * while they last.
  *
@@ -1229,13 +1295,7 @@ static void runner_hii_claim_and_retry(
     struct hii_pass_diagnostics *diag, struct hii_claim_summary *summary) {
 
   struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct unit_system *us = e->internal_units;
-  const struct cooling_function_data *cooling = e->cooling_func;
   const struct feedback_props *feedback_props = e->feedback_props;
-  const double time = e->time;
 
   const struct stars_props *star_props = e->stars_properties;
   const int max_retry_full_buffer = star_props->HII_max_retry_full_buffer;
@@ -1300,49 +1360,10 @@ static void runner_hii_claim_and_retry(
 
     const int buffer_was_full = (count_found == max_ngbs);
 
-    if (count_found > 0) {
-      runner_do_stars_hii_ionization_feedback_check_sort(ngb_buffer,
-                                                         count_found);
-
-      const integertime_t ti_begin =
-          get_integer_time_begin(e->ti_current - 1, si->time_bin);
-
-      for (int k = 0; k < count_found; k++) {
-
-        const int pixel = ngb_buffer[k].pixel;
-
-        /* Skip, do not break: later entries may sit in a pixel with photons. */
-        if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) {
-          continue;
-        }
-
-        struct part *pj = ngb_buffer[k].p;
-        struct xpart *xpj = ngb_buffer[k].xp;
-        const float r2 = ngb_buffer[k].r2;
-        const int was_tagged_before =
-            radiation_is_part_tagged_as_ionized(pj, xpj);
-
-        const int outcome = feedback_iact_HII_ionization(
-            si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo, cooling,
-            feedback_props, ti_begin, time, dt_back, dt_tag);
-
-        if (outcome == hii_candidate_front) ++attempt_front_count;
-
-        /* The candidate starts untagged, so a tag with si->id means this star
-           claimed it. A claim by another star tags a different id. An
-           untagged result means a lost roll or a front, because
-           feedback_hii_claim_part tags and spends budget together. */
-        const int claimed_this_candidate =
-            !was_tagged_before &&
-            radiation_is_part_tagged_as_ionized(pj, xpj) &&
-            radiation_get_part_ionized_star_id(pj, xpj) == si->id;
-        if (claimed_this_candidate) ++attempt_claimed_count;
-
-        hii_pass_diagnostics_record_candidate(diag, pj, pixel, outcome,
-                                              claimed_this_candidate,
-                                              was_tagged_before);
-      } /* Loop over the sorted particles */
-    }
+    if (count_found > 0)
+      runner_hii_claim_candidates(r, si, ngb_buffer, count_found, dt_back,
+                                  dt_tag, diag, &attempt_claimed_count,
+                                  &attempt_front_count);
 
     /* Fully exhausted: nothing more to do this pass. */
     if (feedback_get_star_ionization_budget_max(si) <= 0.0) break;
