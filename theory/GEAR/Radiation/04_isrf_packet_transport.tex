@@ -2212,7 +2212,8 @@ the latest over all shares of the slot. The reservoir is released in equal
 parts over the step of the sender. At each merge of the receiver, at time $t$
 and a time $\Delta t$ after its last merge at $t-\Delta t$ (the step that ends
 now, except after a synchronisation or a cut by the time-step limiter, which
-start the time bin after the last merge), the fraction
+start the time bin after the last merge; before the first merge the interval
+counts from the start of the time bin), the fraction
 \begin{equation}
   f_{{\rm rel},k} = \begin{cases}
     \Delta t/(T_{\rm end}-t+\Delta t), & T_{\rm end}>t,\\
@@ -3871,9 +3872,9 @@ $\Sigma^{\rm own}$ of Eq.~\eqref{eq:h2-own} as \code{LWLineH2ColumnDensities}
 attribute of an inverse area, which gives cm$^{-2}$ in cgs units.
 
 The own fields of Eq.~\eqref{eq:h2-own} are formed at the end of the gradient
-loop by \code{radiation\_packet\_end\_gradient} (:4050-4136). The field factor
-is at :4094, and the weights and sums are at :4100-4106. The running mean of
-the dissociating field is at :4130-4131. $\Sigma^{\rm own}$ is at :4132-4134,
+loop by \code{radiation\_packet\_end\_gradient} (:4196-4274). The field factor
+is at :4232, and the weights and sums are at :4238-4243. The running mean of
+the dissociating field is at :4268-4269. $\Sigma^{\rm own}$ is at :4270-4272,
 stored in \code{LW\_line\_H2\_column} (\code{feedback\_struct.h:743}). The
 snapshot field \code{LWLineH2ColumnDensities} is declared at
 \code{feedback\_io.h:531-535}. Its converter (:400-407) multiplies by the square
