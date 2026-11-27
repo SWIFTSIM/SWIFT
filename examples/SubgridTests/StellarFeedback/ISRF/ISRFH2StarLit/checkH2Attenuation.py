@@ -2269,6 +2269,10 @@ def gate_merge(args: argparse.Namespace) -> int:
         f"[min t, max t] widened by e",
     )
 
+    if rep.failed:
+        # The controls below build on the measured t_ab, so a faulty t_ab can void them.
+        return rep.exit_code()
+
     merged = probes & (r_ratio > 1.0 + 2.0 * eps)
     active = int(merged.sum())
     rep.info("merge acts", f"{active} probes with R above 1 + 2 e")

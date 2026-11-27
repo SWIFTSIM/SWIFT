@@ -176,7 +176,7 @@ what the run happens to produce.
 * Self-shielded configuration, rate identity. The median bar above cannot see a
   coefficient error below 25 per cent. The identity gate holds every particle to
 
-      |q - 1| <= (L + 1/2) max(S_0, S_1) / I + (n + 2) 2^-24 / I ,
+      |q - 1| <= (L + 1/2) max(S_0, S_1) / I + (n + 1) 2^-24 / I ,
 
   with ``q`` the per-particle quotient above (measured drop over the
   predicted integral ``I``), ``n`` the snapshots in its window, ``S_0`` and
@@ -1101,7 +1101,7 @@ def rate_identity_bar(
     -------
     numpy.ndarray
         The bar: the boundary term ``(lag_steps + 1/2) max(S_0, S_1) / I`` plus the float32 term
-        ``(n + 2) 2^-24 / I``, with ``S`` the larger trapezoid segment next to a window end.
+        ``(n + 1) 2^-24 / I``, with ``S`` the larger trapezoid segment next to a window end.
     """
     segments = np.diff(cumulative, axis=0)
     columns = np.arange(cumulative.shape[1])
