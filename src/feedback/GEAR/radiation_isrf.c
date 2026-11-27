@@ -224,14 +224,23 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
   const integertime_t ti_step = get_integer_timestep(p->time_bin);
   /* Start of the step ending now. Using `ti_current` instead would
    * over-drain one sub-step early. */
-  const integertime_t ti_begin =
+  const integertime_t ti_bin_begin =
       get_integer_time_begin(e->ti_current, p->time_bin);
+  const integertime_t ti_end = ti_bin_begin + ti_step;
+
+  /* The held light has arrived since the last merge. A synchronisation cuts
+   * the step of an inactive particle without a merge, so its time bin can
+   * start after that merge. */
+  const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const integertime_t ti_last_merge = pk->step_end_ti - pk->step_ti;
+  const integertime_t ti_begin =
+      pk->has_merged_step && ti_last_merge < ti_bin_begin ? ti_last_merge
+                                                          : ti_bin_begin;
   float dt_phys;
   if (with_cosmology) {
-    dt_phys = (float)cosmology_get_delta_time(e->cosmology, ti_begin,
-                                              ti_begin + ti_step);
+    dt_phys = (float)cosmology_get_delta_time(e->cosmology, ti_begin, ti_end);
   } else {
-    dt_phys = (float)get_timestep(p->time_bin, e->time_base);
+    dt_phys = (float)((ti_end - ti_begin) * e->time_base);
   }
   p->feedback_data.dt_prev = dt_phys;
 

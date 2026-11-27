@@ -2243,9 +2243,12 @@ the particle sees is the sum over its slots,
   \tilde u_{b} = \sum_{k:\,S_k>0} \frac{E_{k,b}}{m}\,\frac{a\,l_k}{c\,\Delta t},
   \label{eq:packet-field}
 \end{equation}
-with $m$ the particle mass, $\Delta t$ the physical length of the step that
-ends now and $c$ the speed of light; the photon number $N_{k,b}$ gives the
-field of the photon number in the same way. The factor $a\,l_k/(c\Delta t)$ is
+with $m$ the particle mass, $\Delta t$ the physical time since the last merge
+of the particle and $c$ the speed of light. This is the length of the step that
+ends now, except after a synchronisation: it cuts the step of an inactive
+particle without a merge, and the held light then arrived over both parts.
+The photon number $N_{k,b}$ gives the field of the photon number in the same
+way. The factor $a\,l_k/(c\Delta t)$ is
 the hop speed over $c$ (Section~\ref{sec:packet-frame}). It is set to zero for
 $\Delta t\le0$ or $m\le0$.
 

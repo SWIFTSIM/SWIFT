@@ -4180,7 +4180,7 @@ void radiation_packet_set_first_step(
  * @param p The particle.
  * @param a Current scale factor.
  * @param speed_of_light Speed of light.
- * @param dt Physical length of the particle's step.
+ * @param dt Physical time since the last merge of the particle.
  * @param tau Time constant of the running mean. 0 or less is off.
  * @param constants The #radiation_packet_constants.
  */
