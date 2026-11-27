@@ -89,7 +89,8 @@ config=thick run_name=thick ./run.sh
 ```
 With a geajay build, add `library=geajay`: `run.sh` then reads `params_geajay.yml` and
 shields with the Jeans length (`h2_self_shielding=3` only). The run takes about five minutes on 8
-threads; `extra_swift_args="-n 199"` stops it after 200 steps.
+threads. The thick run is 200 steps long (`run.sh` passes `-n 199` for it by default);
+set `extra_swift_args=""` to run to `time_end` instead.
 Add `h2_self_shielding=0` for the unshielded reference, or
 `h2_self_shielding=2` for the kernel-length column. Resolution is set
 by `level` (`N = (2**level)**3` gas particles) and `gas_mass` (Msun). Change
