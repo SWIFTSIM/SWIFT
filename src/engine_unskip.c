@@ -302,6 +302,9 @@ static void engine_do_unskip_sidm(struct cell *c, struct engine *e) {
   /* Ignore empty cells. */
   if (c->sidm.count == 0) return;
 
+  /* Skip inactive cells. */
+  if (!cell_is_active_sidm(c, e)) return;
+
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
