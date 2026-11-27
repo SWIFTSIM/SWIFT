@@ -218,13 +218,13 @@ lock-order contention between neighbours is possible under load.
 
 Once \code{hii\_ionization\_feedback} actually runs
 (\code{runner\_do\_stars\_hii\_ionization\_feedback},
-\code{runner\_radiation\_feedback.c:407-514}), it manually recurses down
+\code{runner\_radiation\_feedback.c:391-489}), it manually recurses down
 \code{c->progeny} (mirroring what \code{scheduler\_splittasks}
 would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:1549}).
+(\code{runner\_radiation\_feedback.c:1453}).
 
 \begin{figure}[h]
   \centering
@@ -281,7 +281,7 @@ first search radius $r_0$ beyond that gas:
     empty (Section~\ref{sec:hii-claim-start} of the algorithm document). These
     two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:1285-1308}); the
+    the comment at \code{runner\_radiation\_feedback.c:1237-1249}); the
     loop breaks once the budget is exhausted or the retry or expansion
     limit that applies is reached.
 \end{enumerate}
