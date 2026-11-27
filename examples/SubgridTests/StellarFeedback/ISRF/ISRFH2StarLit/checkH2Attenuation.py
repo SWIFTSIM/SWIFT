@@ -2076,10 +2076,11 @@ def gate_merge(args: argparse.Namespace) -> int:
     limit is not derived. The bound without weights is held on every receiver ahead of
     star A with the segment in one slot, and the count beyond the angle limit is printed.
 
-    Controls. The gate is void if fewer than MERGE_MIN_PROBES probes remain, if fewer than
-    MERGE_MIN_ACTIVE have R above 1 + 2 e (the merge changes nothing otherwise), or if a
-    merged column 1.05 times too large or a transmission 0.98 times too low is inside the
-    bar at every probe.
+    Controls. A failed bound comes first: the gate then returns exit 1 before the controls
+    and still prints the two readings above. The gate is void if fewer than
+    MERGE_MIN_PROBES probes remain, if fewer than MERGE_MIN_ACTIVE have R above 1 + 2 e
+    (the merge changes nothing otherwise), or if a merged column 1.05 times too large or a
+    transmission 0.98 times too low is inside the bar at every probe.
 
     The --plant options change the arrays read, as a known error would: the transmission
     of the two-star run times a factor, its column times a factor (the transmission follows
@@ -2270,6 +2271,21 @@ def gate_merge(args: argparse.Namespace) -> int:
         f"[min t, max t] widened by e",
     )
 
+    beyond = shared & ~probes
+    if beyond.any():
+        rep.reading(
+            "probes beyond the angle limit",
+            f"{int(beyond.sum())} particles; R from {float(np.min(r_ratio[beyond])):.6g} to "
+            f"{float(np.max(r_ratio[beyond])):.6g}, {int(np.sum(beyond & (r_ratio < 1.0 - eps)))} below 1 - e",
+        )
+    gap_e = np.abs(
+        ab["LWOwnSpecificEnergies"] / np.where(e_sum > 0.0, e_sum, 1.0) - 1.0
+    )
+    rep.reading(
+        "E_AB over E_A + E_B",
+        f"largest |ratio - 1| {float(gap_e[probes].max()):.3g} over the probes",
+    )
+
     if rep.failed:
         # The controls below build on the measured t_ab, so a faulty t_ab can void them.
         return rep.exit_code()
@@ -2298,21 +2314,6 @@ def gate_merge(args: argparse.Namespace) -> int:
                 EXIT_VOID,
                 f"void check, the plant {what} is inside the bar at every probe",
             )
-
-    beyond = shared & ~probes
-    if beyond.any():
-        rep.reading(
-            "probes beyond the angle limit",
-            f"{int(beyond.sum())} particles; R from {float(np.min(r_ratio[beyond])):.6g} to "
-            f"{float(np.max(r_ratio[beyond])):.6g}, {int(np.sum(beyond & (r_ratio < 1.0 - eps)))} below 1 - e",
-        )
-    gap_e = np.abs(
-        ab["LWOwnSpecificEnergies"] / np.where(e_sum > 0.0, e_sum, 1.0) - 1.0
-    )
-    rep.reading(
-        "E_AB over E_A + E_B",
-        f"largest |ratio - 1| {float(gap_e[probes].max()):.3g} over the probes",
-    )
     return rep.exit_code()
 
 
