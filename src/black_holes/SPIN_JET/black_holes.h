@@ -620,9 +620,12 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
                            bpi_dyn_mass * bpi->v[1] + bpj_dyn_mass * bpj->v[1],
                            bpi_dyn_mass * bpi->v[2] + bpj_dyn_mass * bpj->v[2]};
 
-  bpi->v[0] = BH_mom[0] / bpi->mass;
-  bpi->v[1] = BH_mom[1] / bpi->mass;
-  bpi->v[2] = BH_mom[2] / bpi->mass;
+  /* Divide by the pre-merger total dynamical mass so that the remnant
+   * moves with the centre-of-mass velocity */
+  const float total_dyn_mass = bpi_dyn_mass + bpj_dyn_mass;
+  bpi->v[0] = BH_mom[0] / total_dyn_mass;
+  bpi->v[1] = BH_mom[1] / total_dyn_mass;
+  bpi->v[2] = BH_mom[2] / total_dyn_mass;
   bpi->gpart->v_full[0] = bpi->v[0];
   bpi->gpart->v_full[1] = bpi->v[1];
   bpi->gpart->v_full[2] = bpi->v[2];
