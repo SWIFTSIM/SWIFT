@@ -635,8 +635,8 @@ void set_hdf5_lossy_compression(hid_t *h_prop, hid_t *h_type,
             field_name);
 
     H5Tclose(*h_type);
-    *h_type = H5Tcopy(sign == H5T_SGN_NONE ? H5T_NATIVE_ULLONG
-                                           : H5T_NATIVE_LLONG);
+    *h_type =
+        H5Tcopy(sign == H5T_SGN_NONE ? H5T_NATIVE_ULLONG : H5T_NATIVE_LLONG);
     hid_t h_err = H5Tset_precision(*h_type, n_bits);
     if (h_err < 0)
       error("Error while setting type precision properties for field '%s'.",
