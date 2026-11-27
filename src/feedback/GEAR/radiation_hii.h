@@ -162,8 +162,7 @@ __attribute__((always_inline)) INLINE static void runner_hii_cone_frame_from_id(
  * @brief Compute the angular (HEALPix) pixel a gas candidate falls into,
  * as seen from the star.
  *
- * Hard single-pixel assignment (no fractional/multi-pixel overlap): a
- * candidate belongs to exactly one pixel, never split across several.
+ * A candidate belongs to exactly one pixel, never split across several.
  *
  * @param dx Star-minus-particle position offset (dx = x_star - x_particle).
  * @param n_HII_pixels Number of active pixels for this star (1 = spherical,
@@ -178,12 +177,9 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
   if (n_HII_pixels <= 1) return 0;
 
 #if defined(HAVE_CHEALPIX)
-  /* n_HII_pixels = 12*nside^2 for every value radiation_init() accepts
-     (src/feedback/GEAR/radiation.c, validated against the build's
-     HII_MAX_ANGULAR_PIXELS); invert it to recover nside for
-     vec2pix_ring64, which takes nside, not a pixel count. Only exact
-     values reach here, so this is exact integer arithmetic, not a
-     rounded approximation, for any nside the build supports. */
+  /* radiation_init() only accepts n_HII_pixels = 12 * nside^2, so the
+     inversion below is exact. vec2pix_ring64 takes nside, not a pixel
+     count. */
   const int nside = (int)lround(sqrt(n_HII_pixels / 12.0));
 #ifdef SWIFT_DEBUG_CHECKS
   if (n_HII_pixels != 12 * nside * nside)
@@ -192,14 +188,12 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
         "radiation_init(): got non-integer or unrecognised nside=%d.",
         n_HII_pixels, nside);
 #endif
-  /* A particle exactly on the star gives a zero-length direction, which is
-     undefined for vec2pix_ring64; fall back to pixel 0 (measure-zero in
-     continuous positions, but must not read/write out of bounds). */
+  /* A particle on the star has no direction, which vec2pix_ring64 cannot
+     take. Rare, but it must not index out of bounds. */
   if (dx[0] == 0.0f && dx[1] == 0.0f && dx[2] == 0.0f) return 0;
 
-  /* Pixels are defined around the star, so the direction of interest is
-     from the star to the particle; the negation of dx. vec2pix_ring64
-     does not require a normalized vector. */
+  /* Direction from the star to the particle, hence -dx. vec2pix_ring64 takes
+     an unnormalised vector. */
   double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
   if (frame != NULL) {
     const double d0 = dir[0], d1 = dir[1], d2 = dir[2];
