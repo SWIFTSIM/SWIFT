@@ -374,6 +374,92 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
         "Keep h_hii well below the top-level cell width, e.g. via "
         "Stars:HII_max_search_radius.");
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Check the ordering of the gather task against the cells it reads.
+ *
+ * Every hydro.super this gather touches must have run its
+ * stars.feedback_ghost this step (ti_run == e->ti_current, as skip resets to
+ * 1 on completion). A trip means the wait edge wired in
+ * engine_radiation_wire_super_deps() failed to hold.
+ *
+ * @param c The #cell the gather task runs on.
+ * @param e The #engine.
+ * @param timer Is this the task entry, not a recursion?
+ */
+static void runner_hii_check_gather_ordering(const struct cell *c,
+                                             const struct engine *e,
+                                             const int timer) {
+
+  if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
+    warning(
+        "Not running the HII reionization task on the radiation level (c = "
+        "%lld, "
+        "c->stars.radiation_level = %lld)!",
+        c->cellID, c->stars.radiation_level->cellID);
+  }
+
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    struct cell *sides[2] = {l->t->ci, l->t->cj};
+    for (int side = 0; side < 2; side++) {
+      struct cell *cc = sides[side];
+      if (cc == NULL) continue;
+      if (cc->hydro.super == NULL) continue; /* radiation_level above super */
+      struct cell *super = cc->hydro.super;
+      if (super->stars.feedback_ghost == NULL) continue;
+
+      /* Only a super covered by the radiation activation this step
+       * (cell_flag_do_hydro_drift) is checked: others keep a stale ti_run. */
+      if (!cell_get_flag(super, cell_flag_do_hydro_drift)) continue;
+
+      if (super->stars.feedback != NULL /* had a feedback task registered */
+          && super->stars.feedback_ghost->ti_run != e->ti_current) {
+        error(
+            "hii_ionization_feedback about to touch hydro.super %lld whose "
+            "stars.feedback_ghost has NOT run this step (ti_run=%lld, "
+            "ti_current=%lld, skip=%d). Ordering edge severed.",
+            super->cellID, super->stars.feedback_ghost->ti_run, e->ti_current,
+            super->stars.feedback_ghost->skip);
+      }
+    }
+  }
+}
+#else
+static INLINE void runner_hii_check_gather_ordering(const struct cell *c,
+                                                    const struct engine *e,
+                                                    const int timer) {}
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+/**
+ * @brief Print the hydro.super and radiation level of the cells each pair
+ * gather task of a cell joins.
+ *
+ * @param c The #cell the gather task runs on.
+ */
+static void runner_hii_print_gather_links(const struct cell *c) {
+
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    /* The self case is handled elsewhere. */
+    if (l->t->type == task_type_self) continue;
+
+    struct cell *cj = l->t->cj;
+    struct cell *ci = l->t->ci;
+    /* hydro.super is NULL when radiation_level is coarser than it. */
+    const long long ci_super_id =
+        ci->hydro.super != NULL ? ci->hydro.super->cellID : -1;
+    const long long cj_super_id =
+        cj->hydro.super != NULL ? cj->hydro.super->cellID : -1;
+    message(
+        "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
+        ci->cellID, cj->cellID, ci_super_id, cj_super_id,
+        ci->stars.radiation_level->cellID, cj->stars.radiation_level->cellID);
+  }
+}
+#else
+static INLINE void runner_hii_print_gather_links(const struct cell *c) {}
+#endif
 #endif
 
 /**
@@ -405,65 +491,8 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   const float interaction_limit =
       min(radiation_search_radius_factor * r_hii_max, max_search_radius);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
-    warning(
-        "Not running the HII reionization task on the radiation level (c = "
-        "%lld, "
-        "c->stars.radiation_level = %lld)!",
-        c->cellID, c->stars.radiation_level->cellID);
-  }
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Every hydro.super this gather touches must have run its
-   * stars.feedback_ghost this step (ti_run == e->ti_current, as skip resets
-   * to 1 on completion). A trip means the wait edge wired in
-   * engine_radiation_wire_super_deps() failed to hold. */
-  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
-    struct cell *sides[2] = {l->t->ci, l->t->cj};
-    for (int side = 0; side < 2; side++) {
-      struct cell *cc = sides[side];
-      if (cc == NULL) continue;
-      if (cc->hydro.super == NULL) continue; /* radiation_level above super */
-      struct cell *super = cc->hydro.super;
-      if (super->stars.feedback_ghost == NULL) continue;
-
-      /* Only a super covered by the radiation activation this step
-       * (cell_flag_do_hydro_drift) is checked: others keep a stale ti_run. */
-      if (!cell_get_flag(super, cell_flag_do_hydro_drift)) continue;
-
-      if (super->stars.feedback != NULL /* had a feedback task registered */
-          && super->stars.feedback_ghost->ti_run != e->ti_current) {
-        error(
-            "hii_ionization_feedback about to touch hydro.super %lld whose "
-            "stars.feedback_ghost has NOT run this step (ti_run=%lld, "
-            "ti_current=%lld, skip=%d). Ordering edge severed.",
-            super->cellID, super->stars.feedback_ghost->ti_run, e->ti_current,
-            super->stars.feedback_ghost->skip);
-      }
-    }
-  }
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
-    /* The self case is handled elsewhere. */
-    if (l->t->type == task_type_self) continue;
-
-    struct cell *cj = l->t->cj;
-    struct cell *ci = l->t->ci;
-    /* hydro.super is NULL when radiation_level is coarser than it. */
-    const long long ci_super_id =
-        ci->hydro.super != NULL ? ci->hydro.super->cellID : -1;
-    const long long cj_super_id =
-        cj->hydro.super != NULL ? cj->hydro.super->cellID : -1;
-    message(
-        "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
-        ci->cellID, cj->cellID, ci_super_id, cj_super_id,
-        ci->stars.radiation_level->cellID, cj->stars.radiation_level->cellID);
-  }
-#endif
+  runner_hii_check_gather_ordering(c, e, timer);
+  runner_hii_print_gather_links(c);
 
   TIMER_TIC;
 
