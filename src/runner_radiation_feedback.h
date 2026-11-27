@@ -262,15 +262,9 @@ __attribute__((always_inline)) INLINE static float runner_hii_requested_radius(
   return next < max_search_radius ? next : max_search_radius;
 }
 
-/* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
- * compile-time constant by design; see runner_dosub_stars_hii_ionization_
- * feedback()). Sized to comfortably cover a single rebuild's typical new
- * shell of gas at gas_mass=0.01-resolution test problems without needing
- * many retries (empirically ~a few thousand particles per shell in
- * StromgrenSphere); denser regions (e.g. clumps in a cosmological zoom-in)
- * rely on Stars:HII_max_retry_full_buffer (struct stars_props, runtime-
- * configurable) to cover the rest across several passes at the same
- * search radius. */
+/* Capacity of the HII neighbour buffer, a stack array in
+ * runner_hii_claim_and_retry(). A star with more candidates at one radius
+ * claims them over several retries (Stars:HII_max_retry_full_buffer). */
 #define max_ngbs 1024
 
 /**
@@ -339,22 +333,19 @@ struct hii_maintenance_context {
   /*! Time elapsed since this star's previous HII rebuild pass. */
   double dt_back;
 
-  /*! (return) Largest squared distance at which this star still holds gas
-      tagged and owned, i.e. the region's extent this pass. Independent of
-      what the budget could actually pay for, so it does not depend on
-      traversal order. */
+  /*! (return) Largest squared distance at which this star still holds gas,
+      the region's extent this pass. It does not depend on what the budget
+      can pay for, nor on traversal order. */
   float r2_max_maintained;
 
-  /*! (return) Photons charged to balance recombination this pass. Filled in
-      by the caller after the traversal returns and the buffered candidates
-      below have been sorted and charged in (r2, id) order; 0 during the
-      traversal itself. */
+  /*! (return) Photons charged to balance recombination this pass. The caller
+      fills it in after the traversal, once the buffered gas is charged in
+      (r2, id) order. */
   double photons_charged;
 
-  /*! Runner performing this pass. Already-ionized candidates found during
-      the traversal are appended to r->hii_maintenance_buffer instead of
-      being charged immediately, so the whole set can be sorted into
-      ascending (r2, id) order first. */
+  /*! Runner performing this pass. Held gas goes to
+      r->hii_maintenance_buffer, to be sorted by (r2, id) before it is
+      charged. */
   struct runner *r;
 
   /*! Number of candidates appended to r->hii_maintenance_buffer so far this
@@ -426,13 +417,15 @@ int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const float search_radius);
 
 /**
- * @brief Top-level steering function for HII ionization feedback, called
- * unconditionally from the runner's task dispatch (runner_main.c).
+ * @brief Run the HII ionization feedback of a cell, called from the task
+ * dispatch (runner_main.c).
  *
- * A no-op when GEAR ionization feedback is compiled out: the task type
- * still exists in the enum, but with_radiation_tasks
- * (#feedback_radiation_gather_tasks_needed) never creates the task, so
- * this is dead code reachable only by construction, not at runtime.
+ * A no-op when GEAR ionization feedback is compiled out: the task is then
+ * never created (#feedback_radiation_gather_tasks_needed).
+ *
+ * @param r The #runner thread.
+ * @param c The #cell to process.
+ * @param timer Record the timing of this call?
  */
 #ifdef IONIZATION_FEEDBACK_LOOP
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
@@ -444,12 +437,10 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 #endif
 
 /**
- * @brief Start-up of the subgrid radiation, called from engine_config() in a
- * stars run: prints warnings about the HII search-radius / box-size
- * relationship.
+ * @brief Warn at start-up about HII search radii that the box size makes
+ * unreachable. Called from engine_config() in a stars run.
  *
- * A no-op when the HII loop is not compiled. The packet transport start-up
- * is a separate call in engine_config(), made with or without stars.
+ * A no-op when the HII loop is not compiled.
  *
  * @param e The #engine.
  */
@@ -586,11 +577,18 @@ __attribute__((always_inline)) INLINE static int runner_hii_r2_id_before(
 }
 
 /**
- * @brief Maintain a buffer sorted in ascending (r2, id) order by inserting a
- * new neighbor at the correct position.
+ * @brief Insert a neighbour into a buffer sorted by ascending (r2, id).
  *
- * If the buffer is full, it replaces the furthest element if the new one
- * sorts before it.
+ * A full buffer drops its furthest element if the new one sorts before it.
+ *
+ * @param buffer The sorted buffer.
+ * @param max_size Capacity of @p buffer.
+ * @param count_found (in, out) Number of entries in @p buffer.
+ * @param r2 Squared distance between the star and the particle.
+ * @param p The gas particle.
+ * @param xp The particle's extended data, or NULL for a foreign cell.
+ * @param c The #cell holding the particle (kept for SWIFT_DEBUG_CHECKS).
+ * @param pixel Angular pixel of the particle.
  */
 __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
@@ -621,8 +619,8 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
 }
 
 /**
- * @brief Verify that the gathered HII neighbor buffer is properly sorted in
- * ascending (r2, id) order, matching #runner_hii_buffer_insert's tiebreak.
+ * @brief Check, under SWIFT_DEBUG_CHECKS, that the HII neighbour buffer is
+ * sorted by ascending (r2, id) as #runner_hii_buffer_insert keeps it.
  *
  * @param ngb_buffer The array of gathered #hii_neighbor structures.
  * @param count_found The number of valid neighbors stored in the buffer.
@@ -632,9 +630,8 @@ runner_do_stars_hii_ionization_feedback_check_sort(
     const struct hii_neighbor *ngb_buffer, const int count_found) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < count_found - 1; k++) {
-    /* Strict: (r2, id) is a total order over distinct particles (unique
-       ids), so two adjacent entries failing this means a genuine ordering
-       bug or a duplicate particle. */
+    /* Strict: (r2, id) is a total order over unique ids, so a failure means
+       an ordering bug or a duplicate particle. */
     if (!runner_hii_r2_id_before(ngb_buffer[k].r2, ngb_buffer[k].p->id,
                                  ngb_buffer[k + 1].r2,
                                  ngb_buffer[k + 1].p->id)) {
