@@ -41,7 +41,7 @@ GAS_MASS = 1.0e-11
 GAMMA = 1.9364916731
 W_ZERO = 21.0 / (2.0 * np.pi * GAMMA**3)
 KERNELS = {}
-GATES = ("starlit", "twosource", "velocity")
+GATES = ("starlit", "twosource", "velocity", "merge")
 ROWS = []
 U_L = 3.0856775814913673e21
 
@@ -134,12 +134,12 @@ def tier_row(name, argv, want1, want2=None, want3=None):
     )
 
 
-def make_ic(work, name, level=4):
-    d = os.path.join(work, name)
+def make_ic(work, name, level=4, extra=(), subdir=None):
+    d = os.path.join(work, subdir or name)
     os.makedirs(d, exist_ok=True)
     script = os.path.join(ROOT, f"ISRFH2{name}", "makeIC.py")
     subprocess.run(
-        [sys.executable, script, "--level", str(level)],
+        [sys.executable, script, "--level", str(level), *extra],
         cwd=d,
         check=True,
         capture_output=True,
@@ -1744,6 +1744,145 @@ def dropped_neighbour_case():
     )
 
 
+def merge_cases(work):
+    """Run the merge gate on a synthetic in-line world, clean and with each planted error.
+
+    Star B sits 2 d behind star A. Each light is 1 / r^2 within a front radius with the
+    transmission of the uniform column; the merged light of the two-star run carries the
+    energy-weighted mean of the two transmissions (no merge effect) at even particles and the
+    larger of the two, the limit of a merged column equal to the smaller one, at odd particles.
+    The H2 of the star A run is 0.5 per cent above the other runs, which sets the float bar e
+    near 0.5 per cent as in a real run.
+    """
+    d, pos, rho, h, box = make_ic(
+        work,
+        "TwoSources",
+        level=5,
+        extra=("--contrast", "1", "--in_line_pc", "0.2"),
+        subdir="TwoSourcesMerge",
+    )
+    fix = json.load(open(os.path.join(d, "fixture.json")))
+    n_gas = len(pos)
+    dens = rho * 1.988409870698051e43 / U_L**3 / gate.M_H
+    x_h2 = np.full(n_gas, 2.0 * 3e-6 * 0.76)
+    temp = np.full(n_gas, 163.4)
+    n_h2_cm3 = float(np.mean(x_h2 * dens / 2.0))
+    stars = {"A": np.array(fix["star_a_kpc"]), "B": np.array(fix["star_b_kpc"])}
+    ids_star = {"A": n_gas, "B": n_gas + 1}
+    h0 = float(h[0])
+
+    def light(star, radius):
+        dv = pos - star[None, :]
+        dv -= box * np.round(dv / box)
+        r = np.linalg.norm(dv, axis=1)
+        energy = np.where(r < radius, 1.0 / np.maximum(r, 1e-12) ** 2, 0.0)
+        column = n_h2_cm3 * r * U_L
+        return energy, gate.transmission(np.maximum(column, 1.0), temp, dens), column
+
+    def write_run(name, kinds, h2_scale=1.0):
+        run_dir = os.path.join(d, name)
+        os.makedirs(os.path.join(run_dir, "snap"), exist_ok=True)
+        open(os.path.join(run_dir, "used_parameters.yml"), "w").write(
+            GOOD_PARAMS + "  ISRF_packet_read_mean_time_Myr: 0\n"
+        )
+        open(os.path.join(run_dir, "output.log"), "w").write(RUN_LOG)
+        star_pos = [stars[s] for s in kinds]
+        star_ids = [ids_star[s] for s in kinds]
+        for time, num, radius in ((7.0, 8, 9.5 * h0), (8.0, 9, 10.5 * h0)):
+            lights = [light(stars[s], radius) for s in kinds]
+            energy = sum(lt[0] for lt in lights)
+            lit = [lt[0] > 0.0 for lt in lights]
+            share = sum(lt[0] * np.where(m, lt[1], 0.0) for m, lt in zip(lit, lights))
+            share = np.where(
+                energy > 0.0, share / np.where(energy > 0.0, energy, 1.0), 0.0
+            )
+            largest = np.max(
+                [np.where(m, lt[1], 0.0) for m, lt in zip(lit, lights)], axis=0
+            )
+            trans = share + (np.arange(n_gas) % 2) * (largest - share)
+            ratio = np.where(energy > 0.0, trans, 1.0)
+            snap = os.path.join(run_dir, "snap", f"snapshot_{num:04d}.hdf5")
+            write_snap(
+                snap,
+                pos,
+                rho,
+                h,
+                box,
+                temp,
+                x_h2 * h2_scale,
+                energy,
+                ratio,
+                time=time,
+                column=lights[0][2] * U_L**2,
+            )
+            with h5py.File(snap, "a") as f:
+                g = f.create_group("PartType4")
+                g.create_dataset("Coordinates", data=np.array(star_pos))
+                g.create_dataset("ParticleIDs", data=np.array(star_ids, dtype=np.int64))
+        zero = np.zeros(n_gas)
+        write_snap(
+            os.path.join(run_dir, "snap", "snapshot_0001.hdf5"),
+            pos,
+            rho,
+            h,
+            box,
+            temp,
+            x_h2,
+            zero,
+            zero,
+            time=1.0,
+        )
+        with h5py.File(os.path.join(run_dir, "snap", "snapshot_0001.hdf5"), "a") as f:
+            g = f.create_group("PartType4")
+            g.create_dataset("Coordinates", data=np.array(star_pos))
+            g.create_dataset("ParticleIDs", data=np.array(star_ids, dtype=np.int64))
+
+    write_run("merge", "AB")
+    write_run("only_a", "A", h2_scale=1.005)
+    write_run("only_b", "B")
+    argv = [
+        "merge",
+        "--first", os.path.join(d, "merge/snap/snapshot_0001.hdf5"),
+        "--last", os.path.join(d, "merge/snap/snapshot_0009.hdf5"),
+        "--fixture", os.path.join(d, "fixture.json"),
+        "--params", os.path.join(d, "merge/used_parameters.yml"),
+        "--startup-log", os.path.join(d, "merge/output.log"),
+        "--timesteps", write_timesteps(d, n_gas),
+        "--only-a", os.path.join(d, "only_a"),
+        "--only-b", os.path.join(d, "only_b"),
+        "--slots", "12",
+    ]  # fmt: skip
+    for name, want, extra, key in (
+        ("M1 merge: correct world", 0, [], "PASS  merged transmission"),
+        (
+            "M2 merge: transmission x1.02, a bound fails while the controls stay void",
+            1,
+            ["--plant-transmission", "1.02"],
+            "FAIL  merged transmission",
+        ),
+        (
+            "M3 merge: transmission x0.98",
+            1,
+            ["--plant-transmission", "0.98"],
+            "FAIL  merged transmission",
+        ),
+        (
+            "M4 merge: transmission x0.995",
+            1,
+            ["--plant-transmission", "0.995"],
+            "FAIL  merged transmission",
+        ),
+        (
+            "M5 merge: merged column x1.05",
+            1,
+            ["--plant-column", "1.05"],
+            "FAIL  merged transmission",
+        ),
+        ("M6 merge: NaN in the two-star field", 3, ["--plant-nan"], "FAIL  two-star"),
+    ):
+        record(name, want, [*argv, *extra], key)
+
+
 def main(work):
     global START_UP_LOG
     os.makedirs(work, exist_ok=True)
@@ -1772,6 +1911,7 @@ def main(work):
     parity_cases(work, d, data)
     twosource_cases(work)
     velocity_cases(work)
+    merge_cases(work)
     dropped_neighbour_case()
     width = max(len(r[0]) for r in ROWS)
     print(f"{'case':<{width}}  want  got  verdict  line the check printed")

@@ -30,7 +30,22 @@ def main():
     p.add_argument(
         "--contrast", type=float, default=300.0, help="Slab over clear density"
     )
-    p.add_argument("--star_mass", type=float, default=29.7)
+    p.add_argument(
+        "--in_line_pc",
+        type=float,
+        default=0.0,
+        help="Distance d in pc: star B sits 2 d behind star A on the x axis, in uniform gas "
+        "without the slab, so that the lights of the two stars share a reception slot",
+    )
+    p.add_argument(
+        "--star_mass", type=float, default=29.7, help="Mass of star A in Msun"
+    )
+    p.add_argument(
+        "--star_mass_b",
+        type=float,
+        default=0.0,
+        help="Mass of star B in Msun, the mass of star A if 0",
+    )
     p.add_argument("--h2_ratio", type=float, default=3e-4, help="nH2 / nH of the gas")
     p.add_argument(
         "--stars",
@@ -50,8 +65,17 @@ def main():
     scale = np.where(in_slab, o.contrast, 1.0)
     star_a = np.array([0.15 * box, 0.5 * box, 0.5 * box])
     star_b = np.array([0.60 * box, 0.5 * box, 0.5 * box])
+    if o.in_line_pc > 0.0:
+        # Star B behind star A on the x axis: a receiver at d in front of A is at 3 d from B.
+        scale = np.ones(n)
+        star_a = np.array([0.5 * box, 0.5 * box, 0.5 * box])
+        star_b = star_a - np.array([2.0 * o.in_line_pc * 1e-3, 0.0, 0.0])
     star_pos = {"ab": [star_a, star_b], "a": [star_a], "b": [star_b]}[o.stars]
     star_ids = {"ab": [n, n + 1], "a": [n], "b": [n + 1]}[o.stars]
+    mass_b = o.star_mass_b if o.star_mass_b > 0.0 else o.star_mass
+    star_masses = {"ab": [o.star_mass, mass_b], "a": [o.star_mass], "b": [mass_b]}[
+        o.stars
+    ]
     common.write_ic(
         o.out,
         box,
@@ -60,7 +84,7 @@ def main():
         rho0 * scale,
         np.zeros([n, 3]),
         np.array(star_pos),
-        o.star_mass,
+        star_masses,
         star_ids=star_ids,
     )
 

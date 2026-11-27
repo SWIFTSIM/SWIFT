@@ -173,6 +173,29 @@ what the run happens to produce.
   trapezoid/lag error (see the thin budget above) is a larger relative
   error on the numerator.
 
+* Self-shielded configuration, rate identity. The median bar above cannot see a
+  coefficient error below 25 per cent. The identity gate holds every particle to
+
+      |q - 1| <= (L + 1/2) max(S_0, S_1) / I + (n + 1) 2^-24 / I ,
+
+  with ``q`` the per-particle quotient above (measured drop over the
+  predicted integral ``I``), ``n`` the snapshots in its window, ``S_0`` and
+  ``S_1`` the larger of the two trapezoid segments of ``k_diss,0 f_shield``
+  next to the first and the last snapshot of the window, and ``L`` =
+  ``--thick-lag-steps`` (default 1). The first term is the boundary of the
+  window. The snapshot field and the field the chemistry used differ by up to
+  ``L`` gas steps, which moves ``integral g(t - L dt) - g(t) dt`` by at most
+  the segment at either end, and the chemistry holds the field constant over
+  a step where the check uses the trapezoid, which adds half a step. Inside the
+  window the two integrals telescope, so no per-snapshot error enters: with
+  the rate pulsing with a period of 8 gas steps, a per-snapshot bar would
+  be tens of per cent. The second term is the float32 of ``x_H2`` at both ends
+  and one rounding per step, in the ln. H2 formation (H- route, 1e-8
+  ionization) is below it. The gate fails on any particle outside and on a
+  non-finite value (exit status 3). ``--plant-coefficient`` multiplies the
+  measured drop, as a coefficient error in the code would, to show that the
+  gate fails.
+
 Rate normalisation (reported, never gated)
 ------------------------------------------
 
@@ -577,6 +600,25 @@ def parse_options() -> argparse.Namespace:
         default=1e-2,
         help="Max f_shield for the thick configuration to count as strongly "
         "shielded (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--thick-lag-steps",
+        type=float,
+        default=1.0,
+        help="Thick configuration, rate identity: gas steps between the field the "
+        "snapshot records and the field the chemistry used (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--plant-coefficient",
+        type=float,
+        default=1.0,
+        help="Multiply the measured drop of x_H2 by this factor, as a wrong rate "
+        "coefficient in the code would (default: %(default)s, no plant)",
+    )
+    parser.add_argument(
+        "--plant-nan",
+        action="store_true",
+        help="Set one x_H2 value to NaN, to show that the check refuses it",
     )
     parser.add_argument(
         "--field-arrival-fraction",
@@ -1030,6 +1072,55 @@ def cumulative_integral(times: np.ndarray, values: np.ndarray) -> np.ndarray:
     return np.vstack([np.zeros((1, values.shape[1])), np.cumsum(segments, axis=0)])
 
 
+FLOAT32_EPS = 2.0**-24
+EXIT_NON_FINITE = 3
+
+
+def rate_identity_bar(
+    cumulative: np.ndarray,
+    start: np.ndarray,
+    end: np.ndarray,
+    integral: np.ndarray,
+    lag_steps: float,
+) -> np.ndarray:
+    """Return the per-particle bar on |q - 1|, q the measured over the predicted drop.
+
+    Parameters
+    ----------
+    cumulative : numpy.ndarray
+        Running trapezoid integral of the predicted rate, shape ``(n_snapshots, n_particles)``,
+        from :func:`cumulative_integral`.
+    start, end : numpy.ndarray
+        First and last snapshot of the window of each particle.
+    integral : numpy.ndarray
+        Predicted integral over the window of each particle.
+    lag_steps : float
+        Gas steps between the field the snapshot records and the field the chemistry used.
+
+    Returns
+    -------
+    numpy.ndarray
+        The bar: the boundary term ``(lag_steps + 1/2) max(S_0, S_1) / I`` plus the float32 term
+        ``(n + 1) 2^-24 / I``, with ``S`` the larger trapezoid segment next to a window end.
+    """
+    segments = np.diff(cumulative, axis=0)
+    columns = np.arange(cumulative.shape[1])
+    last_segment = segments.shape[0] - 1
+
+    def end_segment(index: np.ndarray) -> np.ndarray:
+        before = np.where(index > 0, segments[np.maximum(index - 1, 0), columns], 0.0)
+        after = np.where(
+            index <= last_segment,
+            segments[np.minimum(index, last_segment), columns],
+            0.0,
+        )
+        return np.maximum(before, after)
+
+    boundary = np.maximum(end_segment(start), end_segment(end))
+    n_steps = (end - start + 2).astype(float)
+    return ((lag_steps + 0.5) * boundary + n_steps * FLOAT32_EPS) / integral
+
+
 def report_shells(
     history: Dict[str, np.ndarray], index: int, n_shells: int, shielded: bool
 ) -> None:
@@ -1165,10 +1256,12 @@ def main() -> int:
         options.kernel_gamma,
         path_in_kernel_radii,
     )
+    if options.plant_nan:
+        history["x_H2"][history["x_H2"].shape[0] // 2, 0] = np.nan
     non_finite = non_finite_history_fields(history)
     if non_finite:
         print(f"FAIL: non-finite values in {', '.join(non_finite)}")
-        return 1
+        return EXIT_NON_FINITE
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
     columns = np.arange(n_particles)
@@ -1184,7 +1277,7 @@ def main() -> int:
     unshielded = cumulative_integral(times, rate)
     shielded_integral = shielded[end, columns] - shielded[start, columns]
     unshielded_integral = unshielded[end, columns] - unshielded[start, columns]
-    measured_drop = -np.log(
+    measured_drop = options.plant_coefficient * -np.log(
         history["x_H2"][end, columns] / history["x_H2"][start, columns]
     )
 
@@ -1336,6 +1429,25 @@ def main() -> int:
         ):
             if message is not None:
                 failures.append(message)
+        identity_q = measured_drop[qualifies] / shielded_integral[qualifies]
+        identity_bar = rate_identity_bar(
+            shielded, start, end, shielded_integral, options.thick_lag_steps
+        )[qualifies]
+        if not (np.all(np.isfinite(identity_q)) and np.all(np.isfinite(identity_bar))):
+            print("FAIL: non-finite quotient or bar in the rate identity")
+            return EXIT_NON_FINITE
+        identity_dev = np.abs(identity_q - 1.0)
+        n_outside = int(np.sum(identity_dev > identity_bar))
+        print(
+            f"THICK identity: {n_outside} of {identity_q.size} particles outside "
+            f"|q - 1| <= bar; q median {np.median(identity_q):.4g}, bar median "
+            f"{np.median(identity_bar):.4g}, largest |q - 1| / bar "
+            f"{np.max(identity_dev / identity_bar):.4g}"
+        )
+        if n_outside:
+            failures.append(
+                f"rate identity: {n_outside} particles outside the per-particle bar"
+            )
         predicted_plot = predicted_ratio
         measured_plot = np.maximum(measured_ratio, 1e-12)
 

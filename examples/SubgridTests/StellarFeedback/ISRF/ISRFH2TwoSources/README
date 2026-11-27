@@ -44,3 +44,27 @@ It tests that:
 - where both stars are lit, the column of the two-star run is the mean of the one-star
   columns weighted by their dissociating energies. This needs
   `ISRF_packet_read_mean_time_Myr = 0` (the default).
+
+# Merge leg
+```
+leg=merge ./run.sh
+```
+Star B sits behind star A on one line, in uniform gas without the slab. A receiver at
+distance d in front of A is at 3 d from B, so the lights of the two stars reach it in one
+reception slot and merge there, each with its own H2 column. The run takes three swift calls (`only_a`,
+`only_b` and `merge`). `in_line_pc` (d in pc, default 0.2), `star_mass` and `star_mass_b` (Msun,
+defaults 10 and 50), `h2_ratio` (default 3e-6, thin enough that the transmission differs between
+the two columns), `dt_max` (default 2.5e-14, small so that the H2 stays frozen while the light
+arrives) and `n_steps` (default 7) override the defaults.
+
+`checkH2Attenuation.py merge` reads the first and the last snapshot of the `merge` run, the last
+snapshots of `only_a` and `only_b`, `fixture.json`, the parameters, the logs and `--slots`. It
+takes the gas that all three runs lit, ahead of star A, whose receiving slot holds the whole segment
+between the stars, and at most `--max-subtended-deg` (default 10) apart as seen from the receiver. There it tests
+that the ratio R of the merged transmission to the transmission of the two lights kept apart
+(the one-star transmissions weighted by their energies) lies between 1 and 1 over the energy
+fraction of the least-shielded light, and that the merged transmission lies between the
+transmissions of the two stars, each within a float term that the check prints. It stops with exit status 4 if
+the merge changes the transmission at fewer than 10 receivers, or if a planted error stays inside the bar
+(a failed bound check gives exit status 1 before the controls run), and prints how many receivers lie
+beyond the angle limit.
