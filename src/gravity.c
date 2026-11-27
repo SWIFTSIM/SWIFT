@@ -557,7 +557,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         const double mj = gpj->mass;
         double f, phi;
 
-        if (r >= hi) {
+        if (r >= h) {
 
           /* Get Newtonian gravity */
           f = mj * r_inv * r_inv * r_inv;
