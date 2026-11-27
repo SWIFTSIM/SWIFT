@@ -876,6 +876,16 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  * background cdim. The user can always set their own value for the background
  * cdim explicitly.
  *
+ * The zoom region is centred in the box, so with an odd cdim it sits in the
+ * middle of a cell and with an even cdim it sits on a cell edge. The void
+ * region (the background cells it overlaps) therefore spans an odd number of
+ * cells for an odd cdim and an even number for an even cdim. For each number
+ * of void cells k we take the largest cdim of the same parity whose k cells
+ * still contain the region, and keep the k that pads the region least. More
+ * void cells pad less but need narrower background cells, so we stop once the
+ * cells would be narrower than the background mesh's tree cut-off, below
+ * which they only add tasks.
+ *
  * @param s The space (contains zoom properties and box size)
  * @param ini_dim The initial dimension of the zoom region (particle extent)
  * @param max_dim The user-padded dimension of the zoom region
@@ -883,34 +893,40 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
                                     const double max_dim) {
 
-  /* Find the best background cdim that minimises the padding around the zoom
-   * region. */
-  int best_cdim = (int)floor(s->dim[0] / max_dim);
+  const double box = s->dim[0];
+  const double min_width = s->zoom_props->neighbour_distance;
+  if (min_width <= 0.) error("The background mesh cut-off must be positive.");
 
-  /* With an odd cdim the box centre sits in the middle of a cell, so the zoom
-   * region can be contained within a single background cell. */
-  if (best_cdim % 2 == 0) best_cdim--;
+  int best_cdim = 0;
+  double best_void_dim = 0.;
+  for (int k = 1;; k++) {
 
-  /* An exact odd ratio places the zoom bounds on background-cell edges. For
-   * example, a box size of 100 and max_dim of 4 gives a cdim of 25, a cell
-   * width of 4, and zoom bounds of 48 and 52. Since zoom_get_void_geometry
-   * assigns the upper edge to the next cell, reduce the cdim by two so the
-   * region fits strictly within one cell. */
-  const double width = s->dim[0] / best_cdim;
-  if (floor((s->dim[0] / 2. - max_dim / 2.) / width) !=
-      floor((s->dim[0] / 2. + max_dim / 2.) / width)) {
-    best_cdim -= 2;
+    /* The largest cdim with the parity of k whose k cells are at least
+     * max_dim wide in total. */
+    int cdim = (int)floor(k * box / max_dim);
+    if (cdim % 2 != k % 2) cdim--;
+
+    /* An exact ratio places the zoom bounds on background-cell edges. For
+     * example, a box size of 100 and max_dim of 4 gives a cdim of 25 for one
+     * cell, a cell width of 4, and zoom bounds of 48 and 52. Since
+     * zoom_get_void_geometry assigns the upper edge to the next cell, reduce
+     * the cdim by two so the region fits strictly within its k cells, the
+     * highest of which has index (cdim + k) / 2 - 1. */
+    if (floor((box / 2. + max_dim / 2.) * cdim / box) != (cdim + k) / 2 - 1) {
+      cdim -= 2;
+    }
+
+    /* Stop once the cells are narrower than the cut-off (always keeping the
+     * single-cell solution). */
+    if (k > 1 && box / cdim < min_width) break;
+
+    /* Keep the smallest void region, preferring fewer cells on a tie. */
+    const double void_dim = k * box / cdim;
+    if (best_cdim == 0 || void_dim < best_void_dim) {
+      best_cdim = cdim;
+      best_void_dim = void_dim;
+    }
   }
-
-  /* With an even cdim the box centre sits on a cell edge, so the region spans
-   * two cells, each at least half its width. Use that if it pads less. */
-  int even_cdim = (int)floor(2. * s->dim[0] / max_dim);
-  if (even_cdim % 2 == 1) even_cdim--;
-  if (floor((s->dim[0] / 2. + max_dim / 2.) * even_cdim / s->dim[0]) !=
-      even_cdim / 2) {
-    even_cdim -= 2;
-  }
-  if (2. / even_cdim < 1. / best_cdim) best_cdim = even_cdim;
 
   /* Always keep a sane background grid with at least 8 cells per axis. */
   if (best_cdim < 8) best_cdim = 8;
