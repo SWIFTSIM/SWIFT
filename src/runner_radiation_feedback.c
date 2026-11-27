@@ -834,6 +834,32 @@ static int runner_hii_open_star_pass(const struct engine *e,
   return 1;
 }
 
+#ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
+/**
+ * @brief Extent h_hii of the region a star still holds ionized.
+ *
+ * Compiled out with its only caller under NO_COOLING, so that
+ * -Wunused-function stays quiet.
+ *
+ * The extent is what the star holds now, not the largest it ever had, so gas
+ * that drifted away stops holding h_hii open. Holding nothing collapses it: a
+ * stale h_hii keeps radiation_level coarse and the lock set wide. Gas at
+ * exactly r2 == 0 keeps the current extent, since writing 0 would make
+ * cell_sanitize inflate h_hii to the whole cell.
+ *
+ * @param count_held Number of gas particles the star holds ionized.
+ * @param r2_max_held Squared distance to the star of the farthest of them.
+ * @param h_hii_now The current h_hii of the star.
+ * @return The h_hii the star holds after this pass.
+ */
+__attribute__((always_inline)) INLINE static float runner_hii_held_extent(
+    const int count_held, const float r2_max_held, const float h_hii_now) {
+  if (count_held == 0) return 0.f;
+  if (r2_max_held > 0.f) return sqrtf(r2_max_held) * kernel_gamma_inv;
+  return h_hii_now;
+}
+#endif
+
 /**
  * @brief Charge the recombination losses of the gas the star already holds
  * ionized, before any photons are spent on new candidates.
@@ -952,18 +978,9 @@ static int runner_hii_maintain_held_region(
       clocks_from_ticks(held_gather_ticks));
 #endif
 
-  /* The extent is what the star still holds, not the largest it ever had, so
-     gas that drifted away stops holding h_hii open. The claim walk grows it
-     again for new gas. Holding nothing must collapse it: a stale h_hii keeps
-     radiation_level coarse and the lock set wide. Gas at exactly r2 == 0
-     must not write 0, since cell_sanitize would then inflate h_hii to the
-     whole cell. */
-  const float h_hii_held =
-      count_held == 0
-          ? 0.f
-          : (maintenance_ctx.r2_max_maintained > 0.f
-                 ? sqrtf(maintenance_ctx.r2_max_maintained) * kernel_gamma_inv
-                 : si->h_hii);
+  /* The claim walk grows the extent again for new gas. */
+  const float h_hii_held = runner_hii_held_extent(
+      count_held, maintenance_ctx.r2_max_maintained, si->h_hii);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
