@@ -887,9 +887,8 @@ static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
    * region. */
   int best_cdim = (int)floor(s->dim[0] / max_dim);
 
-  /* To ensure the zoom region is always contained within a single background
-   * cell we usually require an odd number of background cells when using
-   * automatic optimisation. */
+  /* With an odd cdim the box centre sits in the middle of a cell, so the zoom
+   * region can be contained within a single background cell. */
   if (best_cdim % 2 == 0) best_cdim--;
 
   /* An exact odd ratio places the zoom bounds on background-cell edges. For
@@ -902,6 +901,16 @@ static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
       floor((s->dim[0] / 2. + max_dim / 2.) / width)) {
     best_cdim -= 2;
   }
+
+  /* With an even cdim the box centre sits on a cell edge, so the region spans
+   * two cells, each at least half its width. Use that if it pads less. */
+  int even_cdim = (int)floor(2. * s->dim[0] / max_dim);
+  if (even_cdim % 2 == 1) even_cdim--;
+  if (floor((s->dim[0] / 2. + max_dim / 2.) * even_cdim / s->dim[0]) !=
+      even_cdim / 2) {
+    even_cdim -= 2;
+  }
+  if (2. / even_cdim < 1. / best_cdim) best_cdim = even_cdim;
 
   /* Always keep a sane background grid with at least 8 cells per axis. */
   if (best_cdim < 8) best_cdim = 8;
