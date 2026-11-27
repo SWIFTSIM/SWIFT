@@ -17,10 +17,14 @@
 #
 ################################################################################
 
+import math
 import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
-# Generates a swift IC file for the 1D Zeldovich pancake
+# Generates a 3D swift IC file for the Zeldovich pancake (a plane-wave
+# perturbation along the x-axis)
 
 # Parameters
 T_i = 100.0  # Initial temperature of the gas (in K)
@@ -61,7 +65,7 @@ numPart = numPart_1D**3
 # ---------------------------------------------------
 
 # Get the frequency of the initial perturbation
-k_i = 2.0 * pi / lambda_i
+k_i = 2.0 * np.pi / lambda_i
 
 # Get the redshift prefactor for the initial positions
 zfac = (1.0 + z_c) / (1.0 + z_i)
@@ -75,16 +79,16 @@ a_i = 1.0 / (1.0 + z_i)
 m_i = boxSize**3 * rho_0 / numPart
 
 # Build the arrays
-coords = zeros((numPart, 3))
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-h = zeros(numPart)
-u = zeros(numPart)
+coords = np.zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+h = np.zeros(numPart)
+u = np.zeros(numPart)
 
 # Add in densities and material ids
-rhos = zeros(numPart)
-material_ids = zeros(numPart)
+rhos = np.zeros(numPart)
+material_ids = np.zeros(numPart)
 
 # Set the particles on the left
 for i in range(numPart_1D):
@@ -92,18 +96,20 @@ for i in range(numPart_1D):
         for k in range(numPart_1D):
             index = i * numPart_1D**2 + j * numPart_1D + k
             q = x_min + (i + 0.5) * delta_x
-            coords[index, 0] = q - zfac * sin(k_i * q) / k_i - x_min
+            coords[index, 0] = q - zfac * np.sin(k_i * q) / k_i - x_min
             coords[index, 1] = (j + 0.5) * delta_x
             coords[index, 2] = (k + 0.5) * delta_x
-            T = T_i * (1.0 / (1.0 - zfac * cos(k_i * q))) ** (2.0 / 3.0)
+            T = T_i * (1.0 / (1.0 - zfac * np.cos(k_i * q))) ** (2.0 / 3.0)
             u[index] = kB_in_SI * T / (gamma - 1.0) / mH_in_kg
             h[index] = 1.2348 * delta_x
             m[index] = m_i
-            v[index, 0] = -H_0 * (1.0 + z_c) / sqrt(1.0 + z_i) * sin(k_i * q) / k_i
+            v[index, 0] = (
+                -H_0 * (1.0 + z_c) / np.sqrt(1.0 + z_i) * np.sin(k_i * q) / k_i
+            )
             v[index, 1] = 0.0
             v[index, 2] = 0.0
 
-            rho = rho_0 / (1.0 - zfac * cos(k_i * q))
+            rho = rho_0 / (1.0 - zfac * np.cos(k_i * q))
             rhos[index] = rho
 
 # Unit conversion
@@ -119,41 +125,37 @@ rhos *= unit_l_in_si**3
 boxSize /= unit_l_in_si
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(100.0 * unit_l_in_si * unyt.cm)
+UM = unyt.Unit(1000.0 * unit_m_in_si * unyt.g)
+Ut = unyt.Unit(1.0 * unit_t_in_si * unyt.s)
+units = unyt.UnitSystem("zeldovich_pancake_units", UL, UM, Ut)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize, boxSize, boxSize]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 100.0 * unit_l_in_si
-grp.attrs["Unit mass in cgs (U_M)"] = 1000.0 * unit_m_in_si
-grp.attrs["Unit time in cgs (U_t)"] = 1.0 * unit_t_in_si
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.gas.coordinates = coords * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=coords, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+w.write(fileName)
 
-grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
-grp.create_dataset("Density", data=rhos, dtype="f")
-
-file.close()
+# Add the material IDs and densities
+with h5py.File(fileName, "r+") as f:
+    grp = f["PartType0"]
+    grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
+    grp.create_dataset("Density", data=rhos, dtype="f")
 
 # import pylab as pl
 

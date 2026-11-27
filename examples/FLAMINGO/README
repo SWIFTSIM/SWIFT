@@ -16,9 +16,11 @@ OR for the models with collimated jet feedback:
 (and any other optimization, library or compiler parameters specific
 to your system. Note that the lightcone module requires the Healpix library.)
 
-The scripts in the L1_m9 directory download the tables equired to run the
-fiducial FLAMINGO model. The ICs are a (100 Mpc)^3 volume at the same resolution
-as the large FLAMINGO runs but in a volume 1000x smaller.  Information about how
+The L1_m8, L1_m9 and L1_m10 directories contain the setups at the three
+FLAMINGO resolutions (m8, m9 and m10). The scripts in each directory download
+the ICs and the tables required to run the fiducial FLAMINGO model at that
+resolution. The ICs are a (100 Mpc)^3 volume at the same resolution as the
+corresponding large FLAMINGO runs but in a volume 1000x smaller.  Information about how
 to generate the exact ICs used in the official FLAMINGO simulations can be found
 on the project webpage (see above).
 

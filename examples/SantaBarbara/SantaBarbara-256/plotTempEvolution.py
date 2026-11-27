@@ -158,13 +158,13 @@ if cooling_model == "Constant Lambda":
     plt.text(
         1e-2,
         6e4,
-        "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"
-        % (Lambda / 10.0 ** (int(log10(Lambda))), log10(Lambda)),
+        r"$\Lambda_{\rm const}/n_{\rm H}^2 = %.1f\times10^{%d}~[\rm{cgs}]$"
+        % (Lambda / 10.0 ** (int(np.log10(Lambda))), np.log10(Lambda)),
         fontsize=7,
     )
 elif cooling_model == "EAGLE":
     plt.text(1e-2, 6e4, "EAGLE (Wiersma et al. 2009)")
-elif cooling_model == b"Grackle":
+elif cooling_model.startswith("Grackle"):
     plt.text(1e-2, 6e4, "Grackle (Smith et al. 2016)")
 else:
     plt.text(1e-2, 6e4, "No cooling")

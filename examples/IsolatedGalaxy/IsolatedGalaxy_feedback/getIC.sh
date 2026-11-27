@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/IsolatedGalaxies/lowres8.hdf5
 
 # Initial conditions from Nobels et al. arXiv:2309.13750

@@ -5,3 +5,6 @@ The reference solution assumes case A recombination.
 
 To run with GEAR-RT, compile swift with:
     --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none  --with-grackle=$GRACKLE_ROOT 
+
+The script makeIC.py needs the python package pyyaml, besides the packages of
+examples/requirements.txt.

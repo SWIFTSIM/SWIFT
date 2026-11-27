@@ -17,8 +17,9 @@
 #
 ##############################################################################
 
-import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Some constants
 solar_mass_cgs = 1.988480e33
@@ -37,46 +38,44 @@ fileName = "stellar_evolution.hdf5"
 unit_l_cgs = 3.085678e24  # kpc
 unit_m_cgs = 1.988480e43  # 10^10 Msun
 unit_v_cgs = 1e5  # km / s
-unit_A_cgs = 1.0
-unit_T_cgs = 1.0
 unit_t_cgs = unit_l_cgs / unit_v_cgs
 
 boxsize_cgs = 10.0 * kpc_in_cm
 vol_cgs = boxsize_cgs**3
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_32.hdf5", "r")
+glass = sw.load("glassCube_32.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
+pos = glass.gas.coordinates.value
 eps = 1e-6
 pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * boxsize_cgs / unit_l_cgs
-h = glass["/PartType0/SmoothingLength"][:] * boxsize_cgs / unit_l_cgs
+h = glass.gas.smoothing_lengths.value * boxsize_cgs / unit_l_cgs
 
-numPart = size(h)
+numPart = np.size(h)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m_cgs = zeros(numPart)
-u_cgs = zeros(numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m_cgs = np.zeros(numPart)
+u_cgs = np.zeros(numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 m_cgs[:] = rho_cgs * vol_cgs / numPart
 u_cgs[:] = P_cgs / (rho_cgs * (gamma - 1))
 
 # Stars
-star_pos = zeros((1, 3))
+star_pos = np.zeros((1, 3))
 star_pos[:, :] = 0.5 * boxsize_cgs / unit_l_cgs
 
-star_v = zeros((1, 3))
+star_v = np.zeros((1, 3))
 star_v[:, :] = 0.0
 
 # increase mass to keep it at center
 star_m_cgs = m_cgs[0]
-star_ids = array([numPart + 1])
-star_h = array([h.max()])
+star_ids = np.array([numPart + 1])
+star_h = np.array([h.max()])
 
 # --------------------------------------------------
 
@@ -103,49 +102,32 @@ boxsize = boxsize_cgs / unit_l_cgs
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(unit_l_cgs * unyt.cm)
+UM = unyt.Unit(unit_m_cgs * unyt.g)
+Ut = unyt.Unit(unit_t_cgs * unyt.s)
+units = unyt.UnitSystem("stellar_evolution", UL, UM, Ut)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxsize] * 3
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 1, 0]
-# grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 1, 0]
-# grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 0
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = unit_l_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = unit_m_cgs
-grp.attrs["Unit time in cgs (U_t)"] = unit_t_cgs
-grp.attrs["Unit current in cgs (U_I)"] = unit_A_cgs
-grp.attrs["Unit temperature in cgs (U_T)"] = unit_T_cgs
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxsize] * 3, UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
 # stellar group
-grp = file.create_group("/PartType4")
-grp.create_dataset("Coordinates", data=star_pos, dtype="d")
-grp.create_dataset("Velocities", data=star_v, dtype="f")
-grp.create_dataset("Masses", data=star_m, dtype="f")
-grp.create_dataset("SmoothingLength", data=star_h, dtype="f")
-grp.create_dataset("ParticleIDs", data=star_ids, dtype="L")
+w.stars.coordinates = star_pos * UL * w.a.comoving
+w.stars.velocities = star_v * UL / Ut * w.a.comoving**0
+w.stars.masses = np.array([star_m]) * UM * w.a.comoving**0
+w.stars.smoothing_lengths = star_h * UL * w.a.comoving
+w.stars.particle_ids = star_ids.astype(np.uint64)
 
-file.close()
+w.write(fileName)

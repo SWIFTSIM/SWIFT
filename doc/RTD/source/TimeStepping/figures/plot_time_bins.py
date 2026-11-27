@@ -77,9 +77,16 @@ ax[1].text(2, dt_max * 1.6, "dt_max = %g" % dt_max, color=PALETTE["blue"])
 ax[1].text(2, dt_min * 1.6, "dt_min = %g" % dt_min, color=PALETTE["blue"])
 ax[1].set_xlabel("Time bin")
 ax[1].set_ylabel("Length of the time-step [internal time units]")
-ax[1].plot([bin_low, bin_high], [phys[bin_low - 1], phys[bin_high - 1]], "o",
-           color=PALETTE["vermillion"], ms=8, mfc="none", mew=2,
-           label="limits reported by SWIFT (bins %d and %d)" % (bin_low, bin_high))
+ax[1].plot(
+    [bin_low, bin_high],
+    [phys[bin_low - 1], phys[bin_high - 1]],
+    "o",
+    color=PALETTE["vermillion"],
+    ms=8,
+    mfc="none",
+    mew=2,
+    label="limits reported by SWIFT (bins %d and %d)" % (bin_low, bin_high),
+)
 ax[1].legend(loc="lower right", fontsize=9)
 ax[1].set_title("Example run of length %g" % (t_end - t_begin), fontsize=11)
 ax[1].grid(True, which="major", color="0.85")

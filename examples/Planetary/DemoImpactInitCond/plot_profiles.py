@@ -26,7 +26,6 @@ Sandnes et al. (2025), Ruiz-Bonilla el al. (2022), and Kegerreis et al. (2019).
 The overall profile of the settled SPH planet should still align with the input.
 """
 
-import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np

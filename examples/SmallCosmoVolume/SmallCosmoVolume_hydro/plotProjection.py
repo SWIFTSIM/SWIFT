@@ -17,12 +17,15 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_pixel_grid, project_gas
-from swiftsimio.visualisation.smoothing_length_generation import (
+from swiftsimio.visualisation import (
+    project_pixel_grid,
+    project_gas,
     generate_smoothing_lengths,
 )
 
 from unyt import msun, kpc
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 def set_colorbar(ax, im):
@@ -81,7 +84,6 @@ dm_mass = project_pixel_grid(
     # Note here that we pass in the dark matter dataset not the whole
     # data object, to specify what particle type we wish to visualise
     data=data.dark_matter,
-    boxsize=data.metadata.boxsize,
     resolution=1024,
     project="masses",
     parallel=True,
@@ -101,30 +103,30 @@ ax1 = fig.add_subplot(121)
 im1 = ax1.imshow(
     dm_mass.T, origin="lower", extent=extent, cmap="inferno", norm=LogNorm()
 )
-ax1.set_title("Dark Matter Mass", usetex=True)
+ax1.set_title("Dark Matter Mass")
 set_colorbar(ax1, im1)
 
 ax2 = fig.add_subplot(122)
 im2 = ax2.imshow(
     mass_map.T, origin="lower", extent=extent, cmap="inferno", norm=LogNorm()
 )
-ax2.set_title("Baryon Mass", usetex=True)
+ax2.set_title("Baryon Mass")
 set_colorbar(ax2, im2)
 
 
 # Add xlabels
 xunits = data.dark_matter.coordinates.units.latex_representation()
 for ax in [ax1, ax2]:
-    ax.set_xlabel("x [" + xunits + "]", usetex=True)
-    ax.set_ylabel("y [" + xunits + "]", usetex=True)
+    ax.set_xlabel("x [$" + xunits + "$]")
+    ax.set_ylabel("y [$" + xunits + "$]")
 
 
 # Add title
-title = file.replace("_", r"\_")  # exception handle underscore for latex
+title = file
 if meta.cosmology is not None:
     title += ", $z$ = {0:.3f}".format(meta.z)
 title += ", $t$ = {0:.2e}".format(meta.time.to("Gyr"))
-fig.suptitle(title, usetex=True)
+fig.suptitle(title)
 
 # Save figure
 plt.tight_layout()

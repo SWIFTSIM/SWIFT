@@ -77,8 +77,9 @@ def get_min_active_bin(ti_current, ti_old):
     return get_max_active_bin(ti_current - ti_old)
 
 
-def apply_growth_rules(new_dti, old_bin, ti_end, min_ngb_bin=NUM_TIME_BINS,
-                       delta_bin=2):
+def apply_growth_rules(
+    new_dti, old_bin, ti_end, min_ngb_bin=NUM_TIME_BINS, delta_bin=2
+):
     """The alignment and growth rules of make_integer_timestep().
 
     Takes the integer step that the physics asks for and returns the integer

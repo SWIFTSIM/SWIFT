@@ -1,5 +1,6 @@
-
 #!/bin/bash
+
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 

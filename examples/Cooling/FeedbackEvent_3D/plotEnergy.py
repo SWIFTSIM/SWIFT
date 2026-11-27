@@ -9,19 +9,9 @@ from swiftsimio import load
 
 from unyt import Gyr, erg, mh, kb
 
-from makeIC import (
-    gamma,
-    initial_density,
-    initial_temperature,
-    inject_temperature,
-    mu,
-    particle_mass,
-)
+from makeIC import gamma, initial_temperature, inject_temperature, mu, particle_mass
 
-try:
-    plt.style.use("mnras_durham")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 # Snapshot for grabbing the units.

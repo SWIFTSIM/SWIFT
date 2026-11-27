@@ -65,7 +65,7 @@ written to it.
 
 The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file
-``examples/parameter_examples.yml``.
+``examples/parameter_example.yml``.
 
 .. _Parameters_meta_data:
 

@@ -144,6 +144,19 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
     struct spart *sp, const struct feedback_props *feedback_props) {}
 
 /**
+ * @brief Prepare the feedback fields after a star is born (nothing to do).
+ *
+ * @param sp The #spart to act upon.
+ * @param feedback_props The properties of the feedback model.
+ * @param star_type The stellar type, an int since the enum only exists under
+ * --with-stars=GEAR.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_init_after_star_formation(struct spart *sp,
+                                   const struct feedback_props *feedback_props,
+                                   const int star_type) {}
+
+/**
  * @brief Initialises the s-particles feedback props for the first time
  *
  * This function is called only once just after the ICs have been

@@ -17,12 +17,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
-import matplotlib
-
-# matplotlib.use("Agg")
-import h5py as h5
+import glob
 import numpy as np
+import swiftsimio as sw
 import matplotlib.pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # check if we have tqdm installed
 try:
@@ -50,7 +50,6 @@ params = {
     "legend.fontsize": 16,
     "xtick.labelsize": 16,
     "ytick.labelsize": 16,
-    "text.usetex": True,
     "figure.figsize": (7.5, 7.5),
     "figure.subplot.left": 0.12,
     "figure.subplot.right": 0.98,
@@ -62,67 +61,58 @@ plt.rcParams.update(params)
 
 
 def getSFH(filename, points):
-    weightfac = 1e2 * points
+    """
+    Star formation rate (in Msun/yr) from the birth times of the star
+    particles within a 20x20x4 kpc slab centred on the box, in a number of
+    time bins (in Myr) from the start of the simulation to the time of the
+    snapshot.
+    """
 
-    # Read the data
-    with h5.File(filename, "r") as f:
-        box_size = f["/Header"].attrs["BoxSize"][0]
-        coordinates = f["/PartType4/Coordinates"][:, :]
-        mass = f["/PartType4/Masses"][:]
-        birth_time = f["/PartType4/BirthTimes"][:]
+    data = sw.load(filename)
+
+    offset = (
+        data.stars.coordinates.to_value("kpc")
+        - data.metadata.boxsize.to_value("kpc") / 2.0
+    )
+    birth_time = data.stars.birth_times.to_value("Myr")
+    mass = data.stars.masses.to_value("Msun")
 
     absmaxz = 2  # kpc
     absmaxxy = 10  # kpc
 
     part_mask = (
-        ((coordinates[:, 0] - box_size / 2.0) > -absmaxxy)
-        & ((coordinates[:, 0] - box_size / 2.0) < absmaxxy)
-        & ((coordinates[:, 1] - box_size / 2.0) > -absmaxxy)
-        & ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
-        & ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
-        & ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
+        (np.abs(offset[:, 0]) < absmaxxy)
+        & (np.abs(offset[:, 1]) < absmaxxy)
+        & (np.abs(offset[:, 2]) < absmaxz)
         & (birth_time > 0.0)
-    )  # & (flag==1)
+    )
 
     birth_time = birth_time[part_mask]
     mass = mass[part_mask]
 
-    histogram = np.histogram(
-        birth_time, bins=points, weights=mass * weightfac, range=[0, 0.1]
-    )
-    values = histogram[0]
-    xvalues = (histogram[1][:-1] + histogram[1][1:]) / 2.0
-    return xvalues, values
+    bins = np.linspace(0.0, data.metadata.t.to_value("Myr"), points + 1)
+    mass_formed, edges = np.histogram(birth_time, bins=bins, weights=mass)
+
+    bin_width = (edges[1] - edges[0]) * 1e6  # yr
+    xvalues = (edges[:-1] + edges[1:]) / 2.0
+    return xvalues, mass_formed / bin_width
 
 
-def getsfrsnapwide(numbsnaps):
-    """Get the SFH from all the individual snaps"""
+def getsfrsnapwide(filenames):
+    """
+    Get the SFH from all the individual snaps: time (in Myr) and summed star
+    formation rate of the star-forming gas particles (in Msun/yr)
+    """
 
-    # time = np.arange(1, 101, 1)
-    time = np.zeros(numbsnaps)
-    SFR_gparticles = np.zeros(numbsnaps)
-    previous_mass = 0
-    previous_numb = 0
-    for i in tqdm(range(0, numbsnaps)):
-        # Read the data
-        filename = "output_%04d.hdf5" % i
-        with h5.File(filename, "r") as f:
-            box_size = f["/Header"].attrs["BoxSize"][0]
-            coordinates = f["/PartType0/Coordinates"][:, :]
-            SFR = f["/PartType0/StarFormationRates"][:]
-            coordinates_star = f["/PartType4/Coordinates"][:, :]
-            masses_star = f["/PartType4/Masses"][:]
-            time[i] = f["/Header"].attrs["Time"]
+    time = np.zeros(len(filenames))
+    SFR_gparticles = np.zeros(len(filenames))
+    for i, filename in enumerate(tqdm(filenames)):
+        data = sw.load(filename)
 
-        absmaxz = 2  # kpc
-        absmaxxy = 10  # kpc
+        SFR = data.gas.star_formation_rates.to_value("Msun/yr")
 
-        part_mask = SFR > 0
-
-        SFR = SFR[part_mask]
-
-        total_SFR = np.sum(SFR)
-        SFR_gparticles[i] = total_SFR
+        time[i] = data.metadata.t.to_value("Myr")
+        SFR_gparticles[i] = np.sum(SFR[SFR > 0])
 
     return time, SFR_gparticles
 
@@ -131,6 +121,9 @@ def getsfrsnapwide(numbsnaps):
 if __name__ == "__main__":
     # Read the logger file
     logdata = np.loadtxt("SFR.txt")
+
+    # The snapshots of the run
+    snapshots = sorted(glob.glob("output_[0-9][0-9][0-9][0-9].hdf5"))
 
     # Define the logger data in the correct units
     timelog = logdata[:, 1] * 9.778131e2
@@ -143,7 +136,7 @@ if __name__ == "__main__":
     plt.plot(timelog, CSFH_Mstar, label="Stars formed")
     plt.plot(timelog, CSFH_SFRdt, label="Active gas particles")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("CSFH [$\\rm M_\odot$]")
+    plt.ylabel("CSFH [$\\rm M_\\odot$]")
     plt.xlim(0, 100)
     # plt.ylim(0, 1.2e9)
     plt.legend()
@@ -151,9 +144,9 @@ if __name__ == "__main__":
     plt.close()
 
     # Calculate the Cumulative sum of the particles from the snap shots
-    f = h5.File("./output_0100.hdf5", "r")
-    birthtime = f["/PartType4/BirthTimes"][:] * 9.778131e2
-    mass = f["/PartType4/Masses"][:] * 1e10
+    data = sw.load(snapshots[-1])
+    birthtime = data.stars.birth_times.to_value("Myr")
+    mass = data.stars.masses.to_value("Msun")
     CSFH_birth = np.zeros(len(logdata[:, 0]))
     for i in tqdm(range(len(timelog))):
         mask = (birthtime > 0) & (birthtime <= timelog[i])
@@ -164,7 +157,7 @@ if __name__ == "__main__":
     plt.plot(timelog, CSFH_SFRdt, label="Active gas particles")
     plt.plot(timelog, CSFH_birth, label="Birth time")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("CSFH [$\\rm M_\odot$]")
+    plt.ylabel("CSFH [$\\rm M_\\odot$]")
     plt.legend()
     plt.xlim(0, 100)
     plt.ylim(0, 1.2e9)
@@ -197,10 +190,10 @@ if __name__ == "__main__":
     plt.close()
 
     # calculate the SFH from the last snapshot
-    time_birth0, SFR_birth0 = getSFH("output_%04d.hdf5" % 100, 100)
-    time_birth1, SFR_birth1 = getSFH("output_%04d.hdf5" % 100, 200)
-    time_birth2, SFR_birth2 = getSFH("output_%04d.hdf5" % 100, 1000)
-    time_birth3, SFR_birth3 = getSFH("output_%04d.hdf5" % 100, 4000)
+    time_birth0, SFR_birth0 = getSFH(snapshots[-1], 100)
+    time_birth1, SFR_birth1 = getSFH(snapshots[-1], 200)
+    time_birth2, SFR_birth2 = getSFH(snapshots[-1], 1000)
+    time_birth3, SFR_birth3 = getSFH(snapshots[-1], 4000)
 
     # make a plot of the different number of bins in the star formation routine
     plt.plot(time_birth3, SFR_birth3, label="4000 bins")
@@ -208,16 +201,20 @@ if __name__ == "__main__":
     plt.plot(time_birth1, SFR_birth1, label="200 bins")
     plt.plot(time_birth0, SFR_birth0, label="100 bins")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("SFH [$\\rm M_\odot \\rm yr^{-1}$]")
+    plt.ylabel("SFH [$\\rm M_\\odot \\rm yr^{-1}$]")
     plt.savefig("SFH_birth_time.png")
     plt.close()
 
     # Make a plot of the SFH from the snaps
-    timesnap, SFRsnap = getsfrsnapwide(100)
-    np.savetxt("SnapSFH.txt", np.transpose([timesnap, SFRsnap]))
-    plt.plot(timesnap * 9.778131e2, SFRsnap * 1.022690e1, label="SFH gas tracers")
+    timesnap, SFRsnap = getsfrsnapwide(snapshots)
+    np.savetxt(
+        "SnapSFH.txt",
+        np.transpose([timesnap, SFRsnap]),
+        header="Time [Myr], SFR [Msun/yr]",
+    )
+    plt.plot(timesnap, SFRsnap, label="SFH gas tracers")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("SFH [$\\rm M_\odot \\rm yr^{-1}$]")
+    plt.ylabel("SFH [$\\rm M_\\odot \\rm yr^{-1}$]")
     plt.ylim(0, 15)
     plt.xlim(0, 100)
     plt.savefig("SFH_snapshots.png")
@@ -226,7 +223,7 @@ if __name__ == "__main__":
     # Make a plot of the log file
     plt.plot(timelog, logdata[:, 7] * 1.023009e01, label="SFH log file")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("SFH [$\\rm M_\odot \\rm yr^{-1}$]")
+    plt.ylabel("SFH [$\\rm M_\\odot \\rm yr^{-1}$]")
     plt.ylim(0, 15)
     plt.xlim(0, 100)
     plt.legend()
@@ -235,9 +232,9 @@ if __name__ == "__main__":
 
     # Make a plot of the log file and the snaps
     plt.plot(timelog, logdata[:, 7] * 1.023009e01, label="SFH log file")
-    plt.plot(timesnap * 9.778131e2, SFRsnap * 1.022690e1, label="SFH gas tracers")
+    plt.plot(timesnap, SFRsnap, label="SFH gas tracers")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("SFH [$\\rm M_\odot \\rm yr^{-1}$]")
+    plt.ylabel("SFH [$\\rm M_\\odot \\rm yr^{-1}$]")
     plt.ylim(0, 15)
     plt.xlim(0, 100)
     plt.legend()

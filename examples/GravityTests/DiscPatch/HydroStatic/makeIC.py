@@ -20,11 +20,10 @@
 #
 ##############################################################################
 
-import h5py
-import sys
 import numpy as np
+import unyt
+import swiftsimio as sw
 import math
-import random
 
 # Generates a disc-patch in hydrostatic equilibrium
 #
@@ -133,9 +132,9 @@ print("")
 ####################################################################
 
 # Read glass pre-ICs
-infile = h5py.File("glassCube_32.hdf5", "r")
-one_glass_pos = infile["/PartType0/Coordinates"][:, :]
-one_glass_h = infile["/PartType0/SmoothingLength"][:]
+infile = sw.load("glassCube_32.hdf5")
+one_glass_pos = infile.gas.coordinates.value
+one_glass_h = infile.gas.smoothing_lengths.value
 
 # Rescale to the problem size
 one_glass_pos *= side_length
@@ -168,37 +167,32 @@ ids = 1 + np.linspace(0, numPart, numPart, endpoint=False)
 # Create and write output file
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(unit_length_in_cgs * unyt.cm)
+UM = unyt.Unit(unit_mass_in_cgs * unyt.g)
+Ut = unyt.Unit(unit_time_in_cgs * unyt.s)
+units = unyt.UnitSystem("disc_patch_hydrostatic", UL, UM, Ut)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = unit_length_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = unit_mass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = unit_time_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize_x, boxSize_y, boxSize_z]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize_x, boxSize_y, boxSize_z],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
 # write gas particles
-grp0 = file.create_group("/PartType0")
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = vel * UL / Ut * w.a.comoving**0
+w.gas.masses = mass * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-ds = grp0.create_dataset("Coordinates", (numPart, 3), "f", data=pos)
-ds = grp0.create_dataset("Velocities", (numPart, 3), "f")
-ds = grp0.create_dataset("Masses", (numPart,), "f", data=mass)
-ds = grp0.create_dataset("SmoothingLength", (numPart,), "f", data=h)
-ds = grp0.create_dataset("InternalEnergy", (numPart,), "f", data=u)
-ds = grp0.create_dataset("ParticleIDs", (numPart,), "L", data=ids)
+w.write(fileName)
 
 ####################################################################
 

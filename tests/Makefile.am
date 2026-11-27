@@ -39,7 +39,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline \
+        testLog testDistance testTimeline testSortShiftBound \
         testSIDMSetUp.sh testSIDMSymmetry.sh testReadingSIDM.sh test27cellsSIDM.sh \
         test125cellsSIDM.sh  # testMatrixInversion
 
@@ -54,8 +54,9 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
-		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testMeshGravityRebuildCheck \
+		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
+		 testNeutrinoCosmology \
+		 testNeutrinoFermiDirac testLog testTimeline testSortShiftBound \
 	         testSIDMSetUp testSIDMSymmetry testReadingSIDM test27cellsSIDM test125cellsSIDM
 
 # Rebuild tests when SWIFT is updated.
@@ -100,6 +101,8 @@ testNeutrinoFermiDirac_SOURCES = testNeutrinoFermiDirac.c
 testTimeIntegration_SOURCES = testTimeIntegration.c
 
 testActivePair_SOURCES = testActivePair.c
+
+testSortShiftBound_SOURCES = testSortShiftBound.c
 
 test27cells_SOURCES = test27cells.c
 

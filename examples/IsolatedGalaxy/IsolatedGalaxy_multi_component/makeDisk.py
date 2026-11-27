@@ -18,11 +18,11 @@
 #
 ################################################################################
 
-from pNbody import *
+import numpy as np
 from pNbody import ic
 from astropy import units as u
 from astropy import constants as c
-from pNbody import thermodyn, ctes
+from pNbody import thermodyn, iofunc
 
 #################################################################
 # Units
@@ -590,7 +590,6 @@ nb.write()
 # %%
 # Add the StellarParticleType attribute to the dataset
 import h5py as h5
-import numpy as np
 
 nb_star = nb.select("stars")
 N_star = np.sum(nb_star.npart)

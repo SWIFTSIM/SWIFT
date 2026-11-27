@@ -33,6 +33,8 @@ import unyt
 from matplotlib import pyplot as plt
 from matplotlib import ticker as mticker
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
 # arguments for plot of references
@@ -175,7 +177,6 @@ def get_snapshot_data(snaplist):
     internal_energies = np.zeros(nsnaps) * energy_units
     photon_energies = np.zeros((ngroups, nsnaps)) * energy_units
 
-    time_first = firstdata.metadata.time.copy()
     for i, snap in enumerate(snaplist):
 
         data = swiftsimio.load(snap)
@@ -279,7 +280,7 @@ if __name__ == "__main__":
     ax4.plot(
         xcoords,
         tot_energy,
-        label=f"total energy budget",
+        label="total energy budget",
         color="k",
         ls="--",
         **plotkwargs,
@@ -297,7 +298,6 @@ if __name__ == "__main__":
     ax4.set_xlabel(xlabel)
     ax4.set_ylabel(
         r"energy budget [$" + energy_units.units.latex_representation() + "$]",
-        usetex=True,
     )
     ax4.legend(prop=legendprops)
     ax4.grid()

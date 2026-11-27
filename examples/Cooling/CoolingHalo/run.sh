@@ -1,12 +1,18 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
-echo "Generating initial conditions for the isothermal potential box example..."
-python3 makeIC.py 10000 
+if [ ! -e CoolingHalo.hdf5 ]
+then
+    echo "Generating initial conditions for the cooling halo example..."
+    python3 makeIC.py 10000
+fi
 
 ../../../swift --external-gravity --hydro --cooling --threads=16 cooling_halo.yml 2>&1 | tee output.log
 
-python3 radial_profile.py 2. 200 100
+mkdir -p plots/radial_velocity_profile
+python3 velocity_profile.py 2. 200 100
 
 python3 internal_energy_profile.py 2. 200 100
 

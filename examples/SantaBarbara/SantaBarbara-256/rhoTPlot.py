@@ -5,7 +5,8 @@ Makes a rho-T plot. Uses the swiftsimio library.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from swiftsimio import SWIFTDataset, SWIFTMetadata, SWIFTUnits
+from swiftsimio import SWIFTDataset, mask
+from swiftsimio.metadata.objects import SWIFTMetadata
 
 from unyt import mh, cm, Gyr
 from tqdm import tqdm
@@ -49,8 +50,10 @@ def make_hist(filename, density_bounds, temperature_bounds, bins):
         np.log10(temperature_bounds[0]), np.log10(temperature_bounds[1]), bins
     )
 
+    density, temperature = get_data(filename)
+
     H, density_edges, temperature_edges = np.histogram2d(
-        *get_data(filename), bins=[density_bins, temperature_bins]
+        density.value, temperature.value, bins=[density_bins, temperature_bins]
     )
 
     return H.T, density_edges, temperature_edges
@@ -101,9 +104,8 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
 
     def grab_metadata(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
-        data = SWIFTMetadata(filename)
-
-        return data
+        # A mask only reads the metadata, which is all we need here
+        return mask(filename).metadata
 
     def grab_data(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
@@ -128,8 +130,6 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
         )
     ]
 
-    units = SWIFTUnits("{:s}_{:04d}.hdf5".format(args["stub"], args["initial"]))
-
     # Need to get a reasonable norm so that we don't overshoot.
     max_particles = max([x.max() for x in histograms])
 
@@ -153,10 +153,12 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
     # Down the metadata text.
 
     def format_metadata(metadata: SWIFTMetadata):
-        t = metadata.t * units.units["Unit time in cgs (U_t)"]
+        t = metadata.t
         t.convert_to_units(Gyr)
 
-        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(metadata.a, metadata.z, t)
+        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(
+            metadata.scale_factor, metadata.z, t
+        )
 
         return x
 

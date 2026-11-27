@@ -37,7 +37,7 @@ When retrieving particle data at a specific time, the CSDS-reader accesses the p
 
 The reader provides functionality to retrieve and track a defined set of particles based on their IDs across the simulation history.
 
-To simplify data analysis, the CSDS reader provides provides a Python wrapper around its C++ code. You can enable the wrapper through the configuration option ``--with-python``. The CSDS Python wrapper requires the Boost library and this can be specified with the configuration option ``--with-boost``. An example of python file to read the data is provided in ``csds/examples/reader_example.py``.
+To simplify data analysis, the CSDS reader provides a Python wrapper around its C++ code. You can enable the wrapper through the configuration option ``--enable-python``. The CSDS Python wrapper requires the Boost library and this can be specified with the configuration option ``--with-boost``. An example of python file to read the data is provided in ``csds/examples/reader_example.py``.
 
 .. note::
    The accuracy is governed by the frequency of recording for each particle. For hydrodynamic particles, it is advised to use a small frequency (< 10 steps) since these can undergo shocks that change their properties nonlinearly.

@@ -1,9 +1,11 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e glassCube_32.hdf5 ]
 then
-    echo "Fetching initial glass file for the Supernovae feedback example..."
+    echo "Fetching initial glass file for the stellar evolution example..."
     ./getGlass.sh
 fi
 if [ ! -e stellar_evolution.hdf5 ]
@@ -22,7 +24,14 @@ fi
 if [ ! -e photometry ]
 then
     echo "Fetching EAGLE photometry tables..."
-    ../getEaglePhotometryTable.sh
+    ./getEaglePhotometryTable.sh
+fi
+
+# Get the cooling tables (the cooling model is initialised by --temperature)
+if [ ! -e coolingtables ]
+then
+    echo "Fetching EAGLE cooling tables..."
+    ../../Cooling/getEagleCoolingTable.sh
 fi
 
 # Get the solutions

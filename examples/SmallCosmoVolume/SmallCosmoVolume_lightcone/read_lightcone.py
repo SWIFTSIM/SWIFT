@@ -2,7 +2,6 @@
 
 import h5py
 import numpy as np
-import healpy as hp
 
 
 def read_map(basedir, basename, shell_nr, map_name, return_sum=False):

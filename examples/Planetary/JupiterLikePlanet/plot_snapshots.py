@@ -19,7 +19,6 @@
 
 """Plot the particle positions from the DemoImpactInitCond settling simulations."""
 
-import os
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable

@@ -41,7 +41,6 @@ Restarts:
 # Parameters for the hydrodynamics scheme
 SPH:
     resolution_eta:     1.487           # Target smoothing length in units of the mean inter-particle separation (1.487 == 100Ngbs with the Wendland C2 kernel).
-    delta_neighbours:   0.1             # The tolerance for the targetted number of neighbours.
     CFL_condition:      0.2             # Courant-Friedrich-Levy condition for time integration.
     h_max:              10.             # Maximal allowed smoothing length (in internal units).
     viscosity_alpha:    1.5             # Override for the initial value of the artificial viscosity.

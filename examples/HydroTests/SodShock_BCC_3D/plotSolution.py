@@ -28,7 +28,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import stats
 
 from swiftsimio import load
 from analyticSolution import analytic
@@ -38,16 +37,7 @@ snap = int(sys.argv[1])
 sim = load(f"sodShock_{snap:04d}.hdf5")
 
 # Set up plotting stuff
-try:
-    plt.style.use("mnras_durham")
-except:
-    rcParams = {
-        "font.serif": ["STIX", "Times New Roman", "Times"],
-        "font.family": ["serif"],
-        "mathtext.fontset": "stix",
-        "font.size": 8,
-    }
-    plt.rcParams.update(rcParams)
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 # See analyticSolution for params.

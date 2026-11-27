@@ -15,7 +15,7 @@ T=${T:=200}  # Gas temperature
 gas_density=${gas_density:=100} # Gas density in atom/cm^3
 num_star=${num_star:=1} # number of stars
 
-set -e
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -45,11 +45,11 @@ str="${star_type_name}_level${level}_M${star_mass}_Z${Z}_Rho${gas_density}_GasM$
 # Create directory if not already present
 if [ -d "$str" ]; then
     echo "$str directory exists. Its content will be removed."
-    rm -r $str
+    rm -rf $str
 else
     echo "$str directory does not exist. It will be created."
 fi
-mkdir $str
+mkdir -p $str
 cd $str
 
 # Generate the Initial Conditions
@@ -60,7 +60,7 @@ python3 ../makeIC.py --level $level --T $T --rho $gas_density \
     -o ICs_homogeneous_box.hdf5
 
 #--------------------- Run the simulation | no cooling part --------------------#
-mkdir noCooling
+mkdir -p noCooling
 cd noCooling
 # Start the simulation
 ../../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log
@@ -71,7 +71,7 @@ python3 ../../gas_profile_analysis.py "./" | tee gas_profile_analysis.txt
 python3 ../../bubble_evolution.py --log "radial_peak_positions.txt"
 cd ..
 #--------------------- Run the simulation | cooling part --------------------#
-mkdir withCooling
+mkdir -p withCooling
 cd withCooling
 # Start the simulation
 ../../../../../swift --hydro --sync --limiter --external-gravity --cooling --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log 

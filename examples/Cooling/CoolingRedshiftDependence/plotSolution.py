@@ -149,20 +149,10 @@ def plot_single_data(
 
     if run == 0:
         label_energy = "Particle Energy"
-        label_radiated = "Radiated Energy"
-        label_sum = "Sum"
     else:
         label_energy = ""
-        label_radiated = ""
-        label_sum = ""
 
     ax[2].plot(data[0], data[3], label=label_energy, ls="dotted", color=f"C{run}")
-
-    # ax[2].plot(data[0], data[4], label=label_radiated, ls="dashed", C=f"C{run}")
-
-    # ax[2].plot(
-    #    data[0], [x + y for x, y in zip(*data[3:5])], label=label_sum, C=f"C{run}"
-    # )
 
     return
 

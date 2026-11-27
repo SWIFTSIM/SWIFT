@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ ! -e lowres8.hdf5 ] 
 then     
     echo "Fetching initial conditions for the isolated galaxy example..."

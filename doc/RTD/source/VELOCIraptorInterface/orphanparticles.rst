@@ -37,7 +37,7 @@ the fly. It is enabled by running configure with the flag
 
 .. code-block:: bash
 
-  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/src --enable-velociraptor-orphans
+  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/build/src --enable-velociraptor-orphans
 
 If SWIFT is configured with this flag then whenever VELOCIraptor is invoked
 during a simulation additional output files will be generated alongside the

@@ -19,7 +19,6 @@
 ################################################################################
 import numpy as np
 from hmf import MassFunction
-import hmf
 from astropy.cosmology import FlatLambdaCDM
 
 

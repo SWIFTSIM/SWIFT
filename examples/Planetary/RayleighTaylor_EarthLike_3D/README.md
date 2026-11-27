@@ -26,3 +26,7 @@ BoundaryParticles:
   boundary_particle_max_id:        20992
 
 This value is provided by the script makeIC.py and depends on the resolution.
+
+Besides the packages of `examples/requirements.txt`, `makeIC.py` needs woma,
+in a version older than 1.5:
+    python3 -m pip install "woma<1.5"

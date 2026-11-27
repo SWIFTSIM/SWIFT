@@ -30,6 +30,6 @@ f = File(filename, "r")
 rho = f["PartType0"]["Densities"][:]
 
 plt.hist(rho, 100, log=True)
-plt.xlabel("Density [M$_\odot$ kpc$^{-3}$]")
+plt.xlabel(r"Density [M$_\odot$ kpc$^{-3}$]")
 plt.ylabel("Number of particles")
 plt.savefig("density.png", dpi=200)

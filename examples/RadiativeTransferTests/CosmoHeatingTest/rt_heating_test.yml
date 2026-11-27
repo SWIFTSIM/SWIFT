@@ -29,7 +29,7 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  time_first:          0.00990099
+  scale_factor_first:  0.00990099
   delta_time:          1.001
 
 # Parameters for the hydrodynamics scheme

@@ -7,7 +7,7 @@ different internal energies, and only run for 1 step. The correct ion mass
 fractions should already be set in the zeroth output.
 
 Compile swift with:
-    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none 
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 
 Additional notes:

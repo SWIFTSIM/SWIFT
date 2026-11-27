@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e glassCube_64.hdf5 ]
 then

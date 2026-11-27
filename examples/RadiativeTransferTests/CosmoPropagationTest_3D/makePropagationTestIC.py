@@ -25,17 +25,15 @@
 # Intended for the photon propagation test.
 # ---------------------------------------------------------------------
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
 from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
-glass = h5py.File("glassCube_64.hdf5", "r")
-parts = glass["PartType0"]
-xp = parts["Coordinates"][:]
-h = parts["SmoothingLength"][:]
-glass.close()
+glass = sw.load("glassCube_64.hdf5")
+parts = glass.gas
+xp = parts.coordinates.value
+h = parts.smoothing_lengths.value
 
 # replace the particle closest to the center
 # by the star

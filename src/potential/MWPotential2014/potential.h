@@ -588,7 +588,7 @@ static INLINE void potential_init_backend(
   /* Read all the dynamical friction coefficients */
   for (int i = 0; i < potential_MW2014_num_coefficients; i++) {
     char param_name[128];
-    sprintf(param_name, "MWPotential2014Potential:df_polyfit_coeffs%2d", i);
+    sprintf(param_name, "MWPotential2014Potential:df_polyfit_coeffs%02d", i);
     potential->df_polyfit_coeffs[i] = parser_get_opt_param_double(
         parameter_file, param_name, df_polyfit_coeffs_default[i]);
   }

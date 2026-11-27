@@ -9,7 +9,7 @@ filename=lowres8.hdf5
 # filename=highres6.hdf5
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 

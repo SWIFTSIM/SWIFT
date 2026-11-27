@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
  # Generate the initial conditions if they are not present.
 if [ ! -e small_cosmo_volume.hdf5 ]
 then
@@ -9,7 +11,7 @@ fi
 
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
-    ../../Cooling/getGrackleCoolingTable.sh
+    ../../GEAR_ICs_and_SCRIPTS/getGrackleCoolingTable.sh --hm2012
 fi
 
 if [ ! -e coolingtables ]

@@ -1,3 +1,5 @@
 #!/bin/bash
-wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/YieldTables/EAGLE/yieldtables.tar.gz
+set -eo pipefail
+
+wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/YieldTables/EAGLE/yieldtables.tar.gz
 tar -xf yieldtables.tar.gz

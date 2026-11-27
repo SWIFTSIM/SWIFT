@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # fiducial IC (T_0 = 10^7 K)
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/IdealisedCluster/H14_fid.hdf5
 

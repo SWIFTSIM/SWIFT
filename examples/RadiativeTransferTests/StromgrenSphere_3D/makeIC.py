@@ -23,7 +23,6 @@
 # The gas is set up with pure hydrogen gas.
 # ---------------------------------------------------------------------
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -40,11 +39,10 @@ replace_gas = False
 
 if __name__ == "__main__":
 
-    glass = h5py.File("glassCube_64.hdf5", "r")
-    parts = glass["PartType0"]
-    xp = parts["Coordinates"][:]
-    h = parts["SmoothingLength"][:]
-    glass.close()
+    glass = sw.load("glassCube_64.hdf5")
+    parts = glass.gas
+    xp = parts.coordinates.value
+    h = parts.smoothing_lengths.value
 
     r = np.sqrt(np.sum((0.5 - xp) ** 2, axis=1))
 

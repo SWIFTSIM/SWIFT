@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Fetch the initial conditions if they are not present.
 if [ ! -e particles.hdf5 ]
 then

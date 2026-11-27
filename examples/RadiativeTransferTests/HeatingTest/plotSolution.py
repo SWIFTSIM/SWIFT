@@ -31,6 +31,8 @@ import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
 # arguments for plot of references
@@ -254,7 +256,7 @@ if __name__ == "__main__":
 
     tot_energy = u + np.sum(photon_energies, axis=0)
     ax4.plot(
-        t, tot_energy, label=f"total energy budget", color="k", ls="--", **plotkwargs
+        t, tot_energy, label="total energy budget", color="k", ls="--", **plotkwargs
     )
     for g in range(ngroups):
         ax4.plot(
@@ -266,7 +268,6 @@ if __name__ == "__main__":
     ax4.set_xlabel("time [Myr]")
     ax4.set_ylabel(
         r"energy budget [$" + energy_units.units.latex_representation() + "$]",
-        usetex=True,
     )
     ax4.legend(prop=legendprops)
     ax4.grid()

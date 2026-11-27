@@ -1,8 +1,10 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import h5py
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Plot parameters
 params = {
@@ -12,7 +14,6 @@ params = {
     "legend.fontsize": 12,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.145,
     "figure.subplot.right": 0.99,
@@ -23,12 +24,11 @@ params = {
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 
 import numpy as np
 import h5py as h5
-import sys
 
 # File containing the total energy
 stats_filename = "./energy.txt"
@@ -99,28 +99,28 @@ print("Starting energy:", E_kin_stats[0], E_pot_stats[0], E_tot_stats[0])
 print("Ending   energy:", E_kin_stats[-1], E_pot_stats[-1], E_tot_stats[-1])
 
 # Plot energy evolution
-figure()
-plot(time_stats, E_kin_stats, "r-", lw=0.5, label="Kinetic energy")
-plot(time_stats, E_pot_stats, "g-", lw=0.5, label="Potential energy")
-plot(time_stats, E_tot_stats, "k-", lw=0.5, label="Total energy")
+plt.figure()
+plt.plot(time_stats, E_kin_stats, "r-", lw=0.5, label="Kinetic energy")
+plt.plot(time_stats, E_pot_stats, "g-", lw=0.5, label="Potential energy")
+plt.plot(time_stats, E_tot_stats, "k-", lw=0.5, label="Total energy")
 
-plot(time_snap[::10], E_kin_snap[::10], "rD", lw=0.5, ms=2)
-plot(time_snap[::10], E_pot_snap[::10], "gD", lw=0.5, ms=2)
-plot(time_snap[::10], E_tot_snap[::10], "kD", lw=0.5, ms=2)
+plt.plot(time_snap[::10], E_kin_snap[::10], "rD", lw=0.5, ms=2)
+plt.plot(time_snap[::10], E_pot_snap[::10], "gD", lw=0.5, ms=2)
+plt.plot(time_snap[::10], E_tot_snap[::10], "kD", lw=0.5, ms=2)
 
-legend(loc="center right", fontsize=8, frameon=False, handlelength=3, ncol=1)
-xlabel("${\\rm{Time}}$", labelpad=0)
-ylabel("${\\rm{Energy}}$", labelpad=0)
-xlim(0, 8)
+plt.legend(loc="center right", fontsize=8, frameon=False, handlelength=3, ncol=1)
+plt.xlabel("${\\rm{Time}}$", labelpad=0)
+plt.ylabel("${\\rm{Energy}}$", labelpad=0)
+plt.xlim(0, 8)
 
-savefig("energy.png", dpi=200)
+plt.savefig("energy.png", dpi=200)
 
 # Plot angular momentum evolution
-figure()
-plot(time_snap, Lz_snap, "k-", lw=0.5, ms=2)
+plt.figure()
+plt.plot(time_snap, Lz_snap, "k-", lw=0.5, ms=2)
 
-xlabel("${\\rm{Time}}$", labelpad=0)
-ylabel("${\\rm{Angular~momentum}}$", labelpad=0)
-xlim(0, 8)
+plt.xlabel("${\\rm{Time}}$", labelpad=0)
+plt.ylabel("${\\rm{Angular~momentum}}$", labelpad=0)
+plt.xlim(0, 8)
 
-savefig("angular_momentum.png", dpi=200)
+plt.savefig("angular_momentum.png", dpi=200)

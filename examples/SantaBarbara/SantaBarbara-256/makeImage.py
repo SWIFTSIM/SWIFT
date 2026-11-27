@@ -1,8 +1,6 @@
 """
 Makes an image of the Santa Barbara cluster.
 
-Requires py-sphviewer.
-
 Invoke as follows:
 
 python3 makeImage.py <name of hdf5 file> \
@@ -14,10 +12,10 @@ python3 makeImage.py <name of hdf5 file> \
 
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
 import matplotlib
+import swiftsimio as sw
 
-from sphviewer.tools import QuickView
+from swiftsimio.visualisation import project_pixel_grid, generate_smoothing_lengths
 from matplotlib.patches import Rectangle
 
 from typing import Tuple
@@ -26,8 +24,13 @@ from collections import namedtuple
 # Set up our simulation data collection to keep stuff together
 SimulationData = namedtuple(
     "SimulationData",
-    ["coordinates", "masses", "sph_name", "dark_matter_mass", "swift_name", "boxsize"],
+    ["particles", "sph_name", "dark_matter_mass", "swift_name", "boxsize"],
 )
+
+# The cluster sits at the centre of the box. The full-box image is shifted by
+# this many code units (Mpc) in x and y, using the periodicity, so that the
+# cluster appears in the lower-left quadrant and leaves room for the zoom.
+SHIFT = 20.0
 
 
 def latex_float(f):
@@ -48,93 +51,83 @@ def latex_float(f):
 
 def read_data_from_file(filename: str, part_type=0) -> SimulationData:
     """
-    Reads the relevant data from the HDF5 file.
+    Reads the relevant data from the snapshot using swiftsimio.
+
+    Dark matter particles carry no smoothing length, so one is generated
+    from their 32 nearest neighbours.
     """
-    part_type_name = f"PartType{part_type}"
+    data = sw.load(filename)
 
-    with h5py.File(filename, "r") as file:
-        coordinates, boxsize = move_box(file[f"{part_type_name}/Coordinates"][...].T)
-        masses = file[f"{part_type_name}/Masses"][...]
-
-        sph_name = file["HydroScheme"].attrs["Scheme"].decode("utf-8")
-        unit_mass = (
-            float(file["Units"].attrs["Unit mass in cgs (U_M)"]) / 2e33
-        )  # in M_sun
-
-        dark_matter_mass = float(file["PartType1/Masses"][0]) * unit_mass
-
-        code_revision = file["Code"].attrs["Git Revision"].decode("utf-8")
-        swift_name = f"SWIFT {code_revision}"
-
-        data = SimulationData(
-            coordinates=coordinates,
-            masses=masses,
-            sph_name=sph_name,
-            dark_matter_mass=dark_matter_mass,
-            swift_name=swift_name,
-            boxsize=boxsize,
+    if part_type == 0:
+        particles = data.gas
+    else:
+        particles = data.dark_matter
+        particles.smoothing_lengths = generate_smoothing_lengths(
+            particles.coordinates, data.metadata.boxsize, kernel_gamma=1.8
         )
 
-    return data
+    sph_name = data.metadata.hydro_scheme["Scheme"].decode("utf-8")
+    dark_matter_mass = float(data.dark_matter.masses[0].to_value("Msun"))
+
+    code_revision = data.metadata.code["Git Revision"].decode("utf-8")
+    swift_name = f"SWIFT {code_revision}"
+
+    return SimulationData(
+        particles=particles,
+        sph_name=sph_name,
+        dark_matter_mass=dark_matter_mass,
+        swift_name=swift_name,
+        boxsize=float(data.metadata.boxsize[0].to_value(particles.coordinates.units)),
+    )
 
 
-def move_box(coordinates: np.ndarray) -> np.ndarray:
+def make_region(data: SimulationData, x_min, x_max, y_min, y_max) -> sw.cosmo_array:
     """
-    Takes the coordinates and moves them in the x-y plane. This moves them 20
-    code units to the left/right to ensure that the zoomed-out version of the
-    cluster image is nicely shown
+    Builds a projection region (in code units) compatible with the particles.
     """
-
-    boxsize = np.max(coordinates[0])
-    coordinates[0] -= 20
-    coordinates[1] -= 20
-    coordinates[0] %= boxsize
-    coordinates[1] %= boxsize
-
-    return coordinates, boxsize
+    coordinates = data.particles.coordinates
+    return sw.cosmo_array(
+        [x_min, x_max, y_min, y_max],
+        units=coordinates.units,
+        comoving=coordinates.comoving,
+        scale_factor=coordinates.cosmo_factor.scale_factor,
+        scale_exponent=1,
+    )
 
 
 def generate_views(data: SimulationData, res=2048) -> Tuple[np.ndarray]:
     """
-    Generates the views on the data from py-sphviewer.
+    Generates mass projections of the data along the z axis with swiftsimio.
 
     Returns the overall image for the whole box and then a zoomed region.
+    The images are transposed so that they can be passed directly to imshow.
     """
 
-    qv_all = QuickView(
-        data.coordinates,
-        data.masses,
-        r="infinity",
-        plot=False,
-        xsize=res,
-        ysize=res,
-        logscale=False,
-        p=0,
-        np=48,
+    # The whole box, shifted by SHIFT in x and y (wraps periodically)
+    region_all = make_region(
+        data, SHIFT, data.boxsize + SHIFT, SHIFT, data.boxsize + SHIFT
     )
-    zoomed_res = (res * 6) // 10
-    mask = np.logical_and(
-        np.logical_and(
-            data.coordinates[0] > (data.boxsize / 2 - 4 - 20),
-            data.coordinates[0] < (data.boxsize / 2 + 6 - 20),
-        ),
-        np.logical_and(
-            data.coordinates[1] > (data.boxsize / 2 - 3.5 - 20),
-            data.coordinates[1] < (data.boxsize / 2 + 6.5 - 20),
-        ),
-    )
-    qv_zoomed = QuickView(
-        data.coordinates.T[mask].T,
-        data.masses[mask],
-        r="infinity",
-        plot=False,
-        xsize=zoomed_res,
-        ysize=zoomed_res,
-        logscale=False,
-        np=48,
+    img_all = project_pixel_grid(
+        data.particles, resolution=res, region=region_all, parallel=True
     )
 
-    return qv_all.get_image(), qv_zoomed.get_image()
+    # A 10x10 code-unit region around the cluster
+    zoomed_res = (res * 6) // 10
+    region_zoomed = make_region(
+        data,
+        data.boxsize / 2 - 4,
+        data.boxsize / 2 + 6,
+        data.boxsize / 2 - 3.5,
+        data.boxsize / 2 + 6.5,
+    )
+    img_zoomed = project_pixel_grid(
+        data.particles, resolution=zoomed_res, region=region_zoomed, parallel=True
+    )
+
+    return (
+        img_all.to_comoving_value("Msun/Mpc**2").T,
+        img_zoomed.to_comoving_value("Msun/Mpc**2").T,
+    )
 
 
 def create_plot(data: SimulationData, res=2048, cmap="viridis", text_color="white"):
@@ -250,12 +243,11 @@ if __name__ == "__main__":
 
     # Read in the data from file
 
-    try:
-        data = read_data_from_file(filename, part_type)
-    except IndexError:
+    if part_type == 0 and sw.mask(filename).metadata.n_gas == 0:
         # Must be a dark matter only run
         part_type = 1
-        data = read_data_from_file(filename, part_type)
+
+    data = read_data_from_file(filename, part_type)
 
     # Make the plot
 

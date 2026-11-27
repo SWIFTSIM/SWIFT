@@ -110,7 +110,7 @@ Scheduler:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  FLAMINGO_m9_ICs.hdf5
+  file_name:  FLAMINGO_m8_ICs.hdf5
   periodic:   1
 
 # Impose primoridal metallicity

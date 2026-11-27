@@ -54,7 +54,6 @@ NFW_MNPotential:
   useabspos:        0          # 0 -> positions based on centre, 1 -> absolute positions 
   position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:          0.01       # Softening size (internal units)
   concentration:    10.0       # concentration of the Halo
   M_200:            150.0      # M200 of the galaxy disk
   critical_density: 1.37E-8    # Critical density of the Universe in internal units

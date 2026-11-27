@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -30,10 +30,10 @@ fi
 DIR=snap
 if [ -d "$DIR" ]; then
     echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+    rm -rf $DIR
 else
     echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    mkdir -p $DIR
 fi
 
 swift="../../../swift"

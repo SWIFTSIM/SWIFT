@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import agama
-import numpy as np
 from pNbody import ic
 
 # number of particles

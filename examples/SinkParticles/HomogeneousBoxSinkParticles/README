@@ -19,6 +19,6 @@ make -j
 The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
 
 # Run
-Type `run.sh` (or `n_ranks=4 mpi_run.sh`), and let's go!
+Type `./run.sh` (or `n_ranks=4 ./run.sh` to run with MPI), and let's go!
 
-You can provide parameters to the running scripts, have a look inside them.
+You can provide parameters to the running script, have a look inside it.

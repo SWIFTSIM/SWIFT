@@ -26,7 +26,7 @@ wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolin
 tar -xvzf coolingtables.tar.gz
 
 And run the simulation
-../../../swift --hydro --cooling balsarakim.yml |& tee output.log
+../../../swift --hydro --cooling --limiter --sync --threads=8 balsarakim.yml |& tee output.log
 
 You can also set up the test by running:
 ./run.sh
@@ -55,4 +55,4 @@ There are multiple possible ways of injecting energy you can specify in the para
     4) set the velocity of particles (radially) to a constant given value
 
 3. changing the cooling scheme
-The example uses the EAGLE cooling scheme and chemistry which, although the chemistry does not evolve, allows for a (metallicity and) temparature dependent cooling coefficient. In principle other cooling schemes are also possible. Note that we explicitely run without an entropy floor to capture the fragmentation and filamentary resulting structure.
+The example uses the EAGLE cooling scheme and chemistry which, although the chemistry does not evolve, allows for a (metallicity and) temperature dependent cooling coefficient. In principle other cooling schemes are also possible. Note that we explicitly run without an entropy floor to capture the fragmentation and filamentary resulting structure.

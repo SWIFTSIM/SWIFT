@@ -39,7 +39,6 @@ import gc
 import os
 import sys
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
 import unyt
@@ -48,6 +47,8 @@ from scipy import stats
 from scipy.optimize import curve_fit
 
 import stromgren_plotting_tools as spt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -81,8 +82,6 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
-
-mpl.rcParams["text.usetex"] = True
 
 
 def analytical_integrated_energy_solution(L, time, r, rmax):
@@ -500,16 +499,16 @@ def plot_photons(filename, emin, emax, fmin, fmax):
             r_bin_centres[mask_sum],
             F_sum_bin[mask_sum] / fmag_sum_bin[mask_sum],
             **lineplot_kwargs,
-            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
-            + r"/ $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \right| $ "
+            + r"/ $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \right| $",
         )
         ax4.plot(
             r_bin_centres[mask_max],
             F_sum_bin[mask_max] / fmag_max_bin[mask_max],
             **lineplot_kwargs,
             linestyle="--",
-            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
-            + r" / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \right| $ "
+            + r" / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \right| $",
         )
 
     # -------------------------------------------
@@ -522,7 +521,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
         ax.legend(fontsize="x-small")
 
     # Add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(1 * meta.time)

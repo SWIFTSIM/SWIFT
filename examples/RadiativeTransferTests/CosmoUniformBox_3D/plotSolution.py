@@ -4,19 +4,17 @@ import os
 import sys
 import argparse
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
-from scipy.optimize import curve_fit as cf
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 snapshot_base = "output"  # snapshot basename
 plot_physical_quantities = True
 
 nPhotonGroups = 11
-
-mpl.rcParams["text.usetex"] = True
 
 
 def parse_args():
@@ -77,7 +75,6 @@ def plot_param_over_time(
 
         if plot_physical_quantities:
             physical_energy_density = energy_density.to_physical()
-            physical_mass = mass.to_physical()
             physical_vol = vol.to_physical()
             physical_energy = physical_energy_density * physical_vol
             if param == "energy density":
@@ -126,7 +123,7 @@ def plot_param_over_time(
             x,
             analytic,
             c="r",
-            label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$",
+            label=f"Analytic solution $\\propto a^{{{analytic_exponent[i]}}}$",
         )
 
         ax.legend()

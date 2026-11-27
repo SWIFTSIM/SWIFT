@@ -1,11 +1,13 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 import h5py
 import os.path
-import numpy as np
 import glob
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Number of snapshots and elements
 newest_snap_name = max(glob.glob("stellar_evolution_*.hdf5"), key=os.path.getctime)
@@ -22,7 +24,6 @@ params = {
     "legend.fontsize": 9,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.3,
     "figure.subplot.right": 0.99,
@@ -34,7 +35,7 @@ params = {
     "lines.linewidth": 2.0,
 }
 
-rcParams.update(params)
+plt.rcParams.update(params)
 
 # Read the simulation data
 sim = h5py.File("stellar_evolution_0000.hdf5", "r")
@@ -72,22 +73,22 @@ n_parts = sim["/Header"].attrs["NumPart_Total"][0]
 n_sparts = sim["/Header"].attrs["NumPart_Total"][4]
 
 # Declare arrays for data
-masses = zeros((n_parts, n_snapshots))
-star_masses = zeros((n_sparts, n_snapshots))
-mass_from_AGB = zeros((n_parts, n_snapshots))
-metal_mass_frac_from_AGB = zeros((n_parts, n_snapshots))
-mass_from_SNII = zeros((n_parts, n_snapshots))
-metal_mass_frac_from_SNII = zeros((n_parts, n_snapshots))
-mass_from_SNIa = zeros((n_parts, n_snapshots))
-metal_mass_frac_from_SNIa = zeros((n_parts, n_snapshots))
-iron_mass_frac_from_SNIa = zeros((n_parts, n_snapshots))
-metallicity = zeros((n_parts, n_snapshots))
-abundances = zeros((n_parts, n_elements, n_snapshots))
-internal_energy = zeros((n_parts, n_snapshots))
-coord_parts = zeros((n_parts, 3))
-velocity_parts = zeros((n_parts, 3, n_snapshots))
-coord_sparts = zeros(3)
-time = zeros(n_snapshots)
+masses = np.zeros((n_parts, n_snapshots))
+star_masses = np.zeros((n_sparts, n_snapshots))
+mass_from_AGB = np.zeros((n_parts, n_snapshots))
+metal_mass_frac_from_AGB = np.zeros((n_parts, n_snapshots))
+mass_from_SNII = np.zeros((n_parts, n_snapshots))
+metal_mass_frac_from_SNII = np.zeros((n_parts, n_snapshots))
+mass_from_SNIa = np.zeros((n_parts, n_snapshots))
+metal_mass_frac_from_SNIa = np.zeros((n_parts, n_snapshots))
+iron_mass_frac_from_SNIa = np.zeros((n_parts, n_snapshots))
+metallicity = np.zeros((n_parts, n_snapshots))
+abundances = np.zeros((n_parts, n_elements, n_snapshots))
+internal_energy = np.zeros((n_parts, n_snapshots))
+coord_parts = np.zeros((n_parts, 3))
+velocity_parts = np.zeros((n_parts, 3, n_snapshots))
+coord_sparts = np.zeros(3)
+time = np.zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
 for i in range(n_snapshots):

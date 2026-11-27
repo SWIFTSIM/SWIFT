@@ -1,13 +1,7 @@
-import pylab
-from pylab import *
-from scipy import stats
-import h5py as h5
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.colors import LogNorm
 import swiftsimio as sw
-import glob
-import re
-import os
 
 matplotlib.use("Agg")
 
@@ -31,7 +25,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -52,7 +46,6 @@ m_H = 1.67262e-24  # g
 gas_density_0 *= (10**10 * Msun / kpc**3) / (mu * m_H)
 
 # Make plot
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 plt.style.use("classic")

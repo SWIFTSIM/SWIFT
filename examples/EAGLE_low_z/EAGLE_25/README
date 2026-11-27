@@ -7,7 +7,7 @@ The particle distribution here is the snapshot 27 (z=0.1) of the 25Mpc
 Ref-model. h- and a- factors from the original Gadget code have been
 corrected for. Variables not used in a pure hydro & gravity code have
 been removed. 
-Everything is ready to be run without cosmological integration. 
+The parameter files run them with cosmological integration from z = 0.1 (a = 0.909) to z = 0. 
 
 The particle load of the main EAGLE simulation can be reproduced by
 running these ICs on 64 cores.
@@ -23,7 +23,7 @@ RT implementation rather than produce actual physically meaningful results.
 
 o   To use GEAR-RT, configure SWIFT with
 
-    --with-stars=basic --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-feedback=none
+    --with-stars=basic --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 [technically, any other feedback scheme should work as well.]
 [the .yml file is set up to handle up to 3 photon groups, so

@@ -8,6 +8,6 @@ what moment based methods do with radiation.
 
 To run with GEAR-RT, compile SWIFT with
 
-    --with-rt=GEAR_2 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv \
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv \
      --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 

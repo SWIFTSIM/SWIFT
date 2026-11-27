@@ -26,6 +26,8 @@ import math
 
 import numpy as np
 import h5py
+import unyt
+import swiftsimio as sw
 
 GAMMA = 5 / 3
 RHO = 1
@@ -75,13 +77,12 @@ def get_element_abundances_metallicity(pos, boxsize):
 
 
 if __name__ == "__main__":
-    glass = h5py.File("glassPlane_64.hdf5", "r")
-    parts = glass["PartType0"]
-    pos = parts["Coordinates"][:]
+    glass = sw.load("glassPlane_64.hdf5")
+    parts = glass.gas
+    pos = parts.coordinates.value
     pos = np.concatenate([pos, pos + np.array([1, 0, 0])])
-    h = parts["SmoothingLength"][:]
+    h = parts.smoothing_lengths.value
     h = np.concatenate([h, h])
-    glass.close()
 
     # Set up metadata
     boxsize = np.array([2.0, 1.0, 1.0])
@@ -100,40 +101,25 @@ if __name__ == "__main__":
     element_abundances, metallicities = get_element_abundances_metallicity(pos, boxsize)
 
     # Now open the file and write the data.
-    file = h5py.File(outputfilename, "w")
+    w = sw.Writer(
+        unit_system=unyt.unit_systems.cgs_unit_system,
+        boxsize=sw.cosmo_array(
+            boxsize[:2], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+        ),
+        dimension=2,
+    )
 
-    # Header
-    grp = file.create_group("/Header")
-    grp.attrs["BoxSize"] = boxsize
-    grp.attrs["NumPart_Total"] = [n_part, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [n_part, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFilesPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 2
+    w.gas.coordinates = pos * unyt.cm * w.a.comoving
+    w.gas.velocities = velocities * unyt.cm / unyt.s * w.a.comoving**0
+    w.gas.masses = masses * unyt.g * w.a.comoving**0
+    w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+    w.gas.internal_energy = internal_energy * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+    w.gas.particle_ids = ids.astype(np.uint64)
 
-    # Units
-    grp = file.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 1.0
-    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+    w.write(outputfilename)
 
-    # Particle group
-    grp = file.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=velocities, dtype="f")
-    grp.create_dataset("Masses", data=masses, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h, dtype="f")
-    grp.create_dataset("InternalEnergy", data=internal_energy, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-    grp.create_dataset("Metallicity", data=metallicities, dtype="f")
-    grp.create_dataset("ElementAbundance", data=element_abundances, dtype="f")
-
-    file.close()
-
-    # close up, and we're done!
-    file.close()
+    # Add the metallicities
+    with h5py.File(outputfilename, "r+") as f:
+        grp = f["PartType0"]
+        grp.create_dataset("Metallicity", data=metallicities, dtype="f")
+        grp.create_dataset("ElementAbundance", data=element_abundances, dtype="f")

@@ -21,9 +21,12 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 from scipy import stats
 import h5py as h5
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Plot parameters
 params = {
@@ -33,7 +36,6 @@ params = {
     "legend.fontsize": 9,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.15,
     "figure.subplot.right": 0.99,
@@ -44,9 +46,9 @@ params = {
     "lines.markersize": 6,
     "lines.linewidth": 2.0,
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
-snap = int(sys.argv[1])
+snap = int(plt.sys.argv[1])
 filename = "output_%.4d.hdf5" % snap
 
 f = h5.File(filename, "r")
@@ -197,24 +199,24 @@ eos_Jeans_T = EAGLEfloor_Jeans_temperature_norm_K * (
 ########################################################################3
 
 # Plot the phase space diagram
-figure()
-subplot(111, xscale="log", yscale="log")
-plot(eos_cool_rho, eos_cool_T, "k--", lw=0.6)
-plot(eos_Jeans_rho, eos_Jeans_T, "k--", lw=0.6)
-scatter(gas_nH, gas_T, s=0.2)
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
-xlim(3e-6, 3e3)
-ylim(500.0, 2e5)
-savefig("rhoT.png", dpi=200)
+plt.figure()
+plt.subplot(111, xscale="log", yscale="log")
+plt.plot(eos_cool_rho, eos_cool_T, "k--", lw=0.6)
+plt.plot(eos_Jeans_rho, eos_Jeans_T, "k--", lw=0.6)
+plt.scatter(gas_nH, gas_T, s=0.2)
+plt.xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+plt.ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
+plt.xlim(3e-6, 3e3)
+plt.ylim(500.0, 2e5)
+plt.savefig("rhoT.png", dpi=200)
 
 # Plot the phase space diagram for SF gas
-figure()
-subplot(111, xscale="log", yscale="log")
-plot(eos_cool_rho, eos_cool_T, "k--", lw=0.6)
-plot(eos_Jeans_rho, eos_Jeans_T, "k--", lw=0.6)
-plot([SF_thresh, SF_thresh], [1, 1e10], "k:", lw=0.6)
-text(
+plt.figure()
+plt.subplot(111, xscale="log", yscale="log")
+plt.plot(eos_cool_rho, eos_cool_T, "k--", lw=0.6)
+plt.plot(eos_Jeans_rho, eos_Jeans_T, "k--", lw=0.6)
+plt.plot([SF_thresh, SF_thresh], [1, 1e10], "k:", lw=0.6)
+plt.text(
     SF_thresh * 0.9,
     2e4,
     "$n_{\\rm H, thresh}=%.3f~{\\rm cm^{-3}}$" % SF_thresh,
@@ -223,12 +225,12 @@ text(
     ha="right",
     va="bottom",
 )
-scatter(gas_nH[gas_SFR > 0.0], gas_T[gas_SFR > 0.0], s=0.2)
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
-xlim(3e-6, 3e3)
-ylim(500.0, 2e5)
-savefig("rhoT_SF.png", dpi=200)
+plt.scatter(gas_nH[gas_SFR > 0.0], gas_T[gas_SFR > 0.0], s=0.2)
+plt.xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+plt.ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
+plt.xlim(3e-6, 3e3)
+plt.ylim(500.0, 2e5)
+plt.savefig("rhoT_SF.png", dpi=200)
 
 ########################################################################3
 
@@ -246,20 +248,20 @@ stars_BirthDensity = stars_BirthDensity[star_mask]
 stars_BirthTime = stars_BirthTime[star_mask]
 
 # Histogram of the birth density
-figure()
-subplot(111, xscale="linear", yscale="linear")
-hist(np.log10(stars_BirthDensity), density=True, bins=20, range=[-2, 5])
-xlabel("${\\rm Stellar~birth~density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm Probability}$", labelpad=3)
-savefig("BirthDensity.png", dpi=200)
+plt.figure()
+plt.subplot(111, xscale="linear", yscale="linear")
+plt.hist(np.log10(stars_BirthDensity), density=True, bins=20, range=[-2, 5])
+plt.xlabel("${\\rm Stellar~birth~density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+plt.ylabel("${\\rm Probability}$", labelpad=3)
+plt.savefig("BirthDensity.png", dpi=200)
 
 # Histogram of the birth temperature
-figure()
-subplot(111, xscale="linear", yscale="linear")
-hist(np.log10(stars_BirthTemperature), density=True, bins=20, range=[3.5, 5.0])
-xlabel("${\\rm Stellar~birth~temperature}~[{\\rm K}]$", labelpad=0)
-ylabel("${\\rm Probability}$", labelpad=3)
-savefig("BirthTemperature.png", dpi=200)
+plt.figure()
+plt.subplot(111, xscale="linear", yscale="linear")
+plt.hist(np.log10(stars_BirthTemperature), density=True, bins=20, range=[3.5, 5.0])
+plt.xlabel("${\\rm Stellar~birth~temperature}~[{\\rm K}]$", labelpad=0)
+plt.ylabel("${\\rm Probability}$", labelpad=3)
+plt.savefig("BirthTemperature.png", dpi=200)
 
 # Plot of the specific star formation rate in the galaxy
 rhos = 10 ** np.linspace(-1, np.log10(KS_high_den_thresh), 100)
@@ -284,30 +286,32 @@ sSFR_high_den = KS_law_norm_high_den_cgs * (
 ) ** ((KS_law_slope_high_den - 1) / 2.0)
 
 # density - sSFR plane
-figure()
-subplot(111)
-hist2d(np.log10(gas_nH), np.log10(gas_sSFR), bins=50, range=[[-1.5, 5], [-0.5, 2.5]])
-plot(
+plt.figure()
+plt.subplot(111)
+plt.hist2d(
+    np.log10(gas_nH), np.log10(gas_sSFR), bins=50, range=[[-1.5, 5], [-0.5, 2.5]]
+)
+plt.plot(
     np.log10(rhos),
     np.log10(sSFR) + np.log10(year_in_cgs) + 9.0,
     "k--",
     label="sSFR low density EAGLE",
 )
-plot(
+plt.plot(
     np.log10(rhoshigh),
     np.log10(sSFR_high_den) + np.log10(year_in_cgs) + 9.0,
     "k--",
     label="sSFR high density EAGLE",
 )
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=2)
-ylabel("${\\rm sSFR}~[{\\rm Gyr^{-1}}]$", labelpad=0)
-xticks(
+plt.xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=2)
+plt.ylabel("${\\rm sSFR}~[{\\rm Gyr^{-1}}]$", labelpad=0)
+plt.xticks(
     [-1, 0, 1, 2, 3, 4], ["$10^{-1}$", "$10^0$", "$10^1$", "$10^2$", "$10^3$", "$10^4$"]
 )
-yticks([0, 1, 2], ["$10^0$", "$10^1$", "$10^2$"])
-xlim(-1.4, 4.9)
-ylim(-0.5, 2.2)
-savefig("density-sSFR.png", dpi=200)
+plt.yticks([0, 1, 2], ["$10^0$", "$10^1$", "$10^2$"])
+plt.xlim(-1.4, 4.9)
+plt.ylim(-0.5, 2.2)
+plt.savefig("density-sSFR.png", dpi=200)
 
 SFR_low = 10 ** (np.log10(sSFR) + np.log10(year_in_cgs) + np.log10(median_gas_mass))
 SFR_high = 10 ** (
@@ -317,18 +321,18 @@ SFR_low_min = np.floor(np.log10(0.75 * np.min(SFR_low)))
 SFR_high_max = np.ceil(np.log10(1.25 * np.max(SFR_high)))
 
 # 3D Density vs SFR
-rcParams.update({"figure.subplot.left": 0.18})
-figure()
-subplot(111, xscale="log", yscale="log")
-scatter(gas_nH, gas_SFR, s=0.2)
-plot(rhos, SFR_low, "k--", lw=1, label="SFR low density EAGLE")
-plot(rhoshigh, SFR_high, "k--", lw=1, label="SFR high density EAGLE")
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=2)
-xlim(1e-2, 1e5)
-ylim(10**SFR_low_min, 10 ** (SFR_high_max + 0.1))
-savefig("rho_SFR.png", dpi=200)
-rcParams.update({"figure.subplot.left": 0.15})
+plt.rcParams.update({"figure.subplot.left": 0.18})
+plt.figure()
+plt.subplot(111, xscale="log", yscale="log")
+plt.scatter(gas_nH, gas_SFR, s=0.2)
+plt.plot(rhos, SFR_low, "k--", lw=1, label="SFR low density EAGLE")
+plt.plot(rhoshigh, SFR_high, "k--", lw=1, label="SFR high density EAGLE")
+plt.xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+plt.ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=2)
+plt.xlim(1e-2, 1e5)
+plt.ylim(10**SFR_low_min, 10 ** (SFR_high_max + 0.1))
+plt.savefig("rho_SFR.png", dpi=200)
+plt.rcParams.update({"figure.subplot.left": 0.15})
 ########################################################################3
 
 # Select gas in a pillow box around the galaxy
@@ -351,35 +355,35 @@ gas_hsml = gas_hsml[mask]
 
 
 # Make a crude map of the gas
-figure()
-subplot(111)
-scatter(gas_pos[:, 0], gas_pos[:, 1], s=0.1)
-xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
-ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
-xlim(-12, 12)
-ylim(-12, 12)
-savefig("face_on.png", dpi=200)
+plt.figure()
+plt.subplot(111)
+plt.scatter(gas_pos[:, 0], gas_pos[:, 1], s=0.1)
+plt.xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
+plt.ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
+plt.xlim(-12, 12)
+plt.ylim(-12, 12)
+plt.savefig("face_on.png", dpi=200)
 
-figure()
-subplot(111)
-scatter(gas_pos[:, 0], gas_pos[:, 2], s=0.1)
-xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
-ylabel("${\\rm Pos}~z~[{\\rm kpc}]$", labelpad=-3)
-xlim(-12, 12)
-ylim(-12, 12)
-savefig("edge_on.png", dpi=200)
+plt.figure()
+plt.subplot(111)
+plt.scatter(gas_pos[:, 0], gas_pos[:, 2], s=0.1)
+plt.xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
+plt.ylabel("${\\rm Pos}~z~[{\\rm kpc}]$", labelpad=-3)
+plt.xlim(-12, 12)
+plt.ylim(-12, 12)
+plt.savefig("edge_on.png", dpi=200)
 
 # Now a SF map
-rcParams.update({"figure.figsize": (4.15, 3.15)})
-figure()
-subplot(111)
-scatter(gas_pos[:, 0], gas_pos[:, 1], s=0.1, c=gas_SFR)
-xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
-ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
-colorbar()
-xlim(-12, 12)
-ylim(-12, 12)
-savefig("SF_face_on.png", dpi=200)
+plt.rcParams.update({"figure.figsize": (4.15, 3.15)})
+plt.figure()
+plt.subplot(111)
+plt.scatter(gas_pos[:, 0], gas_pos[:, 1], s=0.1, c=gas_SFR)
+plt.xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
+plt.ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
+plt.colorbar()
+plt.xlim(-12, 12)
+plt.ylim(-12, 12)
+plt.savefig("SF_face_on.png", dpi=200)
 
 
 ########################################################################3
@@ -397,26 +401,26 @@ map_SFR, _, _, _ = stats.binned_statistic_2d(
 )
 
 # Mass map
-figure()
-subplot(111)
-pcolormesh(x_edges, y_edges, np.log10(map_mass))
-colorbar()
-xlim(-12, 12)
-ylim(-12, 12)
-xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
-ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
-savefig("Map_mass.png", dpi=200)
+plt.figure()
+plt.subplot(111)
+plt.pcolormesh(x_edges, y_edges, np.log10(map_mass))
+plt.colorbar()
+plt.xlim(-12, 12)
+plt.ylim(-12, 12)
+plt.xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
+plt.ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
+plt.savefig("Map_mass.png", dpi=200)
 
 # SF map
-figure()
-subplot(111)
-pcolormesh(x_edges, y_edges, np.log10(map_SFR), vmax=-0.5, vmin=-4.5)
-colorbar()
-xlim(-12, 12)
-ylim(-12, 12)
-xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
-ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
-savefig("Map_SFR.png", dpi=200)
+plt.figure()
+plt.subplot(111)
+plt.pcolormesh(x_edges, y_edges, np.log10(map_SFR), vmax=-0.5, vmin=-4.5)
+plt.colorbar()
+plt.xlim(-12, 12)
+plt.ylim(-12, 12)
+plt.xlabel("${\\rm Pos}~x~[{\\rm kpc}]$", labelpad=0)
+plt.ylabel("${\\rm Pos}~y~[{\\rm kpc}]$", labelpad=-3)
+plt.savefig("Map_SFR.png", dpi=200)
 
 #########################################################################
 
@@ -434,12 +438,12 @@ KS_sigma_mass = np.logspace(-1, 3, 100)
 KS_sigma_SFR = KS_law_norm * KS_sigma_mass**KS_law_slope
 
 # KS relation
-rcParams.update({"figure.figsize": (3.15, 3.15), "figure.subplot.left": 0.18})
-figure()
-subplot(111, xscale="log", yscale="log")
-plot(KS_sigma_mass, KS_sigma_SFR, "k--", lw=0.6)
-plot([KS_sigma_thresh, KS_sigma_thresh], [1e-8, 1e8], "k--", lw=0.6)
-text(
+plt.rcParams.update({"figure.figsize": (3.15, 3.15), "figure.subplot.left": 0.18})
+plt.figure()
+plt.subplot(111, xscale="log", yscale="log")
+plt.plot(KS_sigma_mass, KS_sigma_SFR, "k--", lw=0.6)
+plt.plot([KS_sigma_thresh, KS_sigma_thresh], [1e-8, 1e8], "k--", lw=0.6)
+plt.text(
     KS_sigma_thresh * 0.95,
     2.2,
     "$\\Sigma_{\\rm c} = %.2f~{\\rm M_\\odot\\cdot pc^{-2}}$" % KS_sigma_thresh,
@@ -448,11 +452,13 @@ text(
     rotation=90,
     fontsize=7,
 )
-text(16, 10 ** (-3.5), "$n_{\\rm H,c} = %.3f~{\\rm cm^{-3}}$" % KS_n_thresh, fontsize=7)
-text(
+plt.text(
+    16, 10 ** (-3.5), "$n_{\\rm H,c} = %.3f~{\\rm cm^{-3}}$" % KS_n_thresh, fontsize=7
+)
+plt.text(
     16,
     2e-6,
-    "${\\rm K\\textendash S~law}$:\n$\\Sigma_{\\rm SFR} = A \\times \\Sigma_g^n$\n$n=%.1f$\n$A=%.3f\\times10^{-4}~{\\rm M_\\odot / yr^{1} / kpc^{2}}$\n$f_{\\rm g} = %.1f$\n$\gamma_{\\rm eos} = %.3f$\n$Z=%1.4f$"
+    "${\\rm K–S~law}$:\n$\\Sigma_{\\rm SFR} = A \\times \\Sigma_g^n$\n$n=%.1f$\n$A=%.3f\\times10^{-4}~{\\rm M_\\odot / yr^{1} / kpc^{2}}$\n$f_{\\rm g} = %.1f$\n$\\gamma_{\\rm eos} = %.3f$\n$Z=%1.4f$"
     % (
         KS_law_slope,
         KS_law_norm * 10**4,
@@ -462,12 +468,12 @@ text(
     ),
     fontsize=7,
 )
-scatter(map_mass.flatten() / 1e6, map_SFR.flatten(), s=0.4)
-xlim(0.3, 900)
-ylim(3e-7, 3)
-xlabel("$\\Sigma_g~[{\\rm M_\\odot\\cdot pc^{-2}}]$", labelpad=0)
-ylabel(
+plt.scatter(map_mass.flatten() / 1e6, map_SFR.flatten(), s=0.4)
+plt.xlim(0.3, 900)
+plt.ylim(3e-7, 3)
+plt.xlabel("$\\Sigma_g~[{\\rm M_\\odot\\cdot pc^{-2}}]$", labelpad=0)
+plt.ylabel(
     "$\\Sigma_{\\rm SFR}~[{\\rm M_\\odot \\cdot yr^{-1} \\cdot kpc^{-2}}]$", labelpad=0
 )
-savefig("KS_law.png", dpi=200)
-close()
+plt.savefig("KS_law.png", dpi=200)
+plt.close()

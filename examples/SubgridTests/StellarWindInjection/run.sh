@@ -15,7 +15,7 @@ gas_density=${gas_density:=0.1} # Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} # Mass of the gas particles
 num_star=${num_star:=1} # number of stars
 
-set -e
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -49,11 +49,11 @@ fi
 # Create directory if not already present
 if [ -d "$str" ]; then
     echo "$str directory exists. Its content will be removed."
-    rm -r $str
+    rm -rf $str
 else
     echo "$str directory does not exist. It will be created."
 fi
-mkdir $str
+mkdir -p $str
 cd $str
 
 # Continuous stars are multiplied by a factor of 100, as well as gas particle
@@ -72,7 +72,7 @@ python3 ../makeIC.py --level $level --T $T --rho $gas_density \
 
 # Start the simulation
 echo "Starting simulation"
-if [[ "$2" == "SN" ]]; then
+if [[ "$1" == "SN" ]]; then
     ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
 else 
     ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../params.yml 2>&1 | tee output.log

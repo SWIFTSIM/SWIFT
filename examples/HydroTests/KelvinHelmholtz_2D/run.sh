@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This example requires SWIFT to be configured with:
+#   --with-hydro-dimension=2
+
+set -eo pipefail
+
  # Generate the initial conditions if they are not present.
 if [ ! -e kelvinHelmholtz.hdf5 ]
 then

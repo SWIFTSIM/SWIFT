@@ -16,6 +16,8 @@ from matplotlib import pyplot as plt
 
 import stromgren_plotting_tools as spt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Plot parameters
 params = {
     "axes.labelsize": 14,
@@ -31,7 +33,6 @@ params = {
     "xtick.major.width": 1.5,
     "ytick.major.width": 1.5,
     "axes.linewidth": 1.5,
-    "text.usetex": True,
     "figure.figsize": (10, 4),
     "figure.subplot.left": 0.045,
     "figure.subplot.right": 0.99,

@@ -167,7 +167,6 @@ int main(int argc, char **argv) {
   struct hydro_props hydro_properties;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
-  struct space s;
   const char *parametersFileName = "./cooling_rates.yml";
 
   /* Initialize CPU frequency, this also starts time. */
@@ -240,7 +239,8 @@ int main(int argc, char **argv) {
   cooling_init(params, &us, &internal_const, &hydro_properties, &cooling);
   cooling.H_reion_done = 1;
   cooling_print(&cooling);
-  cooling_update(&cosmo, &pressure_floor, &cooling, &s);
+  cooling_update(&internal_const, &cosmo, &pressure_floor, &cooling,
+                 /*s=*/NULL, cosmo.time);
 
   // Copy over the raw metals into the smoothed metals
   memcpy(&p.chemistry_data.smoothed_metal_mass_fraction,
