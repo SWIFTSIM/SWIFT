@@ -460,7 +460,7 @@ static void runner_hii_print_gather_links(const struct cell *c) {
 #else
 static INLINE void runner_hii_print_gather_links(const struct cell *c) {}
 #endif
-#endif
+#endif /* IONIZATION_FEEDBACK_LOOP */
 
 /**
  * @brief Top-level steering function for HII ionization feedback.
