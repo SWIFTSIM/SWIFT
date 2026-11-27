@@ -46,23 +46,36 @@ significant N bits.
 
 This can be used in cases similar to the particle IDs. For instance,
 if they cover the range :math:`[1, 10^{10}]` then 64-bits is too many
-and a lot of disk space is wasted storing the 0s. In this case
-:math:`\left\lceil{\log_2(10^{10})}\right\rceil + 1 = 35` bits are
-sufficient (The extra "+1" is for the sign bit).
+and a lot of disk space is wasted storing the 0s.
 
-SWIFT implements 5 variants of this filter:
+The filter preserves the signedness of the field it is applied to,
+which changes the range of values that can be stored:
 
- * ``Nbit32`` stores the 32 most significant bits (Numbers up to
-   :math:`2\times10^{9}`, comp. ratio: 2)
- * ``Nbit36`` stores the 36 most significant bits (Numbers up to
+ * For unsigned fields all N bits hold the value, so numbers in
+   :math:`[0, 2^N-1]` can be stored. In the example above
+   :math:`\left\lceil{\log_2(10^{10})}\right\rceil = 34` bits are
+   sufficient.
+ * For signed fields one of the N bits is the
+   sign bit, so numbers in :math:`[-2^{N-1}, 2^{N-1}-1]` can be
+   stored. In the example above
+   :math:`\left\lceil{\log_2(10^{10})}\right\rceil + 1 = 35` bits
+   would be needed.
+
+The filter can only be applied to 64-bit (``long long``) integer
+fields. SWIFT implements 6 variants of this filter (the maximal values
+are given for unsigned / signed fields):
+
+ * ``Nbit32`` stores 32 bits (Numbers up to :math:`4.3\times10^{9}` /
+   :math:`2.1\times10^{9}`, comp. ratio: 2)
+ * ``Nbit36`` stores 36 bits (Numbers up to :math:`6.9\times10^{10}` /
    :math:`3.4\times10^{10}`, comp. ratio: 1.78)
- * ``Nbit40`` stores the 40 most significant bits (Numbers up to
-   :math:`5.4\times10^{11}`, comp. ratio: 1.6)
- * ``Nbit44`` stores the 44 most significant bits (Numbers up to
-   :math:`8.7\times10^{12}`, comp. ratio: 1.45)
- * ``Nbit48`` stores the 48 most significant bits (Numbers up to
+ * ``Nbit40`` stores 40 bits (Numbers up to :math:`1.1\times10^{12}` /
+   :math:`5.5\times10^{11}`, comp. ratio: 1.6)
+ * ``Nbit44`` stores 44 bits (Numbers up to :math:`1.8\times10^{13}` /
+   :math:`8.8\times10^{12}`, comp. ratio: 1.45)
+ * ``Nbit48`` stores 48 bits (Numbers up to :math:`2.8\times10^{14}` /
    :math:`1.4\times10^{14}`, comp. ratio: 1.33)
- * ``Nbit56`` stores the 56 most significant bits (Numbers up to
+ * ``Nbit56`` stores 56 bits (Numbers up to :math:`7.2\times10^{16}` /
    :math:`3.6\times10^{16}`, comp. ratio: 1.14)
 
 Note that if the data written to disk is requiring more than the N
