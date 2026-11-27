@@ -869,12 +869,56 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 }
 
 /**
+ * @brief Find the largest background cdim for which the zoom region fits
+ * strictly within a given number of void cells.
+ *
+ * The cdim returned has the same parity as the number of void cells, since
+ * the zoom region is centred in the box.
+ *
+ * @param box The box size.
+ * @param max_dim The user-padded dimension of the zoom region.
+ * @param k The number of void cells along an axis.
+ *
+ * @return The background cdim.
+ */
+static int zoom_get_bkg_cdim_for_void_cells(const double box,
+                                            const double max_dim, const int k) {
+
+  /* The largest cdim with the parity of k whose k cells are at least
+   * max_dim wide in total. */
+  int cdim = (int)floor(k * box / max_dim);
+  if (cdim % 2 != k % 2) cdim--;
+
+  /* An exact ratio places the zoom bounds on background-cell edges. For
+   * example, a box size of 100 and max_dim of 4 gives a cdim of 25 for one
+   * cell, a cell width of 4, and zoom bounds of 48 and 52. Since
+   * zoom_get_void_geometry assigns the upper edge to the next cell, reduce
+   * the cdim by two so the region fits strictly within its k cells, the
+   * highest of which has index (cdim + k) / 2 - 1. */
+  if (floor((box / 2. + max_dim / 2.) * cdim / box) != (cdim + k) / 2 - 1) {
+    cdim -= 2;
+  }
+
+  return cdim;
+}
+
+/**
  * @brief Find the background cdim that minimises any extra padding around the
  * zoom region.
  *
  * This is only used when the user wants us to automatically optimise the
  * background cdim. The user can always set their own value for the background
  * cdim explicitly.
+ *
+ * The zoom region is centred in the box, so with an odd cdim it sits in the
+ * middle of a cell and with an even cdim it sits on a cell edge. The void
+ * region (the background cells it overlaps) therefore spans an odd number of
+ * cells for an odd cdim and an even number for an even cdim. For each number
+ * of void cells k we take the largest cdim of the same parity whose k cells
+ * still contain the region, and keep the k that pads the region least. More
+ * void cells pad less but need narrower background cells, so we stop once the
+ * cells would be narrower than the background mesh's tree cut-off, below
+ * which they only add tasks.
  *
  * @param s The space (contains zoom properties and box size)
  * @param ini_dim The initial dimension of the zoom region (particle extent)
@@ -883,24 +927,29 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
                                     const double max_dim) {
 
-  /* Find the best background cdim that minimises the padding around the zoom
-   * region. */
-  int best_cdim = (int)floor(s->dim[0] / max_dim);
+  const double box = s->dim[0];
+  const double min_width = s->zoom_props->neighbour_distance;
+  if (min_width <= 0.) error("The background mesh cut-off must be positive.");
 
-  /* To ensure the zoom region is always contained within a single background
-   * cell we usually require an odd number of background cells when using
-   * automatic optimisation. */
-  if (best_cdim % 2 == 0) best_cdim--;
+  int best_cdim = 0;
+  double best_void_dim = 0.;
 
-  /* An exact odd ratio places the zoom bounds on background-cell edges. For
-   * example, a box size of 100 and max_dim of 4 gives a cdim of 25, a cell
-   * width of 4, and zoom bounds of 48 and 52. Since zoom_get_void_geometry
-   * assigns the upper edge to the next cell, reduce the cdim by two so the
-   * region fits strictly within one cell. */
-  const double width = s->dim[0] / best_cdim;
-  if (floor((s->dim[0] / 2. - max_dim / 2.) / width) !=
-      floor((s->dim[0] / 2. + max_dim / 2.) / width)) {
-    best_cdim -= 2;
+  /* Loop over the number of void cells until the background cells are
+   * narrower than the cut-off (always keeping the single-cell solution). */
+  int k = 1;
+  int cdim = zoom_get_bkg_cdim_for_void_cells(box, max_dim, k);
+  while (k == 1 || box / cdim >= min_width) {
+
+    /* Keep the smallest void region, preferring fewer cells on a tie. */
+    const double void_dim = k * box / cdim;
+    if (best_cdim == 0 || void_dim < best_void_dim) {
+      best_cdim = cdim;
+      best_void_dim = void_dim;
+    }
+
+    /* Move on to the next number of void cells. */
+    k++;
+    cdim = zoom_get_bkg_cdim_for_void_cells(box, max_dim, k);
   }
 
   /* Always keep a sane background grid with at least 8 cells per axis. */
