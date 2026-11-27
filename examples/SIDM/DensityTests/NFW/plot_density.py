@@ -19,6 +19,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as mpe
 import argparse
 import h5py
 
@@ -59,15 +60,20 @@ def compute_radius(pos):
     return np.sqrt((pos**2).sum(axis=1))
 
 
+def bin_centers(bins):
+    # Geometric mid-points, appropriate for logarithmically spaced bins
+    return np.sqrt(bins[:-1] * bins[1:])
+
+
 def binned_density(r, mass, bins):
     m_cum = np.array([(mass[r < R]).sum() for R in bins])
     dM = np.diff(m_cum)
     shell_vol = (4.0 / 3.0) * np.pi * (bins[1:] ** 3 - bins[:-1] ** 3)
-    return bins[1:], dM / shell_vol
+    return bin_centers(bins), dM / shell_vol
 
 
 def sph_density_profile(r, rho_sph, bins):
-    centers = 0.5 * (bins[:-1] + bins[1:])
+    centers = bin_centers(bins)
     rho_binned = np.full_like(centers, np.nan)
 
     for i in range(len(centers)):
@@ -94,8 +100,16 @@ def nfw_density(r, M200, c):
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(7.2, 6))
-    lw = 1.5
+    fig, (ax, ax_res) = plt.subplots(
+        2,
+        1,
+        figsize=(7.2, 7.5),
+        sharex=True,
+        gridspec_kw={"height_ratios": [3, 1], "hspace": 0},
+    )
+    lw = 2.0
+    ec = "k"
+    path_effects = [mpe.Stroke(linewidth=1.8 * lw, foreground=ec), mpe.Normal()]
 
     with h5py.File(fname, "r") as f:
         pos = np.array(f["SIDMParticles"]["Coordinates"])
@@ -112,21 +126,52 @@ def main():
 
     # Binned density
     rs, dens = binned_density(r, mass, rsp)
-    mask = dens > 0
-    rs, dens = rs[mask], dens[mask]
 
     # SPH density
     centers, rho_sph_binned = sph_density_profile(r, rho_sph, rsp)
 
+    mask = dens > 0
+    rs, dens = rs[mask], dens[mask]
+
+    # Relative residuals w.r.t. the analytic NFW profile the ICs were drawn from
+    sph_mask = np.isfinite(rho_sph_binned)
+    res_sph = rho_sph_binned[sph_mask] / nfw_density(centers[sph_mask], 5e9, 12) - 1
+    res_bin = dens / nfw_density(rs, 5e9, 12) - 1
+
     # Plot
-    ax.plot(centers, rho_sph_binned, lw=lw, label=rf"$t={time:.3f}$ Gyr (SPH)")
-    ax.plot(rs, dens, lw=lw, label=rf"$t={time:.3f}$ Gyr")
-    ax.plot(rsp, nfw_density(rsp, 5e9, 12), color="black", ls="--", label="NFW")
-    ax.set_xlabel("r [kpc]")
+    ax.plot(
+        centers,
+        rho_sph_binned,
+        lw=lw,
+        path_effects=path_effects,
+        label=rf"$t={time:.3f}$ Gyr (SPH)",
+    )
+    ax.plot(rs, dens, lw=lw, path_effects=path_effects, label=rf"$t={time:.3f}$ Gyr")
+    ax.plot(
+        rsp,
+        nfw_density(rsp, 5e9, 12),
+        lw=1.2,
+        color="black",
+        ls="--",
+        zorder=0,
+        label="NFW",
+    )
     ax.set_ylabel(r"$\rho(r)$ [$M_{\odot}$ kpc$^{-3}$]")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.legend()
+
+    # Residual panel
+    ax_res.axhline(0.0, color="black", lw=1.2, ls="--", zorder=0)
+    ax_res.plot(
+        centers[sph_mask], res_sph, lw=lw, color="C0", path_effects=path_effects
+    )
+    ax_res.plot(rs, res_bin, lw=lw, color="C1", path_effects=path_effects)
+    ax_res.set_xlabel("r [kpc]")
+    ax_res.set_ylabel(r"$\rho/\rho_{\rm NFW} - 1$")
+    ax_res.set_xscale("log")
+    ax_res.set_ylim(-0.5, 0.5)
+    ax_res.set_yticks([-0.25, 0.0, 0.25])
 
     plt.tight_layout()
     plt.savefig("density_comparison.png")

@@ -12,3 +12,6 @@ fi
 printf "Running simulation..."
 
 ../../../swift --sidm --self-gravity --threads=14 params.yml 2>&1 | tee output.log
+
+printf "Checking energy conservation...\n"
+python3 plot_energy.py

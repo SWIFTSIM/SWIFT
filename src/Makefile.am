@@ -192,7 +192,7 @@ AM_SOURCES += queue.c task.c timers.c debug.c scheduler.c scheduler_io.c schedul
 AM_SOURCES += common_io.c common_io_copy.c common_io_cells.c common_io_fields.c
 AM_SOURCES += single_io.c serial_io.c distributed_io.c parallel_io.c
 AM_SOURCES += output_options.c line_of_sight.c restart.c parser.c xmf.c
-AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c partition_debug.c partition_metis.c partition_repartition_metis.c clocks.c
+AM_SOURCES += kernel_hydro.c kernel_sidm.c tools.c map.c part.c partition.c partition_debug.c partition_metis.c partition_repartition_metis.c clocks.c
 AM_SOURCES += physical_constants.c units.c potential.c hydro_properties.c
 AM_SOURCES += threadpool.c cooling.c star_formation.c
 AM_SOURCES += hydro.c stars.c sink.c sidm.c
@@ -225,7 +225,7 @@ AM_SOURCES += $(GEAR_RT_SOURCES)
 AM_SOURCES += swift_lustre_api.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h custom_mpi.h error.h inline.h kernel_hydro.h kernel_gravity.h
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h custom_mpi.h error.h inline.h kernel_hydro.h kernel_sidm.h kernel_gravity.h
 nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h runner_doiact_sidm.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h runner_doiact_functions_sidm.h

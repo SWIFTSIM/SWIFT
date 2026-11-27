@@ -75,6 +75,11 @@ struct sipart {
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;
 
+  /*! Has this particle scattered since its last SIDM kick? (i.e. is there a
+   * kick waiting in dv_sidm). A particle scatters at most once per kick, as
+   * every kick is computed from the velocities at the start of the step. */
+  char scattered;
+
   /*! SIDM scattering rate - in physical units (internal) */
   float SIDM_rate;
 

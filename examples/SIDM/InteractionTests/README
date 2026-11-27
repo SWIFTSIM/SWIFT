@@ -2,3 +2,8 @@ This directory contains initial conditions designed to compare the evolution of 
 
 ./run.sh runs an SIDM simulation for ~400Myr with an interaction cross section of 100 cm^2/g.
 ./run_cdm.sh runs identical ICs with CDM particles.
+
+plot_energy.py checks that the total (kinetic + potential) energy of the SIDM run is
+conserved as the core forms, using the snapshots in snap/ and, if present, comparing
+with the CDM run in snap_cdm/ (gravity alone does not conserve energy exactly).
+run.sh calls it at the end; run run_cdm.sh first to include the CDM comparison.

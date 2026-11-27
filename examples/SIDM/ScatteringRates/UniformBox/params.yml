@@ -1,0 +1,49 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters (Omega_cdm must match makeIC.py; no baryons).
+# a_begin, a_end and the output times are overridden by run.sh
+Cosmology:
+  h:              0.6777
+  a_begin:        0.5           # a != 1 so that wrong a-factors show up in the rate
+  a_end:          0.5001
+  Omega_cdm:      0.3
+  Omega_lambda:   0.7
+  Omega_b:        0.0
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-10
+  dt_max:     1e-4
+
+# Parameters governing the snapshots (the rates are written to snapshot_0000)
+Snapshots:
+  subdir:             snap
+  basename:           snapshot
+  scale_factor_first: 0.5
+  delta_time:         1.1
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first: 0.5
+  delta_time:         1.1
+
+Scheduler:
+  max_top_level_cells: 16
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  uniform_box.hdf5
+  periodic:   1
+
+# Parameters for the SIDM scheme
+BasicSIDM:
+  resolution_eta:         1.2348  # 48 neighbours with the cubic spline kernel
+  constant_cross_section: 1
+  sigma_over_m_cgs:       1       # Scattering cross-section per unit mass [cm^2/g]
+  kappa_timestep:         1

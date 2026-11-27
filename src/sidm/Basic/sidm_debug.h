@@ -28,13 +28,19 @@ __attribute__((always_inline)) INLINE static void sidm_debug_particle(
       sip->mass);
 }
 
+/**
+ * @brief Prints the velocities of a scattering pair (debugging checks only,
+ * as it is called for every scattering).
+ */
 __attribute__((always_inline)) INLINE static void sidm_debug_interaction(
     const struct sipart *sipi, const struct sipart *sipj) {
+#ifdef SWIFT_DEBUG_CHECKS
   warning(
       "[PIDi%lld] vi=[%.3e,%.3e,%.3e] dvi=[%.3e,%.3e,%.3e], "
       "[PIDj%lld] vj=[%.3e,%.3e,%.3e] dvj=[%.3e,%.3e,%.3e], ",
       sipi->id, sipi->v[0], sipi->v[1], sipi->v[2], sipi->dv_sidm[0],
       sipi->dv_sidm[1], sipi->dv_sidm[2], sipj->id, sipj->v[0], sipj->v[1],
       sipj->v[2], sipj->dv_sidm[0], sipj->dv_sidm[1], sipj->dv_sidm[2]);
+#endif
 }
 #endif /* SWIFT_SIDM_BASIC_DEBUG_H */

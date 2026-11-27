@@ -40,13 +40,19 @@ KM_S_TO_KPC_PER_GYR = 1.022
 MSUN_IN_G = 1.988409e33
 KPC_IN_CM = 3.085677e21
 
-# ---- sigma/m: 100 cm^2/g -> kpc^2/Msun ----
-sigma_over_m = 100.0 / KPC_IN_CM**2 * MSUN_IN_G
-
 
 # ------------------ Units ------------------
 def get_unit_time(f):
     return f["Units"].attrs["Unit time in cgs (U_t)"][0]
+
+
+def get_sigma_over_m(f):
+    """sigma/m used by the run, read from the snapshot (cm^2/g -> kpc^2/Msun)"""
+    params = f["Parameters"].attrs
+    if int(params["BasicSIDM:constant_cross_section"]) != 1:
+        raise ValueError("Snapshot was not run with a constant cross-section")
+    sigma_cgs = float(params["BasicSIDM:sigma_over_m_cgs"])
+    return sigma_cgs, sigma_cgs / KPC_IN_CM**2 * MSUN_IN_G
 
 
 def density_conversion(f):
@@ -137,6 +143,9 @@ def main():
         vel = np.array(f["SIDMParticles"]["Velocities"])
         rho = np.array(f["SIDMParticles"]["Densities"]) * density_conversion(f)
         u_time = get_unit_time(f)
+        sigma_cgs, sigma_over_m = get_sigma_over_m(f)
+
+    print(f"Using sigma/m = {sigma_cgs:g} cm^2/g from {sidm_fname}")
 
     ## Calculate scattering rate based on particle densities and velocities
     v_rel_kpc_gyr = np.sqrt((vel**2).sum(axis=1)) * KM_S_TO_KPC_PER_GYR
@@ -174,7 +183,7 @@ def main():
     ax.set_yscale("log")
     ax.set_xlabel("r [kpc]")
     ax.set_ylabel(r"Scattering rate [Gyr$^{-1}$]")
-    ax.legend()
+    ax.legend(title=rf"$\sigma/m = {sigma_cgs:g}$ cm$^2$ g$^{{-1}}$")
     fig.tight_layout()
     plt.savefig("scattering_rates.png", dpi=200)
 
