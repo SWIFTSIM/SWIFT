@@ -643,10 +643,7 @@ claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
     ionized mass is the Strömgren mass when the gas recombination time
     is short compared with the pass interval. When it is longer, the
     pixel pays the neutral hydrogen again at each re-claim and holds
-    less. In a clump of 95\,M$_\odot$ gas particles with four stars and
-    12 cones (fixed $10^4$\,K, one run each) the recombination rate of
-    the ionized gas is 0.98 of the stars' photon rate at a pass
-    interval of 0.01\,Myr and 0.51 at 0.001\,Myr.
+    less.
 \end{itemize}
 A boundary particle that is not claimed is the ionization front of
 the pixel: it absorbs the pixel's remaining budget, which ends the
@@ -676,9 +673,8 @@ on the star's next rebuild pass. Each star's rebuild is scheduled
 independently off its own age and its own last-rebuild time; there is no cross-star coordination or
 deliberate synchronous/asynchronous toggle like the one
 \citet{Smith2021} implemented (they found no difference between the
-two). For the co-located, simultaneously-born stars in the validation
-example this produces synchronous rebuilds in practice, simply because
-the stars are identical, not because the code enforces it.
+two). Stars of identical age and position rebuild together, because
+they are identical, not because the code enforces it.
 
 \paragraph{Implementation.} The per-star rebuild schedule is decided in
 \code{feedback\_will\_do\_HII\_ionization}
@@ -726,50 +722,54 @@ its tag lapses. The claim walk for new gas then starts at
 where $r_{\rm held}$ is the distance of the farthest held particle found by
 the gather (0 if the star holds none). Held gas is tagged and never a
 candidate. A walk that starts inside the region therefore finds nothing new
-there, and a star holding gas stops after one empty probe (the radius grown
-once by \code{Stars:HII\_radius\_expansion\_factor}). Starting beyond the held
-gas keeps that one probe for the gas outside the region. A star that holds
-nothing starts at $r_{\rm start}$.
+there. A search is one gather of the candidates within the current radius. A
+search of a star holding gas is empty if it meets no candidate and no gas of
+another star (below). The walk grows the radius by
+\code{Stars:HII\_radius\_expansion\_factor} $f$ after each search and stops at
+the second empty search in a row, the one-probe stop. Starting beyond the held
+gas keeps the first empty search for the gas outside the region, so the one
+grown search that follows it, the probe, is the last. A star that holds nothing
+starts at $r_{\rm start}$ and has no such stop.
 
-A probe is empty only if it meets neither a candidate nor gas that another
-star holds beyond the previous search radius ($r_{\rm held}$ for the first
-probe). A star whose region lies inside the regions of other stars sees their
-gas past $r_{\rm held}$. That gas is not a candidate either, but it shows that
-the front of the star lies farther out, so the walk grows through it. Gas of
-other stars inside $r_{\rm held}$ does not count: it says nothing about the
-gas past the region. Only gas in a pixel with photons left counts. The walk
-then spends the photons of the pass on the first candidates past the other
-regions, and no photon escapes at a one-probe stop while each probe meets such
-gas. Two probes in a row that meet neither a candidate nor such gas still stop
-the walk. A star alone, or one that holds nothing, is not affected.
+Gas that another star holds is not a candidate, but it can show that the front
+of the star lies farther out. A star whose region lies inside the regions of
+other stars sees their gas beyond the radius of the previous search
+($r_{\rm held}$ for the first search). A search that meets such gas is not
+empty, so the walk grows through it and then spends the photons of the pass on
+the first candidates past the other regions. Gas of other stars inside that
+radius does not count: it says nothing about the gas past the region. Only gas
+in a pixel with photons left counts. A star alone, or one that holds nothing,
+is not affected.
 
-A nested star with photons left makes up to six searches per pass instead of
-two and reaches $1.61\,r_0$. It can therefore reach $r_{\rm cov}$ and ask for
-a wider tree, and so for wider locks, where the earlier stop would have ended
-the pass. \code{Stars:HII\_max\_search\_radius} bounds the reach.
+A nested star with photons left makes up to $N_{\rm tries}+1$ searches per pass
+instead of two, where $N_{\rm tries}$ is
+\code{Stars:HII\_max\_radius\_expansion\_tries}. With the defaults
+($N_{\rm tries}=5$, $f=1.1$) that is six searches, reaching
+$f^{N_{\rm tries}} r_0 = 1.61\,r_0$. The star can therefore reach $r_{\rm cov}$
+and ask for a wider tree, and so for wider locks, where the earlier stop would
+have ended the pass. \code{Stars:HII\_max\_search\_radius} bounds the reach.
 
 A pass that finds nothing more within its radius and still has photons ends
 for one of four reasons. They are tested in this order, and the first that
-holds ends the pass: (1) \code{Stars:HII\_max\_radius\_expansion\_tries}
-expansions are used up; (2) the radius is at \code{Stars:HII\_max\_search\_radius};
-(3) the radius is at $r_{\rm cov}$; (4) a star holding gas has had its one
-empty probe. A walk that reaches $r_{\rm cov}$ with nothing found, at its start
-or after its one probe, cannot grow, so the covered radius is tested before the
-one probe and the pass stops at the covered radius, unless the tries or the
-ceiling bind first. A stop on the tries or the ceiling asks for no wider tree
-and keeps no photons. A stop at the covered radius asks for a wider tree,
-and its photons follow the carry rule of
+holds ends the pass: (1) the $N_{\rm tries}$ expansions are used up; (2) the
+radius is at \code{Stars:HII\_max\_search\_radius}; (3) the radius is at
+$r_{\rm cov}$; (4) a star holding gas has had two empty searches in a row. A
+walk that reaches $r_{\rm cov}$ with nothing found cannot grow, so the covered
+radius is tested before the one-probe stop and the pass stops at the covered
+radius, unless the tries or the ceiling bind first. A stop on the tries or the
+ceiling asks for no wider tree and keeps no photons. A stop at the covered
+radius asks for a wider tree, and its photons follow the carry rule of
 Section~\ref{sec:budget-carry}. A one-probe stop is therefore always inside
 $r_{\rm cov}$. Its photons escape. A star nested in other regions whose front
-lies beyond $r_0$ times the expansion factor to the power of the tries
-($1.93\,r_{\rm held}$ with the default 5 tries and factor 1.1) stops on the
-tries, and its photons escape. The step log counts the coverage stops
-(carried and released passes, released photons, start radii cut to $r_{\rm cov}$)
-and, apart, the one-probe stops and the tries or ceiling stops with photons
-left, with those photons. The share of the issued photons that escape at
-these stops measures how often the search still falls short. The counters are cumulative over the run,
-are summed over the MPI ranks at the end of each step, and start again from
-zero at a restart: they are not in the restart file.
+lies beyond $1.2\,f^{N_{\rm tries}} r_{\rm held}$ ($1.93\,r_{\rm held}$ with
+the defaults) stops on the tries, and its photons escape. The step log counts
+the coverage stops (carried and released passes, released photons, start radii
+cut to $r_{\rm cov}$) and, apart, the one-probe stops and the tries or ceiling
+stops with photons left, with those photons. The share of the issued photons
+that escape at these stops measures how often the search still falls short. The
+counters are cumulative over the run, are summed over the MPI ranks at the end
+of each step, and start again from zero at a restart: they are not in the
+restart file.
 
 \paragraph{Implementation.} The gather is in \code{runner\_hii\_maintain\_held\_region}
 (\code{src/runner\_radiation\_feedback.c:895}), exempt from
@@ -887,8 +887,7 @@ maximum once the region starts to recede.
 A
 single particle whose tag lapsed early and then advected outward for
 several dynamical times can dominate a plain maximum over ever-owned
-distances and inflate the reported extent by double digits percent,
-without any genuine coverage problem. The robust extent rule, a post-processing
+distances and inflate the reported extent, without any genuine coverage problem. The robust extent rule, a post-processing
 estimate made from snapshots that SWIFT does not compute, therefore does not
 take this maximum directly. It sorts ever-owned distances descending, estimates a local point
 spacing from the median gap among the outermost few percent of
