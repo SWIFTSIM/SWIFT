@@ -1275,6 +1275,13 @@ void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
       cj->sidm.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells (cj).");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  runner_check_sort_shift_sidm(ci, cj, sid, e);
+  runner_check_sort_shift_sidm(cj, ci, sid, e);
+#endif /* SWIFT_DEBUG_CHECKS */
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_SIDM_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
@@ -1866,6 +1873,13 @@ void DOPAIR2_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   if (!(cj->sidm.sorted & (1 << sid)) ||
       cj->sidm.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells (cj).");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  runner_check_sort_shift_sidm(ci, cj, sid, e);
+  runner_check_sort_shift_sidm(cj, ci, sid, e);
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
   DOPAIR2_SIDM_NAIVE(r, ci, cj, limit_min_h, limit_max_h);

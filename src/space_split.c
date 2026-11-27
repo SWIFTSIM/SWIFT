@@ -140,6 +140,7 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
     cp->sidm.h_max = 0.f;
     cp->sidm.h_max_active = 0.f;
     cp->sidm.dx_max_part = 0.f;
+    cp->sidm.dx_max_sort_offset = 0.f;
     cp->nodeID = c->nodeID;
     cp->parent = c;
     cp->top = c->top;

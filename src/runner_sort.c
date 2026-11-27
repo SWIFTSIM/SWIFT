@@ -193,7 +193,7 @@ RUNNER_CHECK_SORTS(sidm)
  * @brief Checks that dx_max_sort is an upper bound on the motion of the
  * particles of a cell since they were sorted along a given direction.
  *
- * Debugging function. Exists in two flavours: hydro & stars.
+ * Debugging function. Exists in three flavours: hydro, stars & sidm.
  *
  * @param c The #cell to check.
  * @param other The other #cell of the pair (only used in the error message).
@@ -241,6 +241,7 @@ RUNNER_CHECK_SORTS(sidm)
 
 RUNNER_CHECK_SORT_SHIFT(hydro, part)
 RUNNER_CHECK_SORT_SHIFT(stars, spart)
+RUNNER_CHECK_SORT_SHIFT(sidm, sipart)
 
 /**
  * @brief Sort the particles in the given cell along all cardinal directions.
@@ -967,6 +968,16 @@ void runner_do_sidm_sort(struct runner *r, struct cell *c, int flags,
       }
       c->sidm.dx_max_sort_old = 0.f;
       c->sidm.dx_max_sort = 0.f;
+      c->sidm.dx_max_sort_offset = 0.f;
+
+    } else if (flags) {
+
+      /* We are adding directions to a cell sorted at an earlier time without
+       * resetting the shifts. As |x(t) - x(t_sort)| <= |x_diff_sort(t)| +
+       * |x_diff_sort(t_sort)|, remember the current maximal shift such that
+       * dx_max_sort keeps bounding the motion since the sort for these new
+       * directions. dx_max_sort already includes any previous offset. */
+      c->sidm.dx_max_sort_offset = c->sidm.dx_max_sort;
     }
 
     /* Fill the sort array. */

@@ -94,6 +94,10 @@ struct cell_sidm {
     /*! Maximum particle movement in this cell since the last sort. */
     float dx_max_sort;
 
+    /*! Upper bound on the particle shift at the time sort directions were
+     * added to this (leaf) cell without resetting the shifts. */
+    float dx_max_sort_offset;
+
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
