@@ -222,13 +222,14 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
    * step: cached unfloored so readers can detect that case. */
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_step = get_integer_timestep(p->time_bin);
-  /* Start of the step ending now. Using `ti_current` instead would
+  /* Start of the current time bin. Using `ti_current` instead would
    * over-drain one sub-step early. */
   const integertime_t ti_bin_begin =
       get_integer_time_begin(e->ti_current, p->time_bin);
   const integertime_t ti_end = ti_bin_begin + ti_step;
 
-  /* The held light has arrived since the last merge. A synchronisation cuts
+  /* The held light has arrived since the last merge. A synchronisation
+   * (timestep_sync_part) or the time-step limiter (timestep_limiter.h) cuts
    * the step of an inactive particle without a merge, so its time bin can
    * start after that merge. */
   const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
