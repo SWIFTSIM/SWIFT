@@ -66,5 +66,5 @@ that the ratio R of the merged transmission to the transmission of the two light
 fraction of the least-shielded light, and that the merged transmission lies between the
 transmissions of the two stars, each within a float term that the check prints. It stops with exit status 4 if
 the merge changes the transmission at fewer than 10 receivers, or if a planted error stays inside the bar
-(the controls run only when both bounds hold: a failed bound gives exit status 1), and prints how many receivers lie
+(a failed bound check gives exit status 1 before the controls run), and prints how many receivers lie
 beyond the angle limit.
