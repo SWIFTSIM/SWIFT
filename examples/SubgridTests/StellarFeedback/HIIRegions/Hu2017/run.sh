@@ -38,6 +38,12 @@ max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:HII_max_radi
 radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override
 run_name=${run_name:=""}
 restart=${restart:=0}
+hydrogen_mass_fraction=${hydrogen_mass_fraction:=} # Empty keeps params.yml (0.76); 1 = the paper's pure hydrogen. Also sets SPH:H_mass_fraction
+
+hydrogen_args=()
+if [ -n "$hydrogen_mass_fraction" ]; then
+    hydrogen_args=(-P "GrackleCooling:HydrogenFractionByMass:$hydrogen_mass_fraction" -P "SPH:H_mass_fraction:$hydrogen_mass_fraction")
+fi
 
 if [ -e ICs_husmith.hdf5 ]
 then
@@ -104,6 +110,7 @@ if [ "$with_cooling" -eq 1 ]; then
                -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
                -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
+               "${hydrogen_args[@]}" \
                params.yml 2>&1 | tee output.log
 else
 ../../../../../swift --hydro --stars --external-gravity --feedback \
@@ -118,11 +125,14 @@ else
                -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
                -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
+               "${hydrogen_args[@]}" \
                params.yml 2>&1 | tee output.log
 fi
 
-# Compare to the analytical solution
-python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5"
+# Compare to the analytical solution. A non-zero status (see README, Checking)
+# is returned after the output has been moved.
+check_status=0
+python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5" || check_status=$?
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
@@ -138,6 +148,9 @@ else
         mv statistics.txt $run_name
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
-        mv *.png $run_name
+        # No png exists when the checker stops before plotting.
+        mv *.png $run_name 2>/dev/null || true
     fi
 fi
+
+exit $check_status

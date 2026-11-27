@@ -59,26 +59,32 @@ The same applies to composition. These solutions are parameterised by n_H,
 T_i, T_o, Q_H and the mean molecular weights, none of which is tied to the
 papers' own setup, so the curves are evaluated at the run's OWN measured
 mu_i and mu_o rather than at the papers' pure-hydrogen convention
-(mu_i=0.5, mu_o=1), which this run does not have: it carries helium and
-Grackle sets the ionization state. Both values are printed with their
-source. See resolve_composition().
+(mu_i=0.5, mu_o=1), which a run with helium does not have (run.sh
+hydrogen_mass_fraction=1 gives that medium). Both values are printed with
+their source. See resolve_composition().
 
-r_hii is read the same way as stromgren_analytic_check.py's corrected
-measure: the current position of every gas particle *any* of the n_stars
-co-located sources has ever tagged (HIIStarIDs), not any star's frozen
-HIIRegionRadii (h_hii) -- generalizing the single-star version to Hu et
-al.'s own r_HII definition ("the maximum radius where a gas particle with
-an ionization fraction x_H+ > 0.95 can be found", i.e. a single front
-radius for the whole source cluster, not per-star). The reported extent is
-outlier-rejected, not the max, of these ever-tagged distances: since
-HIIStarIDs is never cleared on tag expiry, a single particle that lapsed
-early and advected outward for several Myr can inflate a plain max() by
-double digits percent. robust_ever_tagged_radius() rejects such a particle
-only when it is detached from the population both radially and in its own
-direction, which leaves a smooth shell edge exact and keeps a genuinely
-anisotropic front (a leading HEALPix cone at HII_angular_nside > 0, a
-breakout finger) intact. The true max is still reported as a secondary
-diagnostic.
+n_H is the true mean of the box: gas mass x X_H / volume / m_p, with X_H read
+from the cooling parameters of the snapshot. See resolve_n_H().
+
+r_hii follows Hu et al.'s own r_HII definition ("the maximum radius where a
+gas particle with an ionization fraction x_H+ > 0.95 can be found", i.e. a
+single front radius for the whole source cluster, not per-star):
+
+    r_hii = max over gas particles j with IsIonizedFlags[j] != 0 of
+            | minimum_image(x_j - x_c) |,
+
+with x_j the gas particle position [kpc], x_c the mean position of the
+n_stars co-located sources [kpc] and the box periodic. IsIonizedFlags is the
+snapshot field the HII algorithm sets on the particles it currently holds
+ionized. A lapsed particle has flag 0, so no outlier rejection is needed and
+none is applied. The result is in kpc and is printed in pc.
+
+The older estimator is kept behind --front-estimator ever-tagged: the
+farthest particle that any source has ever tagged (HIIStarIDs, a one-way
+stamp that is never cleared), after robust_ever_tagged_radius() has rejected
+particles detached radially and in direction. That filter also removes
+particles that are still ionized, so it is not the default. Both radii and
+the raw ever-tagged maximum are printed on every row.
 
 Scope and limits: the box size of 100 pc and HII_max_search_radius of 40 pc give a margin of 1.5 to 2 over the
 Raga-II prediction of about 26 pc at t=8 Myr. At the natural T_i~47500 K of the plain build the equivalent radius
@@ -88,13 +94,18 @@ configuration, because its time-dependent weight is calibrated for a single sour
 
 Usage:
     python3 hu_smith_analytic_check.py [-s snap/snapshot] [-o out.png]
+
+Exit status: 0 when the median error is within --tol, 3 when a radius or error
+is not finite, 4 when the median error exceeds --tol, 5 when the reference was
+computed at a density, temperature or composition the run does not have (the
+verdict is then not meaningful).
 """
 
 import argparse
 import glob
 import os
-import re
 import sys
+from dataclasses import dataclass
 
 import h5py
 import numpy as np
@@ -236,6 +247,13 @@ ANGULAR_SUPPORT_RADIUS_FRACTION = 0.95
 GAP_MAX_REJECT_FRACTION = 0.02
 GAP_MIN_REJECT = 3
 GAP_MAX_REJECT = 32
+# Exit status when a radius or error is not finite: a NaN compares false
+# against every bar, so it must stop the check before any comparison.
+NONFINITE_EXIT_CODE = 3
+# Exit status when the median error exceeds --tol.
+VERDICT_FAIL_EXIT_CODE = 4
+# Exit status when the reference does not describe the run (marker set).
+UNVALIDATED_EXIT_CODE = 5
 # Below this many ever-tagged particles there are too few points to estimate
 # a spacing scale at all; trust the max unmodified.
 GAP_MIN_POINTS = 10
@@ -348,49 +366,178 @@ def robust_ever_tagged_radius(offsets_kpc):
     return float(r_sorted[cut + 1]), true_max
 
 
-def snapshot_index(filename):
-    """Trailing integer of a snapshot filename (snapshot_0007.hdf5 -> 7), or
-    None when the stem carries no such index."""
-    stem = os.path.splitext(os.path.basename(filename))[0]
-    match = re.search(r"(\d+)$", stem)
-    return int(match.group(1)) if match else None
+def largest_ionized_radius(offsets_kpc):
+    """Largest distance of a currently ionized gas particle from the source.
 
-
-def print_n_H_with_source(n_H, source, files, label="n_H"):
-    """Print n_H together with the snapshot it was measured in, and warn when
-    that snapshot is not the run's own first one.
-
-    n_H is read once, from the first snapshot of the glob that holds a live
-    star, and never revisited. A glob that skips the run's early snapshots
-    samples a post-expansion, shell-biased density instead of the initial
-    uniform one, which shifts every reference curve computed from it -- so
-    the source has to be visible in the output rather than implicit.
+    @param offsets_kpc (N, 3) offsets [kpc] of the particles with
+    IsIonizedFlags != 0, minimum-imaged about the source.
+    @return the largest radius [kpc]; NaN when N is 0.
+    @raise ValueError if any offset is not finite.
     """
-    print(f"{label:<19}: {n_H:.4g}  (measured in {source})")
-    if source != files[0]:
+    offsets = np.asarray(offsets_kpc, dtype=np.float64)
+    if len(offsets) == 0:
+        return float("nan")
+    radii = np.linalg.norm(offsets, axis=1)
+    if not np.all(np.isfinite(radii)):
+        raise ValueError("non-finite ionized particle offset")
+    return float(radii.max())
+
+
+# Keys that hold the hydrogen mass fraction the cooling module uses, in the
+# order tried.
+HYDROGEN_FRACTION_KEYS = (
+    "GrackleCooling:HydrogenFractionByMass",
+    "GeajayCooling:hydrogen_mass_fraction",
+)
+
+
+def read_hydrogen_mass_fraction(parameters, override=None):
+    """Return (X_H, source) of the cooling module of the run.
+
+    A geajay value of -1 means "the library's own value", which the snapshot
+    does not record, so it is refused instead of guessed.
+
+    @param parameters Snapshot parameter dictionary (metadata.parameters).
+    @param override X_H given on the command line, or None.
+    """
+    if override is not None:
+        return float(override), "--hydrogen-mass-fraction"
+    for key in HYDROGEN_FRACTION_KEYS:
+        raw = parameters.get(key)
+        if raw is None:
+            continue
+        value = float(raw)
+        if value > 0.0:
+            return value, key
+    raise RuntimeError(
+        "The snapshot records no positive hydrogen mass fraction under "
+        f"{' or '.join(HYDROGEN_FRACTION_KEYS)} (a geajay value of -1 takes "
+        "the library's own value, which the snapshot does not record). "
+        "Pass --hydrogen-mass-fraction."
+    )
+
+
+def mean_hydrogen_density(data, X_H):
+    """Return the true mean hydrogen number density of the box in 1/cm3.
+
+    Total gas mass times X_H over the box volume and the proton mass: the
+    density the initial conditions describe. The SPH estimate of the mean
+    density is higher on randomly placed particles and is not used here.
+
+    @param data swiftsimio dataset of a snapshot.
+    @param X_H Hydrogen mass fraction of the gas.
+    """
+    # float64 sums and Msun, kpc units: the cgs total overflows float32
+    mass_g = float(np.sum(data.gas.masses.to("Msun").value, dtype=np.float64))
+    mass_g *= const.M_sun.cgs.value
+    volume_cm3 = (
+        float(np.prod(data.metadata.boxsize.to("kpc").value.astype(np.float64)))
+        * const.kpc.cgs.value**3
+    )
+    return (mass_g * X_H / volume_cm3 / const.m_p.cgs.value) / u.cm**3
+
+
+def resolve_n_H(n_H_true, n_H_sph, X_H, X_H_source, source, override):
+    """Return (n_H the curves use, verdict marker) and print both estimates.
+
+    The true mean is the default. The SPH estimate of random initial
+    positions sits about 1.4 times above it (kernel self-weight and
+    clumping), so the two differ by more than 5 per cent on every run of this
+    example's initial conditions: a NOTE line says so, it is not a fault. An
+    explicit --n-H that differs from the true mean by more than 5 per cent is
+    flagged in the verdict.
+
+    @param n_H_true True mean hydrogen density [1/cm3].
+    @param n_H_sph Mean SPH density times X_H [1/cm3], for information.
+    @param X_H Hydrogen mass fraction used.
+    @param X_H_source Where X_H was read.
+    @param source Snapshot the density was read in.
+    @param override Explicit n_H [1/cm3], or None.
+    """
+    true = n_H_true.to(1 / u.cm**3).value
+    print(f"X_H                : {X_H:.4g}  (from {X_H_source})")
+    print(
+        f"n_H                : {true:.4g} 1/cm3  (true mean of the box: gas mass "
+        f"x X_H / volume / m_p, read in {source})"
+    )
+    sph = n_H_sph.to(1 / u.cm**3).value
+    print(
+        f"n_H (SPH estimate) : {sph:.4g}  (information only; {sph / true:.3f} "
+        f"times the true mean, which is expected for random particle positions)"
+    )
+    if abs(sph / true - 1.0) > 0.05:
         print(
-            f"  NOTE: not the earliest snapshot in the glob ({files[0]}); "
-            f"that one holds no live star yet."
+            "  NOTE: the SPH estimate differs from the true mean by more than "
+            "5%. Expected for random initial positions; the curves use the "
+            "true mean."
         )
-    first_index = snapshot_index(files[0])
-    if first_index is not None and first_index != 0:
-        print(
-            f"  WARNING: the snapshot glob starts at index {first_index}, not "
-            f"0. n_H is then measured after the region has already expanded, "
-            f"so it is a shell-biased density and every reference curve below "
-            f"is shifted. Re-run against the complete snapshot series."
-        )
+    if override is None:
+        return n_H_true, ""
+    print(f"n_H (override)     : {override:.4g}  (--n-H, used for the curves)")
+    if abs(override / true - 1.0) <= 0.05:
+        return override / u.cm**3, ""
+    print("\n" + "!" * 72)
+    print(
+        f"WARNING: --n-H {override:.4g} differs by {override / true - 1.0:+.1%} "
+        f"from the true mean {true:.4g}. The reference curves are computed at a "
+        f"density the run does not have, so the verdict is not meaningful."
+    )
+    print("!" * 72 + "\n")
+    return override / u.cm**3, (
+        f" (n_H MISMATCH: reference {override:.4g} vs true {true:.4g} per cm3)"
+    )
 
 
 # -----------------------------------------------------------------------------
-# Read the simulated r_hii(t) from the snapshots. Generalizes the
-# single-star ever-tagged measure (stromgren_analytic_check.py,
-# starbench_analytic_check.py) to n_stars co-located sources: a gas
-# particle counts if it was ever tagged by *any* of them (np.isin, not a
-# single ID match), matching Hu et al.'s own r_HII definition -- one front
-# radius for the whole source cluster, not per-star.
+# Read the simulated r_hii(t) from the snapshots. One front radius for the
+# whole cluster of n_stars co-located sources, not per star. The default
+# estimator is the largest radius of a currently ionized gas particle, as in
+# Hu et al.'s r_HII definition. The ever-tagged estimator counts a particle
+# if any source ever tagged it (np.isin, not a single ID match), after an
+# outlier filter.
 # -----------------------------------------------------------------------------
-def read_simulated_r_hii(snapshot_glob):
+@dataclass
+class SimulatedFront:
+    """Front radii and run properties read from a snapshot series.
+
+    @param times Snapshot times.
+    @param r_hii Radius of the chosen estimator (the r_sim column).
+    @param r_hii_max Raw ever-tagged maximum.
+    @param r_now Largest current HII radius h_hii of the sources.
+    @param r_ionized Largest currently ionized radius, or r_now when no
+    particle is flagged ionized (see r_ionized_is_fallback).
+    @param r_ionized_is_fallback True where r_ionized holds r_now.
+    @param r_filtered Outlier-filtered ever-tagged radius.
+    @param star_mass_msun Mass of each source [Msun].
+    @param n_stars Number of sources.
+    @param n_H True mean hydrogen density of the box.
+    @param n_H_source Snapshot the density was read in.
+    @param boxsize Box side [kpc].
+    @param files Snapshot filenames, in time order.
+    @param n_H_sph SPH density estimate times X_H.
+    @param X_H Hydrogen mass fraction used.
+    @param X_H_source Where X_H was read.
+    """
+
+    times: u.Quantity
+    r_hii: u.Quantity
+    r_hii_max: u.Quantity
+    r_now: u.Quantity
+    r_ionized: u.Quantity
+    r_ionized_is_fallback: np.ndarray
+    r_filtered: u.Quantity
+    star_mass_msun: float
+    n_stars: int
+    n_H: u.Quantity
+    n_H_source: str
+    boxsize: u.Quantity
+    files: list
+    n_H_sph: u.Quantity
+    X_H: float
+    X_H_source: str
+
+
+def read_simulated_r_hii(snapshot_glob, X_H_override=None, estimator="ionized"):
     if sw is None:
         raise RuntimeError("swiftsimio is required to read the snapshots.")
 
@@ -399,9 +546,13 @@ def read_simulated_r_hii(snapshot_glob):
         raise RuntimeError(f"No snapshots found matching {snapshot_glob!r}.")
 
     times, r_hii, r_hii_max, r_now = [], [], [], []
+    r_ionized, r_filtered, r_ionized_is_fallback = [], [], []
     star_mass_msun = None
     n_stars_found = None
     n_H_atom_cc = None
+    n_H_sph = None
+    X_H = None
+    X_H_source = None
     n_H_source = None
     boxsize_kpc = None
 
@@ -424,19 +575,33 @@ def read_simulated_r_hii(snapshot_glob):
 
         star_ids = data.stars.particle_ids.value.astype(np.int64)
         ever_tagged = np.isin(data.gas.hiistar_ids, star_ids)
+        with h5py.File(f, "r") as h:
+            ionized = h["PartType0/IsIonizedFlags"][:] != 0
+        # Co-located sources: use the mean position as the common center.
+        cluster_pos = data.stars.coordinates.to("kpc").value.mean(axis=0)
+        box_kpc = data.metadata.boxsize.to("kpc").value
+        gas_pos_all = data.gas.coordinates.to("kpc").value
+
+        def offsets_of(mask):
+            dx = gas_pos_all[mask] - cluster_pos
+            return dx - box_kpc * np.round(dx / box_kpc)
+
+        r_ion = r_now[-1]
+        no_ionized_particle = not np.any(ionized)
+        if not no_ionized_particle:
+            try:
+                r_ion = largest_ionized_radius(offsets_of(ionized))
+            except ValueError as err:
+                print(f"NONFINITE: {f}: {err}")
+                sys.exit(NONFINITE_EXIT_CODE)
+        r_old, r_max = r_now[-1], r_now[-1]
         if np.any(ever_tagged):
-            # Co-located sources: use the mean position as the common center.
-            cluster_pos = data.stars.coordinates.to("kpc").value.mean(axis=0)
-            gas_pos = data.gas.coordinates[ever_tagged].to("kpc").value
-            box_kpc = data.metadata.boxsize.to("kpc").value
-            dx = gas_pos - cluster_pos
-            dx -= box_kpc * np.round(dx / box_kpc)
-            r_robust, r_max = robust_ever_tagged_radius(dx)
-            r_hii.append(r_robust)
-            r_hii_max.append(r_max)
-        else:
-            r_hii.append(r_now[-1])
-            r_hii_max.append(r_now[-1])
+            r_old, r_max = robust_ever_tagged_radius(offsets_of(ever_tagged))
+        r_hii.append(r_ion if estimator == "ionized" else r_old)
+        r_hii_max.append(r_max)
+        r_ionized.append(r_ion)
+        r_ionized_is_fallback.append(no_ionized_particle)
+        r_filtered.append(r_old)
 
         if star_mass_msun is None:
             n_stars_found = len(data.stars.masses)
@@ -449,25 +614,31 @@ def read_simulated_r_hii(snapshot_glob):
                 )
             star_mass_msun = float(masses[0])
         if n_H_atom_cc is None:
-            rho_g_cm3 = float(np.mean(data.gas.densities).to("g/cm**3").value)
-            X_H_raw = data.metadata.parameters.get(
-                "GrackleCooling:HydrogenFractionByMass"
+            X_H, X_H_source = read_hydrogen_mass_fraction(
+                data.metadata.parameters, X_H_override
             )
-            X_H = float(X_H_raw) if X_H_raw is not None else 0.716
-            n_H_atom_cc = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
+            n_H_atom_cc = mean_hydrogen_density(data, X_H)
+            rho_g_cm3 = float(np.mean(data.gas.densities).to("g/cm**3").value)
+            n_H_sph = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
             n_H_source = f
 
-    return (
-        u.Quantity(times, u.Myr),
-        u.Quantity(r_hii, u.kpc),
-        u.Quantity(r_hii_max, u.kpc),
-        u.Quantity(r_now, u.kpc),
-        star_mass_msun,
-        n_stars_found,
-        n_H_atom_cc,
-        n_H_source,
-        boxsize_kpc * u.kpc,
-        files,
+    return SimulatedFront(
+        times=u.Quantity(times, u.Myr),
+        r_hii=u.Quantity(r_hii, u.kpc),
+        r_hii_max=u.Quantity(r_hii_max, u.kpc),
+        r_now=u.Quantity(r_now, u.kpc),
+        r_ionized=u.Quantity(r_ionized, u.kpc),
+        r_ionized_is_fallback=np.array(r_ionized_is_fallback, dtype=bool),
+        r_filtered=u.Quantity(r_filtered, u.kpc),
+        star_mass_msun=star_mass_msun,
+        n_stars=n_stars_found,
+        n_H=n_H_atom_cc,
+        n_H_source=n_H_source,
+        boxsize=boxsize_kpc * u.kpc,
+        files=files,
+        n_H_sph=n_H_sph,
+        X_H=X_H,
+        X_H_source=X_H_source,
     )
 
 
@@ -763,6 +934,25 @@ def main():
     )
     parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
     parser.add_argument(
+        "--n-H",
+        type=float,
+        default=None,
+        dest="n_H",
+        help="Hydrogen number density [1/cm3] the curves are computed at. "
+        "Default: the true mean of the box (gas mass x X_H / volume / m_p). "
+        "A value more than 5%% from it is flagged in the verdict.",
+    )
+    parser.add_argument(
+        "--hydrogen-mass-fraction",
+        type=float,
+        default=None,
+        dest="hydrogen_mass_fraction",
+        help="X_H of the run. Default: read from the snapshot parameters "
+        "(GrackleCooling:HydrogenFractionByMass or "
+        "GeajayCooling:hydrogen_mass_fraction); required for a geajay run "
+        "that left the value at -1.",
+    )
+    parser.add_argument(
         "--precursor-shell-pc",
         type=float,
         default=5.0,
@@ -787,24 +977,39 @@ def main():
         "references to within their own ~15-25%% systematic spread. See "
         "README.",
     )
+    parser.add_argument(
+        "--front-estimator",
+        choices=["ionized", "ever-tagged"],
+        default="ionized",
+        dest="front_estimator",
+        help="Radius the verdict uses: the largest currently ionized "
+        "radius (default) or the outlier-filtered ever-tagged radius.",
+    )
     args = parser.parse_args()
 
-    (
-        t_sim,
-        r_sim,
-        r_sim_max,
-        r_now,
-        star_mass_msun,
-        n_stars,
-        n_H,
-        n_H_source,
-        boxsize,
-        files,
-    ) = read_simulated_r_hii(args.snapshot_glob)
+    front = read_simulated_r_hii(
+        args.snapshot_glob, args.hydrogen_mass_fraction, args.front_estimator
+    )
+    t_sim = front.times
+    r_sim = front.r_hii
+    r_sim_max = front.r_hii_max
+    r_now = front.r_now
+    r_ionized = front.r_ionized
+    r_filtered = front.r_filtered
+    star_mass_msun = front.star_mass_msun
+    n_stars = front.n_stars
+    n_H_source = front.n_H_source
+    boxsize = front.boxsize
+    files = front.files
+    X_H = front.X_H
+    X_H_source = front.X_H_source
+    n_H, n_H_marker = resolve_n_H(
+        front.n_H, front.n_H_sph, X_H, X_H_source, n_H_source, args.n_H
+    )
     box_half_width = 0.5 * boxsize
     T_ionized_K, T_i_marker = resolve_T_ionized_K(args.T_ionized_K, files)
     mu_i, mu_o, mu_marker = resolve_composition(files, uses_neutral=True)
-    verdict_marker = T_i_marker + mu_marker
+    verdict_marker = T_i_marker + mu_marker + n_H_marker
 
     # n_stars identical co-located sources: sum Q_H per star, not
     # Q_H(n_stars * mass) -- the table is nonlinear in mass.
@@ -819,7 +1024,6 @@ def main():
     )
 
     print(f"Star mass (each)   : {star_mass_msun:.3f} Msun x {n_stars} sources")
-    print_n_H_with_source(n_H, n_H_source, files)
     print(f"Q_H (combined)     : {Q_H.to(1/u.s).value:.3e} 1/s")
     print(f"R_St               : {R_St:.4g}")
     print(f"c_i = {c_i:.4g} (mu_i={mu_i:.4f}), c_o = {c_o:.4g} (mu_o={mu_o:.4f})")
@@ -860,10 +1064,11 @@ def main():
     r_sim_max_pc = r_sim_max.to(u.pc).value
     r_now_pc = r_now.to(u.pc).value
     box_valid = R_ref_at_t_sim <= box_half_width.to(u.pc).value
-    # Liveness must come from h_hii, not from the ever-tagged extent: the
-    # HIIStarIDs stamp is never cleared, so r_sim keeps growing by advection
-    # after the last source dies and never returns to 0. Comparing there
-    # would put pure advection against a live-source analytic curve.
+    # Liveness must come from h_hii, not from a front estimator. The
+    # HIIStarIDs stamp is never cleared, so the ever-tagged radius keeps
+    # growing by advection after the last source dies, and the ionized
+    # radius has no flagged particle left to measure. Comparing there would
+    # put a stale front against a live-source analytic curve.
     alive = r_now_pc > 0
     ok = box_valid & alive
     if not np.any(ok):
@@ -874,8 +1079,15 @@ def main():
     r_max_w = r_sim_max_pc[window]
     R_ref_w = R_ref_at_t_sim[window]
     rel_error_w = np.abs(r_w - R_ref_w) / R_ref_w
+    if not (np.all(np.isfinite(r_w)) and np.all(np.isfinite(rel_error_w))):
+        print("NONFINITE: a window radius or relative error is not finite")
+        sys.exit(NONFINITE_EXIT_CODE)
+    r_ion_w = r_ionized.to(u.pc).value[window]
+    r_old_w = r_filtered.to(u.pc).value[window]
+    r_ion_fallback_w = front.r_ionized_is_fallback[window]
 
     print(f"\nReference curve: {ref_label}")
+    print(f"Front estimator: {args.front_estimator} (r_sim column)")
     print(
         f"Comparison window: t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] "
         f"({len(window)} snapshots), fixed T_o={args.T_neutral_K:.0f} K"
@@ -901,17 +1113,34 @@ def main():
         )
     print(
         f"{'t [Myr]':>9} {'r_sim [pc]':>11} {'R_ref [pc]':>11} {'rel_error':>10} "
-        f"{'r_max [pc]':>11}"
+        f"{'r_max [pc]':>11} {'r_ion [pc]':>11} {'r_old [pc]':>11}"
     )
-    for tt, rr, RR, ee, mm in zip(t_w, r_w, R_ref_w, rel_error_w, r_max_w):
-        print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g}")
+    for tt, rr, RR, ee, mm, ri, ro, fb in zip(
+        t_w, r_w, R_ref_w, rel_error_w, r_max_w, r_ion_w, r_old_w, r_ion_fallback_w
+    ):
+        print(
+            f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g} "
+            f"{ri:10.4g}{'*' if fb else ' '} {ro:11.4g}"
+        )
     print(
-        "  (r_max is the secondary diagnostic: the true, non-outlier-rejected "
-        "max ever-tagged extent, not the r_sim value above)"
+        "  (r_max: raw ever-tagged maximum. r_ion: largest currently ionized "
+        "radius; '*' marks a snapshot with no ionized particle, where r_ion "
+        "holds the source's own HII radius h_hii instead. r_old: "
+        "outlier-filtered ever-tagged radius.)"
     )
     n_pass = np.sum(rel_error_w <= args.tol)
-    median_error = np.median(rel_error_w)
-    verdict = "PASS" if median_error <= args.tol else "FAIL"
+    # A '*' row measures the source's own radius, not the front: left out of
+    # the median unless every row is one.
+    measured_w = ~r_ion_fallback_w if not np.all(r_ion_fallback_w) else slice(None)
+    median_error = np.median(rel_error_w[measured_w])
+    within_tol = median_error <= args.tol
+    # A reference computed for another density, temperature or composition
+    # carries no verdict word, so a harness grepping for PASS cannot read it
+    # as a pass.
+    if verdict_marker:
+        verdict = "UNVALIDATED"
+    else:
+        verdict = "PASS" if within_tol else "FAIL"
     print(
         f"Window summary: min={rel_error_w.min():.2%} (t={t_w[np.argmin(rel_error_w)]:.4g})  "
         f"median={median_error:.2%}  max={rel_error_w.max():.2%} "
@@ -996,7 +1225,7 @@ def main():
         "o-",
         color="#d62728",
         markersize=4,
-        label="Simulation (ever-tagged $r_{\\rm HII}$)",
+        label="Simulation ($r_{\\rm HII}$)",
     )
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
     ax.plot(t_grid, R_II, "-", color="black", label="Raga-II (Eqn 11)")
@@ -1037,6 +1266,10 @@ def main():
     fig.tight_layout()
     fig.savefig(args.output, dpi=150)
     print(f"Plot saved to {args.output}")
+    if verdict_marker:
+        sys.exit(UNVALIDATED_EXIT_CODE)
+    if not within_tol:
+        sys.exit(VERDICT_FAIL_EXIT_CODE)
 
 
 if __name__ == "__main__":

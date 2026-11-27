@@ -109,9 +109,9 @@ GrackleCooling:
   disable_cooling_for_debugging: 0              # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
 GEARChemistry:
-  # Z=0 -- literally pure hydrogen, matching Hu et al. (2017) and Smith et
-  # al. (2021)'s own medium exactly (X_H=1, no metal term in either
-  # paper's algorithm). An earlier version of this example used
+  # Z=0: no metals, as in Hu et al. (2017) and Smith et al. (2021), who have
+  # no metal term in their algorithm. The hydrogen mass fraction is set by
+  # hydrogen_mass_fraction in run.sh (README, Run). An earlier version of this example used
   # Z/Zsun~0.231 to hit the papers' flat T_i=1e4 K target via this code's
   # metallicity-dependent collisional-equilibrium fit, but that introduces
   # real metal-line cooling the papers' idealized medium doesn't have --
