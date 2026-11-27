@@ -32,6 +32,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
+        testPartitionSpaceToSpace \
         testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
@@ -46,6 +47,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testActivePair test27cells test27cells_subset test125cells testParser \
          testKernel testKernelAccuracy testFFT testInteractions testMaths \
          testRandom testExp \
+         testPartitionSpaceToSpace \
          testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
          testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
          testRiemannHLLC testMatrixInversion testDump testCSDS \
@@ -100,6 +102,7 @@ testTimeIntegration_SOURCES = testTimeIntegration.c
 testActivePair_SOURCES = testActivePair.c
 
 testSortShiftBound_SOURCES = testSortShiftBound.c
+testPartitionSpaceToSpace_SOURCES = testPartitionSpaceToSpace.c
 
 test27cells_SOURCES = test27cells.c
 

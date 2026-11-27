@@ -636,11 +636,13 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   int failed = 0;
   for (int i = 0; i < nregions; i++) present[i] = 0;
   for (int i = 0; i < s->nr_cells; i++) {
-    if (s->cells_top[i].nodeID <= nregions)
+    if (s->cells_top[i].nodeID >= 0 && s->cells_top[i].nodeID < nregions) {
       present[s->cells_top[i].nodeID]++;
-    else
+    } else {
       message("Bad nodeID: s->cells_top[%d].nodeID = %d", i,
               s->cells_top[i].nodeID);
+      failed = 1;
+    }
   }
   for (int i = 0; i < nregions; i++) {
     if (!present[i]) {
@@ -667,7 +669,8 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  *
  * On exit the new space cells will have their nodeIDs assigned.
  *
- * @param oldh the cell dimensions of old space.
+ * @param oldh the cell dimensions of old space (unused: both spaces span the
+ *        same box, so oldcdim is enough).
  * @param oldcdim number of cells per dimension in old space.
  * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old
  *cellid.
@@ -683,10 +686,11 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
 
-        /* Scale indices to old cell space. */
-        const int ii = rint(i * s->iwidth[0] * oldh[0]);
-        const int jj = rint(j * s->iwidth[1] * oldh[1]);
-        const int kk = rint(k * s->iwidth[2] * oldh[2]);
+        /* Old cell that holds the centre of the new cell. Integer arithmetic
+         * keeps the index below oldcdim for any pair of grids. */
+        const int ii = ((2 * i + 1) * (int)oldcdim[0]) / (2 * s->cdim[0]);
+        const int jj = ((2 * j + 1) * (int)oldcdim[1]) / (2 * s->cdim[1]);
+        const int kk = ((2 * k + 1) * (int)oldcdim[2]) / (2 * s->cdim[2]);
 
         const int cid = cell_getid(s->cdim, i, j, k);
         const int oldcid = cell_getid(oldcdim, ii, jj, kk);
