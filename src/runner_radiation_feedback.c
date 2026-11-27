@@ -48,9 +48,8 @@
  * @brief Grow a runner's HII maintenance scratch buffer to at least
  * @p needed entries.
  *
- * Doubling grow-on-demand, like gravity_cache_init's pattern
- * (runner_doiact_grav.c): never shrinks. Existing content is not
- * preserved; callers refill the buffer from scratch every maintenance pass.
+ * The buffer doubles on demand and never shrinks. Its content is not kept:
+ * every maintenance pass refills it.
  *
  * @param r The #runner whose buffer to grow.
  * @param needed The minimum required capacity, in entries.
@@ -78,15 +77,12 @@ static INLINE void runner_hii_maintenance_buffer_ensure(struct runner *r,
 /**
  * @brief qsort() comparator for ascending (r2, id) order.
  *
- * id is the tiebreak: r2 alone is not a total order, since distinct
- * particles can sit at the identical squared distance. Explicit branches
- * rather than subtraction, since `a - b` on r2's magnitudes or on a
- * `long long` id either loses precision or overflows.
+ * The id breaks ties: distinct particles can sit at the same squared
+ * distance. Branches replace a subtraction, which loses precision on r2 and
+ * overflows on a `long long` id.
  *
- * Guarded like its only call site (the maintenance-buffer sort in
- * runner_dosub_stars_hii_ionization_feedback()): under NO_COOLING that call
- * is compiled out, and an unused static function trips -Werror
- * -Wunused-function.
+ * Compiled out with its only caller, the maintenance-buffer sort, under
+ * NO_COOLING, so that -Wunused-function stays quiet.
  */
 static int runner_hii_maintenance_compare(const void *a, const void *b) {
   const struct hii_neighbor *na = (const struct hii_neighbor *)a;
@@ -124,9 +120,7 @@ runner_hii_star_cone_frame(const struct spart *si,
  * the neighbour buffer if it is within range and that pixel still has
  * budget left.
  *
- * Shared by every gather call site (doself, dopair naive, dopair sorted
- * forward/backward), which otherwise each repeat this exact pixel +
- * range + budget + insert sequence.
+ * Every gather call site shares this sequence.
  *
  * @param gather The #hii_gather_state of the traversal.
  * @param pj The candidate gas particle.
@@ -161,18 +155,15 @@ runner_hii_try_insert_candidate(struct hii_gather_state *gather,
       dx, feedback_get_star_HII_pixel_count(si), gather->frame);
 
   if (gather->mode == hii_gather_already_ionized) {
-    /* Extent and count track what this star still HOLDS, not what it could
-       afford this pass, and are updated live regardless of traversal order:
-       gating them on the charge would shrink h_hii and drop the region's
-       outskirts from the next pass's search radius. Only the charge itself
-       (which shell lapses under a shortfall) is deferred to the caller's
-       (r2, id)-ordered pass below. */
+    /* Extent and count track what the star still holds, not what it can
+       afford, so they do not depend on traversal order. Gating them on the
+       charge would shrink h_hii and drop the region's outskirts from the next
+       search radius. Only the charge waits for the caller's (r2, id) order. */
     ctx->r2_max_maintained = max(ctx->r2_max_maintained, r2);
     gather->count_found++;
 
-    /* Buffer this candidate for (r2, id)-ordered charging once the whole
-       traversal returns. The region has no reason to fit in max_ngbs, so
-       the buffer grows to match rather than dropping outskirts. */
+    /* The held region need not fit in max_ngbs, so this buffer grows instead
+       of dropping outskirts. */
     runner_hii_maintenance_buffer_ensure(ctx->r, ctx->buffer_count + 1);
     struct hii_neighbor *slot =
         &ctx->r->hii_maintenance_buffer[ctx->buffer_count++];
@@ -186,8 +177,7 @@ runner_hii_try_insert_candidate(struct hii_gather_state *gather,
     return;
   }
 
-  /* Skipping the insert once a pixel is exhausted stops a dead pixel's
-     candidates from crowding out other pixels' on retry. */
+  /* A pixel without photons must not crowd other pixels out of the buffer. */
   if (feedback_get_star_ionization_budget(si, pixel) > 0.0)
     runner_hii_buffer_insert(gather->buffer, gather->max_size,
                              &gather->count_found, r2, pj, xpj, c, pixel);
@@ -317,7 +307,7 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
 
   const struct engine *e = gather->r->e;
 
-  /* Early abort? Gas held by another star fails the filter but is counted. */
+  /* Gas held by another star fails the filter but is still counted. */
   if (part_is_inhibited(pj, e)) return;
   const int held_by_other = runner_hii_part_held_by_other_star(pj, xpj, gather);
   if (!held_by_other && !runner_hii_part_passes_gather_filter(
@@ -331,7 +321,6 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
           c->cellID);
 #endif
 
-  /* Compute the pairwise distance. */
   const float pjx[3] = {
       (float)(origin == NULL ? pj->x[0] : pj->x[0] - origin[0]),
       (float)(origin == NULL ? pj->x[1] : pj->x[1] - origin[1]),
@@ -353,14 +342,11 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
  */
 void feedback_radiation_startup_diagnostics(const struct engine *e) {
 
-  /* Both warnings concern the HII search only */
   if (!(e->feedback_props->radiation_policy & radiation_policy_photoionization))
     return;
 
-  /* Stars:HII_max_search_radius exceeding the periodic box's half-width is
-     not itself fatal; the search radius just never gets to expand that
-     far, which is indistinguishable from a genuinely converged result
-     without an external comparison. Surface it at startup instead. */
+  /* Not fatal, but a search radius capped by the box looks like a converged
+     result, so say so at start-up. */
   if (e->s->periodic && e->nodeID == 0) {
     const double half_width =
         0.5 * min3(e->s->dim[0], e->s->dim[1], e->s->dim[2]);
@@ -374,11 +360,9 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
   }
 
   /* Once a star's HII reach outgrows the top-level cell width there is no
-     coarser grid to rebuild into, and only the stencil-completeness
-     fallback keeps the rebuild criterion satisfiable. Configurations that
-     can never reach it abort mid-run: on an unsatisfiable rebuild for a
-     non-periodic box, or on space_regrid()'s "not enough cells" error for
-     a periodic one. */
+     coarser grid to rebuild into. Only the stencil-completeness fallback
+     keeps the rebuild criterion satisfiable, and a box that cannot coarsen
+     to 3 top-level cells has no such fallback. */
   if (e->nodeID == 0 && !space_radiation_top_stencil_can_cover_box(e->s))
     warning(
         "This box cannot coarsen to 3 top-level cells along every axis "
@@ -390,7 +374,93 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
         "Keep h_hii well below the top-level cell width, e.g. via "
         "Stars:HII_max_search_radius.");
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Check the ordering of the gather task against the cells it reads.
+ *
+ * Every hydro.super this gather touches must have run its
+ * stars.feedback_ghost this step (ti_run == e->ti_current, as skip resets to
+ * 1 on completion). A trip means the wait edge wired in
+ * engine_radiation_wire_super_deps() failed to hold.
+ *
+ * @param c The #cell the gather task runs on.
+ * @param e The #engine.
+ * @param timer Is this the task entry, not a recursion?
+ */
+static void runner_hii_check_gather_ordering(const struct cell *c,
+                                             const struct engine *e,
+                                             const int timer) {
+
+  if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
+    warning(
+        "Not running the HII reionization task on the radiation level (c = "
+        "%lld, "
+        "c->stars.radiation_level = %lld)!",
+        c->cellID, c->stars.radiation_level->cellID);
+  }
+
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    struct cell *sides[2] = {l->t->ci, l->t->cj};
+    for (int side = 0; side < 2; side++) {
+      struct cell *cc = sides[side];
+      if (cc == NULL) continue;
+      if (cc->hydro.super == NULL) continue; /* radiation_level above super */
+      struct cell *super = cc->hydro.super;
+      if (super->stars.feedback_ghost == NULL) continue;
+
+      /* Only a super covered by the radiation activation this step
+       * (cell_flag_do_hydro_drift) is checked: others keep a stale ti_run. */
+      if (!cell_get_flag(super, cell_flag_do_hydro_drift)) continue;
+
+      if (super->stars.feedback != NULL /* had a feedback task registered */
+          && super->stars.feedback_ghost->ti_run != e->ti_current) {
+        error(
+            "hii_ionization_feedback about to touch hydro.super %lld whose "
+            "stars.feedback_ghost has NOT run this step (ti_run=%lld, "
+            "ti_current=%lld, skip=%d). Ordering edge severed.",
+            super->cellID, super->stars.feedback_ghost->ti_run, e->ti_current,
+            super->stars.feedback_ghost->skip);
+      }
+    }
+  }
+}
+#else
+static INLINE void runner_hii_check_gather_ordering(const struct cell *c,
+                                                    const struct engine *e,
+                                                    const int timer) {}
 #endif
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+/**
+ * @brief Print the hydro.super and radiation level of the cells each pair
+ * gather task of a cell joins.
+ *
+ * @param c The #cell the gather task runs on.
+ */
+static void runner_hii_print_gather_links(const struct cell *c) {
+
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    /* The self case is handled elsewhere. */
+    if (l->t->type == task_type_self) continue;
+
+    struct cell *cj = l->t->cj;
+    struct cell *ci = l->t->ci;
+    /* hydro.super is NULL when radiation_level is coarser than it. */
+    const long long ci_super_id =
+        ci->hydro.super != NULL ? ci->hydro.super->cellID : -1;
+    const long long cj_super_id =
+        cj->hydro.super != NULL ? cj->hydro.super->cellID : -1;
+    message(
+        "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
+        ci->cellID, cj->cellID, ci_super_id, cj_super_id,
+        ci->stars.radiation_level->cellID, cj->stars.radiation_level->cellID);
+  }
+}
+#else
+static INLINE void runner_hii_print_gather_links(const struct cell *c) {}
+#endif
+#endif /* IONIZATION_FEEDBACK_LOOP */
 
 /**
  * @brief Top-level steering function for HII ionization feedback.
@@ -410,11 +480,9 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   struct engine *e = r->e;
   struct stars_props *star_props = e->stars_properties;
 
-  /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
-     a gas-free working-level cell must still reach
-     runner_dosub_stars_hii_ionization_feedback() to have its
-     attempt and its issued photons stamped (see there); only the recursion
-     into progeny and the search itself may be skipped for lack of gas. */
+  /* A due star in a gas-free working-level cell must still reach
+     runner_dosub_stars_hii_ionization_feedback() to get its attempt and its
+     issued photons stamped, so the gas count is not tested here. */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
   const float r_hii_max =
@@ -423,76 +491,12 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   const float interaction_limit =
       min(radiation_search_radius_factor * r_hii_max, max_search_radius);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
-    warning(
-        "Not running the HII reionization task on the radiation level (c = "
-        "%lld, "
-        "c->stars.radiation_level = %lld)!",
-        c->cellID, c->stars.radiation_level->cellID);
-  }
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ordering assertion for the feedback_ghost activation fix in
-   * cell_radiation_activate_supers_in(). Every hydro.super this gather
-   * touches must have its stars.feedback_ghost already RUN this step
-   * (ti_run == e->ti_current, not merely unskipped, since skip resets to 1
-   * on completion). A trip means the wait edge wired at
-   * engine_radiation_wire_super_deps() failed to hold. */
-  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
-    struct cell *sides[2] = {l->t->ci, l->t->cj};
-    for (int side = 0; side < 2; side++) {
-      struct cell *cc = sides[side];
-      if (cc == NULL) continue;
-      if (cc->hydro.super == NULL) continue; /* radiation_level above super */
-      struct cell *super = cc->hydro.super;
-      if (super->stars.feedback_ghost == NULL) continue;
-
-      /* Only meaningful if this super was covered by radiation activation
-       * this step: cell_flag_do_hydro_drift marks that scope. An untouched
-       * super legitimately carries a stale ti_run. */
-      if (!cell_get_flag(super, cell_flag_do_hydro_drift)) continue;
-
-      if (super->stars.feedback != NULL /* had a feedback task registered */
-          && super->stars.feedback_ghost->ti_run != e->ti_current) {
-        error(
-            "hii_ionization_feedback about to touch hydro.super %lld whose "
-            "stars.feedback_ghost has NOT run this step (ti_run=%lld, "
-            "ti_current=%lld, skip=%d). Ordering edge severed.",
-            super->cellID, super->stars.feedback_ghost->ti_run, e->ti_current,
-            super->stars.feedback_ghost->skip);
-      }
-    }
-  }
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
-    /* We have already handled the self case */
-    if (l->t->type == task_type_self) continue;
-
-    struct cell *cj = l->t->cj;
-    struct cell *ci = l->t->ci;
-    /* ci/cj may sit above their own hydro.super (radiation_level can
-     * coarsen past it), in which case hydro.super is NULL; print -1
-     * rather than dereferencing it. */
-    const long long ci_super_id =
-        ci->hydro.super != NULL ? ci->hydro.super->cellID : -1;
-    const long long cj_super_id =
-        cj->hydro.super != NULL ? cj->hydro.super->cellID : -1;
-    message(
-        "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
-        ci->cellID, cj->cellID, ci_super_id, cj_super_id,
-        ci->stars.radiation_level->cellID, cj->stars.radiation_level->cellID);
-  }
-#endif
+  runner_hii_check_gather_ordering(c, e, timer);
+  runner_hii_print_gather_links(c);
 
   TIMER_TIC;
 
-  /* Is the cell split */
   if (c->split) {
-    /* Keep recursing deeper into the super-cell hierarchy. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *restrict cp = c->progeny[k];
@@ -505,7 +509,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
       }
     }
   } else {
-    /* We have reached the 'Working Level' */
+    /* Working level reached. */
     runner_dosub_stars_hii_ionization_feedback(r, c, interaction_limit);
   }
 
@@ -517,9 +521,8 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * @brief Run one neighbour traversal for a star: its own cell plus every
  * cell reachable through the radiation task links.
  *
- * Both phases of a rebuild pass use the same spatial search and differ only
- * in @p mode, so the traversal (including the periodic shift and sort-index
- * bookkeeping) lives here once instead of being duplicated per phase.
+ * Both phases of a rebuild pass share this search and differ only in the
+ * gather mode.
  *
  * @param c The working-level #cell holding the star.
  * @param gather The #hii_gather_state of the traversal.
@@ -529,10 +532,10 @@ static void runner_hii_visit_neighbors(struct cell *c,
 
   struct engine *e = gather->r->e;
 
-  /* First loop over particles in the current cell */
+  /* The star's own cell. */
   runner_doself_stars_hii_ionization_feedback(c, gather);
 
-  /* Now loop over particles in the neighboring cells via task links */
+  /* The neighbouring cells, through the task links. */
   for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
        l = l->next) {
 
@@ -545,11 +548,9 @@ static void runner_hii_visit_neighbors(struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
-    /* Coverage assert: every foreign radiation_in partner this gather
-     * is about to walk must have been fully allocated and linked, with a
-     * live rho recv keeping it refreshed. A trip here means the foreign
-     * coverage extension (engine_addtasks_send/recv_hydro) did not reach
-     * this cell. */
+    /* Every foreign radiation_in partner must be allocated and linked, with a
+     * live rho recv keeping it fresh. A trip means the foreign coverage
+     * extension (engine_addtasks_send/recv_hydro) missed this cell. */
     if (cj->nodeID != engine_rank) {
       if (cj->hydro.count > 0 && cj->hydro.parts == NULL)
         error("Foreign radiation_in partner %lld has NULL parts.", cj->cellID);
@@ -560,19 +561,19 @@ static void runner_hii_visit_neighbors(struct cell *c,
 #endif
 #endif
 
-    /* Get the relative distance between the pairs, wrapping. */
+    /* Periodic shift between the pair. */
     double shift[3];
     runner_hii_get_pair_shift(e->s->dim, e->s->periodic, c->loc, cj->loc,
                               shift);
 
-    /* Get the sorting index. */
+    /* Sorting index. */
     int sid = 0;
     for (int k = 0; k < 3; k++)
       sid = 3 * sid + ((cj->loc[k] - c->loc[k] + shift[k] < 0)   ? 0
                        : (cj->loc[k] - c->loc[k] + shift[k] > 0) ? 2
                                                                  : 1);
 
-    /* Switch the cells around? */
+    /* The sorted axis may point from cj to c. */
     const int flipped = runner_flip[sid];
     sid = sortlistID[sid];
 
@@ -685,10 +686,8 @@ static void hii_pass_diagnostics_print(const struct hii_pass_diagnostics *diag,
           diag->count_evaluated, diag->count_fronts,
           clocks_from_ticks(getticks() - diag->tic_claim_walk));
 
-  /* Repeat-run comparator: claimed_id_hash (a sum of id * constant) is
-     order independent, but leftover_budget on the same line is a
-     floating-point accumulation and is NOT; compare the hash, not the
-     budget. */
+  /* Compare runs by claimed_id_hash, which is order independent. The
+     leftover_budget on the same line is a floating-point sum and is not. */
   message(
       "HII CHECKSUM: star_id %lld ti_current %lld n_claimed %d "
       "claimed_id_hash %llu held %d leftover_budget %.17e",
@@ -696,10 +695,9 @@ static void hii_pass_diagnostics_print(const struct hii_pass_diagnostics *diag,
       diag->claimed_id_hash, count_held,
       feedback_get_star_ionization_budget_total(si));
 
-  /* Compact per-pixel claim-accounting line: pixel index, claims, photons
-     spent/left, and the last probabilistic roll outcome. The per-star
-     CHECKSUM line above aggregates across pixels and cannot show this.
-     One line per star per pass regardless of pixel count. */
+  /* One line per star and pass: for each pixel, the claims, the photons spent
+     and left, and the last roll (W won, L lost, x none). The CHECKSUM line
+     sums over pixels and cannot show this. */
   {
     char pixel_summary[16384];
     size_t off = 0;
@@ -778,16 +776,11 @@ static int runner_hii_open_star_pass(const struct engine *e,
   const double time_base = e->time_base;
   const double time = e->time;
 
-  /* Needed by the attempt/rebuild stamps below and the retry loop's
-     expansion cap; computed once. */
   double star_age_beg_step = 0;
   double dt_enrichment = 0;
   integertime_t ti_begin_star = 0;
-  /* si->time_bin here, live: this task's ordering relative to the
-     timestep task's overwrite (runner_do_timestep()) is not established
-     by any dependency edge, so whether it is pre- or post-overwrite for
-     a given star is untraced; passing it through unchanged keeps this
-     call's behavior identical to before old_time_bin existed. */
+  /* The live si->time_bin: no dependency orders this task against the
+     overwrite in runner_do_timestep(), so it may be either value. */
   compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin_star, ti_current, time_base, time, si->time_bin);
   const double star_age_safe = max(star_age_beg_step, 0.0);
@@ -870,6 +863,32 @@ static int runner_hii_open_star_pass(const struct engine *e,
   return 1;
 }
 
+#ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
+/**
+ * @brief Extent h_hii of the region a star still holds ionized.
+ *
+ * Compiled out with its only caller under NO_COOLING, so that
+ * -Wunused-function stays quiet.
+ *
+ * The extent is what the star holds now, not the largest it ever had, so gas
+ * that drifted away stops holding h_hii open. Holding nothing collapses it: a
+ * stale h_hii keeps radiation_level coarse and the lock set wide. Gas at
+ * exactly r2 == 0 keeps the current extent, since writing 0 would make
+ * cell_sanitize inflate h_hii to the whole cell.
+ *
+ * @param count_held Number of gas particles the star holds ionized.
+ * @param r2_max_held Squared distance to the star of the farthest of them.
+ * @param h_hii_now The current h_hii of the star.
+ * @return The h_hii the star holds after this pass.
+ */
+__attribute__((always_inline)) INLINE static float runner_hii_held_extent(
+    const int count_held, const float r2_max_held, const float h_hii_now) {
+  if (count_held == 0) return 0.f;
+  if (r2_max_held > 0.f) return sqrtf(r2_max_held) * kernel_gamma_inv;
+  return h_hii_now;
+}
+#endif
+
 /**
  * @brief Charge the recombination losses of the gas the star already holds
  * ionized, before any photons are spent on new candidates.
@@ -897,9 +916,8 @@ static int runner_hii_maintain_held_region(
     const double dt_back, const double dt_tag, const float covered_radius,
     float *held_radius) {
 
-  /* Held outside the #ifndef so it is in scope for the retry loop's
-     expansion cap either way. Stays 0 when Phase 1 is compiled out, which
-     correctly grants that build the full configured search reach. */
+  /* Stays 0 when the maintenance below is compiled out, which grants the full
+     configured search reach. */
   int count_held = 0;
   *held_radius = 0.f;
 
@@ -912,10 +930,8 @@ static int runner_hii_maintain_held_region(
   const struct cooling_function_data *cooling = e->cooling_func;
   const double time = e->time;
 
-  /* Phase 1: charge the recombination losses of the gas this star already
-     holds ionized, before any photons are spent on new candidates. Skipped
-     when cooling is disabled for tagged gas, since tags are then permanent
-     by construction and there is nothing to renew. */
+  /* Skipped when cooling is disabled for tagged gas: tags are then permanent
+     and there is nothing to renew. */
   struct hii_maintenance_context maintenance_ctx = {
       .phys_const = phys_const,
       .hydro_props = hydro_props,
@@ -952,21 +968,17 @@ static int runner_hii_maintain_held_region(
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* hii_gather_already_ionized increments both counters together, one
-     entry buffered per particle held. A mismatch means the buffer and
-     the counters that drive it have silently gone out of sync. */
+  /* The gather buffers one entry per particle held, so both counts agree. */
   if (count_held != maintenance_ctx.buffer_count)
     error("count_held (%d) != maintenance buffer_count (%d)", count_held,
           maintenance_ctx.buffer_count);
 #endif
 
-  /* Charge every buffered already-ionized candidate in ascending (r2, id)
-     order: a budget shortfall then lapses the outermost shell first (the
-     recession front), instead of a set determined by cell-traversal
-     order. Every entry is charged regardless of pixel budget;
-     feedback_iact_HII_maintain_ionized_part's own check handles that and
-     unconditionally accrues mass_HII_region first, so skipping entries
-     here would silently shrink that output field. */
+  /* Charge the held gas in ascending (r2, id) order: a budget shortfall then
+     lapses the outermost shell first, not a set fixed by the cell traversal.
+     Every entry is charged whatever its pixel budget, because
+     feedback_iact_HII_maintain_ionized_part() checks that itself and first
+     accrues mass_HII_region, so skipping one would shrink that field. */
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   const ticks tic_maintenance_sort = getticks();
 #endif
@@ -995,22 +1007,9 @@ static int runner_hii_maintain_held_region(
       clocks_from_ticks(held_gather_ticks));
 #endif
 
-  /* The region's extent is what this star still holds, not the high-water
-     mark of everything it ever claimed: gas that drifted out of reach must
-     stop holding h_hii (and with it the search radius and task depth) open.
-     Phase 2 grows it back below for anything newly claimed.
-
-     Holding nothing must collapse the extent; leaving a stale large
-     h_hii keeps radiation_level coarse, so task_lock goes on taking a wide
-     lock set for a star doing no work. But holding gas at exactly r2 == 0
-     (a co-located particle) must NOT write 0, since cell_sanitize would
-     then inflate h_hii to the whole cell. */
-  const float h_hii_held =
-      count_held == 0
-          ? 0.f
-          : (maintenance_ctx.r2_max_maintained > 0.f
-                 ? sqrtf(maintenance_ctx.r2_max_maintained) * kernel_gamma_inv
-                 : si->h_hii);
+  /* The claim walk grows the extent again for new gas. */
+  const float h_hii_held = runner_hii_held_extent(
+      count_held, maintenance_ctx.r2_max_maintained, si->h_hii);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
@@ -1055,11 +1054,10 @@ void feedback_radiation_hii_coverage_reduce(void) {
  */
 void feedback_radiation_hii_coverage_report(void) {
 
-  /* A pass stopped at the edge of the gas the tree covers asks for a wider
-   * tree. Released photons mean the rebuild could not widen it. Cut start
-   * radii alone do not print a line. Photons left at one-probe, tries and
-   * ceiling stops escape: their share of the issued photons measures the
-   * search stall. */
+  /* A pass stopped at the edge of the covered gas asks for a wider tree, and
+   * released photons mean the rebuild could not widen it. Cut start radii
+   * alone print nothing. Photons left at one-probe, tries and ceiling stops
+   * escape, and their share of the issued photons measures the search stall. */
   const struct radiation_hii_coverage_stats *cov = &radiation_hii_coverage;
   const struct radiation_hii_coverage_stats *cov_last =
       &radiation_hii_coverage_last_report;
@@ -1230,6 +1228,72 @@ struct hii_claim_summary {
 };
 
 /**
+ * @brief Offer the gathered candidates to a star in distance order, each
+ * pixel spending its own photon budget.
+ *
+ * @param r The #runner thread.
+ * @param si The #spart.
+ * @param buffer The gathered candidates, checked for sort order here.
+ * @param count_found Number of entries in @p buffer.
+ * @param dt_back Interval whose photons this pass issues.
+ * @param dt_tag Gap since the star's previous pass, which tags outlive.
+ * @param diag The #hii_pass_diagnostics.
+ * @param claimed_count (in, out) Candidates claimed by the star, over all
+ * pixels.
+ * @param front_count (in, out) Fronts met: each empties its cone.
+ */
+static void runner_hii_claim_candidates(
+    struct runner *r, struct spart *si, struct hii_neighbor *buffer,
+    const int count_found, const double dt_back, const double dt_tag,
+    struct hii_pass_diagnostics *diag, int *claimed_count, int *front_count) {
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct unit_system *us = e->internal_units;
+  const struct cooling_function_data *cooling = e->cooling_func;
+  const struct feedback_props *feedback_props = e->feedback_props;
+  const double time = e->time;
+
+  runner_do_stars_hii_ionization_feedback_check_sort(buffer, count_found);
+
+  const integertime_t ti_begin =
+      get_integer_time_begin(e->ti_current - 1, si->time_bin);
+
+  for (int k = 0; k < count_found; k++) {
+
+    const int pixel = buffer[k].pixel;
+
+    /* Skip, do not break: later entries may sit in a pixel with photons. */
+    if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) continue;
+
+    struct part *pj = buffer[k].p;
+    struct xpart *xpj = buffer[k].xp;
+    const float r2 = buffer[k].r2;
+    const int was_tagged_before = radiation_is_part_tagged_as_ionized(pj, xpj);
+
+    const int outcome = feedback_iact_HII_ionization(
+        si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo, cooling,
+        feedback_props, ti_begin, time, dt_back, dt_tag);
+
+    if (outcome == hii_candidate_front) ++(*front_count);
+
+    /* The candidate starts untagged, so a tag with si->id means this star
+       claimed it. A claim by another star tags a different id. An
+       untagged result means a lost roll or a front, because
+       feedback_hii_claim_part tags and spends budget together. */
+    const int claimed_this_candidate =
+        !was_tagged_before && radiation_is_part_tagged_as_ionized(pj, xpj) &&
+        radiation_get_part_ionized_star_id(pj, xpj) == si->id;
+    if (claimed_this_candidate) ++(*claimed_count);
+
+    hii_pass_diagnostics_record_candidate(
+        diag, pj, pixel, outcome, claimed_this_candidate, was_tagged_before);
+  }
+}
+
+/**
  * @brief Claim new candidates with the photons the star has left, retrying
  * while they last.
  *
@@ -1260,13 +1324,7 @@ static void runner_hii_claim_and_retry(
     struct hii_pass_diagnostics *diag, struct hii_claim_summary *summary) {
 
   struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct unit_system *us = e->internal_units;
-  const struct cooling_function_data *cooling = e->cooling_func;
   const struct feedback_props *feedback_props = e->feedback_props;
-  const double time = e->time;
 
   const struct stars_props *star_props = e->stars_properties;
   const int max_retry_full_buffer = star_props->HII_max_retry_full_buffer;
@@ -1282,30 +1340,19 @@ static void runner_hii_claim_and_retry(
   if (start_radius > covered_radius)
     atomic_add_d(&radiation_hii_coverage_local.start_radius_cuts, 1.);
 
-  /* Logic: a pass can fall short of exhausting the star's photon budget
-   * for two DIFFERENT reasons, which need two different retries:
+  /* A pass can leave photons unspent for two reasons, and each needs its own
+   * retry:
    *
-   * 1. The buffer filled up (count_found == max_ngbs): there may be MORE
-   *    candidates within the SAME radius that got bumped out by the
-   *    nearest-max_ngbs cut. Retry at the same radius (cheap: the
-   *    volume searched doesn't grow); existing max_retry_full_buffer
-   *    mechanism.
-   * 2. The buffer did NOT fill up (every not-yet-ionized particle within
-   *    the current radius was found and processed) but photons remain:
-   *    the RADIUS itself is the bottleneck, not the buffer. Retrying at
-   *    the same radius would just re-find nothing new. Only expanding
-   *    the radius can make progress; HII_max_radius_expansion_tries.
+   * 1. The buffer filled up: the nearest-max_ngbs cut may have bumped out
+   *    more candidates within the same radius. Retry at that radius
+   *    (Stars:HII_max_retry_full_buffer).
+   * 2. The buffer did not fill up: every candidate within the radius was
+   *    found, so the radius is the limit and a retry would find nothing
+   *    new. Expand it (Stars:HII_max_radius_expansion_tries).
    *
-   * Conflating these (retrying the same radius regardless of which
-   * happened) leaves a star stalled whenever case 2 occurs: with no
-   * further growth this pass, the only remaining way for the search
-   * radius to grow is the NEXT rebuild's interaction_limit, which is
-   * only pulled forward by h_hii itself (unchanged here, since nothing
-   * new was found) or by the unrelated h_max term drifting up over
-   * possibly many rebuild cycles. Expanding immediately keeps this
-   * confined to the one star that actually needs it: neither retry
-   * kind touches the outer loop over sparts, so a star that already
-   * exhausts its budget on the first pass costs nothing extra. */
+   * Without case 2 the radius would only grow at a later rebuild, through
+   * h_hii or the drift of h_max. Both retries stay inside the loop of the
+   * one star that needs them. */
   float dynamic_search_radius = min(start_radius, covered_radius);
   int num_retry_full_buffer = 0;
   int num_radius_expansions = 0;
@@ -1318,14 +1365,10 @@ static void runner_hii_claim_and_retry(
   hii_pass_diagnostics_init(diag, si);
 
   while (1) {
-    /* Any candidate actually claimed during THIS attempt (any pixel). A
-       same-radius retry (case 1 below) re-runs the identical search: if
-       this stays 0, no pixel's budget or tag state moved, so the fixed
-       (star, pixel, ti_begin) random draw guarantees the retry would
-       reproduce this exact attempt; see the case-1 branch below. */
+    /* Candidates claimed in this attempt, over all pixels. See case 1 below. */
     int attempt_claimed_count = 0;
-    /* Fronts met during this attempt: each one empties its cone, so a
-       retry gathers past it. */
+    /* Fronts met in this attempt: each empties its cone, so a retry gathers
+       past it. */
     int attempt_front_count = 0;
 
     struct hii_gather_state gather = {
@@ -1346,80 +1389,26 @@ static void runner_hii_claim_and_retry(
 
     const int buffer_was_full = (count_found == max_ngbs);
 
-    /***************************************************/
-    /* It's time to sort the gas particles */
-    if (count_found > 0) {
-      /* Verify that the neighbors are properly sorted by distance */
-      runner_do_stars_hii_ionization_feedback_check_sort(ngb_buffer,
-                                                         count_found);
-
-      const integertime_t ti_begin =
-          get_integer_time_begin(e->ti_current - 1, si->time_bin);
-
-      /* Now let's ionize the gas particles! */
-      for (int k = 0; k < count_found; k++) {
-
-        const int pixel = ngb_buffer[k].pixel;
-
-        /* This particle's pixel has no photons left; skip it (not
-           break; other entries in the buffer may belong to a pixel
-           that still has budget). */
-        if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) {
-          continue;
-        }
-
-        struct part *pj = ngb_buffer[k].p;
-        struct xpart *xpj = ngb_buffer[k].xp;
-        const float r2 = ngb_buffer[k].r2;
-        const int was_tagged_before =
-            radiation_is_part_tagged_as_ionized(pj, xpj);
-
-        /* Do the ionization */
-        const int outcome = feedback_iact_HII_ionization(
-            si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo, cooling,
-            feedback_props, ti_begin, time, dt_back, dt_tag);
-
-        if (outcome == hii_candidate_front) ++attempt_front_count;
-
-        /* A candidate starts this loop untagged, so tagged-with-si->id
-           afterwards means this star just claimed it. A concurrent claim
-           by another star's task tags a different id instead and is
-           correctly excluded here. feedback_hii_claim_part always tags
-           AND consumes budget together, so an untagged result here means
-           the roll was lost or the candidate is a front. */
-        const int claimed_this_candidate =
-            !was_tagged_before &&
-            radiation_is_part_tagged_as_ionized(pj, xpj) &&
-            radiation_get_part_ionized_star_id(pj, xpj) == si->id;
-        if (claimed_this_candidate) ++attempt_claimed_count;
-
-        hii_pass_diagnostics_record_candidate(diag, pj, pixel, outcome,
-                                              claimed_this_candidate,
-                                              was_tagged_before);
-      } /* Loop over the sorted particles */
-    }
+    if (count_found > 0)
+      runner_hii_claim_candidates(r, si, ngb_buffer, count_found, dt_back,
+                                  dt_tag, diag, &attempt_claimed_count,
+                                  &attempt_front_count);
 
     /* Fully exhausted: nothing more to do this pass. */
     if (feedback_get_star_ionization_budget_max(si) <= 0.0) break;
 
     if (buffer_was_full) {
-      /* Case 1: more candidates may exist within the SAME radius,
-       * provided this attempt claimed at least one of them. If it
-       * claimed none, no pixel's budget or tag state changed anywhere,
-       * so a retry re-runs the identical search (same eligible set),
-       * meets the identical per-pixel budgets, and every pixel's fixed
-       * (star, pixel, ti_begin) random draw replays the identical
-       * win/lose outcome; a provable no-op, not a heuristic. A front
-       * also changes the state: it empties its cone, so a retry gathers
-       * past it. */
+      /* Case 1: retry only if this attempt claimed something or met a front.
+       * Otherwise no budget or tag changed, so the retry would repeat the same
+       * search, and the fixed (star, pixel, ti_begin) random draw of each
+       * pixel would repeat the same outcome. */
       if (attempt_claimed_count == 0 && attempt_front_count == 0) break;
       if (num_retry_full_buffer >= max_retry_full_buffer) break;
       ++num_retry_full_buffer;
       num_empty_expansions = 0;
     } else {
-      /* Case 2: genuinely nothing left within the current radius, but
-       * photons remain: expand the radius unless one of the limits in
-       * runner_hii_search_stop() binds. */
+      /* Case 2: expand the radius unless a limit of runner_hii_search_stop()
+       * binds. */
       const enum hii_search_stop stop = runner_hii_search_stop(
           dynamic_search_radius, max_search_radius, covered_radius,
           num_radius_expansions, max_radius_expansion_tries, count_met,
@@ -1490,12 +1479,8 @@ static void runner_hii_close_star_pass(struct cell *c, struct spart *si,
   c->stars.h_hii_max = max(c->stars.h_hii_max, h_search);
   c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, h_search);
 
-  /*****************************************/
-  /* Update the star after HII ionization */
-
-  /* Log when this HII region was (re)built. The clamped age is stamped, not
-     the raw one: HII_region_last_rebuild is documented as never holding a
-     negative value, and compute_time() can return one for a newborn. */
+  /* Stamp the clamped age: HII_region_last_rebuild never holds a negative
+     value, and compute_time() can return one for a newborn. */
   feedback_set_star_HII_last_rebuild(si, star_age_safe);
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   if (feedback_get_star_ionization_budget_max(si) <= 0.0) {
@@ -1519,27 +1504,13 @@ static void runner_hii_close_star_pass(struct cell *c, struct spart *si,
 }
 
 /**
- * @brief Coordinator function to manage HII neighbor gathering and ionization
- * loops for active stars.
+ * @brief Run the HII pass of every active star of a working-level cell.
  *
- * This function acts at the working-level cell context. For each active star,
- * it allocates a temporary neighbor buffer, triggers a strict local
- * self-interaction search, and iterates over the scheduled engine task links
- * (`radiation_in`) to discover interacting neighbor branches. Once neighbors
- * are gathered, it *tags* them as ionized through atomic operations.
- *
- * A star that still has photons left after one pass retries in one of two
- * ways, chosen by why the pass fell short: if the neighbour buffer filled
- * up, more candidates may exist within the SAME search radius (bumped out
- * by the nearest-max_ngbs cut), so it retries there
- * (Stars:HII_max_retry_full_buffer); if the buffer did NOT fill up (every
- * reachable candidate was already found and ionized) the radius itself is
- * the bottleneck, so it is expanded
- * (Stars:HII_max_radius_expansion_tries, Stars:HII_radius_expansion_factor)
- * and the pass retried at the larger radius. Both retries are scoped to
- * the individual star inside the loop below: a star that exhausts its
- * budget on the first pass costs nothing extra, and only a star that
- * genuinely needs more reach pays for the additional passes.
+ * Each star opens its photon budget, charges the gas it already holds, then
+ * claims new candidates, tagging them as ionized through atomic operations.
+ * A star with photons left retries at the same radius if the neighbour buffer
+ * filled up, and at a larger radius otherwise (see
+ * runner_hii_claim_and_retry()).
  *
  * @param r The #runner thread.
  * @param c The working-level #cell containing the active stars to process.
@@ -1556,18 +1527,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
-  /* Anything to do here? c->hydro.count == 0 is deliberately NOT checked
-     here; see the gas-free skip of runner_hii_open_star_pass(), and the
-     matching comment in runner_do_stars_hii_ionization_feedback's own
-     early-return. */
+  /* The gas count is not tested here: see runner_hii_open_star_pass(). */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
   for (int i = 0; i < scount; i++) {
 
-    /* Get a hold of the ith spart in ci. */
     struct spart *si = &sparts[i];
 
-    /* Is this part within the timestep? */
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
@@ -1635,35 +1601,29 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 }
 
 /**
- * @brief Downward recursion branch handler for pair cell interactions.
+ * @brief Gather from a neighbour cell, recursing into its progeny.
  *
- * This function evaluates a target cell pair configuration. It applies a
- * bounding-box optimization check along the sorting axis to determine if the
- * cell block is within reach. If the target cell is split, it continues down
- * the sub-tree hierarchy; otherwise, it resolves the leaf interaction using
- * either a sorted array approach or a naive fallback mechanism.
+ * A cell out of reach along the sorting axis is skipped. A leaf is scanned
+ * through its sort if it has a usable one, naively otherwise.
  *
- * @param ci The local cell context containing the active source star particle.
- * @param cj The target neighbor cell containing gas particle candidates.
+ * @param ci The cell holding the star.
+ * @param cj The neighbour cell holding gas candidates.
  * @param sid The sorting axis index between the pair.
- * @param flipped Flag indicating if the cell order is flipped relative to the
- * axis direction.
- * @param shift The periodic wrapping shift vector applied to the coordinates.
+ * @param flipped Is the cell order flipped relative to the axis direction?
+ * @param shift The periodic wrapping shift vector applied to @p cj.
  * @param gather The #hii_gather_state of the traversal.
  */
 void runner_do_stars_hii_ionization_feedback_branch(
     struct cell *ci, struct cell *cj, const int sid, const int flipped,
     const double shift[3], struct hii_gather_state *gather) {
 
-  /* OPTIMIZATION: Check if cj is completely out of reach before doing anything
-   * else */
+  /* Skip a cell that is entirely out of reach. */
   if (!runner_hii_check_cell_can_be_reached(
           ci, cj, sid, flipped, shift, gather->si, gather->search_radius)) {
     return;
   }
 
-  /* Don't reprocess cj or its child if it's ci. These particles were
-     processed in the self interaction */
+  /* The self interaction already processed ci. */
   if (ci == cj) return;
 
   if (cj->split) {
@@ -1676,20 +1636,15 @@ void runner_do_stars_hii_ionization_feedback_branch(
     }
   } else {
 
-    /* Let's first lock the cell */
     lock_lock(&cj->hydro.extra_sort_lock);
 
-    /* The sorted-window prune is only a pre-filter: it projects gas and star
-     * onto runner_shift[use_sid] (unit vector) and keeps particles within the
-     * [di_min, di_max] slab; the exact r2 < search_radius^2 test inside the
-     * dopair then decides ionization. Since the projection difference never
-     * exceeds the 3D distance, the slab is conservative for ANY of the 13
-     * sids, so the ionized set is invariant to which sid we use; only speed
-     * changes. We therefore prefer the carried coarse sid, but if cj is not
-     * sorted along it (the common case for a progeny leaf, whose own pair
-     * tasks use different sub-sids) we fall back to ANY sid cj is sorted
-     * along rather than to the O(N) naive search. The freshness gate
-     * (dx_max_sort_old) is per-cell, hence valid for any sid. */
+    /* The sorted window only pre-filters: the r2 test decides. A projection
+     * never exceeds the 3D distance, so the window is conservative along any
+     * of the 13 sids and the claimed set does not depend on the sid, only the
+     * speed does. Prefer the carried sid. If cj is not sorted along it, as for
+     * most progeny leaves, use any sid cj is sorted along rather than the O(N)
+     * naive search. The freshness gate (dx_max_sort_old) is per cell, so it
+     * holds for any sid. */
     int use_sid = -1;
     int use_flipped = flipped;
     if (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin) {
@@ -1706,7 +1661,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
       }
     }
 
-    /* Unlock now that we have read the sort state. */
+    /* The sort state is read. */
     if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
       error("Impossible to unlock cell!");
 
@@ -1725,9 +1680,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
 /**
  * @brief Gather gas particles within the HII radius from the star's own cell.
  *
- * Performs a brute-force search over all hydro particles in cell @p c that
- * fall within the HII smoothing length of the star. Candidates are
- * added to the buffer if they are not already inhibited or ionized.
+ * Every gas particle of the cell is offered to the gather.
  *
  * @param c The #cell containing the gas particles.
  * @param gather The #hii_gather_state of the traversal.
@@ -1739,7 +1692,6 @@ void runner_doself_stars_hii_ionization_feedback(
   struct spart *si = gather->si;
   const int count = c->hydro.count;
 
-  /* Anything to do here?*/
   if (count == 0) return;
 
   /* Check that cells are drifted. */
@@ -1759,10 +1711,9 @@ void runner_doself_stars_hii_ionization_feedback(
   /* Loop over the parts in c. */
   for (int pjd = 0; pjd < count; pjd++) {
 
-    /* Get a pointer to the jth particle. A foreign cell carries no
-     * local xparts array; xpj must resolve to a genuine NULL there rather
-     * than undefined NULL-based pointer arithmetic (feedback_get_
-     * eligibility_temperature owns the xp == NULL contract downstream). */
+    /* A foreign cell has no xparts array: xpj must be NULL there, not NULL
+     * plus an offset (feedback_get_eligibility_temperature() owns the xp ==
+     * NULL contract). */
     struct part *restrict pj = &parts[pjd];
     struct xpart *restrict xpj = (xparts != NULL) ? &xparts[pjd] : NULL;
 
@@ -1771,12 +1722,10 @@ void runner_doself_stars_hii_ionization_feedback(
 }
 
 /**
- * @brief Gather gas particles within the HII radius from a neighboring cell
- * using a naive O(N_gas) search.
+ * @brief Gather gas particles within the HII radius from a neighbouring cell,
+ * offering every particle of it.
  *
- * Similar to the 'self' version, but handles the distance calculations between
- * two different cells (@p ci and @p cj), including periodic boundary
- * conditions/wrapping.
+ * Distances account for the periodic shift between @p ci and @p cj.
  *
  * @param ci The #cell containing the star.
  * @param cj The #cell containing the gas particles.
@@ -1791,7 +1740,6 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
   struct spart *si = gather->si;
   const int count_j = cj->hydro.count;
 
-  /* Anything to do here?*/
   if (count_j == 0) return;
 
   if (cj != ci && cj->split) {
@@ -1818,8 +1766,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
 
     for (int pjd = 0; pjd < count_j; pjd++) {
 
-      /* Get a pointer to the jth particle. See the doself version above for
-       * why xpj must be a genuine NULL when cj has no local xparts. */
+      /* xpj is NULL when cj has no xparts, as in the self loop. */
       struct part *restrict pj = &parts_j[pjd];
       struct xpart *restrict xpj = (xparts_j != NULL) ? &xparts_j[pjd] : NULL;
 
@@ -1829,13 +1776,8 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
 }
 
 /**
- * @brief Gather gas particles within the HII radius from a neighboring cell
- * using the sorted cells to speed up the search.
- *
- * Projects the source star position along the target sorting axis vector @p
- * sid and analyzes the pre-sorted gas array layout of cell @p cj. It
- * implements directional parsing boundaries to read only the specific window
- * of gas particles capable of interacting, skipping distant arrays.
+ * @brief Gather gas particles within the HII radius from a neighbouring cell,
+ * scanning only the window of its sort along @p sid that the star can reach.
  *
  * @param ci The #cell containing the star.
  * @param cj The #cell containing the gas particles.
@@ -1854,7 +1796,6 @@ void runner_dopair_stars_hii_ionization_feedback(
   const float search_radius = gather->search_radius;
   const int count_j = cj->hydro.count;
 
-  /* Anything to do here?*/
   if (count_j == 0) return;
 
   /* Gas comes from cj, the star from ci: check each for what it supplies. */
@@ -1863,13 +1804,12 @@ void runner_dopair_stars_hii_ionization_feedback(
   if (!cell_are_spart_drifted(ci, e))
     error("Interacting undrifted cell (stars).");
 
-  /* Get the hydro sorts for our gas cell */
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
   const float dx_max = cj->hydro.dx_max_sort + ci->stars.dx_max_sort;
 
-  /* The gas particle projections (sort_j[].d) and the r2 distances below both
-   * use ABSOLUTE gas positions (pj->x), so the star is expressed in that frame
-   * by runner_hii_axis_window(). `flipped` only selects the scan direction. */
+  /* Projections and distances both use absolute gas positions, so
+   * runner_hii_axis_window() puts the star in that frame. `flipped` only
+   * selects the scan direction. */
   double pix[3], di_min, di_max;
   runner_hii_axis_window(si, shift, sid, search_radius, dx_max, pix, &di_min,
                          &di_max);
@@ -1877,8 +1817,7 @@ void runner_dopair_stars_hii_ionization_feedback(
   const double dj_min = sort_j[0].d;
   const double dj_max = sort_j[count_j - 1].d;
 
-  /* Skip if the entire cell is completely out of reach along the sorted axis
-   */
+  /* Skip a cell out of reach along the sorted axis. */
   if (di_max < dj_min || di_min > dj_max) {
     return;
   }
@@ -1889,16 +1828,12 @@ void runner_dopair_stars_hii_ionization_feedback(
   const float six[3] = {(float)pix[0], (float)pix[1], (float)pix[2]};
 
   if (!flipped) {
-    /* Star is on the 'left' relative to the axis direction.
-     * We scan forward through the sorted list until particles are beyond
-     * di_max. */
+    /* Scan forward until the particles pass di_max. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d <= di_max; pjd++) {
 
-      /* Skip particles that haven't reached the interaction zone yet */
       if (sort_j[pjd].d < di_min) continue;
 
-      /* See the doself version (runner_doself_stars_hii_ionization_feedback)
-       * for why xpj must be a genuine NULL when cj has no local xparts. */
+      /* xpj is NULL when cj has no xparts, as in the self loop. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       struct xpart *restrict xpj =
           (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
@@ -1906,12 +1841,9 @@ void runner_dopair_stars_hii_ionization_feedback(
       runner_hii_offer_candidate(gather, pj, xpj, cj, six, NULL, r2_max);
     }
   } else {
-    /* Star is on the 'right' relative to the axis direction.
-     * We scan backward through the sorted list until particles are below
-     * di_min. */
+    /* Scan backward until the particles fall below di_min. */
     for (int pjd = count_j - 1; pjd >= 0 && sort_j[pjd].d >= di_min; pjd--) {
 
-      /* Skip particles that are too far on the other side of the slab */
       if (sort_j[pjd].d > di_max) continue;
 
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1924,8 +1856,8 @@ void runner_dopair_stars_hii_ionization_feedback(
 }
 
 /**
- * @brief Check if a star's interaction radius can reach any part of a
- * neighboring cell along a specific axis.
+ * @brief Can a star's search radius reach any part of a neighbouring cell
+ * along a sorting axis?
  *
  * @param ci The cell containing the star particle.
  * @param cj The neighboring gas cell to check.
@@ -1934,7 +1866,7 @@ void runner_dopair_stars_hii_ionization_feedback(
  * axis direction.
  * @param shift The periodic wrapping shift vector.
  * @param si The star particle pointer.
- * @param search_radius The maximum HII ionization radius of the star.
+ * @param search_radius The search radius around the star.
  * @return 1 if the cell is within reach (or if we cannot determine it safely),
  * 0 if it can be completely skipped.
  */
@@ -1954,16 +1886,14 @@ __attribute__((always_inline)) INLINE int runner_hii_check_cell_can_be_reached(
       max(cj->hydro.dx_max_sort, cj->hydro.dx_outside_max * axis_sum) +
       ci->stars.dx_max_sort;
 
-  /* The cell extent below (dj_min/dj_max) is built from cj's ABSOLUTE geometry
-   * (cj->loc), which is the frame of runner_hii_axis_window(), also used by
-   * the sorted scan. A flipped-dependent sign here would offset the reach
-   * window by 2*shift and wrongly skip wrapped neighbours. */
+  /* The cell extent below uses the absolute geometry of cj, the frame of
+   * runner_hii_axis_window() and of the sorted scan. A sign that depended on
+   * flipped would offset the window by 2*shift and skip wrapped neighbours. */
   double pix[3], di_min, di_max;
   runner_hii_axis_window(si, shift, sid, search_radius, dx_max, pix, &di_min,
                          &di_max);
 
-  /* Calculate cell boundaries directly from geometry to remain safe if unsorted
-   */
+  /* The geometry, not the sort, bounds the cell: cj may be unsorted. */
   double cj_center[3] = {cj->loc[0] + cj->width[0] * 0.5,
                          cj->loc[1] + cj->width[1] * 0.5,
                          cj->loc[2] + cj->width[2] * 0.5};
@@ -1978,7 +1908,6 @@ __attribute__((always_inline)) INLINE int runner_hii_check_cell_can_be_reached(
   const double dj_min = dj_center - dj_extent;
   const double dj_max = dj_center + dj_extent;
 
-  /* Skip if completely out of range */
   if (di_max < dj_min || di_min > dj_max) {
     return 0;
   }
