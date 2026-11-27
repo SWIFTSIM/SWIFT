@@ -1,0 +1,16 @@
+Uniform dark-matter zoom example.
+
+This example creates a synthetic zoom IC with:
+
+- high-resolution DM particles in a central cubic zoom region (PartType1),
+- lower-resolution DM particles in the surrounding volume (PartType2).
+
+The setup has been tuned for a zoom-region with:
+
+- ZoomRegion:bkg_top_level_cells = 8,
+- ZoomRegion:zoom_top_level_depth = 2,
+- a zoom extent that spans the central 2x2x2 background cells.
+
+This example should be run with the --zoom runtime option.
+
+The setup is suitable for both local standalone use and CI runtime checks.

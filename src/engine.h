@@ -50,11 +50,13 @@
 #include "tracers_triggers.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_mesh_gravity.h"
 
 struct black_holes_properties;
 struct extra_io_properties;
 struct external_potential;
 struct forcing_terms;
+struct cell;
 
 /**
  * @brief The different policies the #engine can follow.
@@ -544,6 +546,9 @@ struct engine {
   /* The mesh used for long-range gravity forces */
   struct pm_mesh *mesh;
 
+  /* The high-resolution mesh used for zoom gravity forces */
+  struct zoom_pm_mesh *zoom_mesh;
+
   /* Properties and pointers for the power spectrum */
   struct power_spectrum_data *power_data;
 
@@ -739,7 +744,8 @@ void engine_init(
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
+    struct pm_mesh *mesh, struct zoom_pm_mesh *zoom_mesh,
+    struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
     struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
@@ -773,6 +779,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
+int engine_get_proxy_id(struct engine *e, const int nodeID);
 void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
                       const int proxy_type);
 void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
@@ -798,6 +805,17 @@ void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
+int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
+                                       struct cell *cj, const int periodic,
+                                       const int use_mesh);
+void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
+                                   struct cell *ci, struct cell *cj,
+                                   const int nodeID, const int cid,
+                                   const int cjd);
+void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
+                                   struct cell *cells, const int periodic,
+                                   const int use_mesh, const int delta_m,
+                                   const int delta_p);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);

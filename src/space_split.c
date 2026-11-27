@@ -33,17 +33,157 @@
 #include "multipole.h"
 #include "star_formation_logger.h"
 #include "threadpool.h"
+#include "zoom_region/zoom.h"
+
+/**
+ * @brief Allocate the particle buffers ready for populating during splitting.
+ *
+ * @param c The #cell to be split.
+ * @param buff The buffer for the hydro particles to be allocated and returned.
+ * @param sbuff The buffer for the star particles to be allocated and returned.
+ * @param bbuff The buffer for the black hole particles to be allocated and
+ *              returned.
+ * @param gbuff The buffer for the gravity particles to be allocated and
+ *              returned.
+ * @param sink_buff The buffer for the sink particles to be allocated and
+ *                  returned.
+ */
+void space_split_allocate_and_fill_buffers(
+    const struct cell *c, struct cell_buff *restrict *buff,
+    struct cell_buff *restrict *sbuff, struct cell_buff *restrict *bbuff,
+    struct cell_buff *restrict *gbuff, struct cell_buff *restrict *sink_buff) {
+
+  /* Unpack particle information we need for the buffers. */
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
+  const int sink_count = c->sinks.count;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct sink *sinks = c->sinks.parts;
+
+  /* Allocate the buffers. */
+  if (count > 0) {
+    if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * count) != 0)
+      error("Failed to allocate temporary indices.");
+
+    struct cell_buff *restrict local_buff = *buff;
+
+    for (int k = 0; k < count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (parts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      local_buff[k].x[0] = parts[k].x[0];
+      local_buff[k].x[1] = parts[k].x[1];
+      local_buff[k].x[2] = parts[k].x[2];
+    }
+  }
+  if (gcount > 0) {
+    if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * gcount) != 0)
+      error("Failed to allocate temporary indices.");
+
+    struct cell_buff *restrict local_gbuff = *gbuff;
+
+    for (int k = 0; k < gcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (gparts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      local_gbuff[k].x[0] = gparts[k].x[0];
+      local_gbuff[k].x[1] = gparts[k].x[1];
+      local_gbuff[k].x[2] = gparts[k].x[2];
+    }
+  }
+  if (scount > 0) {
+    if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * scount) != 0)
+      error("Failed to allocate temporary indices.");
+
+    struct cell_buff *restrict local_sbuff = *sbuff;
+
+    for (int k = 0; k < scount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (sparts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      local_sbuff[k].x[0] = sparts[k].x[0];
+      local_sbuff[k].x[1] = sparts[k].x[1];
+      local_sbuff[k].x[2] = sparts[k].x[2];
+    }
+  }
+
+  if (bcount > 0) {
+    if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * bcount) != 0)
+      error("Failed to allocate temporary indices.");
+
+    struct cell_buff *restrict local_bbuff = *bbuff;
+
+    for (int k = 0; k < bcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (bparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (bparts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      local_bbuff[k].x[0] = bparts[k].x[0];
+      local_bbuff[k].x[1] = bparts[k].x[1];
+      local_bbuff[k].x[2] = bparts[k].x[2];
+    }
+  }
+
+  if (sink_count > 0) {
+    if (swift_memalign("temp_sink_buff", (void **)sink_buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * sink_count) != 0)
+      error("Failed to allocate temporary indices.");
+
+    struct cell_buff *restrict local_sink_buff = *sink_buff;
+
+    for (int k = 0; k < sink_count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sinks[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (sinks[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      local_sink_buff[k].x[0] = sinks[k].x[0];
+      local_sink_buff[k].x[1] = sinks[k].x[1];
+      local_sink_buff[k].x[2] = sinks[k].x[2];
+    }
+  }
+}
 
 /**
  * @brief Shall a cell be split into progenies?
  *
  * Note: We ignore BHs and sinks as they are sub-dominant.
  *
+ * When running a zoom, cells neighbouring the zoom region are also split down
+ * to a fixed depth regardless of their particle content.
+ *
  * @param s The #space.
  * @param c The #cell.
  */
 static int space_split_cell_needs_split(const struct space *s,
                                         const struct cell *c) {
+
+  if (s->with_zoom_region && c->subtype == cell_subtype_neighbour &&
+      c->depth < s->zoom_props->neighbour_max_tree_depth) {
+    return 1;
+  }
 
   if (s->with_self_gravity) {
     return c->grav.count > space_splitsize;
@@ -54,28 +194,17 @@ static int space_split_cell_needs_split(const struct space *s,
 }
 
 /**
- * @brief Create the progeny of a cell and distribute its particles among
- * them. Progeny without any particle are recycled straight away.
+ * @brief Create the progeny of a cell and set their properties.
+ *
+ * No particles are distributed here. This is also used to build the void cell
+ * tree when running a zoom.
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split.
- * @param buff A buffer for particle sorting, of size at least c->hydro.count
- * (or @c NULL if there are no gas particles).
- * @param sbuff A buffer for particle sorting, of size at least c->stars.count.
- * @param bbuff A buffer for particle sorting, of size at least
- *        c->black_holes.count.
- * @param gbuff A buffer for particle sorting, of size at least c->grav.count.
- * @param sink_buff A buffer for particle sorting, of size at least
- *        c->sinks.count.
  * @param tpid The ID of the threadpool thread whose cell buffer is used.
  */
-static void space_split_make_progeny(struct space *s, struct cell *c,
-                                     struct cell_buff *restrict buff,
-                                     struct cell_buff *restrict sbuff,
-                                     struct cell_buff *restrict bbuff,
-                                     struct cell_buff *restrict gbuff,
-                                     struct cell_buff *restrict sink_buff,
-                                     const short int tpid) {
+void space_construct_progeny(struct space *s, struct cell *c,
+                             const short int tpid) {
 
   /* No longer just a leaf. */
   c->split = 1;
@@ -134,9 +263,12 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
     cp->parent = c;
     cp->top = c->top;
     cp->super = NULL;
+    cp->void_super = NULL;
     cp->hydro.super = NULL;
     cp->grav.super = NULL;
     cp->flags = 0;
+    cp->type = c->type;
+    cp->subtype = c->subtype;
     star_formation_logger_init(&cp->stars.sfh);
 #ifdef WITH_MPI
     cp->mpi.tag = -1;
@@ -145,6 +277,34 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
     cell_assign_cell_index(cp, c);
 #endif
   }
+}
+
+/**
+ * @brief Create the progeny of a cell and distribute its particles among
+ * them. Progeny without any particle are recycled straight away.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split.
+ * @param buff A buffer for particle sorting, of size at least c->hydro.count
+ * (or @c NULL if there are no gas particles).
+ * @param sbuff A buffer for particle sorting, of size at least c->stars.count.
+ * @param bbuff A buffer for particle sorting, of size at least
+ *        c->black_holes.count.
+ * @param gbuff A buffer for particle sorting, of size at least c->grav.count.
+ * @param sink_buff A buffer for particle sorting, of size at least
+ *        c->sinks.count.
+ * @param tpid The ID of the threadpool thread whose cell buffer is used.
+ */
+static void space_split_make_progeny(struct space *s, struct cell *c,
+                                     struct cell_buff *restrict buff,
+                                     struct cell_buff *restrict sbuff,
+                                     struct cell_buff *restrict bbuff,
+                                     struct cell_buff *restrict gbuff,
+                                     struct cell_buff *restrict sink_buff,
+                                     const short int tpid) {
+
+  /* Create the cell's progeny. */
+  space_construct_progeny(s, c, tpid);
 
   /* Split the cell's particle data. */
   cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
@@ -168,7 +328,7 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
  *
  * @param c The #cell.
  */
-static void space_split_collect_progeny_multipole(struct cell *c) {
+void space_split_collect_progeny_multipole(struct cell *c) {
 
   /* Reset everything */
   gravity_reset(c->grav.multipole);
@@ -393,6 +553,13 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sink_buff,
                            const short int tpid) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Void cells are handled by zoom_void_split_recursive. */
+  if (c->subtype == cell_subtype_void) {
+    error("Void cell in space_split_recursive()");
+  }
+#endif
+
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -433,88 +600,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
                                bbuff == NULL && sink_buff == NULL);
-  if (allocate_buffer) {
-    if (count > 0) {
-      if (swift_memalign("tempbuff", (void **)&buff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * count) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < count; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (parts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (parts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        buff[k].x[0] = parts[k].x[0];
-        buff[k].x[1] = parts[k].x[1];
-        buff[k].x[2] = parts[k].x[2];
-      }
-    }
-    if (gcount > 0) {
-      if (swift_memalign("tempgbuff", (void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * gcount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < gcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (gparts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (gparts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        gbuff[k].x[0] = gparts[k].x[0];
-        gbuff[k].x[1] = gparts[k].x[1];
-        gbuff[k].x[2] = gparts[k].x[2];
-      }
-    }
-    if (scount > 0) {
-      if (swift_memalign("tempsbuff", (void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * scount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < scount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (sparts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (sparts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        sbuff[k].x[0] = sparts[k].x[0];
-        sbuff[k].x[1] = sparts[k].x[1];
-        sbuff[k].x[2] = sparts[k].x[2];
-      }
-    }
-    if (bcount > 0) {
-      if (swift_memalign("tempbbuff", (void **)&bbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * bcount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < bcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (bparts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (bparts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        bbuff[k].x[0] = bparts[k].x[0];
-        bbuff[k].x[1] = bparts[k].x[1];
-        bbuff[k].x[2] = bparts[k].x[2];
-      }
-    }
-    if (sink_count > 0) {
-      if (swift_memalign("temp_sink_buff", (void **)&sink_buff,
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * sink_count) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < sink_count; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (sinks[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (sinks[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        sink_buff[k].x[0] = sinks[k].x[0];
-        sink_buff[k].x[1] = sinks[k].x[1];
-        sink_buff[k].x[2] = sinks[k].x[2];
-      }
-    }
+  if (allocate_buffer && space_split_cell_needs_split(s, c)) {
+    space_split_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
+                                          &sink_buff);
   }
 
   /* If the depth is too large, we have a problem and should stop. */
@@ -812,6 +900,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, c->maxdepth);
+  if (c->depth == 0 && c->type == cell_type_zoom) {
+    atomic_max(&s->zoom_props->zoom_maxdepth, c->maxdepth);
+  }
+  if (c->depth == 0 && c->type == cell_type_bkg) {
+    atomic_max(&s->zoom_props->bkg_maxdepth, c->maxdepth);
+  }
 
   /* Clean up. */
   if (allocate_buffer) {
@@ -1298,8 +1392,16 @@ static void space_split_large_cells(struct space *s, const int *large_cells,
     space_split_collect_progeny(s, top_cells[i]);
 
   /* Store the global max depth */
-  for (int k = 0; k < nr_large; k++)
-    atomic_max(&s->maxdepth, s->cells_top[large_cells[k]].maxdepth);
+  for (int k = 0; k < nr_large; k++) {
+    const struct cell *c = &s->cells_top[large_cells[k]];
+    atomic_max(&s->maxdepth, c->maxdepth);
+    if (c->type == cell_type_zoom) {
+      atomic_max(&s->zoom_props->zoom_maxdepth, c->maxdepth);
+    }
+    if (c->type == cell_type_bkg) {
+      atomic_max(&s->zoom_props->bkg_maxdepth, c->maxdepth);
+    }
+  }
 
   /* Clean up. */
   free(level);
@@ -1318,34 +1420,29 @@ static void space_split_large_cells(struct space *s, const int *large_cells,
 }
 
 /**
- * @brief Split particles between cells of a hierarchy.
+ * @brief Split the particles of a list of top-level cells between the cells
+ * of their hierarchies.
  *
- * Only do this for the local non-empty top-level cells, in parallel using
- * the threads in the #threadpool. The cells that need splitting and whose
- * cost (see space_split_cell_cost()) exceeds space_split_large_cell_factor
- * times a thread's share of the total cost are split together by all the
- * threads in space_split_large_cells(). All the other cells are split whole,
- * each by a single thread, largest first.
+ * The cells that need splitting and whose cost (see space_split_cell_cost())
+ * exceeds space_split_large_cell_factor times a thread's share of the total
+ * cost are split together by all the threads in space_split_large_cells().
+ * All the other cells are split whole, each by a single thread, largest first.
  *
  * @param s The #space.
+ * @param cell_indices The indices of the top-level cells to split.
+ * @param nr_cells The number of top-level cells to split.
  * @param verbose Are we talkative ?
  */
-void space_split(struct space *s, int verbose) {
-
-  const ticks tic = getticks();
-
-  s->min_a_grav = FLT_MAX;
-  s->max_softening = 0.f;
-  bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
+static void space_split_top_cells(struct space *s, const int *cell_indices,
+                                  const int nr_cells, int verbose) {
 
   /* Find the top-level cells costing clearly more than a thread's share of
    * the work: they are split together using all the threads. */
   const int nr_threads = s->e->threadpool.num_threads;
-  const int nr_cells = s->nr_local_cells_with_particles;
   double total_cost = 0., max_cost = 0.;
   for (int k = 0; k < nr_cells; k++) {
-    const double cost = space_split_cell_cost(
-        s, &s->cells_top[s->local_cells_with_particles_top[k]]);
+    const double cost =
+        space_split_cell_cost(s, &s->cells_top[cell_indices[k]]);
     total_cost += cost;
     max_cost = max(max_cost, cost);
   }
@@ -1359,7 +1456,7 @@ void space_split(struct space *s, int verbose) {
   /* Now populate both lists of top-level cells */
   int nr_small = 0, nr_large = 0;
   for (int k = 0; k < nr_cells; k++) {
-    const int ind = s->local_cells_with_particles_top[k];
+    const int ind = cell_indices[k];
     const struct cell *c = &s->cells_top[ind];
 
     /* Cells which need splitting and cost clearly more than a thread's share
@@ -1386,8 +1483,7 @@ void space_split(struct space *s, int verbose) {
     space_split_large_cells(s, large_cells, nr_large, small_cells, nr_small);
 
     /* Check the trees and collect their global information */
-    space_split_collect_top_info(s, s->local_cells_with_particles_top,
-                                 nr_cells);
+    space_split_collect_top_info(s, cell_indices, nr_cells);
   }
 
   free(small_cells);
@@ -1399,7 +1495,73 @@ void space_split(struct space *s, int verbose) {
         "%.2f x a thread's share, threshold: %.2f).",
         nr_large, nr_cells, thread_share > 0. ? max_cost / thread_share : 0.,
         space_split_large_cell_factor);
-    message("Max tree depth after split: %d", s->maxdepth);
+  }
+}
+
+/**
+ * @brief Split particles between cells of a hierarchy.
+ *
+ * Only do this for the local non-empty top-level cells, in parallel using
+ * the threads in the #threadpool (see space_split_top_cells()). When running
+ * with a zoom region the zoom and background cell grids are split one after
+ * the other.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative ?
+ */
+void space_split(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  s->min_a_grav = FLT_MAX;
+  s->max_softening = 0.f;
+  bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
+
+  if (!s->with_zoom_region) {
+
+    space_split_top_cells(s, s->local_cells_with_particles_top,
+                          s->nr_local_cells_with_particles, verbose);
+
+  }
+
+  /* When running with a zoom region we do each cell grid individually. */
+  else {
+
+    const ticks zoom_tic = getticks();
+
+    /* Create the cell tree for zoom cells and populate their multipoles. */
+    space_split_top_cells(s, s->zoom_props->local_zoom_cells_with_particles_top,
+                          s->zoom_props->nr_local_zoom_cells_with_particles,
+                          verbose);
+
+    if (verbose)
+      message("Zoom cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - zoom_tic), clocks_getunit());
+
+    const ticks bkg_tic = getticks();
+
+    /* Create the background cell trees and populate their multipoles. */
+    space_split_top_cells(s, s->zoom_props->local_bkg_cells_with_particles_top,
+                          s->zoom_props->nr_local_bkg_cells_with_particles,
+                          verbose);
+
+    if (verbose)
+      message("Background cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - bkg_tic), clocks_getunit());
+  }
+
+  if (verbose) {
+    if (!s->with_zoom_region) {
+      message("Max tree depth after split: %d", s->maxdepth);
+    } else {
+      message("Max zoom tree depth after split (from zoom top level): %d",
+              s->zoom_props->zoom_maxdepth);
+      message(
+          "Max zoom tree depth after split (from void top level): %d",
+          s->zoom_props->zoom_maxdepth + s->zoom_props->zoom_cell_depth + 1);
+      message("Max background tree depth after split: %d",
+              s->zoom_props->bkg_maxdepth);
+    }
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

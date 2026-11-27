@@ -63,14 +63,14 @@ INLINE static void convert_spart_pos(const struct engine *e,
                                      const struct spart *sp, double *ret) {
 
   const struct space *s = e->s;
+  ret[0] = sp->x[0];
+  ret[1] = sp->x[1];
+  ret[2] = sp->x[2];
+  if (e->s->with_zoom_region) zoom_unshift_pos(e->s, ret);
   if (s->periodic) {
-    ret[0] = box_wrap(sp->x[0], 0.0, s->dim[0]);
-    ret[1] = box_wrap(sp->x[1], 0.0, s->dim[1]);
-    ret[2] = box_wrap(sp->x[2], 0.0, s->dim[2]);
-  } else {
-    ret[0] = sp->x[0];
-    ret[1] = sp->x[1];
-    ret[2] = sp->x[2];
+    ret[0] = box_wrap(ret[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(ret[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(ret[2], 0.0, s->dim[2]);
   }
   if (e->snapshot_use_delta_from_edge) {
     ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);

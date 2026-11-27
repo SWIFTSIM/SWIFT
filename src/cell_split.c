@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "memswap.h"
+#include "part_type.h"
 
 /**
  * @brief Sort the parts into eight bins along the given pivots.
@@ -658,7 +659,15 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (first_not_extra >= count_real + space_extra_gparts)
-        error("Looking for extra particles beyond this cell's range!");
+        error(
+            "Looking for extra particles beyond this cell's range! "
+            "(cell_type/cell_subtype=%s/%s, depth=%d, "
+            "c->grav.count=%d, first_not_extra=%d, space_extra_gparts=%d, "
+            "part_type=%s, i=%d, gparts[i].type=%s)",
+            cellID_names[c->type], subcellID_names[c->subtype], c->depth,
+            count_real, first_not_extra, space_extra_gparts,
+            part_type_names[gparts[first_not_extra].type], i,
+            part_type_names[gparts[i].type]);
 #endif
 
       /* Swap everything (including pointers) */

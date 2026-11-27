@@ -53,6 +53,7 @@
 #include "multipole_accept.h"
 #include "space.h"
 #include "tools.h"
+#include "zoom_mesh_gravity.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -145,6 +146,20 @@ struct cell_split_pair cell_split_pairs[13] = {
       {3, 6, 3},
       {5, 6, 9},
       {7, 6, 12}}}};
+
+/* Cell names. */
+const char *cellID_names[3] = {
+    "Regular",
+    "Zoom",
+    "Background",
+};
+
+/* Sub-cell names. */
+const char *subcellID_names[3] = {
+    "Regular",
+    "Neighbour",
+    "Void",
+};
 
 /**
  * @brief Get the size of the cell subtree.
@@ -1124,6 +1139,7 @@ void cell_reset_task_counters(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+  c->reached_in_task_split = 0;
   for (int k = 0; k < 8; ++k)
     if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else
@@ -1329,6 +1345,10 @@ void cell_check_multipole(struct cell *c,
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 
+  /* The brute force calculation is meaningless for void cells which have
+   * no particles, so we skip them. */
+  if (c->subtype == cell_subtype_void) return;
+
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -1344,6 +1364,12 @@ void cell_check_multipole(struct cell *c,
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
       message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
               tolerance);
+      message(
+          "Cell %lld (%s/%s): CoM=(%e %e %e) r_max=%e M_000=%e num_gpart=%lld",
+          c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
+          c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+          c->grav.multipole->CoM[2], c->grav.multipole->r_max,
+          c->grav.multipole->m_pole.M_000, c->grav.multipole->m_pole.num_gpart);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
@@ -1464,23 +1490,63 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
+ * When running a zoom simulation this function will also set the
+ * tasks_below_diff_grav_depth flag for any neighbour cells that have gravity
+ * tasks below space_subdepth_diff_grav due to pair tasks with zoom cells.
+ *
  * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
+ * @return Whether this cell or any progeny has a gravity task.
  */
-void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+  const int has_gravity_tasks = c->grav.grav != NULL || c->grav.mm != NULL;
+
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL))
+  if (super_gravity == NULL && has_gravity_tasks) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure in zoom land we don't get any confusing empty top level cells
+     * with tasks (this breaks hierarchical task creation) */
+    if (cell_is_empty_mpole(c))
+      error(
+          "Setting super_gravity to non-void cell at depth %d with no gparts "
+          "(%s/%s) "
+          "c->grav.grav=%p c->grav.mm=%p, c=%p",
+          c->depth, cellID_names[c->type], subcellID_names[c->subtype],
+          (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
+#endif
+
     super_gravity = c;
+  }
 
   /* Set the super-cell */
   c->grav.super = super_gravity;
 
-  /* Recurse */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_set_super_gravity(c->progeny[k], super_gravity);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void &&
+      c->type == cell_type_zoom)
+    error("Zoom cell has a void cell super-gravity pointer!");
+#endif
+
+  /* Recurse and find whether there are final gravity tasks below this cell. */
+  int children_have_gravity_tasks = 0;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        children_have_gravity_tasks |=
+            cell_set_super_gravity(c->progeny[k], super_gravity);
+      }
+    }
+  }
+
+  /* When running a zoom we can get neighbour cells with task forced below
+   * space_subdepth_diff_grav because they have pair tasks with zoom cells. If
+   * this is the case we flag this cell so that we can force the gravity tasks
+   * to be executed below space_subdepth_diff_grav. */
+  c->grav.tasks_below_diff_grav_depth =
+      !cell_is_above_diff_grav_depth(c) && children_have_gravity_tasks;
+
+  return has_gravity_tasks || children_have_gravity_tasks;
 }
 
 /**
@@ -1778,10 +1844,10 @@ void cell_check_sort_flags(const struct cell *c) {
 int cell_can_use_pair_mm(const struct cell *restrict ci,
                          const struct cell *restrict cj, const struct engine *e,
                          const struct space *s, const int use_rebuild_data,
-                         const int is_tree_walk) {
+                         const int is_tree_walk, const int periodic,
+                         const int use_mesh) {
 
   const struct gravity_props *props = e->gravity_properties;
-  const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Check for trivial cases */
@@ -1792,29 +1858,17 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
   const struct gravity_tensors *restrict multi_j = cj->grav.multipole;
 
-  double dx, dy, dz;
+  const double r2 =
+      cell_mpole_CoM_dist2(multi_i, multi_j, use_rebuild_data, periodic, dim);
 
-  /* Get the distance between the CoMs */
-  if (use_rebuild_data) {
-    dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
-    dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
-    dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
-  } else {
-    dx = multi_i->CoM[0] - multi_j->CoM[0];
-    dy = multi_i->CoM[1] - multi_j->CoM[1];
-    dz = multi_i->CoM[2] - multi_j->CoM[2];
+  /* Cells covered by the zoom mesh use its force split */
+  float r_s_inv = props->r_s_inv;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
+    r_s_inv = e->zoom_mesh->r_s_inv;
   }
 
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
-
-  return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
-                                      use_rebuild_data, periodic);
+  return gravity_M2L_accept_symmetric(props, r_s_inv, multi_i, multi_j, r2,
+                                      use_rebuild_data, use_mesh);
 }
 
 /**
@@ -1836,7 +1890,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
  * @param max_distance2 The squared PM truncation cutoff distance.
  * @return 1 if the pair is safely beyond the cutoff, 0 otherwise.
  */
-__attribute__((const)) INLINE static int cell_mesh_distance_is_above_cutoff(
+__attribute__((const)) int cell_mesh_distance_is_above_cutoff(
     const double min_radius2, const double max_distance2) {
 
   /* Derive a scale aware tolerance. (128 is arbitrarily "big enough") */
@@ -1851,6 +1905,9 @@ __attribute__((const)) INLINE static int cell_mesh_distance_is_above_cutoff(
  *
  * This is the rebuild-time predicate used when creating the task graph.
  *
+ * Pairs of cells covered by the zoom mesh are tested against its cut-off, all
+ * other pairs against the cut-off of the periodic mesh.
+ *
  * @param e The #engine.
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1864,14 +1921,18 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
+  /* Cells covered by the zoom mesh use its force split */
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
+    return zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
+  }
+
   /* If not periodic then we cannot use the mesh */
   if (!s->periodic) {
     return 0;
   }
 
   /* Minimal distance between any pair of particles */
-  const double min_radius2 =
-      cell_min_dist2_same_size(ci, cj, s->periodic, s->dim);
+  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
 
   /* Are we safely beyond the distance where the truncated forces are 0 ?*/
   return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
@@ -1882,6 +1943,9 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
  *
  * This uses the current cell geometry and inflates the occupied region by the
  * maximal particle displacement since the last rebuild.
+ *
+ * Pairs of cells covered by the zoom mesh are tested against its cut-off, all
+ * other pairs against the cut-off of the periodic mesh.
  *
  * @param e The #engine.
  * @param ci The first #cell.
@@ -1895,6 +1959,11 @@ int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
   struct space *s = e->s;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+
+  /* Cells covered by the zoom mesh use its force split */
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
+    return zoom_mesh_can_use_mesh_between_rebuilds(e->zoom_mesh, s, ci, cj);
+  }
 
   /* If not periodic then we cannot use the mesh */
   if (!s->periodic) {
@@ -1955,10 +2024,15 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
    * longer do so */
   if (could_use_mesh_at_rebuild && !can_use_mesh_now) {
     struct space *s = e->s;
-    const double max_distance = e->mesh->r_cut_max;
+    double max_distance = e->mesh->r_cut_max;
+
+    /* Cells covered by the zoom mesh use its force split */
+    if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj)) {
+      max_distance = e->zoom_mesh->r_cut_max;
+    }
     const double max_distance2 = max_distance * max_distance;
     const double min_radius2_rebuild =
-        cell_min_dist2_same_size(ci, cj, s->periodic, s->dim);
+        cell_min_dist2(ci, cj, s->periodic, s->dim);
     const double min_radius2 =
         cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
     message(
@@ -2072,8 +2146,7 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
 
     /* Should this pair be split?
      * Matches scheduler_splittask_gravity logic */
-    if (cell_can_split_pair_gravity_task(ci) &&
-        cell_can_split_pair_gravity_task(cj)) {
+    if (cell_can_split_pair_gravity_task(ci, cj)) {
 
       /* Check particle count threshold - matches scheduler_splittask_gravity */
       const long long gcount_i = ci->grav.count;
@@ -2118,7 +2191,9 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
 
           /* Can we use M-M for this pair? */
           if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                                   /*is_tree_walk=*/1)) {
+                                   /*is_tree_walk=*/1,
+                                   /*periodic boundaries*/ s->periodic,
+                                   /*use_mesh*/ s->periodic)) {
             /* This would be handled by a M-M task, skip */
             continue;
           }
@@ -2212,6 +2287,375 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
 
         /* Check this pair recursively */
         if (cell_check_grav_mesh_pairs_recursive(c, cj, e)) {
+          message(
+              "Pair interaction triggers a rebuild due to mesh pair failure");
+          return;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Recursively check mesh interactions for zoom pair interactions.
+ *
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_pair, recursing through the void cell
+ * hierarchy and then using the normal pair recursive function once we reach
+ * non-void cells.
+ *
+ * @param ci The current #cell from the hierarchy being processed.
+ * @param cj The current #cell being paired with.
+ * @param e The #engine.
+ * @return 1 if a rebuild is needed, 0 otherwise.
+ */
+static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
+                                                          struct cell *cj,
+                                                          struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->with_zoom_region) {
+    error(
+        "This function should only be called when running a zoom simulation.");
+  }
+#endif
+
+  /* If neither cell is a void cell, use the normal pair recursive function */
+  if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    return cell_check_grav_mesh_pairs_recursive(ci, cj, e);
+  }
+
+  struct space *s = e->s;
+
+  /* Loop over progeny pairs, mirroring
+   * zoom_scheduler_splittask_gravity_void_pair */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
+
+    /* Skip NULL progeny */
+    if (cpi == NULL) continue;
+
+    /* Skip void progeny that do not contain any zoom cells. This mirrors
+     * zoom_scheduler_splittask_gravity_void_pair(). */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
+    /* Skip empty progeny */
+    if (cell_is_empty_mpole(cpi)) continue;
+
+    for (int j = 0; j < 8; j++) {
+      struct cell *cpj = cj->progeny[j];
+
+      /* Skip NULL progeny */
+      if (cpj == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. This mirrors
+       * zoom_scheduler_splittask_gravity_void_pair(). */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with non-useful void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
+      /* Skip empty progeny */
+      if (cell_is_empty_mpole(cpj)) continue;
+
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
+
+        /* Atomically drift the multipole in ci if needs be. */
+        lock_lock(&cpi->grav.mlock);
+        if (cpi->grav.ti_old_multipole < e->ti_current)
+          cell_drift_multipole(cpi, e);
+        if (lock_unlock(&cpi->grav.mlock) != 0)
+          error("Impossible to unlock m-pole");
+
+        /* Atomically drift the multipole in cj if needs be. */
+        lock_lock(&cpj->grav.mlock);
+        if (cpj->grav.ti_old_multipole < e->ti_current)
+          cell_drift_multipole(cpj, e);
+        if (lock_unlock(&cpj->grav.mlock) != 0)
+          error("Impossible to unlock m-pole");
+
+        /* Check if we can no longer use the mesh */
+        if (cell_cant_use_mesh_anymore(e, cpi, cpj)) {
+          atomic_inc(&e->forcerebuild);
+          return 1;
+        }
+        /* Mesh still valid, continue */
+        continue;
+      }
+
+      /* Can we use M-M for this pair? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/1,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        /* M-M task handles this, skip */
+        continue;
+      }
+
+      /* Recurse to find more mesh interactions */
+      if (cell_check_grav_mesh_pairs_zoom_pair_recursive(cpi, cpj, e)) {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Recursively check mesh interactions for zoom self interactions.
+ *
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_self, recursing through the void cell
+ * hierarchy and then using the normal self recursive function once we reach
+ * non-void cells.
+ *
+ * @param ci The current #cell from the hierarchy being processed.
+ * @param e The #engine.
+ * @return 1 if a rebuild is needed, 0 otherwise.
+ */
+static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
+                                                          struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->with_zoom_region) {
+    error(
+        "This function should only be called when running a zoom simulation.");
+  }
+#endif
+
+  /* If not a void cell, use the normal self recursive function */
+  if (ci->subtype != cell_subtype_void) {
+    return cell_check_grav_mesh_pairs_recursive(ci, NULL, e);
+  }
+
+  /* Loop over progeny for self interactions */
+  for (int k = 0; k < 8; k++) {
+    if (ci->progeny[k] == NULL) continue;
+
+    struct cell *cp = ci->progeny[k];
+
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (cp->subtype == cell_subtype_void && !cp->contains_zoom_cells) continue;
+
+    /* Skip empty progeny */
+    if (cell_is_empty_mpole(cp)) continue;
+
+    /* Skip foreign zoom progeny (no such thing as a foreign self task). */
+    if (cp->type == cell_type_zoom && cp->nodeID != engine_rank) continue;
+
+    if (cell_check_grav_mesh_pairs_zoom_self_recursive(cp, e)) {
+      return 1;
+    }
+  }
+
+  /* Now handle pair interactions between progeny */
+  for (int j = 0; j < 8; j++) {
+    if (ci->progeny[j] == NULL) continue;
+
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[j]->subtype == cell_subtype_void &&
+        !ci->progeny[j]->contains_zoom_cells)
+      continue;
+
+    /* Skip empty non-void progeny. */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
+
+    struct cell *cpj = ci->progeny[j];
+
+    for (int k = j + 1; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (ci->progeny[k]->subtype == cell_subtype_void &&
+          !ci->progeny[k]->contains_zoom_cells)
+        continue;
+
+      /* Skip empty progeny */
+      if (cell_is_empty_mpole(ci->progeny[k])) continue;
+
+      struct cell *cpk = ci->progeny[k];
+
+      /* Skip entirely foreign pairs. */
+      if ((cpj->type == cell_type_zoom && cpk->type == cell_type_zoom) &&
+          cpj->nodeID != engine_rank && cpk->nodeID != engine_rank)
+        continue;
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpj, cpk)) {
+
+        /* Atomically drift the multipole in cj if needs be. */
+        lock_lock(&cpj->grav.mlock);
+        if (cpj->grav.ti_old_multipole < e->ti_current)
+          cell_drift_multipole(cpj, e);
+        if (lock_unlock(&cpj->grav.mlock) != 0)
+          error("Impossible to unlock m-pole");
+
+        /* Atomically drift the multipole in cj if needs be. */
+        lock_lock(&cpk->grav.mlock);
+        if (cpk->grav.ti_old_multipole < e->ti_current)
+          cell_drift_multipole(cpk, e);
+        if (lock_unlock(&cpk->grav.mlock) != 0)
+          error("Impossible to unlock m-pole");
+
+        /* Check if we can no longer use the mesh */
+        if (cell_cant_use_mesh_anymore(e, cpj, cpk)) {
+          atomic_inc(&e->forcerebuild);
+          return 1;
+        }
+        /* Mesh still valid, continue */
+        continue;
+      }
+
+      /* Otherwise recurse as a pair interaction */
+      if (cell_check_grav_mesh_pairs_zoom_pair_recursive(cpj, cpk, e)) {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Check all gravity pairs that would use mesh gravity in zoom
+ * simulations.
+ *
+ * This function mirrors the zoom task creation and splitting logic to check
+ * if any mesh gravity interactions can no longer use the mesh due to particle
+ * motion. This version handles void cells and the zoom cell hierarchy.
+ *
+ * @param c The top-level #cell (void or background cell).
+ * @param e The #engine.
+ */
+void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->with_zoom_region) {
+    error(
+        "This function should only be called when running a zoom simulation.");
+  }
+#endif
+
+  /* Ignore zoom cells (these will be handled during recursion from the void
+   * top level background cells down into the zoom cells. */
+  if (c->type == cell_type_zoom) {
+    return;
+  }
+
+  struct space *s = e->s;
+  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+
+  /* Skip cells without gravity particles */
+  if (cell_is_empty_mpole(c)) return;
+
+  /* Skip void cells that do not contain any zoom cells. */
+  if (c->subtype == cell_subtype_void && !c->contains_zoom_cells) return;
+
+  /* Early exit if not using mesh */
+  if (!s->periodic) {
+    return;
+  }
+
+  /* Early exit if forcerebuild already set */
+  if (e->forcerebuild) {
+    return;
+  }
+
+  /* Check self-interaction. If it returns true (forcerebuild set), we don't
+   * need to check any pairs. */
+  if (cell_check_grav_mesh_pairs_zoom_self_recursive(c, e)) {
+    message("Self interaction triggers a rebuild due to mesh pair failure.");
+    return;
+  }
+
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+
+  /* Check the same range used to create the gravity pair tasks. */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (s->grav_P2P_search_delta_m == 0)
+    error("Gravity pair search range has not been set");
+#endif
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
+
+  /* Get this cell's position in the background grid. */
+  const int cid = c - bkg_cells;
+  const int i = cid / (cdim[1] * cdim[2]);
+  const int j = (cid / cdim[2]) % cdim[1];
+  const int k = cid % cdim[2];
+
+  /* Loop over background cells that could have had a gravity pair task. */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+        /* Apply periodic boundary conditions. */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
+
+        struct cell *cj = &bkg_cells[cell_getid(cdim, iii, jjj, kkk)];
+
+        /* Avoid self contributions (already handled above). */
+        if (c == cj) continue;
+
+        /* Skip pairs that would not have been created on this rank. */
+        if (c->nodeID != engine_rank && cj->nodeID != engine_rank) continue;
+
+        /* Skip void cells that do not contain any zoom cells. */
+        if (cj->subtype == cell_subtype_void && !cj->contains_zoom_cells)
+          continue;
+
+        /* Skip empty cells. */
+        if (cell_is_empty_mpole(cj)) continue;
+
+        /* Can we use the mesh for this top-level pair? */
+        if (cell_can_use_mesh(e, c, cj)) {
+
+          /* Atomically drift the multipole in c if needs be. */
+          lock_lock(&c->grav.mlock);
+          if (c->grav.ti_old_multipole < e->ti_current)
+            cell_drift_multipole(c, e);
+          if (lock_unlock(&c->grav.mlock) != 0)
+            error("Impossible to unlock m-pole");
+
+          /* Atomically drift the multipole in cj if needs be. */
+          lock_lock(&cj->grav.mlock);
+          if (cj->grav.ti_old_multipole < e->ti_current)
+            cell_drift_multipole(cj, e);
+          if (lock_unlock(&cj->grav.mlock) != 0)
+            error("Impossible to unlock m-pole");
+
+          /* Check if we can no longer use the mesh. */
+          if (cell_cant_use_mesh_anymore(e, c, cj)) {
+            atomic_inc(&e->forcerebuild);
+            message(
+                "Top-level pair interaction triggers a rebuild due to mesh "
+                "pair failure");
+            return;
+          }
+          continue;
+        }
+
+        /* Can we use M-M for this top-level pair? */
+        if (cell_can_use_pair_mm(c, cj, e, s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
+          continue;
+        }
+
+        /* Check mesh interactions introduced by splitting the void task. */
+        if (cell_check_grav_mesh_pairs_zoom_pair_recursive(c, cj, e)) {
           message(
               "Pair interaction triggers a rebuild due to mesh pair failure");
           return;

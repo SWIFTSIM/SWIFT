@@ -794,7 +794,8 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
             /* Did we get a sink? (Or did we run out of spare ones?) */
             if (sink != NULL) {
 
-              /* Copy the properties of the gas particle to the star particle */
+              /* Copy the properties of the gas particle to the star particle
+               */
               sink_copy_properties(p, xp, sink, e, sink_props, cosmo,
                                    with_cosmology, phys_const, hydro_props, us,
                                    cooling);
@@ -918,7 +919,13 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
       /* The mesh potential of a particle includes the potential of its own
        * mass smoothed on the scale r_s, -m / (sqrt(pi) r_s) at the position
        * of the particle. This has no counterpart in the tree. */
-      const double r_s_inv = e->mesh->r_s_inv;
+      double r_s_inv = e->mesh->r_s_inv;
+
+      /* Cells covered by the zoom mesh use its force split */
+      if (zoom_mesh_cell_is_covered(e->zoom_mesh, c)) {
+        r_s_inv = e->zoom_mesh->r_s_inv;
+      }
+
       potential_self = 0.5 * M_2_SQRTPI * r_s_inv;
     }
 
@@ -1039,10 +1046,11 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
                 "(local num_gparts=%zd inhibited_gparts=%zd) "
-                "(cell info: c->depth=%d c->grav.super->depth=%d)",
+                "(cell info: %s/%s c->depth=%d c->grav.super->depth=%d)",
                 id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
-                e->s->nr_gparts, e->s->nr_inhibited_gparts, c->depth,
+                e->s->nr_gparts, e->s->nr_inhibited_gparts,
+                cellID_names[c->type], subcellID_names[c->subtype], c->depth,
                 c->grav.super->depth);
           }
         }

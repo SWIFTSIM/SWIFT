@@ -51,6 +51,7 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
                              double *ref_weights_v, double *ref_weights_e) {
 
   idx_t *inds = mydata->inds;
+  idx_t *xadj = mydata->xadj;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
@@ -69,9 +70,10 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+    const int nadjcny = xadj[nr_cells];
+    if ((weights_e = (double *)malloc(sizeof(double) * nadjcny)) == NULL)
       error("Failed to allocate edge weights arrays.");
-    bzero(weights_e, sizeof(double) * 26 * nr_cells);
+    bzero(weights_e, sizeof(double) * nadjcny);
   }
 
   /* Loop over the tasks... */
@@ -169,7 +171,7 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
            * not be neighbours, in that case we ignore any edge weight for that
            * pair. */
           int ik = -1;
-          for (int k = 26 * cid; k < 26 * nr_cells; k++) {
+          for (int k = xadj[cid]; k < xadj[cid + 1]; k++) {
             if (inds[k] == cjd) {
               ik = k;
               break;
@@ -178,7 +180,7 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
 
           /* cj */
           int jk = -1;
-          for (int k = 26 * cjd; k < 26 * nr_cells; k++) {
+          for (int k = xadj[cjd]; k < xadj[cjd + 1]; k++) {
             if (inds[k] == cid) {
               jk = k;
               break;
@@ -231,8 +233,9 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
     if (engine_rank == 0) message("checking edge weight consistency");
     refsum = 0.0;
     sum = 0.0;
+    const int nadjcny = xadj[nr_cells];
     if (ref_weights_e == NULL) error("edge partition weights are inconsistent");
-    for (int k = 0; k < 26 * nr_cells; k++) {
+    for (int k = 0; k < nadjcny; k++) {
       refsum += ref_weights_e[k];
       sum += weights_e[k];
     }

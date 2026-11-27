@@ -646,6 +646,8 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
       if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0 && verbose)
+        hydro_density_limit_print(e->hydro_properties, e->s->parts);
       if (e->nodeID == 0) pressure_floor_print(e->pressure_floor_props);
       if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
@@ -997,6 +999,16 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
     space_extra_sinks = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
+
+    /* Extract the minimum difference between the task level and the leaves
+     * for background cells. (Only used when running a zoom but not dangerous
+     * to always set.) */
+    zoom_bkg_subdepth_diff_grav =
+        parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
+                                 zoom_bkg_subdepth_diff_grav_default);
+    if (zoom_bkg_subdepth_diff_grav < 0) {
+      error("ZoomRegion:bkg_subdepth_diff_grav must be non-negative.");
+    }
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

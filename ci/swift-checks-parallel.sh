@@ -35,10 +35,11 @@ do_make check VERBOSE=1
 do_make clean
 
 echo "--------------------------------"
-echo "Check debugging routines compile"
+echo "Check debugging routines and unit tests"
 echo "--------------------------------"
 do_configure --with-parmetis --disable-vec --disable-optimization --enable-debugging-checks
 do_make
+do_make check VERBOSE=1
 do_make clean
 
 echo "------------------------------------"

@@ -35,12 +35,6 @@ module load grackle-swift/3.3.dev1
 #  Need 2.70 for Fortran support.
 module load autoconf
 
-#  Function to locate the test data. Should be in the home directory of this
-#  user when in a container.
-function link_data {
-    ln -s $HOME/${1} .
-}
-
 #  Clean sources.
 git clean -fdx
 
@@ -59,7 +53,7 @@ python3 -c "import swiftsimio; print('swiftsimio', swiftsimio.__version__)" || e
 #  And off we go.
 ./autogen.sh
 
-echo 
+echo
 echo "------------------------"
 echo "Building SWIFT binaries."
 echo "------------------------"
@@ -117,7 +111,7 @@ echo "------------------------------------------------"
 do_run mpirun -np 16 ../../../swift_mpi -s -t 4 -n 64 sodShock.yml -PScheduler:max_top_level_cells:24
 cd ../../../
 
-echo 
+echo
 echo "-----------------------"
 echo "Building SWIFT binaries"
 echo "-----------------------"
@@ -196,4 +190,3 @@ do_make
 # cd ../../../
 
 exit
-

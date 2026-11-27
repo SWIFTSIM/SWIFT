@@ -1674,8 +1674,8 @@ should contain. The type of partitioning attempted is controlled by the::
   DomainDecomposition:
     initial_type:
 
-parameter. Which can have the values *memory*, *edgememory*, *region*, *grid* or
-*vectorized*:
+parameter. Which can have the values *memory*, *edgememory*, *region*, *grid*,
+*wedge* or *vectorized*:
 
     * *edgememory*
 
@@ -1715,6 +1715,16 @@ will give a poorer partition:
 
     parameter. It takes an array of three values. The product of these values
     must equal the number of MPI ranks. If not set a suitable default will be used.
+
+    * *wedge*
+
+    Split the cells over the solid angle into box-centred angular wedges and 
+    assign the wedges to ranks, aiming for roughly equal particle weight per 
+    rank. The number of wedges is controlled by the::
+
+       wedges_per_rank
+
+    parameter, which sets the number of wedges created for each MPI rank.
 
     * *vectorized*
 
@@ -1992,6 +2002,77 @@ A complete specification of the model looks like
     generate_ics:  1    # Replace neutrino particle velocities with random Fermi-Dirac momenta at the start
     use_delta_f:   1    # Use the delta-f method for shot noise reduction
     neutrino_seed: 1234 # A random seed used for the Fermi-Dirac momenta
+
+Zoom Region
+-----------
+
+The ``ZoomRegion`` parameter block is used to define the properties of the zoom region and background. An example is shown below.
+
+.. code-block:: none
+
+  ZoomRegion:
+    region_pad_factor: 1.1
+    zoom_top_level_depth: 2
+    zoom_min_top_level_cells: -1
+    bkg_top_level_cells: 8
+    region_buffer_cell_ratio: 2
+    neighbour_max_tree_depth: -1
+
+These 5 parameters alone control the construction of the cell hierarchy which enables efficient zoom simulations in SWIFT (see the :doc:`cell docs <cell_structures>` for more information).
+
+``region_pad_factor``
+~~~~~~~~~~~~~~~~~~~~~
+
+ The extent of the zoom region is defined as the extent of the high resolution particle distribution mutliplied by ``region_pad_factor``. This is independant of any padding applied during initial condition generation and should be selected to be as small as possible while still providing a sufficient padding when running with hydrodynamics (see :doc:`Zoom Hydrodynamics <zoom_hydrodynamics`). If the padding is set too large then the zoom region will be poorly resolved and performance will be sub-optimal.
+
+ It's important to note that the value of ``region_pad_factor`` will be modified slightly during cell construction to ensure the zoom region tesselates the parent volume correctly in each cell scenario (:doc:`discussed here <cell_structures>`). The padding factor after tesselation is reported by the code. Should the requested cell geometry lead to a substantial increase in the padding factor then an error will be thrown, at which point you should review the parameters you have set. You probably need to increase the background resolution and/or include buffer cells (more below).
+
+``zoom_top_level_depth``
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+This defines the depth of the zoom top level cells within a single background cell. Zoom cells are constructed by dividing the parent cell in half along each axis, so the number of zoom cells along each axis of the zoom region is given by ``nr_parent_cells * 2^zoom_top_level_depth``.
+
+Reasonable values for this parameter depend on the exact zoom resolution and the geometry of the region but a good intial guess could be 2 or 3 (depending on the number of void cells above the zoom region). The deeper you push this the more cells will exist within the tree above the zoom region which can eventually begin to harm performance. However, if you have a very high resolution zoom region then pushing this deeper can be beneficial as it allows for more zoom cells and therefore a better zoom cell resolution (which is particularly helpful when running over MPI as it allows for better partitioning).
+
+
+
+``zoom_min_top_level_cells``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This optionally replaces ``zoom_top_level_depth`` and defines the minimum target number of zoom cells along each axis of the zoom region. If this is positive, SWIFT derives the required ``zoom_top_level_depth`` and ignores any explicitly provided depth.
+
+Only values that can be written as ``nr_parent_cells * 2^zoom_top_level_depth`` are exactly reachable. If the requested value cannot be matched exactly, SWIFT uses the smallest depth that does not undershoot the requested cdim and emits a warning.
+
+Reasonable values for this parameter depend on the exact zoom resolution and the geometry of the region but a good intial guess could be 8 or 16 (assuming an even number of void cells above the zoom region). In higher resolution simulations pushing this larger could make sense, especially running with MPI where the extra zoom cell resolution can help with partitioning.
+
+``bkg_top_level_cells``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+This is the background cell analogue of ``Scheduler:max_top_level_cells`` and defines the number of background cells along an axis of the full parent volume.
+
+This value behaves differently in different scenarios:
+
+- For large zoom regions: This value is treated as a target to aim for.
+- For intermediate zoom regions: This value is ignored entirely and the number of background cells is the number of zoom regions which tesselate the parent volume along each axis.
+- For small zoom regions: This value is respected and never modified.
+
+You can set this to ``-1`` to enable automatic optimization, which will pick the value that minimizes the padding around the zoom region, i.e. the number of background cells which maximises the fraction of the zoom cells filled by the high-resolution region, while accounting for the user specified padding. Note that this deliberately ignores the resulting number of background cells, thus it can lead to large numbers of background cells when the fraction of parent volume occupied by the zoom region is small. Set this parameter explicitly if you need to cap the number of background cells. To diagnose and optimize your zoom setup, see :ref:`zoom-diagnostics`.
+
+
+``region_buffer_cell_ratio``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This defines the number of buffer cells that tesselate the zoom region and should only be used for small zoom regions. When set to 0 buffer cells won't be made (i.e. there will only be background and zoom cells).
+
+When ``region_buffer_cell_ratio > 0`` ``zoom_min_top_level_cells`` should be a power of 2 multiplied by ``region_buffer_cell_ratio`` to ensure the cell edges align. If this is not the case an error will be thrown. If ``region_buffer_cell_ratio`` is non-zero in a situation it shouldn't be an error will also be thrown.
+
+``neighbour_max_tree_depth``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This defines the maximum depth of the cell trees in background or buffer top level cells within the mesh distance criterion of the zoom region bounadaries (``neighbour`` cells). Increasing the depth in these cell trees can minimise the number of direct particle-particle interactions needed at the zoom region region boundary, but at a certain depth a minimum will be reached and the number of tasks will be increased for no gain in speed.
+
+If not given in the parameter file ``neighbour_max_tree_depth`` will default to the depth of the zoom cells relative to the neighbour cells (this behaviour can also be achieved by setting ``neighbour_max_tree_depth`` to -1).
+
 
 
 ------------------------

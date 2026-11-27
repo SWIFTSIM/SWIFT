@@ -267,6 +267,15 @@ void *runner_main(void *data) {
         runner_check_star_feedback_ghost_ran(e, t, ci);
         runner_check_star_feedback_ghost_ran(e, t, cj);
       }
+
+      /* Ensure void cells only have one of their allowed tasks. */
+      if (ci->subtype == cell_subtype_void &&
+          !(t->type == task_type_grav_down || t->type == task_type_grav_mm ||
+            t->type == task_type_grav_long_range ||
+            t->type == task_type_init_grav)) {
+        error("Void cell with task (%s/%s).", taskID_names[t->type],
+              subtaskID_names[t->subtype]);
+      }
 #endif
 
       const ticks task_beg = getticks();

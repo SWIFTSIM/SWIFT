@@ -73,7 +73,7 @@ include_HEADERS += rays.h rays_struct.h
 include_HEADERS += sink.h sink_iact.h sink_struct.h sink_io.h sink_properties.h sink_debug.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
-include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h
+include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h zoom_mesh_gravity.h zoom_mesh_gravity_mpi.h
 include_HEADERS += hdf5_object_to_blob.h ic_info.h particle_buffer.h exchange_structs.h
 include_HEADERS += lightcone/lightcone.h lightcone/lightcone_particle_io.h lightcone/lightcone_replications.h
 include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h lightcone/lightcone_map.h
@@ -83,6 +83,7 @@ include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softe
 include_HEADERS += forcing.h forcing_io.h forcing_struct.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
+include_HEADERS += zoom_region/zoom.h
 include_HEADERS += swift_lustre_api.h
 include_HEADERS += part_init.h
 
@@ -172,6 +173,13 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
 SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
+# source files for Zoom support
+ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
+    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c \ 
+    zoom_region/zoom_split.c zoom_region/zoom_proxy.c \ 
+    zoom_region/zoom_partition.c zoom_region/zoom_io.c \
+    zoom_region/zoom_scheduler.c
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c
@@ -202,7 +210,7 @@ AM_SOURCES += chemistry.c cosmology.c velociraptor_interface.c
 AM_SOURCES += output_list.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c
-AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
+AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c zoom_mesh_gravity.c zoom_mesh_gravity_mpi.c
 AM_SOURCES += runner_neutrino.c
 AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c
 AM_SOURCES += rt_parameters.c hdf5_object_to_blob.c ic_info.c exchange_structs.c particle_buffer.c
@@ -221,6 +229,7 @@ AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
+AM_SOURCES += $(ZOOM_REGION_SOURCES)
 AM_SOURCES += swift_lustre_api.c
 
 # Include files for distribution, not installation.

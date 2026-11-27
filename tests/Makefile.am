@@ -39,7 +39,10 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline testSortShiftBound  # testMatrixInversion
+        testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown \
+        testZoomMeshGravity testZoomMeshResolutionGuard testSortShiftBound
+        # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -53,8 +56,10 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
-		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSortShiftBound
+		 testNeutrinoCosmology testNeutrinoFermiDirac testLog testTimeline \
+		 testZoomInit testGetZoomIJKFunc testZoomRegrid testSpaceSplit \
+		 testZoomVoidTree testZoomGravityDown testSortShiftBound \
+		 testZoomMeshGravity testZoomMeshResolutionGuard
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -65,6 +70,10 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
+
+testZoomMeshGravity_SOURCES = testZoomMeshGravity.c
+
+testZoomMeshResolutionGuard_SOURCES = testZoomMeshResolutionGuard.c
 
 testAtomic_SOURCES = testAtomic.c
 
@@ -185,7 +194,25 @@ testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 # The MPI library pulls in the same extra dependencies as the swift_mpi binary
 testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
 EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
+TESTS += testPartitionWeights
+check_PROGRAMS += testPartitionWeights
+testPartitionWeights_SOURCES = testPartitionWeights.c
+testPartitionWeights_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+testPartitionWeights_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
+EXTRA_testPartitionWeights_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
 endif
+
+testZoomInit_SOURCES = testZoomInit.c
+
+testGetZoomIJKFunc_SOURCES = testGetZoomIJKFunc.c
+
+testSpaceSplit_SOURCES = testSpaceSplit.c
+
+testZoomRegrid_SOURCES = testZoomRegrid.c
+
+testZoomVoidTree_SOURCES = testZoomVoidTree.c
+
+testZoomGravityDown_SOURCES = testZoomGravityDown.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
@@ -200,4 +227,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
+             testZoomInit.sh zoom_params_small.yml zoom_params_large.yml zoom_params_cells.yml zoom_params_cells_exact.yml testGetZoomIJKFunc.sh \
+             testZoomRegrid.sh testZoomVoidTree.sh \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh

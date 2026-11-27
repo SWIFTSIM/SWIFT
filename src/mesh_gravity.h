@@ -95,6 +95,7 @@ void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
                                struct threadpool *tp, int verbose);
 void pm_mesh_clean(struct pm_mesh *mesh);
 
+void initialise_fftw(int N, int nr_threads);
 void pm_mesh_allocate(struct pm_mesh *mesh);
 void pm_mesh_free(struct pm_mesh *mesh);
 

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./testZoomVoidTree @srcdir@/zoom_params_small.yml

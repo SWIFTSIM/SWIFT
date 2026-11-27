@@ -239,8 +239,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Allocate and compute edge info once */
   int *cell_edge_offsets = (int *)malloc(sizeof(int) * (nr_cells + 1));
   if (cell_edge_offsets == NULL) error("Failed to allocate cell_edge_offsets");
-  int nadjcny =
-      partition_count_edges(s, 1 /* periodic */, 0, cell_edge_offsets);
+  int nadjcny = partition_count_edges(s, s->periodic, 0, cell_edge_offsets);
 
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
@@ -255,7 +254,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   int nadjcny_check = 0;
   int nxadj = 0;
-  partition_graph_init(s, 1 /* periodic */, inds, &nadjcny_check, xadj, &nxadj,
+  partition_graph_init(s, s->periodic, inds, &nadjcny_check, xadj, &nxadj,
                        cell_edge_offsets);
 
   /* Allocate and init weights. */
@@ -604,6 +603,13 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
   } else {
     error("Impossible repartition type");
+  }
+
+  /* In zoom land we need to handle the void cells (these are always local
+   * if they have a single local "top level progeny" somewhere in
+   * their tree). */
+  if (s->with_zoom_region) {
+    zoom_partition_voids(s, nodeID);
   }
 
   if (s->e->verbose)

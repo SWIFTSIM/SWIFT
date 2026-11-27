@@ -212,6 +212,17 @@ tests/testNeutrinoCosmology
 tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
+tests/testZoomInit
+tests/testZoomInit.sh
+tests/testGetZoomIJKFunc
+tests/testGetZoomIJKFunc.sh
+tests/testSpaceSplit
+tests/testZoomRegrid
+tests/testZoomRegrid.sh
+tests/testZoomVoidTree
+tests/testZoomVoidTree.sh
+tests/testZoomMeshGravity
+tests/testZoomMeshResolutionGuard
 tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt
