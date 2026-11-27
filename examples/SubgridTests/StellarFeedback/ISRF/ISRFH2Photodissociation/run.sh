@@ -52,7 +52,7 @@ min_star_dt_myr=${min_star_dt_myr:=1e-9} #Stars:min_star_timestep_Myr override
 initial_metallicity=${initial_metallicity:=$initial_metallicity_default} #GEARChemistry:initial_metallicity override (Z/Zsun)
 run_name=${run_name:=""}
 library=${library:="grackle"} #Cooling library of the build: grackle (grackle_2 or grackle_3) or geajay (geajay_3)
-extra_swift_args=${extra_swift_args:=$extra_swift_args_default} #Extra swift arguments (default: -n 199 for thick, a run of 200 steps)
+extra_swift_args=${extra_swift_args-$extra_swift_args_default} #Extra swift arguments (default: -n 199 for thick, a run of 200 steps)
 
 # Remove the ICs
 if [ -e ICs_isrf_h2_photodissociation.hdf5 ]
